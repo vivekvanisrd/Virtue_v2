@@ -39,8 +39,8 @@ export function StudentDirectory() {
   const fetchStudents = async () => {
     setLoading(true);
     const result = await getStudentListAction({ search: searchTerm, ...filters });
-    if (result.success) {
-      setStudents(result.data || []);
+    if (result.success && result.data) {
+      setStudents(result.data);
     }
     setLoading(false);
   };

@@ -54,8 +54,8 @@ export function FeeCollectionForm() {
     setLoading(true);
     setError(null);
     const result = await getStudentListAction({ search: searchTerm });
-    if (result.success) {
-      setSearchResults(result.data || []);
+    if (result.success && result.data) {
+      setSearchResults(result.data);
     } else {
       setError(result.error || "Search failed");
     }
@@ -67,7 +67,7 @@ export function FeeCollectionForm() {
     setSuccess(null);
     setError(null);
     const result = await getStudentFeeStatus(id);
-    if (result.success) {
+    if (result.success && result.data) {
       setStudent(result.data);
       setSearchResults([]);
       setSearchTerm("");
@@ -92,11 +92,11 @@ export function FeeCollectionForm() {
         paymentReference: reference,
       });
 
-      if (result.success) {
+      if (result.success && result.data) {
         setSuccess(result.data.receiptNumber);
         // Refresh the student's local state to show updated totals
         const updated = await getStudentFeeStatus(student.id);
-        if (updated.success) setStudent(updated.data);
+        if (updated.success && updated.data) setStudent(updated.data);
         setPaymentAmount(0);
         setReference("");
       } else {

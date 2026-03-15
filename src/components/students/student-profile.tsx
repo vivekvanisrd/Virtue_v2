@@ -24,7 +24,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     async function loadProfile() {
       setLoading(true);
       const result = await getStudentFullProfile(studentId);
-      if (result.success) {
+      if (result.success && result.data) {
         setStudent(result.data);
       }
       setLoading(false);
