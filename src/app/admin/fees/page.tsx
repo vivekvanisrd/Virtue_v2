@@ -1,5 +1,5 @@
 import { FeeCollectionForm } from "@/components/finance/FeeCollectionForm";
-import { WalletCard, TrendingUp, Users, Clock } from "lucide-react";
+import { WalletCards, TrendingUp, Users, Clock } from "lucide-react";
 
 /**
  * FeesPage
@@ -14,7 +14,7 @@ export default function FeesPage() {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-[0.3em] mb-2 animate-in slide-in-from-left duration-500">
-            <WalletCard className="w-3.5 h-3.5" />
+            <WalletCards className="w-3.5 h-3.5" />
             Financial Management Engine
           </div>
           <h1 className="text-5xl font-black text-slate-900 tracking-tighter leading-tight sm:text-6xl animate-in slide-in-from-left duration-700">
