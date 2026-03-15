@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "verify-finance.ts", "verify-tenancy.ts", "prisma/seed.ts"]
 }

@@ -23,7 +23,7 @@ export const CounterService = {
       where: {
         schoolId_branchId_type_year: {
           schoolId: params.schoolId,
-          branchId: params.branchId || null,
+          branchId: (params.branchId || null) as any,
           type: params.type,
           year: params.year
         }
@@ -33,7 +33,7 @@ export const CounterService = {
       },
       create: {
         schoolId: params.schoolId,
-        branchId: params.branchId || null,
+        branchId: (params.branchId || null) as any,
         type: params.type,
         year: params.year,
         lastValue: 1

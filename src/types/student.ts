@@ -30,6 +30,7 @@ export const studentAdmissionSchema = z.object({
   bplStatus: z.boolean().default(false),
   disabilityType: z.string().optional(),
   phone: z.string().optional(),
+  email: z.string().optional(),
 
   // Academic
   branchId: z.string().optional(),
