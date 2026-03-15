@@ -90,12 +90,10 @@ export function FeeCollectionForm() {
         amountPaid: paymentAmount,
         paymentMode,
         paymentReference: reference,
-        allocatedTo: { description: "General Fee Payment", timestamp: new Date().toISOString() },
-        collectedBy: "Authorized Admin",
       });
 
       if (result.success) {
-        setSuccess(result.receiptNumber);
+        setSuccess(result.data.receiptNumber);
         // Refresh the student's local state to show updated totals
         const updated = await getStudentFeeStatus(student.id);
         if (updated.success) setStudent(updated.data);
