@@ -116,7 +116,7 @@ export async function claimSchoolOwnership(schoolId: string) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return { success: false, error: "You must be logged in to claim a school." };
+      return { success: false, error: `You must be logged in to claim a school. (Server Session: Missing)` };
     }
 
     // Check if school exists
