@@ -17,10 +17,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 // Form Validation Schema
 const loginSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -29,7 +30,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   const {
     register,
@@ -42,13 +46,41 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    // Mimic API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log("Login data:", data);
-    
-    // In actual app, we would call an API here
-    // Redirect to dashboard
+    setErrorText(null);
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (signInError) {
+      // Try to Sign Up instead if the user doesn't exist (helpful for initial setup)
+      if (signInError.message.includes("Invalid login credentials")) {
+        setErrorText("Invalid credentials. Try your Supabase owner email.");
+      } else {
+        setErrorText(signInError.message);
+      }
+      setIsLoading(false);
+      return;
+    }
+
     router.push("/dashboard");
+    setIsLoading(false);
+  };
+
+  const onQuickSignUp = async (data: LoginFormData) => {
+    setIsLoading(true);
+    setErrorText(null);
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (signUpError) {
+      setErrorText(signUpError.message);
+    } else {
+      setErrorText("Account created! Check email if verification is required.");
+    }
     setIsLoading(false);
   };
 
@@ -116,25 +148,31 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Username Field */}
+            {errorText && (
+               <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl animate-shake">
+                  {errorText}
+               </div>
+            )}
+
+            {/* Email Field */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">Username</label>
+              <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
                   <User className="w-5 h-5" />
                 </div>
                 <input
-                  {...register("username")}
-                  type="text"
-                  placeholder="e.g. pandusir"
+                  {...register("email")}
+                  type="email"
+                  placeholder="e.g. yourname@gmail.com"
                   className={cn(
                     "w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary focus:bg-white transition-all text-slate-800 font-medium",
-                    errors.username && "border-red-500 focus:border-red-500"
+                    errors.email && "border-red-500 focus:border-red-500"
                   )}
                 />
               </div>
-              {errors.username && (
-                <p className="text-xs text-red-500 font-bold ml-1 italic">{errors.username.message}</p>
+              {errors.email && (
+                <p className="text-xs text-red-500 font-bold ml-1 italic">{errors.email.message}</p>
               )}
             </div>
 
@@ -170,20 +208,35 @@ export default function LoginPage() {
               )}
             </div>
 
-            <button
-              disabled={isLoading}
-              type="submit"
-              className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-            >
-              {isLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
-                <>
-                  Experience Reality
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </button>
+            <div className="flex flex-col gap-4 pt-2">
+              <button
+                disabled={isLoading}
+                type="submit"
+                className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                {isLoading && !isRegistering ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <>
+                    Experience Reality
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+
+              <button
+                disabled={isLoading}
+                type="button"
+                onClick={() => {
+                   setIsRegistering(true);
+                   handleSubmit(onQuickSignUp)();
+                }}
+                className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-indigo-100"
+              >
+                {isLoading && isRegistering ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                New here? Sign up for secure access
+              </button>
+            </div>
           </form>
 
           {/* Footer help */}
