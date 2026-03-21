@@ -6,8 +6,13 @@ export default async function AuthVerifyPage() {
   const { data: { user }, error } = await supabase.auth.getUser();
 
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
-      <div className="bg-white p-10 rounded-[30px] shadow-2xl max-w-lg w-full">
+    <main className="min-h-screen bg-indigo-900 flex items-center justify-center p-4 font-sans">
+      <div className="bg-white p-10 rounded-[30px] shadow-2xl max-w-lg w-full relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4">
+           <span className="text-[10px] font-black bg-indigo-500 text-white px-2 py-1 rounded-full uppercase tracking-tighter animate-pulse">
+             Build v2.0.1
+           </span>
+        </div>
         <div className="flex items-center gap-4 mb-8">
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
             <ShieldCheck className="w-6 h-6" />
