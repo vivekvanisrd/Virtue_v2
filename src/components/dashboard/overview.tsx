@@ -13,13 +13,9 @@ import {
   Layout
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDashboardStatsAction } from "@/lib/actions/dashboard-actions";
 
-const stats = [
-  { label: "Total Students", value: "1,248", icon: GraduationCap, trend: "+12.5%", color: "bg-blue-500" },
-  { label: "Total Teachers", value: "84", icon: Users, trend: "+2.1%", color: "bg-purple-500" },
-  { label: "Finance Balance", value: "₹4.2L", icon: CreditCard, trend: "+5.4%", color: "bg-green-500" },
-  { label: "Pending Issues", value: "12", icon: Zap, trend: "-2", color: "bg-orange-500" },
-];
+// Static stats removed in favor of dynamic fetching
 
 const activities = [
   { id: 1, type: "admission", title: "New Student Admitted", subtitle: "Rahul Kumar - Class XB", time: "2 mins ago", user: "Admin" },
@@ -29,6 +25,33 @@ const activities = [
 ];
 
 export function OverviewContent() {
+  const [data, setData] = React.useState({
+    studentCount: "...",
+    teacherCount: "...",
+    financeBalance: "...",
+    pendingIssues: "..."
+  });
+
+  React.useEffect(() => {
+    getDashboardStatsAction().then(res => {
+      if (res.success && res.data) {
+        setData({
+          studentCount: res.data.studentCount.toLocaleString(),
+          teacherCount: res.data.teacherCount.toLocaleString(),
+          financeBalance: res.data.financeBalance,
+          pendingIssues: res.data.pendingIssues.toString()
+        });
+      }
+    });
+  }, []);
+
+  const stats = [
+    { label: "Total Students", value: data.studentCount, icon: GraduationCap, trend: "+12.5%", color: "bg-blue-500" },
+    { label: "Total Teachers", value: data.teacherCount, icon: Users, trend: "+2.1%", color: "bg-purple-500" },
+    { label: "Finance Balance", value: data.financeBalance, icon: CreditCard, trend: "+5.4%", color: "bg-green-500" },
+    { label: "Pending Issues", value: data.pendingIssues, icon: Zap, trend: "-2", color: "bg-orange-500" },
+  ];
+
   return (
     <div className="space-y-6 lg:space-y-8">
       {/* 1. Header Section */}

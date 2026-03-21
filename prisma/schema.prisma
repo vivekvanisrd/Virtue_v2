@@ -39,6 +39,8 @@ model School {
   examResults            ExamResult[]
   notifications          Notification[]
   routes                 Route[]
+  enquiries              Enquiry[]
+  activityLogs           ActivityLog[]
 }
 
 model Branch {
@@ -72,6 +74,7 @@ model AcademicYear {
   schoolId      String
   school        School            @relation(fields: [schoolId], references: [id])
   feeStructures FeeStructure[]
+  consents      StudentConsent[]
 }
 
 model FinancialYear {
@@ -128,6 +131,7 @@ model Student {
   minorityStatus  Boolean                     @default(false)
   bplStatus       Boolean                     @default(false)
   disabilityType  String?
+  status          String                      @default("Active")
   schoolId        String
   school          School                      @relation(fields: [schoolId], references: [id])
   createdAt       DateTime                    @default(now())
@@ -147,6 +151,7 @@ model Student {
   attendance      StudentAttendance[]
   transportAssign StudentTransportAssignment?
   transport       TransportDetail?
+  consents        StudentConsent[]
 }
 
 model AcademicHistory {
@@ -705,4 +710,57 @@ model TenancyCounter {
   branch    Branch?  @relation(fields: [branchId], references: [id])
 
   @@unique([schoolId, branchId, type, year])
+}
+
+model Enquiry {
+  id               String   @id @default(uuid())
+  schoolId         String
+  studentFirstName String
+  studentLastName  String?
+  parentName       String
+  parentPhone      String
+  parentEmail      String?
+  requestedClass   String
+  academicYear     String
+  previousSchool   String?
+  notes            String?
+  referredBy       String?
+  referrerPhone    String?
+  status           String   @default("Pending") // Pending, Converted, Rejected
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  school           School   @relation(fields: [schoolId], references: [id])
+}
+
+model StudentConsent {
+  id              String   @id @default(uuid())
+  studentId       String
+  academicYearId  String
+  consentStatus   String   @default("Pending") // Pending, Confirmed, Declined
+  updatedPhone    String?
+  updatedAddress  String?
+  submittedAt     DateTime?
+  token           String   @unique @default(uuid()) // Secure unique link token
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  student         Student      @relation(fields: [studentId], references: [id])
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([studentId, academicYearId])
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  schoolId   String
+  userId     String   // ID of the Staff/Auth User performing the action
+  entityType String   // e.g. "STUDENT", "STAFF", "PAYMENT"
+  entityId   String   // The record ID that was changed
+  action     String   // "CREATE", "UPDATE", "DELETE", "LOGIN"
+  details    String?  // Human-readable summary
+  ipAddress  String?  // Optional auditing IP
+  createdAt  DateTime @default(now())
+
+  school     School   @relation(fields: [schoolId], references: [id])
 }

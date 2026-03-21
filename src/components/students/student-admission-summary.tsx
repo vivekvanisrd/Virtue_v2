@@ -90,18 +90,22 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
       // Temporarily force dimensions to prevent clipping
       const originalStyle = element.getAttribute("style") || "";
       element.style.width = "794px"; // A4 Width at 96 DPI
-      element.style.height = "auto";
+      element.style.height = "1123px"; // A4 Height at 96 DPI
       element.style.position = "relative";
-      element.style.overflow = "visible";
+      element.style.overflow = "hidden";
+      element.style.margin = "0";
       
       // html-to-image is much more robust for modern CSS (oklch, lab, etc)
       const dataUrl = await toPng(element, {
         quality: 1.0,
         pixelRatio: 2,
+        width: 794,
+        height: 1123,
         backgroundColor: "#ffffff",
         style: {
           transform: "none",
           borderRadius: "0",
+          boxShadow: "none",
         }
       });
       
@@ -114,11 +118,7 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
         format: "a4",
       });
       
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(dataUrl, "PNG", 0, 0, 210, 297);
       pdf.save(`Admission_${admissionId}_${studentData.firstName}.pdf`);
     } catch (error) {
       console.error("PDF Generation Error:", error);

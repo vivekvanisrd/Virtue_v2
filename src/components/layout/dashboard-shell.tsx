@@ -11,6 +11,10 @@ import { OverviewContent } from "../dashboard/overview";
 import { StudentsContent } from "../dashboard/students";
 import { FinanceContent } from "../dashboard/finance";
 
+import { StaffRolesManager } from "../dashboard/staff-roles";
+import { StaffImportManager } from "../dashboard/staff-import";
+import { ActivityLogViewer } from "../dashboard/activity-log";
+
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
 
@@ -22,13 +26,24 @@ function WorkspaceRenderer() {
           className={tab.id === activeTabId ? "block animate-in fade-in slide-in-from-bottom-2 duration-300" : "hidden"}
         >
           {tab.id === "overview" && <OverviewContent />}
-          {(tab.id === "students" || tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports") && (
+          {(tab.id === "students" || tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries") && (
             <StudentsContent tabId={tab.id} />
           )}
           {tab.id === "finance" && <FinanceContent />}
           
+          {tab.id === "staff-roles" && <StaffRolesManager />}
+          {tab.id === "staff-import" && <StaffImportManager />}
+          {(tab.id === "staff" || tab.id === "staff-directory") && (
+            <GenericModule 
+              title="Staff Directory" 
+              description="Modern Staff directory systems for Virtue School"
+            />
+          )}
+
+          {tab.id === "settings-audit" && <ActivityLogViewer />}
+          
           {/* Generic mappings for other cataloged modules */}
-          {["salaries", "accounting", "teachers", "staff", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
+          {["salaries", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
             <GenericModule 
               title={tab.title} 
               description={`Modern ${tab.title} and information systems for Virtue School`}
@@ -36,7 +51,7 @@ function WorkspaceRenderer() {
           )}
 
           {/* Fallback for truly unknown tabs */}
-          {!["overview", "students", "students-all", "students-add", "students-promotion", "students-reports", "finance", "salaries", "accounting", "teachers", "staff", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
+          {!["overview", "students", "students-all", "students-add", "students-promotion", "students-reports", "finance", "salaries", "accounting", "teachers", "staff", "staff-directory", "staff-roles", "staff-import", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
             <div className="flex flex-col items-center justify-center h-full text-slate-300 py-40">
               <h2 className="text-2xl font-bold italic">Module Implementation Pending</h2>
               <p>The {tab.title} section is coming soon.</p>

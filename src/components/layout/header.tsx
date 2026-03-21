@@ -6,7 +6,8 @@ import {
   ChevronDown,
   Calendar,
   Menu,
-  Sparkles
+  Sparkles,
+  LogOut
 } from "lucide-react";
 import { ThemeCustomizer } from "./theme-customizer";
 
@@ -67,15 +68,23 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         <div className="h-8 lg:h-10 w-[1px] bg-slate-200 mx-1 lg:mx-2" />
 
-        <div className="flex items-center gap-2 lg:gap-4 cursor-pointer hover:bg-slate-50 p-1 lg:p-2 rounded-xl lg:rounded-2xl transition-all group border border-transparent hover:border-slate-100">
-           <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-800">Pandu Sir</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Admin</p>
-           </div>
-           <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-gradient-bg flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-all">
-              <User className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-           </div>
-           <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors hidden lg:block" />
+        <div className="relative group/profile">
+          <div className="flex items-center gap-2 lg:gap-4 cursor-pointer hover:bg-slate-50 p-1 lg:p-2 rounded-xl lg:rounded-2xl transition-all border border-transparent hover:border-slate-100">
+             <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-slate-800">Pandu Sir</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Admin</p>
+             </div>
+             <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-gradient-bg flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 transition-all">
+                <User className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+             </div>
+             <ChevronDown className="w-4 h-4 text-slate-300 group-hover/profile:text-slate-600 transition-colors hidden lg:block" />
+          </div>
+
+          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-slate-100 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all duration-200 z-50 p-2 transform origin-top translate-y-2 group-hover/profile:translate-y-0">
+             <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <LogOut className="w-4 h-4" /> Sign Out
+             </button>
+          </div>
         </div>
       </div>
     </header>

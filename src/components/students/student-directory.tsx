@@ -156,10 +156,10 @@ export function StudentDirectory() {
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-black">
-                            {student.academic?.class}
+                            {student.academic?.class?.name || (typeof student.academic?.class === 'string' ? student.academic.class : 'N/A')}
                           </span>
                           <span className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-xs font-black">
-                            Sec {student.academic?.section || "A"}
+                            Sec {student.academic?.section?.name || (typeof student.academic?.section === 'string' ? student.academic.section : "A")}
                           </span>
                         </div>
                         <p className="text-xs font-bold text-slate-500">

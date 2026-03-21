@@ -19,6 +19,22 @@ export async function submitAdmissionAction(formData: any) {
     const validatedData = studentAdmissionSchema.parse(formData);
     const branchId = validatedData.branchId || context.branchId;
 
+    // NEW: Aadhaar Uniqueness Check
+    if (validatedData.aadhaarNumber) {
+      const existing = await prisma.student.findFirst({
+        where: {
+          schoolId: context.schoolId,
+          aadhaarNumber: validatedData.aadhaarNumber
+        }
+      });
+      if (existing) {
+        return { 
+          success: false, 
+          error: `CRITICAL: A student with Aadhaar ${validatedData.aadhaarNumber} is already admitted. Duplicate prevention active.` 
+        };
+      }
+    }
+
     // 3. Scoped ID Generation
     const year = new Date().getFullYear().toString();
     const currentAY = validatedData.academicYearId || "VR-AY-2026-27";
@@ -230,7 +246,7 @@ export async function submitAdmissionAction(formData: any) {
     } catch (e) {
       // Ignore revalidation errors in non-Next environments (e.g., verification scripts)
     }
-    return { success: true, data: result };
+    return { success: true, data: JSON.parse(JSON.stringify(result)) };
 
   } catch (error: any) {
     console.error("Admission Submission Error:", error);
@@ -285,7 +301,7 @@ export async function getStudentListAction(filters?: {
       }
     });
 
-    return { success: true, data: students };
+    return { success: true, data: JSON.parse(JSON.stringify(students)) };
   } catch (error: any) {
     console.error("Fetch Student List Error:", error);
     return { success: false, error: "Failed to fetch student list." };
@@ -314,7 +330,8 @@ export async function getStudentFullProfile(studentId: string) {
         medical: true,
         bank: true,
         previousSchool: true,
-        history: { include: { class: true, academicYear: true } },
+        documents: true,
+        history: { include: { class: true, academicYear: { select: { name: true } } } },
       }
     });
 
@@ -322,9 +339,239 @@ export async function getStudentFullProfile(studentId: string) {
       return { success: false, error: "Student not found or unauthorized access." };
     }
 
-    return { success: true, data: student };
+    return { success: true, data: JSON.parse(JSON.stringify(student)) };
   } catch (error: any) {
     console.error("Fetch Student Profile Error:", error);
     return { success: false, error: "Failed to fetch student profile." };
+  }
+}
+
+/**
+ * Live search for students by name or Aadhaar (Scoped to School)
+ */
+export async function searchStudentsAction(query: string) {
+  try {
+    const context = await getTenantContext();
+    if (!query || query.length < 3) return { success: true, data: [] };
+
+    const students = await prisma.student.findMany({
+      where: {
+        schoolId: context.schoolId,
+        OR: [
+          { firstName: { contains: query, mode: 'insensitive' } },
+          { lastName: { contains: query, mode: 'insensitive' } },
+          { aadhaarNumber: { contains: query, mode: 'insensitive' } },
+        ]
+      },
+      include: {
+        family: true,
+        academic: {
+          include: { class: true }
+        }
+      },
+      take: 5
+    });
+
+    return { success: true, data: JSON.parse(JSON.stringify(students)) };
+  } catch (error: any) {
+    console.error("Search Students Error:", error);
+    return { success: false, error: "Failed to search students." };
+  }
+}
+
+/**
+ * Updates an existing student profile with transactional safety and audit logging.
+ */
+export async function updateStudentProfile(studentId: string, data: any) {
+  try {
+    const context = await getTenantContext();
+    
+    // We update across multiple related tables
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Update Core Student Table
+      const student = await tx.student.update({
+        where: { id: studentId, schoolId: context.schoolId },
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          middleName: data.middleName,
+          dob: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          gender: data.gender,
+          phone: data.phone,
+          email: data.email,
+          bloodGroup: data.bloodGroup,
+          category: data.category,
+          aadhaarNumber: data.aadhaarNumber,
+        }
+      });
+
+      // 2. Update Related Tables if data provided
+      if (data.family) {
+        await tx.familyDetail.update({
+          where: { studentId },
+          data: data.family
+        });
+      }
+
+      if (data.address) {
+        await tx.address.update({
+          where: { studentId },
+          data: data.address
+        });
+      }
+
+      if (data.academic) {
+        await tx.academicRecord.update({
+          where: { studentId },
+          data: data.academic
+        });
+      }
+
+      return student;
+    });
+
+    // 3. Log the activity
+    const { logActivity } = await import("../utils/audit-logger");
+    await logActivity({
+      schoolId: context.schoolId,
+      userId: "ADMIN", // Placeholder until Auth passed
+      entityType: "STUDENT",
+      entityId: studentId,
+      action: "UPDATE",
+      details: `Updated profile details for ${result.firstName} ${result.lastName}`
+    });
+
+    revalidatePath(`/admin/students/${studentId}`);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error("Update Student Error:", error);
+    return { success: false, error: "Critical failure during profile update." };
+  }
+}
+
+/**
+ * Attaches a document reference to a student profile.
+ */
+export async function uploadStudentDocument(studentId: string, doc: { fileName: string, fileType: string, fileUrl: string }) {
+  try {
+    const context = await getTenantContext();
+    const newDoc = await prisma.document.create({
+      data: {
+        studentId,
+        schoolId: context.schoolId,
+        fileName: doc.fileName,
+        fileType: doc.fileType,
+        fileUrl: doc.fileUrl,
+      }
+    });
+
+    const { logActivity } = await import("../utils/audit-logger");
+    await logActivity({
+      schoolId: context.schoolId,
+      userId: "ADMIN",
+      entityType: "STUDENT_DOC",
+      entityId: studentId,
+      action: "CREATE",
+      details: `Uploaded document: ${doc.fileName}`
+    });
+
+    return { success: true, data: newDoc };
+  } catch (error: any) {
+    return { success: false, error: "Failed to link document." };
+  }
+}
+
+/**
+ * Marks a student as exited and prepares TC data.
+ */
+export async function processStudentExit(studentId: string, data: { reason: string, tcNumber: string, exitDate: string }) {
+  try {
+    const context = await getTenantContext();
+    
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { schoolId: context.schoolId, isCurrent: true }
+    });
+    
+    if (!academicYear) {
+      return { success: false, error: "No active academic year found." };
+    }
+
+    await prisma.$transaction([
+      prisma.student.update({
+        where: { id: studentId, schoolId: context.schoolId },
+        data: { status: "Exited" }
+      }),
+      prisma.academicRecord.update({
+        where: { studentId },
+        data: { 
+          tcNumber: data.tcNumber,
+        }
+      }),
+      prisma.academicHistory.updateMany({
+        where: { studentId, academicYearId: academicYear.id },
+        data: {
+          exitDate: new Date(data.exitDate),
+          tcNumber: data.tcNumber,
+          leavingReason: data.reason,
+          promotionStatus: "Exited"
+        }
+      })
+    ]);
+
+    const { logActivity } = await import("../utils/audit-logger");
+    await logActivity({
+      schoolId: context.schoolId,
+      userId: "ADMIN",
+      entityType: "STUDENT",
+      entityId: studentId,
+      action: "EXIT",
+      details: `Processed withdrawal/TC for student. TC #${data.tcNumber}`
+    });
+
+    revalidatePath(`/admin/students/${studentId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: "Failed to process student exit." };
+  }
+}
+
+/**
+ * Fetches data specifically formatted for TC Printing.
+ */
+export async function getTCPrintData(studentId: string) {
+  try {
+    const context = await getTenantContext();
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        academic: { include: { class: true, section: true } },
+        family: true,
+        address: true,
+        history: { 
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    if (!student) return { success: false, error: "Student not found." };
+
+    return { 
+      success: true, 
+      data: {
+        fullName: `${student.firstName} ${student.lastName}`,
+        fatherName: student.family?.fatherName,
+        motherName: student.family?.motherName,
+        dob: student.dob,
+        admissionDate: student.academic?.admissionDate,
+        lastClass: student.academic?.class?.name,
+        tcNumber: student.academic?.tcNumber || "TEMP/TC/" + Math.floor(Math.random() * 10000),
+        exitDate: new Date(),
+        // Additional school info can be fetched here
+        schoolName: "Virtue Professional Academy", // Mocked for now
+      }
+    };
+  } catch (error) {
+    return { success: false, error: "Failed to fetch TC data." };
   }
 }

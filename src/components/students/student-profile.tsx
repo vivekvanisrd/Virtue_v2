@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
+import {
   User, School, Users, MapPin, CreditCard, Info, 
   Heart, Building, ShieldCheck, ShieldAlert,
   ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download,
-  ExternalLink, Loader2
+  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle
 } from "lucide-react";
-import { getStudentFullProfile } from "@/lib/actions/student-actions";
+import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit } from "@/lib/actions/student-actions";
 import { cn } from "@/lib/utils";
+import { TCTemplate } from "./tc-template";
 
 interface StudentProfileProps {
   studentId: string;
@@ -19,6 +20,10 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isEditing, setIsEditing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [tcPreviewData, setTCPreviewData] = useState<any>(null);
+  const [showTCPreview, setShowTCPreview] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -31,6 +36,72 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     }
     loadProfile();
   }, [studentId]);
+
+  const handleUpdate = async (updatedData: any) => {
+    setIsUpdating(true);
+    // Ensure nested data is prepared if flattened in state for some reason
+    // But here we'll assume the state matches the DB structure
+    const res = await updateStudentProfile(studentId, updatedData);
+    if (res.success) {
+      setStudent({ ...student, ...updatedData });
+      setIsEditing(false);
+    }
+    setIsUpdating(false);
+  };
+
+  const handleDocUpload = async () => {
+    const fileName = prompt("Enter Document Name (e.g. Birth Certificate):");
+    if (!fileName) return;
+
+    const res = await uploadStudentDocument(studentId, {
+      fileName,
+      fileType: "PDF",
+      fileUrl: "https://mock-storage.supabase.co/doc-xyz.pdf"
+    });
+
+    if (res.success) {
+      const result = await getStudentFullProfile(studentId);
+      if (result.success) setStudent(result.data);
+    }
+  };
+
+  const handleGenerateTC = async () => {
+    setLoading(true);
+    const res = await getTCPrintData(studentId);
+    if (res.success) {
+      setTCPreviewData(res.data);
+      setShowTCPreview(true);
+    }
+    setLoading(false);
+  };
+
+  const handlePrintTC = () => {
+    window.print();
+  };
+
+  if (showTCPreview && tcPreviewData) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-white overflow-auto flex flex-col">
+        <div className="bg-slate-900 p-4 sticky top-0 flex justify-between items-center print:hidden border-b border-slate-700">
+           <div className="flex items-center gap-3">
+             <button onClick={() => setShowTCPreview(false)} className="p-2 hover:bg-white/10 rounded-lg text-white">
+                <ArrowLeft className="w-5 h-5" />
+             </button>
+             <h3 className="text-white font-black uppercase tracking-widest text-xs">Print Official Transfer Certificate</h3>
+           </div>
+           <button 
+            onClick={handlePrintTC}
+            className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+           >
+             <Download className="w-4 h-4" /> Finalize & Print
+           </button>
+        </div>
+        <div className="flex-1 bg-slate-100 py-20 px-4 print:bg-white print:p-0">
+           <TCTemplate data={tcPreviewData} />
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -61,6 +132,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     { id: "family", label: "Family", icon: Users },
     { id: "address", label: "Address", icon: MapPin },
     { id: "health", label: "Health", icon: Heart },
+    { id: "documents", label: "Documents", icon: FileText },
+    { id: "exit", label: "TC/Exit", icon: ExternalLink },
   ];
 
   return (
@@ -94,8 +167,14 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
           <button className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-slate-800 transition-all shadow-md active:scale-95">
             <Download className="w-3.5 h-3.5" /> ID Card
           </button>
-          <button className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-xl text-xs font-black hover:bg-slate-50 transition-all shadow-sm active:scale-95">
-            Manage Fees
+          <button 
+            onClick={() => setIsEditing(!isEditing)}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm active:scale-95 border",
+              isEditing ? "bg-rose-50 border-rose-200 text-rose-600" : "bg-white border-slate-200 text-slate-900 hover:bg-slate-50"
+            )}
+          >
+            {isEditing ? "Exit Edit Mode" : "Manage Profile"}
           </button>
         </div>
       </div>
@@ -140,8 +219,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Class Level</p>
-                    <p className="text-xl font-black text-slate-900">{student.academic?.class || "N/A"}</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Section {student.academic?.section || "N/A"}</p>
+                    <p className="text-xl font-black text-slate-900">{student.academic?.class?.name || (typeof student.academic?.class === 'string' ? student.academic.class : "N/A")}</p>
+                    <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Section {student.academic?.section?.name || (typeof student.academic?.section === 'string' ? student.academic.section : "N/A")}</p>
                   </div>
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance</p>
@@ -163,15 +242,33 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</p>
-                    <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                       <Mail className="w-3.5 h-3.5 text-slate-300" /> {student.email || "No Email Linked"}
-                    </p>
+                    {isEditing ? (
+                      <input 
+                        type="email"
+                        value={student.email || ""}
+                        onChange={(e) => setStudent({...student, email: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm font-bold shadow-inner"
+                      />
+                    ) : (
+                      <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <Mail className="w-3.5 h-3.5 text-slate-300" /> {student.email || "No Email Linked"}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone Number</p>
-                    <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                       <Phone className="w-3.5 h-3.5 text-slate-300" /> {student.phone || "No Phone Linked"}
-                    </p>
+                    {isEditing ? (
+                      <input 
+                        type="tel"
+                        value={student.phone || ""}
+                        onChange={(e) => setStudent({...student, phone: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm font-bold shadow-inner"
+                      />
+                    ) : (
+                      <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-slate-300" /> {student.phone || "No Phone Linked"}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date of Birth</p>
@@ -198,6 +295,91 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     <span className="px-2 py-1 bg-white text-orange-600 rounded text-[10px] font-black border border-orange-100 uppercase">Pending Medical Doc</span>
                   </div>
                 </div>
+
+                {isEditing && (
+                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
+                    <div>
+                      <p className="text-xs font-black text-primary uppercase">Profile Editing Active</p>
+                      <p className="text-[10px] text-slate-500 font-medium tracking-tight">Changes are logged immediately for accountability.</p>
+                    </div>
+                    <div className="flex gap-2">
+                       <button 
+                        onClick={() => handleUpdate({
+                          firstName: student.firstName,
+                          lastName: student.lastName,
+                          email: student.email,
+                          phone: student.phone,
+                          family: {
+                            id: student.family?.id,
+                            fatherName: student.family?.fatherName,
+                            fatherPhone: student.family?.fatherPhone,
+                            motherName: student.family?.motherName,
+                            motherPhone: student.family?.motherPhone,
+                          },
+                          address: {
+                            id: student.address?.id,
+                            currentAddress: student.address?.currentAddress,
+                            city: student.address?.city,
+                            state: student.address?.state,
+                            pinCode: student.address?.pinCode,
+                          }
+                        })}
+                        disabled={isUpdating}
+                        className="px-4 py-2 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary/90 disabled:opacity-50 shadow-lg shadow-primary/20"
+                       >
+                         {isUpdating ? "Saving..." : "Save Repository"}
+                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "documents" && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                 <div className="flex items-center justify-between">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Digital Document Vault</h4>
+                   <button 
+                    onClick={handleDocUpload}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200"
+                   >
+                     <PlusCircle className="w-3 h-3" /> Add Document
+                   </button>
+                 </div>
+
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {student.documents?.length > 0 ? (
+                      student.documents.map((doc: any) => (
+                        <div key={doc.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 group hover:border-primary/30 transition-all cursor-default">
+                          <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0">
+                            <FileText className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-slate-800 truncate">{doc.fileName}</p>
+                            <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-tighter">
+                              {doc.fileType} • {new Date(doc.uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <a 
+                            href={doc.fileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-primary transition-all"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-2 py-16 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/30">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                          <FileText className="w-6 h-6 text-slate-300" />
+                        </div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Documents Archived</p>
+                        <p className="text-[9px] text-slate-400 font-medium">Capture Aadhaar, TC or Birth Certificates</p>
+                      </div>
+                    )}
+                 </div>
               </div>
             )}
 
@@ -206,8 +388,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[
                     { label: "Academic Year", value: student.academic?.academicYear },
-                    { label: "Class", value: student.academic?.class },
-                    { label: "Section", value: student.academic?.section },
+                    { label: "Class", value: student.academic?.class?.name || (typeof student.academic?.class === 'string' ? student.academic.class : "N/A") },
+                    { label: "Section", value: student.academic?.section?.name || (typeof student.academic?.section === 'string' ? student.academic.section : "N/A") },
                     { label: "Roll Number", value: student.academic?.rollNumber || "Not Assigned" },
                     { label: "Branch", value: student.academic?.branch || "Main Campus" },
                     { label: "Boarding", value: student.academic?.boardingType || "Day Scholar" }
@@ -279,14 +461,30 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                       </div>
                       <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest text-violet-600">Father Information</h4>
                     </div>
-                    <div className="space-y-3">
+                     <div className="space-y-3">
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Full Name</p>
-                        <p className="text-sm font-bold text-slate-900">{student.family?.fatherName || "N/A"}</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.fatherName || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, fatherName: e.target.value}})}
+                            className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <p className="text-sm font-bold text-slate-900">{student.family?.fatherName || "N/A"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Contact</p>
-                        <p className="text-sm font-bold text-slate-900">{student.family?.fatherPhone || "N/A"}</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.fatherPhone || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, fatherPhone: e.target.value}})}
+                            className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <p className="text-sm font-bold text-slate-900">{student.family?.fatherPhone || "N/A"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Occupation</p>
@@ -306,11 +504,27 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     <div className="space-y-3">
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Full Name</p>
-                        <p className="text-sm font-bold text-slate-900">{student.family?.motherName || "N/A"}</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.motherName || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, motherName: e.target.value}})}
+                            className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <p className="text-sm font-bold text-slate-900">{student.family?.motherName || "N/A"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Primary Contact</p>
-                        <p className="text-sm font-bold text-slate-900">{student.family?.motherPhone || "N/A"}</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.motherPhone || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, motherPhone: e.target.value}})}
+                            className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <p className="text-sm font-bold text-slate-900">{student.family?.motherPhone || "N/A"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Occupation</p>
@@ -330,11 +544,234 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               </div>
             )}
 
-            {/* Other tabs follow same premium density logic */}
-            {["financial", "address", "health"].includes(activeTab) && (
-              <div className="flex flex-col items-center justify-center py-20 opacity-30 italic">
-                <Loader2 className="w-6 h-6 mb-2 animate-spin" />
-                <p className="text-xs font-black uppercase tracking-widest">Sub-module Under Optimization</p>
+            {activeTab === "exit" && (
+              <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                <div className="bg-slate-900 p-6 rounded-2xl text-white relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
+                  <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-1">Student Exit & TC Protocol</h4>
+                  <p className="text-2xl font-black tracking-tight mb-4">Transfer Certificate Module</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10">
+                       <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Current Status</p>
+                       <p className="text-sm font-bold">{student.academic?.promotionStatus || "Active Study"}</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10">
+                       <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-1">Dues Status</p>
+                       <p className="text-sm font-bold text-emerald-400">Clear (Mocked)</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex gap-3">
+                    <button 
+                      onClick={handleGenerateTC}
+                      className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
+                    >
+                      Generate Official TC
+                    </button>
+                    <button className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-white/10">
+                      Process Withdrawal
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">TC Generation History</h4>
+                   <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                      <Clock className="w-8 h-8 text-slate-300 mb-2" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">No prior TC issued for this student</p>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "financial" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Fee Structure & Plan</h4>
+                      <p className="text-xl font-black text-slate-800 tracking-tight">
+                        {student.paymentType || student.financial?.paymentType || "Term-wise (50/25/25)"}
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-emerald-100/50 flex items-center justify-between">
+                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Tuition</span>
+                       <span className="text-sm font-bold text-slate-800">₹{student.tuitionFee || "0"}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Active Discounts</h4>
+                      <p className="text-sm font-bold text-slate-800 mt-2">
+                        {student.discountId1 ? student.discountReason1 || student.discountId1 : "No Active Discounts"}
+                      </p>
+                    </div>
+                    {student.discountId1 && (
+                      <div className="mt-4 flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-100/50 px-2 py-1 rounded w-fit">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Standard Components</h4>
+                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                     {[
+                       { label: "Admission", val: student.admissionFee },
+                       { label: "Library", val: student.libraryFee },
+                       { label: "Lab", val: student.labFee },
+                       { label: "Sports", val: student.sportsFee },
+                       { label: "Dev Fee", val: student.developmentFee },
+                       { label: "Exam Fee", val: student.examFee },
+                       { label: "Caution", val: student.cautionDeposit },
+                     ].map(fee => (
+                       <div key={fee.label} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
+                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{fee.label}</span>
+                         <span className="text-xs font-bold text-slate-800">₹{fee.val || "0"}</span>
+                       </div>
+                     ))}
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "address" && (
+              <div className="space-y-6">
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-indigo-500" />
+                    </div>
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Residential Address</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
+                    <div className="sm:col-span-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Street Address</p>
+                       {isEditing ? (
+                         <input 
+                           value={student.address?.currentAddress || ""}
+                           onChange={(e) => setStudent({...student, address: {...student.address, currentAddress: e.target.value}})}
+                           className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                         />
+                       ) : (
+                         <p className="text-sm font-medium text-slate-800 mt-1">{student.address?.currentAddress || "Not Provided"}</p>
+                       )}
+                    </div>
+                    <div>
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">City & State</p>
+                       {isEditing ? (
+                         <div className="flex gap-2">
+                           <input 
+                             value={student.address?.city || ""}
+                             onChange={(e) => setStudent({...student, address: {...student.address, city: e.target.value}})}
+                             className="w-1/2 bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                             placeholder="City"
+                           />
+                           <input 
+                             value={student.address?.state || ""}
+                             onChange={(e) => setStudent({...student, address: {...student.address, state: e.target.value}})}
+                             className="w-1/2 bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                             placeholder="State"
+                           />
+                         </div>
+                       ) : (
+                         <p className="text-sm font-bold text-slate-800 mt-1">{student.address?.city || "-"}, {student.address?.state || "-"}</p>
+                       )}
+                    </div>
+                    <div>
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pincode & Country</p>
+                       {isEditing ? (
+                          <input 
+                            value={student.address?.pinCode || ""}
+                            onChange={(e) => setStudent({...student, address: {...student.address, pinCode: e.target.value}})}
+                            className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold"
+                          />
+                       ) : (
+                         <p className="text-sm font-bold text-slate-800 mt-1">{student.address?.pinCode || "-"} | {student.address?.country || "India"}</p>
+                       )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={cn("p-5 rounded-xl border relative overflow-hidden", student.transportRequired ? "bg-amber-50/50 border-amber-200" : "bg-slate-50 border-slate-200")}>
+                  {student.transportRequired && <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 blur-3xl rounded-full pointer-events-none" />}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={cn("w-8 h-8 rounded-lg border flex items-center justify-center tracking-tight", student.transportRequired ? "bg-amber-500/20 border-amber-500/30" : "bg-slate-200/50 border-slate-300")}>
+                      <TramFront className={cn("w-4 h-4", student.transportRequired ? "text-amber-600" : "text-slate-400")} />
+                    </div>
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Transport Requirements</h4>
+                    {!student.transportRequired && (
+                      <span className="ml-auto text-[9px] font-black text-slate-400 bg-white px-2 py-1 rounded shadow-sm uppercase tracking-widest border border-slate-200">Not Subscribed</span>
+                    )}
+                  </div>
+
+                  {student.transportRequired && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
+                       <div>
+                         <p className="text-[9px] font-black text-amber-700/60 uppercase tracking-widest mb-1">Route ID</p>
+                         <p className="text-sm font-bold text-amber-900">{student.transportRouteId || "Unassigned"}</p>
+                       </div>
+                       <div>
+                         <p className="text-[9px] font-black text-amber-700/60 uppercase tracking-widest mb-1">Pickup Stop</p>
+                         <p className="text-sm font-bold text-amber-900">{student.pickupStop || "-"}</p>
+                       </div>
+                       <div>
+                         <p className="text-[9px] font-black text-amber-700/60 uppercase tracking-widest mb-1">Drop Stop</p>
+                         <p className="text-sm font-bold text-amber-900">{student.dropStop || "-"}</p>
+                       </div>
+                       <div>
+                         <p className="text-[9px] font-black text-amber-700/60 uppercase tracking-widest mb-1">Monthly Fee</p>
+                         <p className="text-sm font-black text-amber-900 leading-tight">₹{student.transportMonthlyFee || "0"}</p>
+                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "health" && (
+              <div className="space-y-4">
+                <div className="bg-rose-50/50 p-5 rounded-xl border border-rose-100 flex items-start gap-4">
+                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/20 border border-white/20">
+                     <Heart className="w-5 h-5 text-white" />
+                   </div>
+                   <div className="flex-1">
+                     <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-2">Health & Medical Profile</h4>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Blood Group</p>
+                          <p className="text-base font-black text-rose-700 drop-shadow-sm">{student.bloodGroup || "O+"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Known Allergies</p>
+                          <p className="text-sm font-bold text-slate-800">{student.allergies || "None declared"}</p>
+                        </div>
+                        <div className="sm:col-span-2 pt-2 border-t border-rose-100/50">
+                          <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Medical Conditions</p>
+                          <p className="text-sm font-medium text-slate-700 leading-relaxed">{student.medicalConditions || "No chronic conditions declared during admission. Student is considered fit for physical activities."}</p>
+                        </div>
+                     </div>
+                   </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Family Physician Contact</h4>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Doctor Name</p>
+                       <p className="text-sm font-bold text-slate-800">Dr. {student.doctorName || "Not Provided"}</p>
+                    </div>
+                    <div className="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Clinic Phone</p>
+                       <p className="text-sm font-bold text-slate-800">{student.doctorPhone || "-"}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { globalPhoneSchema, globalEmailSchema, globalAadhaarSchema } from "@/lib/utils/validations";
 
 // Shared across multiple forms
 export const addressSchema = z.object({
@@ -20,7 +21,7 @@ export const studentAdmissionSchema = z.object({
   gender: z.string().optional(),
   bloodGroup: z.string().optional(),
   category: z.string().optional(),
-  aadhaarNumber: z.string().optional(),
+  aadhaarNumber: globalAadhaarSchema.optional().or(z.literal("")),
   aadhaarVerified: z.boolean().default(false),
   motherTongue: z.string().optional(),
   placeOfBirth: z.string().optional(),
@@ -29,13 +30,13 @@ export const studentAdmissionSchema = z.object({
   minorityStatus: z.boolean().default(false),
   bplStatus: z.boolean().default(false),
   disabilityType: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().optional(),
+  phone: globalPhoneSchema.optional().or(z.literal("")),
+  email: globalEmailSchema.optional().or(z.literal("")),
 
   // Academic
-  branchId: z.string().optional(),
-  academicYearId: z.string().optional(),
-  admissionDate: z.string().optional(),
+  branchId: z.string().min(1, "Branch is required"),
+  academicYearId: z.string().min(1, "Academic Year is required"),
+  admissionDate: z.string().min(1, "Admission Date is required"),
   classId: z.string().min(1, "Class is required"),
   sectionId: z.string().optional(),
   rollNumber: z.string().optional(),
@@ -52,20 +53,20 @@ export const studentAdmissionSchema = z.object({
 
   // Family
   fatherName: z.string().optional(),
-  fatherPhone: z.string().optional(),
-  fatherAlternatePhone: z.string().optional(),
-  fatherEmail: z.string().optional(),
+  fatherPhone: globalPhoneSchema.optional().or(z.literal("")),
+  fatherAlternatePhone: globalPhoneSchema.optional().or(z.literal("")),
+  fatherEmail: globalEmailSchema.optional().or(z.literal("")),
   fatherOccupation: z.string().optional(),
   fatherQualification: z.string().optional(),
   motherName: z.string().optional(),
-  motherPhone: z.string().optional(),
-  motherAlternatePhone: z.string().optional(),
-  motherEmail: z.string().optional(),
+  motherPhone: globalPhoneSchema.optional().or(z.literal("")),
+  motherAlternatePhone: globalPhoneSchema.optional().or(z.literal("")),
+  motherEmail: globalEmailSchema.optional().or(z.literal("")),
   motherOccupation: z.string().optional(),
   motherQualification: z.string().optional(),
-  whatsappNumber: z.string().optional(),
+  whatsappNumber: globalPhoneSchema.optional().or(z.literal("")),
   emergencyContactName: z.string().optional(),
-  emergencyContactPhone: z.string().optional(),
+  emergencyContactPhone: globalPhoneSchema.optional().or(z.literal("")),
   emergencyContactRelation: z.string().optional(),
 
   // Financial

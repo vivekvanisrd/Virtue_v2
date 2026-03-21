@@ -29,8 +29,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTabs, Tab } from "@/context/tab-context";
+import { createClient } from "@/lib/supabase/client";
 
-const menuItems = [
+const SUPER_ADMIN_EMAILS = ["vivekvanisrd@gmail.com"];
+
+import { hasAccess, ROLES, Role, isOwnerOrHigher } from "@/lib/utils/rbac";
+
+type MenuItem = {
+  id: string;
+  name: string;
+  icon: any;
+  component?: string;
+  requiredRole?: Role;
+  subItems?: Array<{ id: string; name: string; component: string }>;
+};
+
+const menuItems: MenuItem[] = [
   { id: "overview", name: "Overview", icon: LayoutDashboard, component: "Overview" },
   { 
     id: "students", 
@@ -39,6 +53,7 @@ const menuItems = [
     subItems: [
       { id: "students-all", name: "All Students", component: "Students" },
       { id: "students-add", name: "Add Student", component: "Students" },
+      { id: "students-enquiries", name: "Enquiries", component: "Students" },
       { id: "students-promotion", name: "Student Promotion", component: "Students" },
       { id: "students-reports", name: "Reports", component: "Students" },
     ]
@@ -47,6 +62,7 @@ const menuItems = [
     id: "salaries", 
     name: "Salaries", 
     icon: Briefcase,
+    requiredRole: ROLES.ACCOUNTANT,
     subItems: [
       { id: "salary-dashboard", name: "Salary Dashboard", component: "Salaries" },
       { id: "salary-manager", name: "Unified Manager", component: "Salaries" },
@@ -58,6 +74,7 @@ const menuItems = [
     id: "finance", 
     name: "Finance", 
     icon: Wallet,
+    requiredRole: ROLES.ACCOUNTANT,
     subItems: [
       { id: "fee-collection", name: "Fee Collection", component: "Finance" },
       { id: "fee-manager", name: "Fee Management", component: "Finance" },
@@ -65,9 +82,19 @@ const menuItems = [
       { id: "payment-requests", name: "Payment Requests", component: "Finance" },
     ]
   },
-  { id: "accounting", name: "Accounting", icon: Calculator, component: "Accounting" },
-  { id: "teachers", name: "Teachers", icon: Users, component: "Teachers" },
-  { id: "staff", name: "Staff", icon: Users, component: "Staff" },
+  { id: "accounting", name: "Accounting", icon: Calculator, component: "Accounting", requiredRole: ROLES.ACCOUNTANT },
+  { id: "teachers", name: "Teachers", icon: Users, component: "Teachers", requiredRole: ROLES.PRINCIPAL },
+  { 
+    id: "staff", 
+    name: "Staff", 
+    icon: Users,
+    requiredRole: ROLES.PRINCIPAL,
+    subItems: [
+      { id: "staff-directory", name: "Directory", component: "Staff" },
+      { id: "staff-roles", name: "Role Management", component: "Staff" },
+      { id: "staff-import", name: "Bulk Import", component: "Staff" }
+    ]
+  },
   { 
     id: "academics", 
     name: "Academics", 
@@ -83,7 +110,16 @@ const menuItems = [
   { id: "library", name: "Library", icon: Library, component: "Library" },
   { id: "transport", name: "Transport", icon: Bus, component: "Transport" },
   { id: "communication", name: "Communication", icon: MessageSquare, component: "Communication" },
-  { id: "settings", name: "Settings", icon: Settings, component: "Settings" },
+  { 
+    id: "settings", 
+    name: "Settings", 
+    icon: Settings, 
+    requiredRole: ROLES.OWNER,
+    subItems: [
+      { id: "settings-general", name: "General Settings", component: "Settings" },
+      { id: "settings-audit", name: "System Audit Log", component: "Settings" }
+    ]
+  },
 ];
 
 interface SidebarProps {
@@ -98,6 +134,27 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
   const [width, setWidth] = React.useState(320);
   const [isResizing, setIsResizing] = React.useState(false);
   const [expandedItems, setExpandedItems] = React.useState<string[]>(["overview"]);
+  const [userRole, setUserRole] = React.useState<Role>(ROLES.DEVELOPER); // Mocking DEVELOPER to see all items for now
+
+  React.useEffect(() => {
+    const checkRole = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && SUPER_ADMIN_EMAILS.includes(user.email || "")) {
+        setUserRole(ROLES.DEVELOPER);
+      }
+      // TODO: Once Supabase sets claims, we can dynamically fetch the true role
+      // else if (user?.user_metadata?.role) setUserRole(user.user_metadata.role);
+    };
+    checkRole();
+  }, []);
+
+  const visibleMenuItems = React.useMemo(() => {
+    return menuItems.filter(item => {
+      if (!item.requiredRole) return true;
+      return hasAccess(userRole, item.requiredRole);
+    });
+  }, [userRole]);
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -221,7 +278,28 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 relative z-10 px-4 overflow-y-auto custom-scrollbar overflow-x-hidden pb-10">
-          {menuItems.map((item) => {
+          {userRole === ROLES.DEVELOPER && (
+            <div className="mb-6 space-y-1">
+              <p className={cn(
+                "px-6 text-[10px] font-black text-white/20 uppercase tracking-[2px] mb-2 truncate",
+                isCollapsed && "hidden"
+              )}>System Core</p>
+              <Link
+                href="/super-admin"
+                className={cn(
+                  "group flex items-center gap-4 w-full text-left rounded-2xl transition-all duration-300 relative px-6 py-4 bg-primary/10 border border-primary/20",
+                  isCollapsed && "justify-center px-0"
+                )}
+              >
+                <ShieldCheck className="w-5 h-5 shrink-0 text-primary group-hover:scale-110 transition-transform" />
+                {!isCollapsed && (
+                  <span className="font-black text-primary tracking-tight italic text-sm">Global Registry</span>
+                )}
+              </Link>
+            </div>
+          )}
+
+          {visibleMenuItems.map((item) => {
             const isActive = activeTabId === item.id || item.subItems?.some(s => activeTabId === s.id);
             const isExpanded = expandedItems.includes(item.id);
             const hasSubItems = !!item.subItems?.length;
@@ -285,16 +363,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="mt-auto relative z-10 pt-4 border-t border-white/5 p-4 bg-[#1a1a2e]/80 backdrop-blur-md">
-          <button className={cn(
-            "flex items-center gap-4 w-full text-white/40 hover:bg-red-500/10 hover:text-red-400 rounded-2xl transition-all group",
-            isCollapsed ? "justify-center p-3" : "px-6 py-4"
-          )}>
-            <LogOut className="w-5 h-5 shrink-0 group-hover:-translate-x-1 transition-transform" />
-            {!isCollapsed && <span className="font-bold text-sm">Sign Out</span>}
-          </button>
-        </div>
+        {/* Footer removed to allow undisturbed scroll */}
       </aside>
     </>
   );

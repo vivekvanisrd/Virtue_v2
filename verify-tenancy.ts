@@ -24,7 +24,7 @@ async function verifyTenancy() {
     };
 
     // Simulate login for Action
-    process.env.NODE_ENV = 'development'; // Ensure fallback works
+    // process.env.NODE_ENV = 'development'; // Removed as it is read-only
 
     console.log('Submitting admission for School A...');
     const resultA = await submitAdmissionAction(admissionDataA);

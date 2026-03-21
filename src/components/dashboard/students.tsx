@@ -2,6 +2,8 @@ import React from "react";
 import { GraduationCap, Users } from "lucide-react";
 import { StudentForm } from "../students/student-form";
 import { StudentDirectory } from "../students/student-directory";
+import { EnquiryManager } from "../students/enquiry-manager";
+import { StudentPromotionManager } from "../students/student-promotion";
 
 interface StudentsContentProps {
   tabId: string;
@@ -18,6 +20,31 @@ export function StudentsContent({ tabId }: StudentsContentProps) {
           </div>
         </div>
         <StudentForm />
+      </div>
+    );
+  }
+
+  if (tabId === "students-enquiries") {
+    return (
+      <div className="space-y-4 h-full">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Admission Enquiries
+            </h2>
+            <p className="text-slate-500 font-medium text-[10px] uppercase tracking-wider">Manage incoming enquiries from website</p>
+          </div>
+        </div>
+        <EnquiryManager />
+      </div>
+    );
+  }
+
+  if (tabId === "students-promotion") {
+    return (
+      <div className="h-full">
+        <StudentPromotionManager />
       </div>
     );
   }
