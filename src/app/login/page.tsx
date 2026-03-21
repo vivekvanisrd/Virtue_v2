@@ -21,11 +21,15 @@ import { createClient } from "@/lib/supabase/client";
 
 // Form Validation Schema
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  identifier: z.string().min(3, "Please enter your username or email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
+
+const formatIdentifier = (id: string) => {
+  return id.includes("@") ? id : `${id}@virtue.com`;
+};
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +53,7 @@ export default function LoginPage() {
     setErrorText(null);
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: data.email,
+      email: formatIdentifier(data.identifier),
       password: data.password,
     });
 
@@ -72,7 +76,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorText(null);
     const { error: signUpError } = await supabase.auth.signUp({
-      email: data.email,
+      email: formatIdentifier(data.identifier),
       password: data.password,
     });
 
@@ -154,25 +158,25 @@ export default function LoginPage() {
                </div>
             )}
 
-            {/* Email Field */}
+            {/* Identifier Field */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+              <label className="text-sm font-bold text-slate-700 ml-1">Username or Email</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
                   <User className="w-5 h-5" />
                 </div>
                 <input
-                  {...register("email")}
-                  type="email"
-                  placeholder="e.g. yourname@gmail.com"
+                  {...register("identifier")}
+                  type="text"
+                  placeholder="e.g. pavan or pavan@virtue.com"
                   className={cn(
                     "w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary focus:bg-white transition-all text-slate-800 font-medium",
-                    errors.email && "border-red-500 focus:border-red-500"
+                    errors.identifier && "border-red-500 focus:border-red-500"
                   )}
                 />
               </div>
-              {errors.email && (
-                <p className="text-xs text-red-500 font-bold ml-1 italic">{errors.email.message}</p>
+              {errors.identifier && (
+                <p className="text-xs text-red-500 font-bold ml-1 italic">{errors.identifier.message}</p>
               )}
             </div>
 
