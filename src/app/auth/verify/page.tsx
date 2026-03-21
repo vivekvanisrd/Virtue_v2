@@ -65,10 +65,21 @@ export default async function AuthVerifyPage() {
              </div>
           )}
 
-          <div className="pt-6 border-t border-slate-100 text-center">
-             <p className="text-xs text-slate-400">Environment: <span className="font-bold">{process.env.NODE_ENV}</span></p>
-             <p className="text-[10px] text-slate-300 mt-2 font-mono">
-                {new Date().toISOString()}
+          <div className="pt-6 border-t border-slate-100 space-y-2">
+             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+               <span>Supabase URL:</span>
+               <span className={process.env.NEXT_PUBLIC_SUPABASE_URL ? "text-green-500" : "text-red-500"}>
+                 {process.env.NEXT_PUBLIC_SUPABASE_URL ? "PRESENT ✅" : "MISSING ❌"}
+               </span>
+             </div>
+             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+               <span>Supabase Key:</span>
+               <span className={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "text-green-500" : "text-red-500"}>
+                 {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "PRESENT ✅" : "MISSING ❌"}
+               </span>
+             </div>
+             <p className="text-[10px] text-slate-300 mt-4 font-mono text-center">
+                ENV: {process.env.NODE_ENV} | {new Date().toISOString()}
              </p>
           </div>
         </div>
