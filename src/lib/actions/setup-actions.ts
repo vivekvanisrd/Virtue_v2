@@ -1,5 +1,5 @@
 "use server";
-
+import { createClient } from "../supabase/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 
@@ -103,5 +103,65 @@ export async function initializeSystem(data: SetupInput) {
     }
     
     return { success: false, error: message };
+  }
+}
+
+/**
+ * Links the current logged-in Supabase user to an existing school's OWNER record.
+ * This is used for initial synchronization between Auth and Database.
+ */
+export async function claimSchoolOwnership(schoolId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "You must be logged in to claim a school." };
+    }
+
+    // Check if school exists
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId }
+    });
+
+    if (!school) {
+      return { success: false, error: "School not found." };
+    }
+
+    // Check if user is already linked elsewhere
+    const existingLink = await prisma.staff.findUnique({
+      where: { userId: user.id }
+    });
+
+    if (existingLink) {
+      return { success: false, error: "Your account is already linked to a school." };
+    }
+
+    // Find the primary OWNER record for this school that is UNLINKED
+    const targetOwner = await prisma.staff.findFirst({
+      where: {
+        schoolId: schoolId,
+        role: "OWNER",
+        userId: null
+      }
+    });
+
+    if (!targetOwner) {
+      return { success: false, error: "No unlinked OWNER record found for this school. It may already be claimed." };
+    }
+
+    // Atomically link the record and update the email if it was null
+    await prisma.staff.update({
+      where: { id: targetOwner.id },
+      data: {
+        userId: user.id,
+        email: user.email || targetOwner.email
+      }
+    });
+
+    return { success: true, message: `Successfully linked your account to ${school.name}.` };
+  } catch (error: any) {
+    console.error("Claim Error:", error);
+    return { success: false, error: "An unexpected error occurred during account linkage." };
   }
 }

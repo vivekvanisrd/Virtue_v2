@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { initializeSystem } from "@/lib/actions/setup-actions";
+import { initializeSystem, claimSchoolOwnership } from "@/lib/actions/setup-actions";
 import { setupSchema, SetupInput } from "@/lib/validations/setup";
 import { 
   Building2, 
@@ -23,6 +23,8 @@ export default function DeveloperSetupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [success, setSuccess] = useState(false);
+  const [linkSuccess, setLinkSuccess] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
   const router = useRouter();
 
   const { register, handleSubmit, formState: { errors } } = useForm<SetupInput>({
@@ -50,6 +52,19 @@ export default function DeveloperSetupPage() {
     }
     
     setIsLoading(false);
+  };
+
+  const onLinkClaim = async () => {
+    setIsLinking(true);
+    setErrorText("");
+    const result = await claimSchoolOwnership("VR-SCH01");
+    if (result.success) {
+      setLinkSuccess(result.message || "Linked Successfully!");
+      setTimeout(() => router.push("/dashboard"), 2000);
+    } else {
+      setErrorText(result.error || "Linkage failed");
+    }
+    setIsLinking(false);
   };
 
   if (success) {
@@ -93,6 +108,42 @@ export default function DeveloperSetupPage() {
              {errorText}
           </div>
         )}
+
+        {linkSuccess && (
+          <div className="mb-8 p-4 bg-green-50 border-2 border-green-200 text-green-600 rounded-2xl font-bold flex items-center gap-3 animate-bounce">
+             <CheckCircle2 className="w-5 h-5 shrink-0" />
+             {linkSuccess} - Redirecting to Dashboard...
+          </div>
+        )}
+
+        {/* Quick Link Section */}
+        <div className="mb-8 bg-blue-600 p-8 rounded-[30px] shadow-lg text-white">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold italic">Detected 400+ Orphaned Records</h2>
+                <p className="text-blue-100 text-sm opacity-90">Your account is currently unlinked. Connect to the existing school core.</p>
+              </div>
+            </div>
+            <button 
+              onClick={onLinkClaim}
+              disabled={isLinking}
+              className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold shadow-xl hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+            >
+              {isLinking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Building className="w-5 h-5" />}
+              Link to existing School (VR-SCH01)
+            </button>
+          </div>
+        </div>
+
+        <div className="relative flex items-center py-5 mb-8">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="flex- Luna text-slate-400 font-bold px-4 text-xs uppercase tracking-widest">OR INITIALIZE NEW TENANT</span>
+          <div className="flex-grow border-t border-slate-200"></div>
+        </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           
