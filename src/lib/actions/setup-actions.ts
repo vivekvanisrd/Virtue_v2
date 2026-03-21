@@ -162,6 +162,6 @@ export async function claimSchoolOwnership(schoolId: string) {
     return { success: true, message: `Successfully linked your account to ${school.name}.` };
   } catch (error: any) {
     console.error("Claim Error:", error);
-    return { success: false, error: "An unexpected error occurred during account linkage." };
+    return { success: false, error: `Linkage failed: ${error.message || "Unknown error"}` };
   }
 }
