@@ -17,20 +17,15 @@ import { getDashboardStatsAction } from "@/lib/actions/dashboard-actions";
 
 // Static stats removed in favor of dynamic fetching
 
-const activities = [
-  { id: 1, type: "admission", title: "New Student Admitted", subtitle: "Rahul Kumar - Class XB", time: "2 mins ago", user: "Admin" },
-  { id: 2, type: "payment", title: "Fee Payment Received", subtitle: "Reciept #VR-9082 - ₹4,500", time: "15 mins ago", user: "Cashier" },
-  { id: 3, type: "staff", title: "Salary Processed", subtitle: "February 2026 Batch", time: "1 hour ago", user: "Pandu Sir" },
-  { id: 4, type: "security", title: "Biometric Sync Complete", subtitle: "Gate #4 Attendance Data", time: "3 hours ago", user: "System" },
-];
-
 export function OverviewContent() {
   const [data, setData] = React.useState({
     studentCount: "...",
     teacherCount: "...",
     financeBalance: "...",
-    pendingIssues: "..."
+    pendingIssues: "...",
+    academicYear: ""
   });
+  const [activities, setActivities] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     getDashboardStatsAction().then(res => {
@@ -39,17 +34,26 @@ export function OverviewContent() {
           studentCount: res.data.studentCount.toLocaleString(),
           teacherCount: res.data.teacherCount.toLocaleString(),
           financeBalance: res.data.financeBalance,
-          pendingIssues: res.data.pendingIssues.toString()
+          pendingIssues: res.data.pendingIssues.toString(),
+          academicYear: res.data.academicYear
         });
       }
+    });
+
+    import("@/lib/actions/dashboard-actions").then(mod => {
+      mod.getRecentActivitiesAction().then(res => {
+        if (res.success && res.data) {
+          setActivities(res.data);
+        }
+      });
     });
   }, []);
 
   const stats = [
-    { label: "Total Students", value: data.studentCount, icon: GraduationCap, trend: "+12.5%", color: "bg-blue-500" },
-    { label: "Total Teachers", value: data.teacherCount, icon: Users, trend: "+2.1%", color: "bg-purple-500" },
-    { label: "Finance Balance", value: data.financeBalance, icon: CreditCard, trend: "+5.4%", color: "bg-green-500" },
-    { label: "Pending Issues", value: data.pendingIssues, icon: Zap, trend: "-2", color: "bg-orange-500" },
+    { label: "Total Students", value: data.studentCount, icon: GraduationCap, color: "bg-blue-500" },
+    { label: "Total Teachers", value: data.teacherCount, icon: Users, color: "bg-purple-500" },
+    { label: "Finance Balance", value: data.financeBalance, icon: CreditCard, color: "bg-green-500" },
+    { label: "Pending Enquiries", value: data.pendingIssues, icon: Zap, color: "bg-orange-500" },
   ];
 
   return (
@@ -61,7 +65,7 @@ export function OverviewContent() {
            animate={{ opacity: 1, x: 0 }}
         >
           <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 tracking-tight">System Overview</h2>
-          <p className="text-slate-500 font-medium mt-1 text-xs lg:text-sm">Real-time snapshots of school operations</p>
+          <p className="text-slate-500 font-medium mt-1 text-xs lg:text-sm">Real-time snapshots for {data.academicYear || "Current Session"}</p>
         </motion.div>
         
         <div className="flex gap-2 w-full lg:w-auto">
@@ -90,9 +94,8 @@ export function OverviewContent() {
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg", stat.color)}>
                  <stat.icon className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[9px] font-bold">
-                 <TrendingUp className="w-2.5 h-2.5" />
-                 {stat.trend}
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[9px] font-bold">
+                 Live
               </div>
             </div>
             <h3 className="text-slate-400 font-bold uppercase tracking-widest text-[9px] mb-0.5">{stat.label}</h3>
@@ -114,12 +117,12 @@ export function OverviewContent() {
             </div>
             
             <div className="space-y-3">
-               {activities.map((act, i) => (
+               {activities.length > 0 ? activities.map((act, i) => (
                  <motion.div 
                    key={act.id}
                    initial={{ opacity: 0, x: -10 }}
                    animate={{ opacity: 1, x: 0 }}
-                   transition={{ delay: 0.4 + i * 0.05 }}
+                   transition={{ delay: 0.1 + i * 0.05 }}
                    className="bg-white p-4 rounded-2xl border border-slate-100 hover:border-primary/20 transition-all flex items-center gap-4 group cursor-pointer"
                  >
                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
@@ -134,7 +137,11 @@ export function OverviewContent() {
                        <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{act.user}</p>
                     </div>
                  </motion.div>
-               ))}
+               )) : (
+                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No recent audit logs found</p>
+                 </div>
+               )}
             </div>
         </div>
 
@@ -143,20 +150,20 @@ export function OverviewContent() {
                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
                    <ShieldCheck className="w-24 h-24" />
                </div>
-               <h3 className="text-xl font-bold mb-3 relative z-10">System Status</h3>
+               <h3 className="text-xl font-bold mb-3 relative z-10">Database Status</h3>
                <p className="text-white/60 mb-6 relative z-10 text-sm font-medium italic">
-                 All school modules are performing within optimal parameters.
+                 {data.studentCount !== "..." ? "Systems are performing within optimal operational parameters." : "Syncing with school infrastructure..."}
                </p>
                
                <div className="space-y-4 relative z-10">
                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
-                     <span>Performance</span>
-                     <span className="text-accent text-xs">Excellent</span>
+                     <span>Registry Integrity</span>
+                     <span className="text-accent text-xs">Healthy</span>
                   </div>
                   <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
                      <motion.div 
                        initial={{ width: 0 }}
-                       animate={{ width: "94%" }}
+                       animate={{ width: data.studentCount !== "..." ? "100%" : "20%" }}
                        transition={{ duration: 1.5, ease: "easeOut" }}
                        className="bg-accent h-full shadow-[0_0_20px_rgba(124,77,255,0.8)]" 
                      />
@@ -164,7 +171,7 @@ export function OverviewContent() {
                </div>
                
                <button className="mt-8 w-full py-3 bg-white text-primary rounded-xl font-bold shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs">
-                  System Audit
+                  Connectivity Audit
                </button>
             </div>
         </div>

@@ -23,6 +23,7 @@ import {
   Bus,
   MessageSquare,
   ShieldCheck,
+  Terminal,
   X
 } from "lucide-react";
 import Link from "next/link";
@@ -31,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { useTabs, Tab } from "@/context/tab-context";
 import { createClient } from "@/lib/supabase/client";
 
-const SUPER_ADMIN_EMAILS = ["vivekvanisrd@gmail.com"];
+// Redundant: Role-based access is now handled via the native userRole prop
 
 import { hasAccess, ROLES, Role, isOwnerOrHigher } from "@/lib/utils/rbac";
 
@@ -120,34 +121,30 @@ const menuItems: MenuItem[] = [
       { id: "settings-audit", name: "System Audit Log", component: "Settings" }
     ]
   },
+  { 
+    id: "developer", 
+    name: "Developer Portal", 
+    icon: Terminal, 
+    requiredRole: ROLES.DEVELOPER,
+    component: "Developer Dashboard"
+  },
 ];
 
 interface SidebarProps {
   isMobileOpen: boolean;
   setIsMobileOpen: (open: boolean) => void;
+  userRole?: Role;
 }
 
-export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
+export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF }: SidebarProps) {
   const pathname = usePathname();
   const { openTab, activeTabId } = useTabs();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [width, setWidth] = React.useState(320);
   const [isResizing, setIsResizing] = React.useState(false);
   const [expandedItems, setExpandedItems] = React.useState<string[]>(["overview"]);
-  const [userRole, setUserRole] = React.useState<Role>(ROLES.DEVELOPER); // Mocking DEVELOPER to see all items for now
 
-  React.useEffect(() => {
-    const checkRole = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && SUPER_ADMIN_EMAILS.includes(user.email || "")) {
-        setUserRole(ROLES.DEVELOPER);
-      }
-      // TODO: Once Supabase sets claims, we can dynamically fetch the true role
-      // else if (user?.user_metadata?.role) setUserRole(user.user_metadata.role);
-    };
-    checkRole();
-  }, []);
+  // Removed legacy Supabase role check
 
   const visibleMenuItems = React.useMemo(() => {
     return menuItems.filter(item => {

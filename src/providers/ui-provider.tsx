@@ -65,7 +65,17 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
 
 export function useUI() {
   const context = useContext(UIContext);
+  
+  // 🏁 SSR Safety: Prevent crash during server-side pre-rendering
   if (context === undefined) {
+    if (typeof window === "undefined") {
+      return {
+        theme: themes[0],
+        fontScale: 1.0,
+        setTheme: () => {},
+        setFontScale: () => {},
+      };
+    }
     throw new Error("useUI must be used within a UIProvider");
   }
   return context;

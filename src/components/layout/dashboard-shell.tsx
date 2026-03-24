@@ -65,18 +65,36 @@ function WorkspaceRenderer() {
 
 export default function DashboardShell({
   children,
+  userEmail,
+  userRole,
+  userName,
+  academicYear,
 }: {
   children: React.ReactNode;
+  userEmail?: string;
+  userRole?: string;
+  userName?: string;
+  academicYear?: string;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
   return (
     <TabProvider>
       <div className="flex min-h-screen bg-background selection:bg-primary/10 selection:text-primary relative">
-        <Sidebar isMobileOpen={isMobileOpen} setIsMobileOpen={setIsMobileOpen} />
+        <Sidebar 
+          isMobileOpen={isMobileOpen} 
+          setIsMobileOpen={setIsMobileOpen} 
+          userRole={userRole as any}
+        />
         
         <main className="flex-1 min-h-screen bg-background transition-all duration-300">
-          <Header onMenuClick={() => setIsMobileOpen(true)} />
+          <Header 
+            onMenuClick={() => setIsMobileOpen(true)} 
+            userEmail={userEmail}
+            userRole={userRole}
+            userName={userName}
+            academicYear={academicYear}
+          />
           <TabList />
           
           <div className="p-4 lg:p-4 max-w-[1600px] mx-auto">

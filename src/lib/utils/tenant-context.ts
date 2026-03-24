@@ -1,5 +1,7 @@
-import { createClient } from "../supabase/server";
+import { verifySession } from "../actions/auth-native";
 import prisma from "../prisma";
+import { cookies } from "next/headers";
+import { tenancyStorage, type TenantStore } from "../auth/tenancy-context";
 
 /**
  * TenantContext
@@ -10,54 +12,78 @@ import prisma from "../prisma";
 export interface TenantContext {
   schoolId: string;
   branchId: string;
-  role: "OWNER" | "PRINCIPAL" | "ACCOUNTANT" | "TEACHER" | "STAFF";
+  role: "DEVELOPER" | "OWNER" | "PRINCIPAL" | "ACCOUNTANT" | "TEACHER" | "STAFF";
   permissions: string[];
 }
 
 /**
  * getTenantContext
  * 
- * Retrieves the current user from Supabase and fetches their 
- * configuration from the database.
+ * Retrieves the current session from our internal JWT cookie and 
+ * provides the tenancy context.
  * 
- * @throws Error if user is not authenticated or not found in Staff table.
+ * @throws Error if session is invalid or not found.
  */
 export async function getTenantContext(): Promise<TenantContext> {
-  // FALLBACK: For development/initial setup or standalone scripts, we might need a default context
-  if (process.env.NODE_ENV === 'development') {
-      console.warn("Returning development tenant context (VR-SCH01).");
-      return {
-          schoolId: "VR-SCH01",
-          branchId: "VR-RCB01",
-          role: "OWNER",
-          permissions: ["*"]
-      };
-  }
+  const session = await verifySession();
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!session) {
+    console.warn("[TENANT-CONTEXT] No active native session found.");
     throw new Error("Authentication required: No active session found.");
   }
 
-  // Find staff/user profile in our DB
-  const profile = await prisma.staff.findUnique({
-    where: { userId: user.id },
-    include: {
-      professional: true
-    }
-  });
+  console.log(`[TENANT-CONTEXT] Session active for: ${session.email} (Role: ${session.role})`);
 
-  if (!profile) {
-    throw new Error("Unauthorized: No staff profile linked to this user account.");
+  // Use session data directly (Performance optimization)
+  // For developers, we still check the cookie for school switching
+  let schoolId = session.schoolId;
+  let branchId = session.branchId || "GLOBAL";
+  let isGlobalDev = false;
+
+  if (session.role === "DEVELOPER") {
+    const cookieStore = await cookies();
+    const activeSchoolId = cookieStore.get('v-active-school')?.value;
+    schoolId = activeSchoolId || session.schoolId;
+    branchId = "GLOBAL";
+    isGlobalDev = !activeSchoolId; // Full global if no school selected
+  }
+
+  const store: TenantStore = {
+    schoolId,
+    branchId,
+    role: session.role,
+    isGlobalDev
+  };
+
+  // 🛡️ PERSIST TENANCY: Set the store for the remainder of the request execution
+  tenancyStorage.enterWith(store);
+
+  if (session.role === "DEVELOPER") {
+    return {
+      schoolId,
+      branchId: "GLOBAL",
+      role: "DEVELOPER",
+      permissions: ["*"]
+    };
+  }
+
+  // Fallback for stale sessions missing branchId
+  branchId = branchId || session.branchId;
+  if (!branchId || branchId === "GLOBAL") {
+    const staff = await prisma.staff.findUnique({
+      where: { id: session.staffId },
+      select: { branchId: true }
+    });
+    if (staff) {
+      branchId = staff.branchId;
+    }
   }
 
   return {
-    schoolId: profile.schoolId,
-    branchId: profile.branchId,
-    role: profile.role as any,
-    permissions: [] // Placeholder for granular permissions
+    schoolId: session.schoolId,
+    branchId: branchId || "GLOBAL", 
+    role: session.role as any,
+    permissions: []
   };
 }
 
@@ -67,6 +93,16 @@ export async function getTenantContext(): Promise<TenantContext> {
  * Helper to generate Prisma 'where' conditions based on context.
  */
 export function getTenancyFilters(context: TenantContext) {
+  // 🛡️ GLOBAL DEVELOPER: 
+  // - If schoolId is present (active context), filter by school.
+  // - Otherwise, return empty (global access).
+  if (context.role === 'DEVELOPER') {
+    return context.schoolId && context.branchId === "GLOBAL" 
+       ? { schoolId: context.schoolId } 
+       : {};
+  }
+
+  // 🏛️ SCHOOL-LOCKED ROLES: Restricted to their specific school
   return {
     schoolId: context.schoolId,
     // Owners see everything in the school; others are branch-locked.

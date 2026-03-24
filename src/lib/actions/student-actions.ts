@@ -35,25 +35,33 @@ export async function submitAdmissionAction(formData: any) {
       }
     }
 
-    // 3. Scoped ID Generation
+    // 3. Scoped ID Generation (Spec V1 Alignment)
     const year = new Date().getFullYear().toString();
     const currentAY = validatedData.academicYearId || "VR-AY-2026-27";
     
-    const admissionId = await CounterService.generateFormattedId({
+    // Fetch School and Branch Codes for ID generation
+    const [school, branch] = await Promise.all([
+      prisma.school.findUnique({ where: { id: context.schoolId }, select: { code: true } }),
+      prisma.branch.findUnique({ where: { id: branchId }, select: { code: true } })
+    ]);
+
+    if (!school || !branch) {
+      throw new Error("Failed to retrieve school or branch codes for ID generation.");
+    }
+
+    const admissionNumber = await CounterService.generateAdmissionNumber({
       schoolId: context.schoolId,
+      schoolCode: school.code,
       branchId: branchId,
-      type: "ADMISSION",
+      branchCode: branch.code,
       year: year,
-      prefix: "VR-ADM"
     });
 
-    const studentId = await CounterService.generateFormattedId({
-      schoolId: context.schoolId,
-      branchId: branchId,
-      type: "ADMISSION", 
-      year: year,
-      prefix: "VR-STU"
-    });
+    const studentCode = await CounterService.generateStudentCode(
+      context.schoolId,
+      school.code,
+      year
+    );
 
     const historyId = `VR-SAH-${year}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
 
@@ -78,8 +86,8 @@ export async function submitAdmissionAction(formData: any) {
     const result = await prisma.$transaction(async (tx) => {
       return await tx.student.create({
         data: {
-          studentId,
-          admissionId,
+          studentCode,
+          admissionNumber,
           schoolId: context.schoolId,
           firstName: validatedData.firstName,
           middleName: validatedData.middleName || null,
@@ -278,7 +286,8 @@ export async function getStudentListAction(filters?: {
             OR: [
               { firstName: { contains: filters.search, mode: 'insensitive' } },
               { lastName: { contains: filters.search, mode: 'insensitive' } },
-              { admissionId: { contains: filters.search, mode: 'insensitive' } },
+              { admissionNumber: { contains: filters.search, mode: 'insensitive' } },
+              { studentCode: { contains: filters.search, mode: 'insensitive' } },
             ]
           } : {},
           filters?.classId ? { academic: { classId: filters.classId } } : {},

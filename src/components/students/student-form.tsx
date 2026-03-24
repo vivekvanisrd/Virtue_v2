@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { studentAdmissionSchema, type StudentAdmissionData } from "@/types/student";
 import { submitAdmissionAction, searchStudentsAction } from "@/lib/actions/student-actions";
+import { getAdmissionReferenceData, getSectionsByClass } from "@/lib/actions/reference-actions";
 import { AlertCircle } from "lucide-react";
 import { StudentAdmissionSummary } from "./student-admission-summary";
 
@@ -51,6 +52,39 @@ export function StudentForm() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [duplicateAadhaar, setDuplicateAadhaar] = useState<string | null>(null);
+  const [refData, setRefData] = useState<{
+    branches: any[],
+    academicYears: any[],
+    classes: any[],
+    feeSchedules: any[]
+  }>({
+    branches: [],
+    academicYears: [],
+    classes: [],
+    feeSchedules: []
+  });
+  const [sections, setSections] = useState<any[]>([]);
+  const [isLoadingRef, setIsLoadingRef] = useState(true);
+
+  // Fetch Reference Data
+  useEffect(() => {
+    async function fetchRefData() {
+        setIsLoadingRef(true);
+        const res = await getAdmissionReferenceData();
+        if (res.success && res.data) {
+            setRefData(res.data);
+            
+            // Set default values if not already set
+            const currentAY = res.data.academicYears.find((y: any) => y.isCurrent);
+            if (currentAY) {
+                // We'll use setValue or just rely on defaultValues if we can find them.
+                // For now, these will be populated in selects.
+            }
+        }
+        setIsLoadingRef(false);
+    }
+    fetchRefData();
+  }, []);
 
   const { register, handleSubmit, formState: { errors }, watch, reset, trigger } = useForm<StudentAdmissionData>({
     resolver: zodResolver(studentAdmissionSchema) as any,
@@ -353,7 +387,7 @@ export function StudentForm() {
                   <Field label="Email" error={errors.email?.message} className="lg:col-span-2">
                     <input {...register("email")} type="email" placeholder="student@email.com" className={inputCls} />
                   </Field>
-                  <Field label="Aadhaar Number" error={errors.aadhaarNumber?.message}>
+                  <Field label="Aadhaar Number *" error={errors.aadhaarNumber?.message}>
                     <input {...register("aadhaarNumber")} placeholder="XXXX XXXX XXXX" className={inputCls} />
                   </Field>
                   <Field label="USN / SRN Number" error={errors.usnSrnNumber?.message}>
@@ -389,39 +423,55 @@ export function StudentForm() {
                     <input {...register("admissionDate")} type="date" className={inputCls} />
                   </Field>
                   <Field label="Academic Year *" error={errors.academicYearId?.message}>
-                    <select {...register("academicYearId")} className={selectCls}>
+                    <select {...register("academicYearId")} className={selectCls} disabled={isLoadingRef}>
                       <option value="">Select Year</option>
-                      <option value="ay_2025">2025-26</option>
-                      <option value="ay_2024">2024-25</option>
+                      {refData.academicYears.map(y => (
+                        <option key={y.id} value={y.id}>{y.name} {y.isCurrent ? '(Current)' : ''}</option>
+                      ))}
                     </select>
                   </Field>
                   <Field label="Branch *" error={errors.branchId?.message}>
-                    <select {...register("branchId")} className={selectCls}>
+                    <select {...register("branchId")} className={selectCls} disabled={isLoadingRef}>
                       <option value="">Select Branch</option>
-                      <option value="VR-MNB01">Main Branch</option>
+                      {refData.branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
                     </select>
                   </Field>
                   <Field label="Class *" error={errors.classId?.message}>
-                    <select {...register("classId")} className={selectCls}>
+                    <select 
+                      {...register("classId", { 
+                        onChange: async (e) => {
+                          const res = await getSectionsByClass(e.target.value);
+                          if (res.success) setSections(res.data || []);
+                        }
+                      })} 
+                      className={selectCls} 
+                      disabled={isLoadingRef}
+                    >
                       <option value="">Select Class</option>
-                      {Array.from({length: 12}, (_, i) => (
-                        <option key={i+1} value={`cls_${i+1}`}>Class {i+1}</option>
+                      {refData.classes.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                   </Field>
                   <Field label="Section" error={errors.sectionId?.message}>
-                    <select {...register("sectionId")} className={selectCls}>
+                    <select {...register("sectionId")} className={selectCls} disabled={sections.length === 0}>
                       <option value="">Select Section</option>
-                      {["A","B","C","D"].map(s => <option key={s} value={`sec_${s}`}>{s}</option>)}
+                      {sections.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
                     </select>
                   </Field>
                   <Field label="Roll Number" error={errors.rollNumber?.message}>
                     <input {...register("rollNumber")} placeholder="Roll No" className={inputCls} />
                   </Field>
                   <Field label="Fee Schedule" error={errors.feeScheduleId?.message}>
-                    <select {...register("feeScheduleId")} className={selectCls}>
+                    <select {...register("feeScheduleId")} className={selectCls} disabled={isLoadingRef}>
                       <option value="">Select Schedule</option>
-                      <option value="fs_std">Standard</option>
+                      {refData.feeSchedules.map(fs => (
+                        <option key={fs.id} value={fs.id}>{fs.name}</option>
+                      ))}
                     </select>
                   </Field>
                   <Field label="PEN Number" error={errors.penNumber?.message}>
@@ -460,10 +510,10 @@ export function StudentForm() {
                 </div>
                 <p className="text-[10px] font-bold text-violet-400/70 uppercase tracking-wider">Father</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <Field label="Father Name" error={errors.fatherName?.message} className="lg:col-span-2">
+                  <Field label="Father Name *" error={errors.fatherName?.message} className="lg:col-span-2">
                     <input {...register("fatherName")} placeholder="Full Name" className={inputCls} />
                   </Field>
-                  <Field label="Father Phone" error={errors.fatherPhone?.message}>
+                  <Field label="Father Phone *" error={errors.fatherPhone?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
                       <input {...register("fatherPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />

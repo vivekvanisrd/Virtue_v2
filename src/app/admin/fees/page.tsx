@@ -1,5 +1,6 @@
 import { FeeCollectionForm } from "@/components/finance/FeeCollectionForm";
-import { WalletCards, TrendingUp, Users, Clock } from "lucide-react";
+import { WalletCards, TrendingUp, Users, Clock, Settings2 } from "lucide-react";
+import Link from "next/link";
 
 /**
  * FeesPage
@@ -45,6 +46,13 @@ export default function FeesPage() {
             value="2024-25" 
             sub="Active" 
           />
+          <Link href="/admin/fees/config" className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-4 rounded-3xl flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-slate-900/10">
+            <Settings2 className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+            <div className="text-left">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Advanced Setup</p>
+                <p className="text-xs font-black uppercase tracking-widest">Fee Configuration</p>
+            </div>
+          </Link>
         </div>
       </div>
 

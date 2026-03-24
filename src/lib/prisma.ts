@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { tenancyExtension } from "./prisma-tenancy";
 
 const prismaClientSingleton = () => {
   const databaseUrl = process.env.DATABASE_URL;
@@ -9,14 +10,15 @@ const prismaClientSingleton = () => {
   
   console.log(`📡 [Prisma] Initializing Client (URL length: ${databaseUrl.length})`);
 
-  // @ts-ignore - datasourceUrl/datasources are valid in Prisma 6.4.1 but lint may be stale
-  return new PrismaClient({
+  const client = new PrismaClient({
     datasources: {
       db: {
         url: databaseUrl,
       },
     },
   });
+
+  return client.$extends(tenancyExtension);
 };
 
 declare global {

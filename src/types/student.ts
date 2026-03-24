@@ -21,7 +21,7 @@ export const studentAdmissionSchema = z.object({
   gender: z.string().optional(),
   bloodGroup: z.string().optional(),
   category: z.string().optional(),
-  aadhaarNumber: globalAadhaarSchema.optional().or(z.literal("")),
+  aadhaarNumber: globalAadhaarSchema,
   aadhaarVerified: z.boolean().default(false),
   motherTongue: z.string().optional(),
   placeOfBirth: z.string().optional(),
@@ -52,8 +52,8 @@ export const studentAdmissionSchema = z.object({
   subcategory: z.string().optional(),
 
   // Family
-  fatherName: z.string().optional(),
-  fatherPhone: globalPhoneSchema.optional().or(z.literal("")),
+  fatherName: z.string().min(1, "Father/Guardian name is required"),
+  fatherPhone: globalPhoneSchema,
   fatherAlternatePhone: globalPhoneSchema.optional().or(z.literal("")),
   fatherEmail: globalEmailSchema.optional().or(z.literal("")),
   fatherOccupation: z.string().optional(),

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { signInAction } from "@/lib/actions/auth-native";
 
 // Form Validation Schema
 const loginSchema = z.object({
@@ -37,7 +37,6 @@ export default function LoginPage() {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const {
     register,
@@ -52,39 +51,20 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorText(null);
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: formatIdentifier(data.identifier),
-      password: data.password,
+    const res = await signInAction({
+        identifier: data.identifier,
+        password: data.password
     });
 
-    if (signInError) {
-      // Try to Sign Up instead if the user doesn't exist (helpful for initial setup)
-      if (signInError.message.includes("Invalid login credentials")) {
-        setErrorText("Invalid credentials. Try your Supabase owner email.");
-      } else {
-        setErrorText(signInError.message);
-      }
+    if (!res.success) {
+      setErrorText(res.error || "Invalid credentials.");
       setIsLoading(false);
       return;
     }
 
-    router.push("/dashboard");
-    setIsLoading(false);
-  };
-
-  const onQuickSignUp = async (data: LoginFormData) => {
-    setIsLoading(true);
-    setErrorText(null);
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: formatIdentifier(data.identifier),
-      password: data.password,
-    });
-
-    if (signUpError) {
-      setErrorText(signUpError.message);
-    } else {
-      setErrorText("Account created! Check email if verification is required.");
-    }
+    // Determine target based on simple role check or fixed dashboard
+    // We'll just go to root and let the system redirect
+    router.push("/");
     setIsLoading(false);
   };
 
@@ -113,7 +93,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-5xl font-bold mb-4 tracking-tight leading-tight">
               Virtue School <br />
-              <span className="text-accent underline decoration-white/20 underline-offset-8">Next Gen</span>
+              <span className="text-accent underline decoration-white/20 underline-offset-8">Enterprise</span>
             </h1>
             <p className="text-lg text-white/60 leading-relaxed font-light">
               Experience the evolution of campus management. 
@@ -125,8 +105,8 @@ export default function LoginPage() {
           <div className="mt-12 space-y-6">
             {[
               { icon: ShieldCheck, text: "Enterprise-grade Data Encryption" },
-              { icon: Zap, text: "sub-100ms Interaction Latency" },
-              { icon: User, text: "Multi-role Workspace Isolation" }
+              { icon: Zap, text: "Strict Multi-tenant Isolation" },
+              { icon: User, text: "Authorized Access Control" }
             ].map((feature, i) => (
               <motion.div 
                 key={i}
@@ -147,8 +127,8 @@ export default function LoginPage() {
         {/* Right Side: Login Form */}
         <div className="p-8 lg:p-16 flex flex-col justify-center bg-white">
           <div className="mb-10 text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">Welcome Back</h2>
-            <p className="text-slate-500 font-medium">Enter your credentials to access the ERP</p>
+            <h2 className="text-3xl font-bold text-slate-800 mb-2">Internal Portal</h2>
+            <p className="text-slate-500 font-medium">Authorized credentials required</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -168,7 +148,7 @@ export default function LoginPage() {
                 <input
                   {...register("identifier")}
                   type="text"
-                  placeholder="e.g. pavan or pavan@virtue.com"
+                  placeholder="your.email@school.com"
                   className={cn(
                     "w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary focus:bg-white transition-all text-slate-800 font-medium",
                     errors.identifier && "border-red-500 focus:border-red-500"
@@ -184,7 +164,6 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-sm font-bold text-slate-700">Password</label>
-                <button type="button" className="text-xs font-bold text-primary hover:underline">Forgot password?</button>
               </div>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
@@ -218,7 +197,7 @@ export default function LoginPage() {
                 type="submit"
                 className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
               >
-                {isLoading && !isRegistering ? (
+                {isLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
@@ -226,19 +205,6 @@ export default function LoginPage() {
                     <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
-              </button>
-
-              <button
-                disabled={isLoading}
-                type="button"
-                onClick={() => {
-                   setIsRegistering(true);
-                   handleSubmit(onQuickSignUp)();
-                }}
-                className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-indigo-100"
-              >
-                {isLoading && isRegistering ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                New here? Sign up for secure access
               </button>
             </div>
           </form>
