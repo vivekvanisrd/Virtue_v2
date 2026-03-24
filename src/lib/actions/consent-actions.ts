@@ -47,7 +47,7 @@ export async function submitConsentAction(token: string, data: { updatedPhone?: 
         }
 
         // Transaction to update consent AND conditionally promote student
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // Update consent record
             const updatedConsent = await tx.studentConsent.update({
                 where: { token },

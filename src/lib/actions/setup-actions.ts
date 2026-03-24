@@ -16,7 +16,7 @@ export async function initializeSystem(data: SetupInput) {
     // Let's proceed assuming they are authorized or this is a fresh setup.
 
     // 2. Perform everything in a transaction to ensure atomic setup
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       
       // Step A: Create School
       const school = await tx.school.create({

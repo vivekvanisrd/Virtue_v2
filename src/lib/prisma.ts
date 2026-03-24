@@ -4,8 +4,9 @@ import { tenancyExtension } from "./prisma-tenancy";
 const prismaClientSingleton = () => {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.error("❌ [Prisma] DATABASE_URL is MISSING from process.env!");
-    throw new Error("DATABASE_URL is not defined");
+    console.warn("⚠️ [Prisma] DATABASE_URL is MISSING. Build may continue if this is static analysis.");
+    // Return a dummy client or similar to prevent hard crash during build-time imports
+    return new PrismaClient() as any;
   }
   
   console.log(`📡 [Prisma] Initializing Client (URL length: ${databaseUrl.length})`);

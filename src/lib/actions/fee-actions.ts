@@ -127,7 +127,7 @@ export async function applyFeeStructureToClass(structureId: string) {
         const totalAmount = Number(structure.totalAmount);
         const { term1, term2, term3 } = calculateTermBreakdown(totalAmount, 0);
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             const updates = [];
             
             for (const student of students) {

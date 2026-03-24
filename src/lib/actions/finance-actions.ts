@@ -71,7 +71,7 @@ export async function recordFeeCollection(params: {
     });
 
     // 3. Atomic Financial Operation
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Create Collection Record
       const collection = await tx.collection.create({
         data: {

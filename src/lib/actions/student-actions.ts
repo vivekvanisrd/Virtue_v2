@@ -83,7 +83,7 @@ export async function submitAdmissionAction(formData: any) {
     const term3 = annualFee * 0.25;
 
     // 5. Transactional Insert (Atomic)
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       return await tx.student.create({
         data: {
           studentCode,
@@ -396,7 +396,7 @@ export async function updateStudentProfile(studentId: string, data: any) {
     const context = await getTenantContext();
     
     // We update across multiple related tables
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Update Core Student Table
       const student = await tx.student.update({
         where: { id: studentId, schoolId: context.schoolId },

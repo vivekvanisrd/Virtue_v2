@@ -147,7 +147,7 @@ export async function provisionInstance(data: {
     try {
         console.log(`[FACTORY] Provisioning new instance: ${data.schoolName} (${data.schoolCode})`);
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // 1. Create School
             const school = await tx.school.create({
                 data: {

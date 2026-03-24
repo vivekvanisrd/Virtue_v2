@@ -82,7 +82,7 @@ export async function getRecentActivitiesAction() {
 
     return {
       success: true,
-      data: logs.map(log => ({
+      data: logs.map((log: any) => ({
         id: log.id,
         title: log.action.replace(/_/g, " "),
         subtitle: `${log.entityType}: ${log.details || log.entityId}`,

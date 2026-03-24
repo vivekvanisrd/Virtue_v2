@@ -57,9 +57,9 @@ export async function importStaffCSV(records: any[], schoolId: string, branchId:
     select: { staffCode: true, email: true, phone: true }
   });
 
-  const existingEmails = new Set(existingStaff.filter(s => s.email).map(s => s.email?.toLowerCase()));
-  const existingPhones = new Set(existingStaff.filter(s => s.phone).map(s => s.phone));
-  const existingEmployeeIds = new Set(existingStaff.map(s => s.staffCode.toUpperCase()));
+  const existingEmails = new Set(existingStaff.filter((s: any) => s.email).map((s: any) => s.email?.toLowerCase()));
+  const existingPhones = new Set(existingStaff.filter((s: any) => s.phone).map((s: any) => s.phone));
+  const existingEmployeeIds = new Set(existingStaff.map((s: any) => s.staffCode.toUpperCase()));
 
   const validRecordsToInsert: any[] = [];
   

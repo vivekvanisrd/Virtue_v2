@@ -101,7 +101,7 @@ async function main() {
             const firstName = firstNameParts[0];
             const lastName = firstNameParts.slice(1).join(' ') || '.';
 
-            await prisma.$transaction(async (tx) => {
+            const result = await prisma.$transaction(async (tx: any) => {
                 const student = await tx.student.create({
                     data: {
                         admissionNumber: admissionNo || `MIG-${Math.random().toString(36).substring(7)}`,
