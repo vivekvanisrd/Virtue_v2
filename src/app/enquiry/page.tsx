@@ -8,18 +8,18 @@ export const metadata = {
 
 export default function EnquiryPage() {
   return (
-    <div className="min-h-screen bg-[#0a0f1c] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#131b31] via-[#0a0f1c] to-[#0a0f1c] py-20 px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background py-20 px-4 relative overflow-hidden">
       {/* Abstract Background Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-600/20 blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-fuchsia-600/10 blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 blur-[150px] rounded-full pointer-events-none" />
       
       {/* Navbar Minimal */}
       <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-violet-500/20">V</div>
-          <span className="text-white font-black tracking-tighter text-lg hidden sm:block">Virtue Modern School</span>
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20">V</div>
+          <span className="text-foreground font-black tracking-tighter text-lg hidden sm:block">Virtue Modern School</span>
         </div>
-        <a href="/" className="text-white/60 hover:text-white text-xs font-bold transition-colors">Return to Home</a>
+        <a href="/" className="text-foreground opacity-60 hover:text-foreground text-xs font-bold transition-colors">Return to Home</a>
       </div>
 
       <div className="relative z-10 pt-10">

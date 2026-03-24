@@ -219,12 +219,14 @@ model FamilyDetail {
   fatherEmail         String?
   fatherOccupation    String?
   fatherQualification String?
+  fatherAadhaar       String?
   motherName          String?
   motherPhone         String?
   motherAltPhone      String?
   motherEmail         String?
   motherOccupation    String?
   motherQualification String?
+  motherAadhaar       String?
   whatsappNumber      String?
   emergencyName       String?
   emergencyPhone      String?

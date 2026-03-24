@@ -10,7 +10,7 @@ import { submitEnquiryAction } from "@/lib/actions/enquiry-actions";
 import { User, Phone, Mail, School, CheckCircle2, ChevronRight, Loader2, Users } from "lucide-react";
 import { globalPhoneSchema, globalEmailSchema } from "@/lib/utils/validations";
 
-const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-violet-500 focus:bg-white/10 transition-all";
+const inputCls = "w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder-foreground opacity-30 focus:outline-none focus:border-primary focus:bg-muted transition-all";
 
 const enquirySchema = z.object({
   studentFirstName: z.string().min(1, "First Name required"),
@@ -66,14 +66,14 @@ export function EnquiryForm() {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0f172a] border border-emerald-500/30 rounded-3xl p-8 text-center max-w-md mx-auto shadow-2xl shadow-emerald-500/10 relative overflow-hidden"
+        className="bg-background border border-emerald-500/30 rounded-3xl p-8 text-center max-w-md mx-auto shadow-2xl shadow-emerald-500/10 relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full point-events-none" />
         <div className="w-16 h-16 bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle2 className="w-8 h-8 text-emerald-400" />
         </div>
         <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Enquiry Received!</h2>
-        <p className="text-slate-400 text-sm leading-relaxed mb-6 font-medium">
+        <p className="text-foreground opacity-60 text-sm leading-relaxed mb-6 font-medium">
           Thank you for showing interest in Virtue Modern School. Our admissions team will review your details and contact you shortly.
         </p>
         <button 
@@ -91,13 +91,13 @@ export function EnquiryForm() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 sm:p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden"
+      className="bg-background/80 backdrop-blur-xl border border-border rounded-[32px] p-6 sm:p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 blur-[120px] rounded-full pointer-events-none" />
       
       <div className="mb-8 border-b border-white/10 pb-6">
         <h2 className="text-3xl font-black text-white tracking-tight mb-2">Admissions Enquiry</h2>
-        <p className="text-slate-400 font-medium text-sm">Fill out the form below to register your interest for the upcoming 2026-27 academic year.</p>
+        <p className="text-foreground opacity-60 font-medium text-sm">Fill out the form below to register your interest for the upcoming 2026-27 academic year.</p>
       </div>
 
       <AnimatePresence>

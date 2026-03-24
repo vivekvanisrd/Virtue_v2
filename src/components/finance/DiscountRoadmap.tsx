@@ -33,7 +33,7 @@ export const DiscountRoadmap = ({
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-r-xl shadow-sm mb-6 overflow-hidden relative"
+      className="bg-primary/5 border-l-4 border-primary p-5 rounded-r-xl shadow-sm mb-6 overflow-hidden relative"
     >
       {/* Decorative background element */}
       <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
@@ -56,7 +56,7 @@ export const DiscountRoadmap = ({
             is secured for this student. Per school policy, this benefit is fully applied to the <span className="font-bold underline underline-offset-4 decoration-blue-300">Final Term (Term 3)</span>.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white/60 backdrop-blur-sm p-4 rounded-lg border border-blue-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-background/60 backdrop-blur-sm p-4 rounded-lg border border-primary/20">
             <div className="space-y-1">
               <span className="text-[10px] text-blue-500 uppercase font-bold block">
                 Term 3 Gross
@@ -69,7 +69,7 @@ export const DiscountRoadmap = ({
             <div className="flex items-center justify-center">
               <div className="h-px w-full bg-blue-200 relative">
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="bg-blue-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">
+                  <span className="bg-primary/50 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">
                     Benefit Realized
                   </span>
                 </div>

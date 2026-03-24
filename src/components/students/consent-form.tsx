@@ -14,7 +14,7 @@ interface ConsentFormProps {
   consentData: any;
 }
 
-const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-blue-500 focus:bg-white/10 transition-all text-sm font-medium";
+const inputCls = "w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder-foreground opacity-30 focus:outline-none focus:border-primary focus:bg-muted transition-all text-sm font-medium";
 
 const consentSchema = z.object({
   updatedPhone: globalPhoneSchema,
@@ -66,14 +66,14 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0f172a] border border-emerald-500/30 rounded-3xl p-8 text-center max-w-md mx-auto shadow-2xl shadow-emerald-500/10 relative overflow-hidden"
+        className="bg-background border border-emerald-500/30 rounded-3xl p-8 text-center max-w-md mx-auto shadow-2xl shadow-emerald-500/10 relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
         <div className="w-16 h-16 bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10">
           <CheckCircle2 className="w-8 h-8 text-emerald-400" />
         </div>
-        <h2 className="text-2xl font-black text-white mb-2 tracking-tight relative z-10">Consent Registered</h2>
-        <p className="text-slate-400 text-sm leading-relaxed mb-6 font-medium relative z-10">
+        <h2 className="text-2xl font-black text-foreground mb-2 tracking-tight relative z-10">Consent Registered</h2>
+        <p className="text-foreground opacity-60 text-sm leading-relaxed mb-6 font-medium relative z-10">
           Your consent for the upcoming academic year ({consentData.academicYear?.year}) has been securely recorded. Thank you for continuing your journey with Virtue Modern School.
         </p>
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs font-bold uppercase tracking-wider relative z-10">
@@ -90,7 +90,7 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 sm:p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden"
+      className="bg-background/80 backdrop-blur-xl border border-border rounded-[32px] p-6 sm:p-8 max-w-2xl mx-auto shadow-2xl relative overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
       
@@ -99,8 +99,8 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
           <Shield className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight mb-1">Student Re-admission Consent</h2>
-          <p className="text-slate-400 font-medium text-sm">Please verify the existing details and confirm admission for {consentData.academicYear?.year}.</p>
+          <h2 className="text-2xl font-black text-foreground tracking-tight mb-1">Student Re-admission Consent</h2>
+          <p className="text-foreground opacity-60 font-medium text-sm">Please verify the existing details and confirm admission for {consentData.academicYear?.year}.</p>
         </div>
       </div>
 
@@ -119,29 +119,29 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
 
       <div className="space-y-6 relative z-10">
         {/* Existing Data Display */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
+        <div className="bg-muted border border-border rounded-2xl p-5 mb-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block flex items-center gap-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-1 block flex items-center gap-1.5">
                 <User className="w-3 h-3 text-blue-400" /> Student Name
               </span>
-              <p className="text-sm font-bold text-white">{stu.firstName} {stu.lastName}</p>
+              <p className="text-sm font-bold text-foreground">{stu.firstName} {stu.lastName}</p>
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block flex items-center gap-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-1 block flex items-center gap-1.5">
                 <Calendar className="w-3 h-3 text-indigo-400" /> Current Class
               </span>
-              <p className="text-sm font-bold text-white">{stu.academic?.classId || "N/A"}</p>
+              <p className="text-sm font-bold text-foreground">{stu.academic?.classId || "N/A"}</p>
             </div>
           </div>
         </div>
 
         {/* Update Fields */}
         <div>
-          <h3 className="text-sm font-bold text-white mb-4">Would you like to update your contact info?</h3>
+          <h3 className="text-sm font-bold text-foreground mb-4">Would you like to update your contact info?</h3>
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block flex items-center gap-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block flex items-center gap-1.5">
                 <Phone className="w-3 h-3 text-emerald-400" /> Primary Phone Number
               </label>
               <div className="relative flex items-center">
@@ -154,7 +154,7 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
               {errors.updatedPhone && <p className="text-[10px] text-rose-400 font-bold mt-1 px-1">{errors.updatedPhone.message}</p>}
             </div>
             <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block flex items-center gap-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block flex items-center gap-1.5">
                 <MapPin className="w-3 h-3 text-rose-400" /> Current Residential Address
               </label>
               <textarea 
@@ -180,7 +180,7 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
         <button 
           type="submit" 
           disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-white font-black text-sm py-4 rounded-xl transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 text-foreground font-black text-sm py-4 rounded-xl transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
         >
           {loading ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>

@@ -35,17 +35,17 @@ export function EnquiryManager() {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[calc(100vh-140px)] flex flex-col">
+    <div className="bg-background rounded-2xl border border-border shadow-sm overflow-hidden h-[calc(100vh-140px)] flex flex-col">
       {/* Header & Controls */}
-      <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-        <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+      <div className="p-4 border-b border-border flex justify-between items-center bg-muted/50/50">
+        <div className="flex bg-background rounded-xl border border-border p-1 shadow-sm">
           {["All", "Pending", "Converted", "Rejected"].map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s as any)}
               className={cn(
                 "px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all",
-                statusFilter === s ? "bg-slate-900 text-white shadow-md relative z-10" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                statusFilter === s ? "bg-primary text-white shadow-md relative z-10" : "text-foreground opacity-60 hover:text-foreground hover:bg-muted/50"
               )}
             >
               {s}
@@ -54,11 +54,11 @@ export function EnquiryManager() {
         </div>
         
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-foreground opacity-50 absolute left-3 top-1/2 -translate-y-1/2" />
           <input 
             type="text" 
             placeholder="Search enquiries..." 
-            className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs font-bold w-64 focus:outline-none focus:border-primary shadow-sm"
+            className="pl-9 pr-4 py-2 border border-border rounded-xl text-xs font-bold w-64 focus:outline-none focus:border-primary shadow-sm"
           />
         </div>
       </div>
@@ -66,37 +66,37 @@ export function EnquiryManager() {
       {/* Data Table */}
       <div className="flex-1 overflow-auto custom-scrollbar relative">
         {loading && (
-          <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
              <div className="flex gap-1"><span className="w-2 h-2 rounded-full bg-primary animate-bounce"></span><span className="w-2 h-2 rounded-full bg-primary animate-bounce delay-75"></span><span className="w-2 h-2 rounded-full bg-primary animate-bounce delay-150"></span></div>
           </div>
         )}
         
         <table className="w-full text-left border-collapse min-w-[800px]">
-          <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 shadow-sm">
+          <thead className="sticky top-0 bg-muted/50 border-b border-border z-10 shadow-sm">
             <tr>
-              <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[25%]">Student Profile</th>
-              <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[25%]">Parent Contact</th>
-              <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[15%] text-center">Class / Year</th>
-              <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[10%] text-center">Status</th>
-              <th className="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[25%] text-right">Actions</th>
+              <th className="p-4 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest w-[25%]">Student Profile</th>
+              <th className="p-4 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest w-[25%]">Parent Contact</th>
+              <th className="p-4 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest w-[15%] text-center">Class / Year</th>
+              <th className="p-4 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest w-[10%] text-center">Status</th>
+              <th className="p-4 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest w-[25%] text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100/80">
+          <tbody className="divide-y divide-border">
             {enquiries.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-10 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">No enquiries found</td>
+                <td colSpan={5} className="p-10 text-center text-foreground opacity-50 font-bold text-xs uppercase tracking-widest">No enquiries found</td>
               </tr>
             ) : (
               enquiries.map((enq) => (
-                <tr key={enq.id} className="hover:bg-slate-50/80 transition-colors group">
+                <tr key={enq.id} className="hover:bg-muted/50/80 transition-colors group">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-700 font-black flex items-center justify-center text-xs">
                         {enq.studentFirstName[0]}
                       </div>
                       <div>
-                        <p className="text-xs font-black text-slate-900 group-hover:text-primary transition-colors">{enq.studentFirstName} {enq.studentLastName}</p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 mt-0.5">
+                        <p className="text-xs font-black text-foreground group-hover:text-primary transition-colors">{enq.studentFirstName} {enq.studentLastName}</p>
+                        <p className="text-[10px] font-bold text-foreground opacity-60 uppercase flex items-center gap-1 mt-0.5">
                            From: {enq.previousSchool || 'New Admission'}
                         </p>
                       </div>
@@ -104,16 +104,16 @@ export function EnquiryManager() {
                   </td>
                   <td className="p-4">
                     <div>
-                      <p className="text-xs font-black text-slate-700">{enq.parentName}</p>
+                      <p className="text-xs font-black text-foreground font-bold">{enq.parentName}</p>
                       <div className="flex flex-col gap-0.5 mt-0.5">
-                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500" /> {enq.parentPhone}</p>
-                        {enq.parentEmail && <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Mail className="w-3 h-3 text-indigo-400" /> {enq.parentEmail}</p>}
+                        <p className="text-[10px] font-bold text-foreground opacity-60 flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500" /> {enq.parentPhone}</p>
+                        {enq.parentEmail && <p className="text-[10px] font-bold text-foreground opacity-50 flex items-center gap-1"><Mail className="w-3 h-3 text-indigo-400" /> {enq.parentEmail}</p>}
                       </div>
                     </div>
                   </td>
                   <td className="p-4 text-center">
                     <span className="text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-lg whitespace-nowrap">Class {enq.requestedClass}</span>
-                    <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{enq.academicYear}</p>
+                    <p className="text-[9px] font-bold text-foreground opacity-50 mt-1 uppercase tracking-wider">{enq.academicYear}</p>
                   </td>
                   <td className="p-4 text-center">
                     <span className={cn(
@@ -148,7 +148,7 @@ export function EnquiryManager() {
                       {enq.status !== "Pending" && (
                         <button 
                           onClick={() => handleUpdateStatus(enq.id, "Pending")}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg p-1.5 transition-colors text-xs font-black flex items-center gap-1 pr-2"
+                          className="bg-muted hover:bg-muted/80 text-foreground opacity-60 rounded-lg p-1.5 transition-colors text-xs font-black flex items-center gap-1 pr-2"
                         >
                           <Clock className="w-3.5 h-3.5" /> Revert
                         </button>

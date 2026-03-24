@@ -29,18 +29,18 @@ const steps = [
 // Reusable compact input
 function Field({ label, error, children, className }: { label: string; error?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
-      <div className="flex justify-between items-center">
-        <label className="text-[11px] font-black text-white/80 uppercase tracking-widest">{label}</label>
-        {error && <span className="text-[9px] text-rose-400 font-bold uppercase tracking-tighter animate-pulse">{error}</span>}
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className="flex justify-between items-center px-0.5">
+        <label className="text-[12px] font-bold text-slate-500 tracking-tight">{label}</label>
+        {error && <span className="text-[10px] text-rose-500 font-bold animate-pulse">{error}</span>}
       </div>
       {children}
     </div>
   );
 }
 
-const inputCls = "bg-white/10 border border-white/20 rounded-lg px-2.5 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500 transition-colors w-full";
-const selectCls = "bg-white/10 border border-white/20 rounded-lg px-2.5 py-2 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors w-full";
+const inputCls = "bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-full shadow-sm";
+const selectCls = "bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-full shadow-sm";
 
 export function StudentForm() {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -56,12 +56,14 @@ export function StudentForm() {
     branches: any[],
     academicYears: any[],
     classes: any[],
-    feeSchedules: any[]
+    feeSchedules: any[],
+    schoolName: string
   }>({
     branches: [],
     academicYears: [],
     classes: [],
-    feeSchedules: []
+    feeSchedules: [],
+    schoolName: ""
   });
   const [sections, setSections] = useState<any[]>([]);
   const [isLoadingRef, setIsLoadingRef] = useState(true);
@@ -108,8 +110,19 @@ export function StudentForm() {
       const result = await submitAdmissionAction(data);
       
       if (result.success && result.data) {
-        setAdmissionId(result.data.admissionId);
-        setSubmittedData(data);
+        setAdmissionId(result.data.admissionNumber);
+        
+        // Find names for IDs to show in summary
+        const className = refData.classes.find(c => c.id === data.classId)?.name;
+        const sectionName = sections.find(s => s.id === data.sectionId)?.name;
+        const branchName = refData.branches.find(b => b.id === (data.branchId || result.data.academic?.branchId))?.name;
+        
+        setSubmittedData({
+          ...data,
+          className,
+          sectionName,
+          branchName
+        });
         setSubmitted(true);
       } else {
         setFormError(result.error);
@@ -196,6 +209,7 @@ export function StudentForm() {
       <StudentAdmissionSummary 
         studentData={submittedData} 
         admissionId={admissionId} 
+        schoolName={refData.schoolName}
         onReset={handleReset} 
       />
     );
@@ -203,15 +217,8 @@ export function StudentForm() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* ─── Progress Steps ─── */}
-      <div className="flex justify-between mb-4 relative px-2">
-        <div className="absolute top-4 left-0 w-full h-0.5 bg-white/10 -z-10" />
-        <div
-          className="absolute top-4 left-0 h-0.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 -z-10 transition-all duration-500"
-          style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-        />
+      <div className="flex flex-wrap items-center gap-2 mb-10">
         {steps.map((step) => {
-          const StepIcon = step.icon;
           const isActive = currentStep === step.id;
           const isCompleted = currentStep > step.id;
           return (
@@ -219,22 +226,16 @@ export function StudentForm() {
               key={step.id}
               type="button"
               onClick={() => setCurrentStep(step.id)}
-              className="flex items-center gap-1.5 group outline-none"
+              className={cn(
+                "px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300",
+                isActive 
+                  ? "bg-primary text-white shadow-lg shadow-primary/25" 
+                  : isCompleted 
+                    ? "bg-slate-100 text-slate-600 hover:bg-slate-200" 
+                    : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+              )}
             >
-              <div className={cn(
-                "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-500 border-2",
-                isActive ? "bg-violet-600 border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.3)] scale-110"
-                  : isCompleted ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
-                  : "bg-[#1e1e30] border-white/10 text-white/40 group-hover:border-white/20"
-              )}>
-                <StepIcon className={cn("w-4 h-4", isActive ? "text-white" : "text-inherit")} />
-              </div>
-              <span className={cn(
-                "text-[11px] font-black uppercase tracking-wider transition-colors duration-300 hidden sm:block",
-                isActive ? "text-white" : "text-white/60 group-hover:text-white/80"
-              )}>
-                {step.title}
-              </span>
+              {step.title}
             </button>
           );
         })}
@@ -257,20 +258,20 @@ export function StudentForm() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.25 }}
-            className="bg-[#1a1a2e]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl overflow-hidden relative"
+            className="bg-white border border-slate-100 rounded-[32px] p-8 lg:p-12 card-shadow relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/5 blur-[100px] -z-10 rounded-full" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 blur-[120px] -z-10 rounded-full" />
 
             {/* ─── STEP 1: Personal ─── */}
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5 text-violet-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">Personal Details</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Basic student identity information</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Personal Details</h3>
+                    <p className="text-slate-500 text-sm font-medium">Basic student identity and contact information</p>
                   </div>
                 </div>
 
@@ -309,19 +310,19 @@ export function StudentForm() {
                           initial={{ opacity: 0, y: -5 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -5 }}
-                          className="absolute z-[100] left-0 right-0 top-full mt-1 bg-[#1e1e30] border border-white/20 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-2xl ring-1 ring-white/10"
+                          className="absolute z-[100] left-0 right-0 top-full mt-1 bg-background shadow-xl border border-border border border-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-2xl ring-1 ring-white/10"
                         >
-                          <div className="px-2 py-1.5 border-b border-white/5 bg-white/5">
-                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Similar Students Found</p>
+                          <div className="px-2 py-1.5 border-b border-white/5 bg-muted/50">
+                            <p className="text-[9px] font-black text-foreground/40 uppercase tracking-widest">Similar Students Found</p>
                           </div>
                           <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
                             {searchResults.map((student) => (
-                              <div key={student.id} className="p-2.5 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors cursor-default">
+                              <div key={student.id} className="p-2.5 border-b border-white/5 last:border-0 hover:bg-muted/50 transition-colors cursor-default">
                                 <div className="flex justify-between items-start gap-2">
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-black text-white truncate">{student.firstName} {student.lastName}</p>
+                                    <p className="text-[11px] font-black text-foreground truncate">{student.firstName} {student.lastName}</p>
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                                      <p className="text-[9px] text-white/50 font-bold uppercase truncate">
+                                      <p className="text-[9px] text-foreground/50 font-bold uppercase truncate">
                                         P: {student.family?.fatherName || 'N/A'}
                                       </p>
                                       <p className="text-[9px] text-violet-400/80 font-bold uppercase">
@@ -331,7 +332,7 @@ export function StudentForm() {
                                     {student.aadhaarNumber && (
                                       <p className={cn(
                                         "text-[8px] font-black px-1.5 py-0.5 rounded mt-1 inline-block uppercase tracking-tighter",
-                                        student.aadhaarNumber === aadhaarNumber ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse" : "bg-white/5 text-white/40 border border-white/10"
+                                        student.aadhaarNumber === aadhaarNumber ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse" : "bg-muted/50 text-foreground/40 border border-border"
                                       )}>
                                         Aadhaar: {student.aadhaarNumber}
                                       </p>
@@ -380,7 +381,7 @@ export function StudentForm() {
                   </Field>
                   <Field label="Phone" error={errors.phone?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("phone")} placeholder="XXXXX" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
@@ -409,13 +410,13 @@ export function StudentForm() {
             {/* ─── STEP 2: Academic ─── */}
             {currentStep === 2 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-                    <School className="w-3.5 h-3.5 text-blue-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <School className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">Academic & Fee Schedule</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Class placement and academic details</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Academic & Fee Schedule</h3>
+                    <p className="text-slate-500 text-sm font-medium">Class placement, academic year, and fee structure</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -499,13 +500,13 @@ export function StudentForm() {
             {/* ─── STEP 3: Family ─── */}
             {currentStep === 3 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-pink-500/20 border border-pink-500/30 flex items-center justify-center">
-                    <Users className="w-3.5 h-3.5 text-pink-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">Family Details</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Parental and emergency contact information</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Family Details</h3>
+                    <p className="text-slate-500 text-sm font-medium">Parental information and emergency contacts</p>
                   </div>
                 </div>
                 <p className="text-[10px] font-bold text-violet-400/70 uppercase tracking-wider">Father</p>
@@ -515,13 +516,13 @@ export function StudentForm() {
                   </Field>
                   <Field label="Father Phone *" error={errors.fatherPhone?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("fatherPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
                   <Field label="Alternate Phone" error={errors.fatherAlternatePhone?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("fatherAlternatePhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
@@ -534,6 +535,9 @@ export function StudentForm() {
                   <Field label="Qualification" error={errors.fatherQualification?.message}>
                     <input {...register("fatherQualification")} placeholder="Qualification" className={inputCls} />
                   </Field>
+                  <Field label="Aadhaar Number *" error={errors.fatherAadhaar?.message}>
+                    <input {...register("fatherAadhaar")} placeholder="XXXX XXXX XXXX" className={inputCls} />
+                  </Field>
                 </div>
                 <p className="text-[10px] font-bold text-pink-400/70 uppercase tracking-wider mt-2">Mother</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -542,13 +546,13 @@ export function StudentForm() {
                   </Field>
                   <Field label="Mother Phone" error={errors.motherPhone?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("motherPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
                   <Field label="Alternate Phone" error={errors.motherAlternatePhone?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("motherAlternatePhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
@@ -561,6 +565,9 @@ export function StudentForm() {
                   <Field label="Qualification" error={errors.motherQualification?.message}>
                     <input {...register("motherQualification")} placeholder="Qualification" className={inputCls} />
                   </Field>
+                  <Field label="Aadhaar Number *" error={errors.motherAadhaar?.message}>
+                    <input {...register("motherAadhaar")} placeholder="XXXX XXXX XXXX" className={inputCls} />
+                  </Field>
                 </div>
                 <p className="text-[10px] font-bold text-orange-400/70 uppercase tracking-wider mt-2">Emergency Contact</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -569,7 +576,7 @@ export function StudentForm() {
                   </Field>
                   <Field label="Contact Phone" error={errors.emergencyContactPhone?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("emergencyContactPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
@@ -578,7 +585,7 @@ export function StudentForm() {
                   </Field>
                   <Field label="WhatsApp Number" error={errors.whatsappNumber?.message}>
                     <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-white/50 text-sm font-medium">+91</span>
+                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
                       <input {...register("whatsappNumber")} placeholder="Phone" className={`${inputCls} pl-10`} />
                     </div>
                   </Field>
@@ -589,13 +596,13 @@ export function StudentForm() {
             {/* ─── STEP 4: Address ─── */}
             {currentStep === 4 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-                    <MapPin className="w-3.5 h-3.5 text-green-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">Address Details</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Permanent and current residential address</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Address Details</h3>
+                    <p className="text-slate-500 text-sm font-medium">Residential address and transport requirements</p>
                   </div>
                 </div>
                 <p className="text-[10px] font-bold text-green-400/70 uppercase tracking-wider">Current Address</p>
@@ -617,10 +624,10 @@ export function StudentForm() {
                   </Field>
                 </div>
 
-                <div className="border-t border-white/10 my-4" />
+                <div className="border-t border-border my-4" />
                 <div className="flex items-center gap-3">
                   <input {...register("transportRequired")} type="checkbox" id="transport" className="w-4 h-4 accent-violet-500" />
-                  <label htmlFor="transport" className="text-xs font-bold text-white/70 flex items-center gap-2">
+                  <label htmlFor="transport" className="text-xs font-bold text-foreground/70 flex items-center gap-2">
                     <Bus className="w-4 h-4 text-yellow-400" /> Transport Required
                   </label>
                 </div>
@@ -644,7 +651,7 @@ export function StudentForm() {
                     </Field>
                   </div>
                 )}
-                <div className="border-t border-white/10 my-4" />
+                <div className="border-t border-border my-4" />
                 <p className="text-[10px] font-bold text-orange-400/70 uppercase tracking-wider">Previous School</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-1">
                   <Field label="School Name" className="lg:col-span-2">
@@ -666,13 +673,13 @@ export function StudentForm() {
             {/* ─── STEP 5: Financial ─── */}
             {currentStep === 5 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-pink-500/20 border border-pink-500/30 flex items-center justify-center">
-                    <CreditCard className="w-3.5 h-3.5 text-pink-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">Financial & Fee Breakdown</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Annual tuition, transport and miscellaneous fees</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Financial & Fee Breakdown</h3>
+                    <p className="text-slate-500 text-sm font-medium">Fee schedule and discount configurations</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -730,13 +737,13 @@ export function StudentForm() {
             {/* ─── STEP 6: More Info ─── */}
             {currentStep === 6 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center">
-                    <Info className="w-3.5 h-3.5 text-fuchsia-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Info className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">More Information</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Health, bank, and systemic details</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">More Information</h3>
+                    <p className="text-slate-500 text-sm font-medium">Health records, bank details, and references</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -777,31 +784,31 @@ export function StudentForm() {
             {/* ─── STEP 7: Review ─── */}
             {currentStep === 7 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-white tracking-tight">Final Review</h3>
-                    <p className="text-white/70 text-xs font-bold uppercase tracking-wider">Verify details before official admission</p>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Final Review</h3>
+                    <p className="text-slate-500 text-sm font-medium">Verify all information before completing admission</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
                     <p className="text-[10px] text-violet-400 font-bold uppercase mb-2">Step 1 – Personal</p>
-                    <p className="text-xs text-white/70">Verify name, DOB, gender, blood group, Aadhaar.</p>
+                    <p className="text-xs text-foreground/70">Verify name, DOB, gender, blood group, Aadhaar.</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
                     <p className="text-[10px] text-blue-400 font-bold uppercase mb-2">Step 2 – Academic</p>
-                    <p className="text-xs text-white/70">Check class, section, branch, Academic Year.</p>
+                    <p className="text-xs text-foreground/70">Check class, section, branch, Academic Year.</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
                     <p className="text-[10px] text-pink-400 font-bold uppercase mb-2">Step 3 – Family</p>
-                    <p className="text-xs text-white/70">Verify parent and emergency contact details.</p>
+                    <p className="text-xs text-foreground/70">Verify parent and emergency contact details.</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
                     <p className="text-[10px] text-orange-400 font-bold uppercase mb-2">Step 5 – Financial</p>
-                    <p className="text-xs text-white/70">Confirm fee components and discounts (Term 3).</p>
+                    <p className="text-xs text-foreground/70">Confirm fee components and discounts (Term 3).</p>
                   </div>
                 </div>
                 <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-3">
@@ -815,46 +822,25 @@ export function StudentForm() {
         </AnimatePresence>
 
         {/* ─── Navigation & Actions ─── */}
-        <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-center bg-[#0a0a1a]/40 sticky bottom-0 z-10 p-4 -mx-6 -mb-6 rounded-b-2xl">
+        <div className="mt-12 flex justify-between items-center py-6">
           {formError && (
-            <div className="flex items-center gap-2 text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 text-[10px] animate-shake">
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span className="font-bold">{formError}</span>
+            <div className="flex items-center gap-2 text-rose-500 bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 text-xs font-bold animate-shake">
+              <AlertCircle className="w-4 h-4" />
+              <span>{formError}</span>
             </div>
           )}
 
-          {Object.keys(errors).length > 0 && (
-            <div className="flex flex-col gap-1 text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 text-[10px]">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span className="font-bold">Please fix the following errors:</span>
-              </div>
-              <ul className="list-disc list-inside pl-5 opacity-80">
-                {Object.entries(errors).map(([field, err]: [string, any]) => (
-                  <li key={field}>{field}: {err.message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          <div className="flex items-center gap-3 ml-auto">
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={currentStep === 1 || isSubmitting}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Previous
-            </button>
-
-            <div className="flex items-center gap-1 mx-2">
-              {steps.map(s => (
-                <div key={s.id} className={cn(
-                  "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                  currentStep === s.id ? "bg-violet-500 scale-125" : currentStep > s.id ? "bg-emerald-500" : "bg-white/20"
-                )} />
-              ))}
-            </div>
+          <div className="flex items-center gap-4 ml-auto">
+            {currentStep > 1 && (
+              <button
+                type="button"
+                onClick={prevStep}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all disabled:opacity-30"
+              >
+                Previous
+              </button>
+            )}
 
             {currentStep < steps.length ? (
               <button
@@ -862,19 +848,19 @@ export function StudentForm() {
                 onClick={nextStep}
                 disabled={!!duplicateAadhaar}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-violet-600 hover:bg-violet-500 text-white transition-all shadow-lg shadow-violet-500/20 disabled:opacity-30 disabled:cursor-not-allowed",
-                  duplicateAadhaar && "bg-rose-600 hover:bg-rose-600"
+                  "flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-2xl bg-primary text-white shadow-lg shadow-primary/25 hover:translate-x-1 transition-all disabled:opacity-30",
+                  duplicateAadhaar && "bg-rose-500 shadow-rose-500/25"
                 )}
               >
-                {duplicateAadhaar ? "Blocked" : "Next"} <ArrowRight className="w-3.5 h-3.5" />
+                {duplicateAadhaar ? "Aadhaar Found" : "Next"} <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={isSubmitting || !!duplicateAadhaar}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-10 py-3 text-sm font-bold rounded-2xl bg-primary text-white shadow-lg shadow-primary/25 hover:scale-105 transition-all disabled:opacity-50"
               >
-                {isSubmitting ? "Submitting..." : duplicateAadhaar ? "Aadhaar Found" : "✓ Submit Admission"}
+                {isSubmitting ? "Processing..." : "Finish & Admission"} <ArrowRight className="w-4 h-4" />
               </button>
             )}
           </div>

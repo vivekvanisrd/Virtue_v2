@@ -220,7 +220,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
       <aside 
         style={{ width: isCollapsed ? 80 : width }}
         className={cn(
-          "fixed left-0 top-0 h-screen bg-sidebar-bg border-r border-border z-50 flex flex-col transition-all duration-300 shadow-2xl overflow-hidden ease-in-out lg:sticky group/sidebar",
+          "fixed left-0 top-0 min-h-screen bg-sidebar-bg border-r border-border z-50 flex flex-col transition-all duration-300 shadow-2xl overflow-hidden ease-in-out lg:sticky lg:h-screen group/sidebar",
           isResizing && "transition-none",
           !isMobileOpen && "-translate-x-full lg:translate-x-0"
         )}
@@ -246,8 +246,8 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
                 <Sparkles className="w-6 h-6 text-white fill-white" />
               </div>
               <div className="truncate">
-                <h1 className="text-lg font-bold tracking-tight">Virtue V2</h1>
-                <p className="text-[8px] uppercase tracking-[2px] text-white/40 font-bold">Enterprise</p>
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Virtue V2</h1>
+                <p className="text-[8px] uppercase tracking-[2px] text-foreground opacity-40 font-bold">Enterprise</p>
               </div>
             </div>
           )}
@@ -256,7 +256,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
             <button 
               onClick={() => setIsCollapsed(!isCollapsed)}
               className={cn(
-                "p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all hidden lg:block",
+                "p-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground/60 hover:text-foreground transition-all hidden lg:block",
                 isCollapsed && "mt-2"
               )}
             >
@@ -266,7 +266,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
             {/* Mobile Close Button */}
             <button 
               onClick={() => setIsMobileOpen(false)}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all lg:hidden"
+              className="p-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground/60 hover:text-foreground transition-all lg:hidden"
             >
               <X className="w-5 h-5" />
             </button>
@@ -278,7 +278,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
           {userRole === ROLES.DEVELOPER && (
             <div className="mb-6 space-y-1">
               <p className={cn(
-                "px-6 text-[10px] font-black text-white/20 uppercase tracking-[2px] mb-2 truncate",
+                "px-6 text-[10px] font-black text-foreground opacity-20 uppercase tracking-[2px] mb-2 truncate",
                 isCollapsed && "hidden"
               )}>System Core</p>
               <Link
@@ -308,13 +308,13 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
                   title={isCollapsed ? item.name : ""}
                   className={cn(
                     "group flex items-center gap-4 w-full text-left rounded-2xl transition-all duration-300 relative",
-                    isCollapsed ? "justify-center p-3" : "px-6 py-3",
+                    isCollapsed ? "justify-center p-3" : "px-6 py-2",
                     isActive && !hasSubItems 
-                      ? "bg-primary text-white shadow-xl shadow-primary/30" 
-                      : (isActive ? "text-white" : "text-white/50 hover:bg-white/5 hover:text-white")
+                      ? "bg-primary text-primary-foreground shadow-xl shadow-primary/30" 
+                      : (isActive ? "text-primary" : "text-foreground opacity-50 hover:bg-foreground/5 hover:opacity-100")
                   )}
                 >
-                  <item.icon className={cn("w-5 h-5 shrink-0 transition-transform", isActive ? "text-white" : "text-white/40 group-hover:text-accent group-hover:scale-110")} />
+                  <item.icon className={cn("w-5 h-5 shrink-0 transition-transform", isActive ? "text-primary" : "text-foreground opacity-40 group-hover:text-accent group-hover:scale-110")} />
                   
                   {!isCollapsed && (
                     <>
@@ -343,10 +343,10 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
                           key={sub.id}
                           onClick={() => handleOpenTab(sub)}
                           className={cn(
-                            "flex items-center w-full px-4 py-2.5 rounded-xl text-xs font-bold transition-all border-l-2",
+                            "flex items-center w-full px-4 py-1.5 rounded-xl text-xs font-bold transition-all border-l-2",
                             activeTabId === sub.id 
-                              ? "text-accent border-accent bg-accent/5 shadow-[inset_0_0_20px_rgba(124,77,255,0.05)]" 
-                              : "text-white/30 border-transparent hover:text-white/60 hover:border-white/10 hover:bg-white/[0.02]"
+                              ? "text-accent border-accent bg-accent/5" 
+                              : "text-foreground opacity-30 border-transparent hover:text-foreground opacity-60 hover:bg-foreground/[0.02]"
                           )}
                         >
                           {sub.name}

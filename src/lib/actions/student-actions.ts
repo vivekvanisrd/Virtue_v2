@@ -151,12 +151,14 @@ export async function submitAdmissionAction(formData: any) {
               fatherEmail: validatedData.fatherEmail,
               fatherOccupation: validatedData.fatherOccupation,
               fatherQualification: validatedData.fatherQualification,
+              fatherAadhaar: validatedData.fatherAadhaar,
               motherName: validatedData.motherName,
               motherPhone: validatedData.motherPhone,
               motherAltPhone: validatedData.motherAlternatePhone,
               motherEmail: validatedData.motherEmail,
               motherOccupation: validatedData.motherOccupation,
               motherQualification: validatedData.motherQualification,
+              motherAadhaar: validatedData.motherAadhaar,
               whatsappNumber: validatedData.whatsappNumber,
               emergencyName: validatedData.emergencyContactName,
               emergencyPhone: validatedData.emergencyContactPhone,
@@ -247,6 +249,8 @@ export async function submitAdmissionAction(formData: any) {
           } : {}),
         }
       });
+    }, {
+      timeout: 30000 // 30 seconds
     });
 
     try {

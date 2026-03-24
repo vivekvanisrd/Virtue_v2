@@ -94,10 +94,10 @@ async function main() {
 
   // --- STAFF ---
   await prisma.staff.upsert({
-    where: { schoolId_employeeId: { schoolId: school1.id, employeeId: 'VR-OWN-01' } },
+    where: { schoolId_staffCode: { schoolId: school1.id, staffCode: 'VR-OWN-01' } },
     update: {},
     create: {
-      employeeId: 'VR-OWN-01',
+      staffCode: 'VR-OWN-01',
       firstName: 'Virtue',
       lastName: 'Owner',
       schoolId: school1.id,
@@ -108,10 +108,10 @@ async function main() {
   })
 
   await prisma.staff.upsert({
-    where: { schoolId_employeeId: { schoolId: school2.id, employeeId: 'GI-PRIN-02' } },
+    where: { schoolId_staffCode: { schoolId: school2.id, staffCode: 'GI-PRIN-02' } },
     update: {},
     create: {
-      employeeId: 'GI-PRIN-02',
+      staffCode: 'GI-PRIN-02',
       firstName: 'Global',
       lastName: 'Principal',
       schoolId: school2.id,
@@ -159,16 +159,17 @@ async function main() {
 
   // --- SAMPLE STUDENT ---
   await prisma.student.upsert({
-    where: { admissionId: 'VR-2026-0001' },
+    where: { schoolId_admissionNumber: { schoolId: school1.id, admissionNumber: 'VR-2026-0001' } },
     update: {},
     create: {
-      admissionId: 'VR-2026-0001',
-      studentId: 'STU001',
+      admissionNumber: 'VR-2026-0001',
+      studentCode: 'STU001',
       firstName: 'Aditi',
       lastName: 'Sharma',
       schoolId: school1.id,
       academic: {
         create: {
+          id: 'VR-AC-001',
           schoolId: school1.id,
           branchId: branch1.id,
           classId: class1.id,

@@ -107,20 +107,20 @@ export function StaffImportManager() {
   return (
     <div className="space-y-6">
       {/* Header Info */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-background p-6 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Users className="w-6 h-6 text-primary" />
             Bulk Import Staff & Teachers
           </h2>
-          <p className="text-slate-500 mt-1">
+          <p className="text-foreground opacity-60 mt-1">
             Upload a CSV to securely batch import multiple staff records.
           </p>
         </div>
         
         <button 
           onClick={downloadTemplate}
-          className="px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-200 transition-colors"
+          className="px-4 py-2 bg-muted/50 text-slate-700 hover:bg-slate-100 rounded-lg text-sm font-bold flex items-center gap-2 border border-border transition-colors"
         >
           <Download className="w-4 h-4" />
           Download Template
@@ -131,7 +131,7 @@ export function StaffImportManager() {
       {!file && !importResult && (
         <div 
           onClick={() => fileInputRef.current?.click()}
-          className="bg-white border-2 border-dashed border-slate-200 hover:border-primary/50 hover:bg-primary/5 rounded-[30px] p-16 flex flex-col items-center justify-center cursor-pointer transition-all text-center group"
+          className="bg-background border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 rounded-[30px] p-16 flex flex-col items-center justify-center cursor-pointer transition-all text-center group"
         >
           <input 
             type="file" 
@@ -143,8 +143,8 @@ export function StaffImportManager() {
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
             <UploadCloud className="w-10 h-10 text-primary" />
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Drag & Drop or Click to Upload</h3>
-          <p className="text-slate-500 max-w-md mx-auto">
+          <h3 className="text-xl font-bold text-foreground mb-2">Drag & Drop or Click to Upload</h3>
+          <p className="text-foreground opacity-60 max-w-md mx-auto">
             Please ensure your CSV uses the exact columns specified in our template. Duplicate emails and phones will be automatically skipped.
           </p>
         </div>
@@ -152,22 +152,22 @@ export function StaffImportManager() {
 
       {/* File Selected / Parse View */}
       {file && !importResult && (
-        <div className="bg-white rounded-[30px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div className="bg-background rounded-[30px] border border-border shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
                 <FileSpreadsheet className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800">{file.name}</h3>
-                <p className="text-sm text-slate-500">{parsedData.length} records parsed</p>
+                <h3 className="font-bold text-foreground">{file.name}</h3>
+                <p className="text-sm text-foreground opacity-60">{parsedData.length} records parsed</p>
               </div>
             </div>
             
             <div className="flex gap-3">
               <button 
                 onClick={clearFile}
-                className="p-3 text-slate-400 hover:bg-slate-50 hover:text-red-500 rounded-xl transition-colors"
+                className="p-3 text-foreground opacity-50 hover:bg-muted/50 hover:text-red-500 rounded-xl transition-colors"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -185,7 +185,7 @@ export function StaffImportManager() {
           <div className="max-h-[400px] overflow-auto custom-scrollbar p-6">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                <tr className="bg-muted/50 text-foreground opacity-60 font-bold border-b border-border">
                   <th className="py-3 px-4 rounded-tl-xl whitespace-nowrap">Full Name</th>
                   <th className="py-3 px-4">Emp ID</th>
                   <th className="py-3 px-4">Email</th>
@@ -194,8 +194,8 @@ export function StaffImportManager() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {parsedData.slice(0, 50).map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50">
-                    <td className="py-3 px-4 font-medium text-slate-800">
+                  <tr key={i} className="hover:bg-muted/50/50">
+                    <td className="py-3 px-4 font-medium text-foreground">
                       {row.firstName} {row.lastName}
                     </td>
                     <td className="py-3 px-4 text-slate-600">{row.employeeId || "-"}</td>
@@ -206,7 +206,7 @@ export function StaffImportManager() {
               </tbody>
             </table>
             {parsedData.length > 50 && (
-              <div className="text-center py-4 text-xs font-bold text-slate-400 bg-slate-50 mt-4 rounded-xl">
+              <div className="text-center py-4 text-xs font-bold text-foreground opacity-50 bg-muted/50 mt-4 rounded-xl">
                 Showing top 50 records of {parsedData.length}
               </div>
             )}
@@ -216,13 +216,13 @@ export function StaffImportManager() {
 
       {/* Import Results View */}
       {importResult && (
-        <div className="bg-white rounded-[30px] border border-slate-100 shadow-sm overflow-hidden p-8 text-center animate-in zoom-in-95 duration-500">
+        <div className="bg-background rounded-[30px] border border-border shadow-sm overflow-hidden p-8 text-center animate-in zoom-in-95 duration-500">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-10 h-10 text-green-600" />
           </div>
           
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">Import Complete!</h2>
-          <p className="text-slate-500 mb-8 max-w-lg mx-auto">
+          <h2 className="text-3xl font-bold text-foreground mb-2">Import Complete!</h2>
+          <p className="text-foreground opacity-60 mb-8 max-w-lg mx-auto">
             The bulk staff import process has finished executing securely. Please review the summary of imported and skipped records below.
           </p>
 
@@ -246,12 +246,12 @@ export function StaffImportManager() {
               </h4>
               <ul className="space-y-3">
                 {importResult.errors.map((err: any, idx: number) => (
-                  <li key={idx} className="bg-white p-3 rounded-xl border border-red-100 text-sm flex items-start gap-3">
+                  <li key={idx} className="bg-background p-3 rounded-xl border border-red-100 text-sm flex items-start gap-3">
                     <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold text-xs shrink-0 mt-0.5">
                       Row {err.row}
                     </span>
                     <div>
-                      <div className="font-bold text-slate-800">{err.name} <span className="text-slate-400 font-normal">({err.employeeId})</span></div>
+                      <div className="font-bold text-foreground">{err.name} <span className="text-foreground opacity-50 font-normal">({err.employeeId})</span></div>
                       <div className="text-red-600 font-medium">{err.reason}</div>
                     </div>
                   </li>

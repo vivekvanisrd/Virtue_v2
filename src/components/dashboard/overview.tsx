@@ -64,12 +64,12 @@ export function OverviewContent() {
            initial={{ opacity: 0, x: -20 }}
            animate={{ opacity: 1, x: 0 }}
         >
-          <h2 className="text-2xl lg:text-3xl font-bold text-slate-800 tracking-tight">System Overview</h2>
-          <p className="text-slate-500 font-medium mt-1 text-xs lg:text-sm">Real-time snapshots for {data.academicYear || "Current Session"}</p>
+          <h2 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight italic">System Overview</h2>
+          <p className="text-foreground opacity-50 font-medium mt-1 text-xs lg:text-sm italic">Real-time snapshots for {data.academicYear || "Current Session"}</p>
         </motion.div>
         
         <div className="flex gap-2 w-full lg:w-auto">
-             <button className="flex-1 lg:flex-none px-4 py-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-[10px] lg:text-xs premium-shadow">
+             <button className="flex-1 lg:flex-none px-4 py-2 bg-background border border-border rounded-xl font-bold text-foreground opacity-60 hover:opacity-100 hover:bg-muted transition-all text-[10px] lg:text-xs premium-shadow">
                 Reports
              </button>
              <button className="flex-1 lg:flex-none px-4 py-2 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all text-[10px] lg:text-xs premium-shadow shadow-primary/20">
@@ -86,7 +86,7 @@ export function OverviewContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="group bg-white p-5 lg:p-6 rounded-2xl border border-slate-100 premium-shadow hover:scale-[1.02] transition-all cursor-pointer overflow-hidden relative"
+            className="group bg-background p-5 lg:p-6 rounded-2xl border border-border premium-shadow hover:scale-[1.02] transition-all cursor-pointer overflow-hidden relative"
           >
             <div className={cn("absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-5 group-hover:scale-150 transition-transform duration-700", stat.color)} />
             
@@ -94,12 +94,12 @@ export function OverviewContent() {
               <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg", stat.color)}>
                  <stat.icon className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[9px] font-bold">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted text-primary rounded-full text-[9px] font-bold">
                  Live
               </div>
             </div>
-            <h3 className="text-slate-400 font-bold uppercase tracking-widest text-[9px] mb-0.5">{stat.label}</h3>
-            <p className="text-2xl font-black text-slate-800 tracking-tighter">{stat.value}</p>
+            <h3 className="text-foreground opacity-40 font-bold uppercase tracking-widest text-[9px] mb-0.5">{stat.label}</h3>
+            <p className="text-2xl font-black text-foreground tracking-tighter">{stat.value}</p>
           </motion.div>
         ))}
       </div>
@@ -107,7 +107,7 @@ export function OverviewContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
         <div className="lg:col-span-2 space-y-6">
             <div className="flex justify-between items-center">
-               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+               <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                   <Clock className="w-5 h-5 text-primary" />
                   Recent Activity Logs
                </h3>
@@ -123,54 +123,54 @@ export function OverviewContent() {
                    initial={{ opacity: 0, x: -10 }}
                    animate={{ opacity: 1, x: 0 }}
                    transition={{ delay: 0.1 + i * 0.05 }}
-                   className="bg-white p-4 rounded-2xl border border-slate-100 hover:border-primary/20 transition-all flex items-center gap-4 group cursor-pointer"
+                   className="bg-background p-4 rounded-2xl border border-border hover:border-primary/20 transition-all flex items-center gap-4 group cursor-pointer"
                  >
-                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                       <Layout className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
+                    <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                       <Layout className="w-5 h-5 text-foreground opacity-40 group-hover:text-primary transition-colors" />
                     </div>
                     <div className="flex-1 min-w-0">
-                       <h4 className="font-bold text-sm text-slate-800 group-hover:text-primary transition-colors truncate">{act.title}</h4>
-                       <p className="text-xs text-slate-400 font-medium truncate">{act.subtitle}</p>
+                       <h4 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">{act.title}</h4>
+                       <p className="text-xs text-foreground opacity-40 font-medium truncate">{act.subtitle}</p>
                     </div>
                     <div className="text-right whitespace-nowrap hidden sm:block">
-                       <p className="text-[10px] font-bold text-slate-500">{act.time}</p>
-                       <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{act.user}</p>
+                       <p className="text-[10px] font-bold text-foreground opacity-50">{act.time}</p>
+                       <p className="text-[9px] font-bold text-foreground opacity-30 uppercase tracking-widest">{act.user}</p>
                     </div>
                  </motion.div>
                )) : (
-                 <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No recent audit logs found</p>
+                 <div className="p-8 text-center bg-muted rounded-2xl border border-dashed border-border">
+                    <p className="text-xs font-bold text-foreground opacity-40 uppercase tracking-widest">No recent audit logs found</p>
                  </div>
                )}
             </div>
         </div>
 
         <div className="space-y-6">
-            <div className="bg-gradient-bg p-6 lg:p-8 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
+            <div className="bg-muted p-6 lg:p-8 rounded-[32px] text-foreground border border-border shadow-md relative overflow-hidden group">
                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
                    <ShieldCheck className="w-24 h-24" />
                </div>
                <h3 className="text-xl font-bold mb-3 relative z-10">Database Status</h3>
-               <p className="text-white/60 mb-6 relative z-10 text-sm font-medium italic">
+               <p className="text-foreground opacity-60 mb-6 relative z-10 text-sm font-medium italic">
                  {data.studentCount !== "..." ? "Systems are performing within optimal operational parameters." : "Syncing with school infrastructure..."}
                </p>
                
                <div className="space-y-4 relative z-10">
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-foreground opacity-40">
                      <span>Registry Integrity</span>
                      <span className="text-accent text-xs">Healthy</span>
                   </div>
-                  <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-background/20 h-2 rounded-full overflow-hidden">
                      <motion.div 
                        initial={{ width: 0 }}
                        animate={{ width: data.studentCount !== "..." ? "100%" : "20%" }}
                        transition={{ duration: 1.5, ease: "easeOut" }}
-                       className="bg-accent h-full shadow-[0_0_20px_rgba(124,77,255,0.8)]" 
+                       className="bg-primary h-full shadow-[0_0_20px_rgba(var(--primary),0.5)]" 
                      />
                   </div>
                </div>
                
-               <button className="mt-8 w-full py-3 bg-white text-primary rounded-xl font-bold shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs">
+               <button className="mt-8 w-full py-3 bg-background border border-border text-primary rounded-xl font-bold shadow-xl shadow-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs">
                   Connectivity Audit
                </button>
             </div>

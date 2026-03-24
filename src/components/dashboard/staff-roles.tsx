@@ -74,13 +74,13 @@ export function StaffRolesManager() {
   return (
     <div className="space-y-6">
       {/* Header Info */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-background p-6 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-primary" />
             Role Management
           </h2>
-          <p className="text-slate-500 mt-1">
+          <p className="text-foreground opacity-60 mt-1">
             Assign robust RBAC roles to your staff members to control system access.
           </p>
         </div>
@@ -104,27 +104,27 @@ export function StaffRolesManager() {
       )}
 
       {/* Staff List */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+      <div className="bg-background rounded-2xl border border-border shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-border bg-muted/50/50">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground opacity-50" />
             <input 
               type="text" 
               placeholder="Search staff by name or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+              className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm"
             />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center text-slate-400">
+          <div className="p-12 flex flex-col items-center justify-center text-foreground opacity-50">
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
             <p>Loading staff directory...</p>
           </div>
         ) : filteredStaff.length === 0 ? (
-          <div className="p-12 flex flex-col items-center justify-center text-slate-400">
+          <div className="p-12 flex flex-col items-center justify-center text-foreground opacity-50">
             <Users className="w-12 h-12 mb-4 opacity-20" />
             <p className="text-lg font-medium text-slate-600">No staff members found.</p>
             <p className="text-sm mt-1">Try adjusting your search or ensure the school has staff.</p>
@@ -133,11 +133,11 @@ export function StaffRolesManager() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold">
-                  <th className="p-4 font-bold border-b border-slate-100">Employee</th>
-                  <th className="p-4 font-bold border-b border-slate-100">Contact ID</th>
-                  <th className="p-4 font-bold border-b border-slate-100">Current Role</th>
-                  <th className="p-4 font-bold border-b border-slate-100 text-right">Manage Role</th>
+                <tr className="bg-muted/50 text-foreground opacity-60 text-xs uppercase tracking-wider font-bold">
+                  <th className="p-4 font-bold border-b border-border">Employee</th>
+                  <th className="p-4 font-bold border-b border-border">Contact ID</th>
+                  <th className="p-4 font-bold border-b border-border">Current Role</th>
+                  <th className="p-4 font-bold border-b border-border text-right">Manage Role</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -146,21 +146,21 @@ export function StaffRolesManager() {
                   const canManage = canManageRole(CURRENT_SCENARIO.actingUserRole, staff.role) && !isActingUser;
 
                   return (
-                    <tr key={staff.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <tr key={staff.id} className="hover:bg-muted/50/50 transition-colors group">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
                             {staff.firstName[0]}{staff.lastName?.[0] || ""}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-800">{staff.firstName} {staff.lastName}</div>
-                            <div className="text-xs text-slate-500">{staff.email || "No email"}</div>
+                            <div className="font-bold text-foreground">{staff.firstName} {staff.lastName}</div>
+                            <div className="text-xs text-foreground opacity-60">{staff.email || "No email"}</div>
                           </div>
                         </div>
                       </td>
                       <td className="p-4">
                         <div className="font-medium text-slate-700">{staff.employeeId}</div>
-                        <div className="text-xs text-slate-400">{staff.phone || "No phone"}</div>
+                        <div className="text-xs text-foreground opacity-50">{staff.phone || "No phone"}</div>
                       </td>
                       <td className="p-4">
                         <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold tracking-wider">
@@ -181,8 +181,8 @@ export function StaffRolesManager() {
                             className={cn(
                               "w-[140px] px-3 py-2 border rounded-lg text-sm font-medium outline-none transition-all",
                               canManage 
-                                ? "bg-white border-slate-200 hover:border-primary focus:border-primary cursor-pointer text-slate-700" 
-                                : "bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed opacity-60"
+                                ? "bg-background border-border hover:border-primary focus:border-primary cursor-pointer text-slate-700" 
+                                : "bg-muted/50 border-border text-foreground opacity-50 cursor-not-allowed opacity-60"
                             )}
                             title={!canManage ? "You do not have permission to manage this role" : "Change role"}
                           >

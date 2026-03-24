@@ -52,7 +52,7 @@ function WorkspaceRenderer() {
 
           {/* Fallback for truly unknown tabs */}
           {!["overview", "students", "students-all", "students-add", "students-promotion", "students-reports", "finance", "salaries", "accounting", "teachers", "staff", "staff-directory", "staff-roles", "staff-import", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
-            <div className="flex flex-col items-center justify-center h-full text-slate-300 py-40">
+            <div className="flex flex-col items-center justify-center h-full text-foreground opacity-30 py-40">
               <h2 className="text-2xl font-bold italic">Module Implementation Pending</h2>
               <p>The {tab.title} section is coming soon.</p>
             </div>

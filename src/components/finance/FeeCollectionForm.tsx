@@ -118,20 +118,20 @@ export function FeeCollectionForm() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[600px] items-start pb-20">
       {/* Left Column: Search & Profile */}
       <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 ring-1 ring-slate-900/5">
+        <div className="bg-background rounded-3xl border border-border shadow-xl p-6 ring-1 ring-slate-900/5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Student Lookup</h3>
+            <h3 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-[0.2em]">Student Lookup</h3>
             {loading && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
           </div>
           
           <form onSubmit={handleSearch} className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground opacity-50 group-focus-within:text-primary transition-colors" />
             <input
               type="text"
               placeholder="Search by Name or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-primary focus:bg-white outline-none transition-all shadow-inner"
+              className="w-full pl-11 pr-4 py-4 bg-muted/50 border-2 border-border rounded-2xl text-sm font-bold focus:border-primary focus:bg-background outline-none transition-all shadow-inner"
             />
           </form>
 
@@ -149,14 +149,14 @@ export function FeeCollectionForm() {
                     onClick={() => selectStudent(res.id)}
                     className="w-full text-left p-4 hover:bg-primary/5 transition-colors flex items-center gap-4 rounded-xl group relative overflow-hidden mb-2"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-black group-hover:bg-primary group-hover:text-white transition-all transform group-hover:scale-110">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-foreground opacity-50 text-xs font-black group-hover:bg-primary group-hover:text-white transition-all transform group-hover:scale-110">
                       {res.firstName[0]}
                     </div>
                     <div>
-                      <p className="text-sm font-black text-slate-900 leading-tight mb-0.5 group-hover:text-primary transition-colors">
+                      <p className="text-sm font-black text-foreground leading-tight mb-0.5 group-hover:text-primary transition-colors">
                         {res.firstName} {res.lastName}
                       </p>
-                      <p className="text-[10px] font-black text-slate-400 tracking-wider">
+                      <p className="text-[10px] font-black text-foreground opacity-50 tracking-wider">
                         {res.admissionId} • {res.academic?.classId || "Grade I"}
                       </p>
                     </div>
@@ -199,11 +199,11 @@ export function FeeCollectionForm() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 relative z-10">
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
+              <div className="bg-background/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 hover:bg-background/10 transition-colors">
                 <p className="text-[9px] text-white/30 uppercase font-black tracking-widest mb-1">Tuition Total</p>
                 <p className="text-lg font-black tracking-tight">{formatCurrency(tuition)}</p>
               </div>
-              <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
+              <div className="bg-background/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 hover:bg-background/10 transition-colors">
                 <p className="text-[9px] text-red-400 uppercase font-black tracking-widest mb-1">Scholarship</p>
                 <p className="text-lg font-black tracking-tight">-{formatCurrency(totalDiscount)}</p>
               </div>
@@ -222,12 +222,12 @@ export function FeeCollectionForm() {
       {/* Right Column: Fee Details & Collection */}
       <div className="lg:col-span-8">
         {!student ? (
-          <div className="bg-white rounded-[3rem] border-2 border-dashed border-slate-100 p-24 text-center group flex flex-col items-center justify-center min-h-[500px]">
-            <div className="w-20 h-20 bg-slate-50 rounded-[1.5rem] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-inner">
+          <div className="bg-background rounded-[3rem] border-2 border-dashed border-border p-24 text-center group flex flex-col items-center justify-center min-h-[500px]">
+            <div className="w-20 h-20 bg-muted/50 rounded-[1.5rem] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-inner">
               <User className="w-10 h-10 text-slate-200" />
             </div>
-            <h3 className="text-slate-900 font-black text-2xl tracking-tight mb-2 uppercase">Ready to Collect</h3>
-            <p className="text-slate-400 text-sm max-w-xs font-medium leading-relaxed">
+            <h3 className="text-foreground font-black text-2xl tracking-tight mb-2 uppercase">Ready to Collect</h3>
+            <p className="text-foreground opacity-50 text-sm max-w-xs font-medium leading-relaxed">
               Find a student record using the search panel to view their financial roadmap and record payments.
             </p>
           </div>
@@ -242,12 +242,12 @@ export function FeeCollectionForm() {
             />
 
             {/* Term Breakdown Grid */}
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden ring-1 ring-slate-900/5">
-              <div className="bg-slate-50 px-8 py-5 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="font-black text-slate-900 uppercase tracking-[0.2em] text-[10px]">Academic Fee Breakdown</h3>
+            <div className="bg-background rounded-[2.5rem] border border-border shadow-xl overflow-hidden ring-1 ring-slate-900/5">
+              <div className="bg-muted/50 px-8 py-5 border-b border-border flex justify-between items-center">
+                <h3 className="font-black text-foreground uppercase tracking-[0.2em] text-[10px]">Academic Fee Breakdown</h3>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Real-time DB Sync</span>
+                  <span className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Real-time DB Sync</span>
                 </div>
               </div>
               
@@ -257,16 +257,16 @@ export function FeeCollectionForm() {
                   { label: "Term 2 (25%)", amount: breakdown.term2, status: "UPCOMING", color: "slate" },
                   { label: "Term 3 (Settlement)", amount: breakdown.term3, status: "BENEFIT", color: "indigo" }
                 ].map((term, i) => (
-                  <div key={i} className="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:border-primary/20 transition-all hover:bg-white group cursor-default">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{term.label}</p>
-                    <p className="text-3xl font-black text-slate-900 mb-3 tracking-tighter transition-colors group-hover:text-primary">
+                  <div key={i} className="bg-muted/50 rounded-2xl p-6 border border-border hover:border-primary/20 transition-all hover:bg-background group cursor-default">
+                    <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-3">{term.label}</p>
+                    <p className="text-3xl font-black text-foreground mb-3 tracking-tighter transition-colors group-hover:text-primary">
                       {formatCurrency(term.amount)}
                     </p>
                     <div className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase",
                       term.color === 'amber' ? "bg-amber-100 text-amber-600" :
                       term.color === 'indigo' ? "bg-indigo-100 text-indigo-600" :
-                      "bg-slate-200 text-slate-500"
+                      "bg-slate-200 text-foreground opacity-60"
                     )}>
                       {term.status}
                     </div>
@@ -276,9 +276,9 @@ export function FeeCollectionForm() {
             </div>
 
             {/* Collection Logic Form */}
-            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl p-10 ring-1 ring-slate-900/5">
+            <div className="bg-background rounded-[3rem] border border-border shadow-2xl p-10 ring-1 ring-slate-900/5">
               <div className="flex items-center justify-between mb-10">
-                <h3 className="font-black text-slate-900 uppercase tracking-[0.2em] text-xs flex items-center gap-4">
+                <h3 className="font-black text-foreground uppercase tracking-[0.2em] text-xs flex items-center gap-4">
                   <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center">
                     <CreditCard className="w-5 h-5 text-primary" />
                   </div>
@@ -288,7 +288,7 @@ export function FeeCollectionForm() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
                 <div className="space-y-4">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-xs font-black text-foreground opacity-50 uppercase tracking-widest flex items-center gap-2">
                     Collection Amount <span className="text-red-500">*</span>
                   </label>
                   <div className="relative group">
@@ -297,15 +297,15 @@ export function FeeCollectionForm() {
                       type="number"
                       value={paymentAmount || ""}
                       onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                      className="w-full pl-14 pr-8 py-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-4xl font-black text-slate-900 focus:border-primary focus:bg-white outline-none transition-all shadow-inner placeholder:text-slate-200"
+                      className="w-full pl-14 pr-8 py-6 bg-muted/50 border-2 border-border rounded-[1.5rem] text-4xl font-black text-foreground focus:border-primary focus:bg-background outline-none transition-all shadow-inner placeholder:text-slate-200"
                       placeholder="0.00"
                     />
                   </div>
-                  <p className="text-[10px] text-slate-400 font-medium italic pl-2">Enter the exact amount collected from the parent.</p>
+                  <p className="text-[10px] text-foreground opacity-50 font-medium italic pl-2">Enter the exact amount collected from the parent.</p>
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Payment Channel</label>
+                  <label className="text-xs font-black text-foreground opacity-50 uppercase tracking-widest">Payment Channel</label>
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { id: "Cash", icon: Banknote },
@@ -320,7 +320,7 @@ export function FeeCollectionForm() {
                           "flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 transition-all group relative overflow-hidden",
                           paymentMode === mode.id 
                             ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" 
-                            : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                            : "bg-background border-border text-foreground opacity-50 hover:border-border"
                         )}
                       >
                         <mode.icon className={cn("w-6 h-6", paymentMode === mode.id ? "text-white" : "text-slate-300")} />
@@ -338,12 +338,12 @@ export function FeeCollectionForm() {
 
               <div className="flex flex-col md:flex-row gap-8 items-stretch pt-6 border-t border-slate-50">
                 <div className="flex-1 space-y-3">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Reference / ID (Optional)</label>
+                  <label className="text-xs font-black text-foreground opacity-50 uppercase tracking-widest">Reference / ID (Optional)</label>
                   <input
                     type="text"
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
-                    className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-primary focus:bg-white outline-none transition-all shadow-inner"
+                    className="w-full px-6 py-5 bg-muted/50 border-2 border-border rounded-2xl text-sm font-bold focus:border-primary focus:bg-background outline-none transition-all shadow-inner"
                     placeholder="Chq No, UTR, or Remarks..."
                   />
                 </div>
@@ -378,15 +378,15 @@ export function FeeCollectionForm() {
                   >
                     <CheckCircle2 className="w-12 h-12 mx-auto mb-4" />
                     <h4 className="text-2xl font-black tracking-tight mb-2">Collection Verified!</h4>
-                    <div className="bg-white/10 rounded-xl p-4 inline-block border border-white/20 mb-4">
+                    <div className="bg-background/10 rounded-xl p-4 inline-block border border-white/20 mb-4">
                       <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">Receipt Entry Added</p>
                       <p className="text-2xl font-black tracking-widest">{success}</p>
                     </div>
                     <div className="flex justify-center gap-4">
-                      <button className="px-6 py-2 bg-white text-green-600 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-green-50 transition-colors">
+                      <button className="px-6 py-2 bg-background text-green-600 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-green-50 transition-colors">
                         Print Thermal Receipt
                       </button>
-                      <button className="px-6 py-2 bg-transparent text-white border border-white/30 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-colors">
+                      <button className="px-6 py-2 bg-transparent text-white border border-white/30 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-background/10 transition-colors">
                         Send via Firebase Push
                       </button>
                     </div>

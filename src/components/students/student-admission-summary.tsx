@@ -12,10 +12,11 @@ import { toPng } from "html-to-image";
 interface SummaryProps {
   studentData: any;
   admissionId: string;
+  schoolName?: string;
   onReset: () => void;
 }
 
-export function StudentAdmissionSummary({ studentData, admissionId, onReset }: SummaryProps) {
+export function StudentAdmissionSummary({ studentData, admissionId, schoolName, onReset }: SummaryProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -127,9 +128,9 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
   };
 
   const InfoRow = ({ label, value, className }: { label: string; value: string | number | null | undefined; className?: string }) => (
-    <div className={cn("grid grid-cols-2 py-1.5 border-b border-slate-50 last:border-0", className)}>
-      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{label}</span>
-      <span className="text-[12px] font-semibold text-slate-700">{value || "N/A"}</span>
+    <div className={cn("grid grid-cols-2 py-1.5 border-b border-border last:border-0", className)}>
+      <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">{label}</span>
+      <span className="text-[12px] font-semibold text-foreground opacity-80">{value || "N/A"}</span>
     </div>
   );
 
@@ -138,7 +139,7 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
       <div className="p-1.5 bg-primary/5 rounded-lg border border-primary/10">
         <Icon className="w-3.5 h-3.5 text-primary" />
       </div>
-      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">{title}</h3>
+      <h3 className="text-xs font-black text-foreground uppercase tracking-wider">{title}</h3>
     </div>
   );
 
@@ -151,28 +152,28 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
             <CheckCircle2 className="w-6 h-6 text-emerald-500" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 leading-none">Admission Successful</h2>
-            <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-tight">Record stored in secure cloud repository</p>
+            <h2 className="text-xl font-black text-foreground leading-none">Admission Successful</h2>
+            <p className="text-xs text-foreground opacity-60 mt-1 uppercase font-bold tracking-tight">Record stored in secure cloud repository</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border border-slate-200"
+            className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground opacity-70 text-xs font-bold rounded-xl transition-all border border-border"
           >
             <Printer className="w-3.5 h-3.5" />
             Print
           </button>
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-slate-200"
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-primary/10"
           >
             <Download className="w-3.5 h-3.5" />
             Download PDF
           </button>
           <button
             onClick={onReset}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-bold rounded-xl transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-background border border-border hover:border-primary/50 text-foreground opacity-60 text-xs font-bold rounded-xl transition-all"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             New Admission
@@ -183,22 +184,22 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
       {/* ─── Printable Document ─── */}
       <div 
         ref={printRef}
-        className="bg-white rounded-2xl border border-slate-200 shadow-xl print:shadow-none print:border-0 overflow-hidden print-container"
+        className="bg-background rounded-2xl border border-border shadow-xl print:shadow-none print:border-0 overflow-hidden print-container"
       >
         {/* Document Header (Fixed Layout for Print) */}
-        <div className="p-8 print:p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-start print:bg-white">
+        <div className="p-8 print:p-6 bg-muted/50 border-b border-border flex justify-between items-start print:bg-background">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-black text-white text-sm uppercase">V</div>
-              <h1 className="text-2xl font-black tracking-tighter text-slate-900 uppercase">Virtue Modern School</h1>
+              <h1 className="text-2xl font-black tracking-tighter text-foreground uppercase">{schoolName || "Virtue School"}</h1>
             </div>
-            <p className="text-xs text-slate-500 max-w-[300px] font-medium leading-relaxed uppercase">
+            <p className="text-xs text-foreground opacity-60 max-w-[300px] font-medium leading-relaxed uppercase">
               Official Student Registration Form <br />
               Generated on {new Date().toLocaleDateString()}
             </p>
           </div>
           <div className="text-right">
-            <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration ID</span>
+            <span className="block text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Registration ID</span>
             <span className="block text-2xl font-black text-primary font-mono">{admissionId}</span>
           </div>
         </div>
@@ -209,7 +210,7 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
           <div className="space-y-4 print:space-y-2">
             <div>
               <SectionHeader icon={User} title="Student Information" />
-              <div className="bg-slate-50/50 p-4 print:p-3 rounded-xl border border-slate-100/50">
+              <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
                 <InfoRow label="Full Name" value={`${studentData.firstName} ${studentData.lastName || ""}`} />
                 <InfoRow label="Gender" value={studentData.gender} />
                 <InfoRow label="DOB" value={studentData.dateOfBirth} />
@@ -221,12 +222,12 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
 
             <div>
               <SectionHeader icon={School} title="Academic Placement" />
-              <div className="bg-slate-50/50 p-4 print:p-3 rounded-xl border border-slate-100/50">
-                <InfoRow label="Class" value={studentData.classId} />
-                <InfoRow label="Section" value={studentData.sectionId} />
+              <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
+                <InfoRow label="Class" value={studentData.className || studentData.classId} />
+                <InfoRow label="Section" value={studentData.sectionName || studentData.sectionId} />
                 <InfoRow label="Academic Year" value={studentData.academicYearId} />
                 <InfoRow label="Admission Date" value={studentData.admissionDate} />
-                <InfoRow label="Branch" value={studentData.branchId} />
+                <InfoRow label="Branch" value={studentData.branchName || studentData.branchId} />
                 <InfoRow label="PEN Number" value={studentData.penNumber} />
               </div>
             </div>
@@ -236,22 +237,25 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
           <div className="space-y-4 print:space-y-2">
             <div>
               <SectionHeader icon={Users} title="Family Details" />
-              <div className="bg-slate-50/50 p-4 print:p-3 rounded-xl border border-slate-100/50">
+              <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
                 <InfoRow label="Father Name" value={studentData.fatherName} />
                 <InfoRow label="Father Phone" value={studentData.fatherPhone} />
+                <InfoRow label="Father Aadhaar" value={studentData.fatherAadhaar} />
+                <hr className="my-2 border-border/30" />
                 <InfoRow label="Mother Name" value={studentData.motherName} />
                 <InfoRow label="Mother Phone" value={studentData.motherPhone} />
+                <InfoRow label="Mother Aadhaar" value={studentData.motherAadhaar} />
                 <InfoRow label="Emergency Contact" value={studentData.emergencyContactPhone} />
               </div>
             </div>
 
             <div>
               <SectionHeader icon={CreditCard} title="Financial Snapshot" />
-              <div className="bg-slate-50/50 p-4 print:p-3 rounded-xl border border-slate-100/50">
+              <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
                 <InfoRow label="Tuition Fee" value={studentData.tuitionFee} />
                 <InfoRow label="Admission Fee" value={studentData.admissionFee} />
                 <InfoRow label="Payment Mode" value={studentData.paymentType} />
-                <div className="flex justify-between items-center py-3 print:py-2 mt-2 border-t border-slate-200">
+                <div className="flex justify-between items-center py-3 print:py-2 mt-2 border-t border-border">
                   <span className="text-[10px] font-black text-slate-800 uppercase">Estimated 1st Term Dues</span>
                   <span className="text-base font-black text-emerald-600">
                     ₹{(Number(studentData.tuitionFee || 0) + Number(studentData.admissionFee || 0)) * 0.5}
@@ -265,15 +269,15 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
           <div className="col-span-2 mt-2 print:mt-1 space-y-4 print:space-y-1">
             <div>
               <SectionHeader icon={MapPin} title="Residence & Transport" />
-              <div className="bg-slate-50/50 p-4 print:p-2.5 rounded-xl border border-slate-100/50 grid grid-cols-2 gap-x-12">
+              <div className="bg-muted/50/50 p-4 print:p-2.5 rounded-xl border border-border/50 grid grid-cols-2 gap-x-12">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Address</span>
+                  <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">Address</span>
                   <p className="text-[11px] font-semibold text-slate-700 leading-tight">
                     {studentData.currentAddress}, {studentData.city}, {studentData.pinCode}
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Transport Integration</span>
+                  <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">Transport Integration</span>
                   <p className="text-[11px] font-semibold text-slate-700">
                     {studentData.transportRequired ? `Required: ${studentData.pickupStop}` : "Not Required"}
                   </p>
@@ -285,22 +289,22 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
           {/* ─── Signature Section ─── */}
           <div className="col-span-2 mt-8 print:mt-12 grid grid-cols-2 gap-24 px-4 pb-6 print:pb-4">
             <div className="text-center">
-              <div className="border-t border-slate-300 pt-3">
-                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">School In-charge Signature</p>
-                <p className="text-[8px] text-slate-400 mt-1 uppercase font-bold tracking-tight">Office Seal Required</p>
+              <div className="border-t border-border pt-3">
+                <p className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none">School In-charge Signature</p>
+                <p className="text-[8px] text-foreground opacity-50 mt-1 uppercase font-bold tracking-tight">Office Seal Required</p>
               </div>
             </div>
             <div className="text-center">
-              <div className="border-t border-slate-300 pt-3">
-                <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Parent / Guardian Signature</p>
-                <p className="text-[8px] text-slate-400 mt-1 uppercase font-bold tracking-tight">Declared as Correct Information</p>
+              <div className="border-t border-border pt-3">
+                <p className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none">Parent / Guardian Signature</p>
+                <p className="text-[8px] text-foreground opacity-50 mt-1 uppercase font-bold tracking-tight">Declared as Correct Information</p>
               </div>
             </div>
           </div>
 
           {/* Footer Note */}
-          <div className="col-span-2 text-center border-t border-slate-50 pt-4 print:pt-2 opacity-50">
-            <p className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em]">
+          <div className="col-span-2 text-center border-t border-border opacity-50">
+            <p className="text-[9px] text-foreground opacity-50 uppercase font-black tracking-[0.2em]">
               Authorized Computer Generated Receipt • Virtue School Management System • Confidential Student Data
             </p>
           </div>
@@ -347,14 +351,14 @@ export function StudentAdmissionSummary({ studentData, admissionId, onReset }: S
             }
 
             /* Force light theme colors on specific elements */
-            .bg-slate-50, .bg-slate-50\/50 { background-color: #f8fafc !important; }
-            .text-slate-900 { color: #0f172a !important; }
+            .bg-muted/50, .bg-muted/50\/50 { background-color: #f8fafc !important; }
+            .text-foreground { color: #0f172a !important; }
             .text-slate-800 { color: #1e293b !important; }
             .text-slate-700 { color: #334155 !important; }
-            .text-slate-500 { color: #64748b !important; }
-            .text-slate-400 { color: #94a3b8 !important; }
-            .border-slate-100 { border-color: #f1f5f9 !important; }
-            .border-slate-200 { border-color: #e2e8f0 !important; }
+            .text-foreground opacity-60 { color: #64748b !important; }
+            .text-foreground opacity-50 { color: #94a3b8 !important; }
+            .border-border { border-color: #f1f5f9 !important; }
+            .border-border { border-color: #e2e8f0 !important; }
             .border-slate-300 { border-color: #cbd5e1 !important; }
             
             /* Tighten spacing for single page */

@@ -13,10 +13,10 @@ export function StudentsContent({ tabId }: StudentsContentProps) {
   if (tabId === "students-add") {
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Student Admission</h2>
-            <p className="text-slate-500 font-medium text-[10px] uppercase tracking-wider">Enroll a new student into the Virtue System</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Student Admission</h2>
+            <p className="text-slate-500 font-medium text-sm mt-1">Enroll a student into the Virtue system</p>
           </div>
         </div>
         <StudentForm />
@@ -29,11 +29,11 @@ export function StudentsContent({ tabId }: StudentsContentProps) {
       <div className="space-y-4 h-full">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <h2 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
               Admission Enquiries
             </h2>
-            <p className="text-slate-500 font-medium text-[10px] uppercase tracking-wider">Manage incoming enquiries from website</p>
+            <p className="text-foreground opacity-50 font-medium text-[10px] uppercase tracking-wider">Manage incoming enquiries from website</p>
           </div>
         </div>
         <EnquiryManager />
@@ -54,11 +54,11 @@ export function StudentsContent({ tabId }: StudentsContentProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+          <h2 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
             Student Directory
           </h2>
-          <p className="text-slate-500 font-medium text-[10px] uppercase tracking-wider">Search, filter and manage all enrolled students</p>
+          <p className="text-foreground opacity-50 font-medium text-[10px] uppercase tracking-wider">Search, filter and manage all enrolled students</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2 mr-2">

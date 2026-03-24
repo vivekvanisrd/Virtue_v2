@@ -79,7 +79,7 @@ export default function FeeConfigPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/50 p-8 space-y-10">
+        <div className="min-h-screen bg-background p-8 space-y-10">
             {/* Header */}
             <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div className="space-y-1">
@@ -120,19 +120,19 @@ export default function FeeConfigPage() {
                 {/* Editor Overlay / Column */}
                 {(showForm || structures.length === 0) && (
                     <div className="xl:col-span-1 border-r border-slate-200 pr-8 animate-in slide-in-from-left duration-500">
-                        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-6">
-                            <h2 className="font-black text-slate-900 uppercase tracking-widest text-xs border-b border-slate-100 pb-4 flex items-center gap-2">
+                        <form onSubmit={handleSubmit} className="bg-background p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-6">
+                            <h2 className="font-black text-slate-900 uppercase tracking-widest text-xs border-b border-border pb-4 flex items-center gap-2">
                                 <Plus className="w-4 h-4 text-primary" />
                                 New Fee Schedule
                             </h2>
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Schedule Name</label>
+                                    <label className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Schedule Name</label>
                                     <input 
                                         type="text"
                                         placeholder="e.g. Standard 10th - 2026"
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                        className="w-full bg-slate-50 border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                         value={formData.name}
                                         onChange={e => setFormData({...formData, name: e.target.value})}
                                         required
@@ -140,9 +140,9 @@ export default function FeeConfigPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Class</label>
+                                    <label className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Target Class</label>
                                     <select 
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                                        className="w-full bg-slate-50 border border-border rounded-xl px-4 py-3 text-sm focus:outline-none"
                                         value={formData.classId}
                                         onChange={e => setFormData({...formData, classId: e.target.value})}
                                         required
@@ -153,9 +153,9 @@ export default function FeeConfigPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Cycle</label>
+                                    <label className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Academic Cycle</label>
                                     <select 
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                                        className="w-full bg-slate-50 border border-border rounded-xl px-4 py-3 text-sm focus:outline-none"
                                         value={formData.academicYearId}
                                         onChange={e => setFormData({...formData, academicYearId: e.target.value})}
                                         required
@@ -166,11 +166,11 @@ export default function FeeConfigPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Annual Tuition (₹)</label>
+                                    <label className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Total Annual Tuition (₹)</label>
                                     <input 
                                         type="number"
                                         placeholder="0.00"
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900"
+                                        className="w-full bg-slate-50 border border-border rounded-xl px-4 py-3 text-sm font-bold text-slate-900"
                                         value={formData.totalAmount}
                                         onChange={e => setFormData({...formData, totalAmount: Number(e.target.value)})}
                                         required
@@ -181,7 +181,7 @@ export default function FeeConfigPage() {
                             <button 
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-2"
+                                className="w-full bg-primary hover:bg-primary/90 shadow-primary/20 transition-all font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-2 p-4 rounded-xl text-white"
                             >
                                 {isLoading ? 'Processing...' : 'Deploy Schedule'}
                             </button>
@@ -191,13 +191,13 @@ export default function FeeConfigPage() {
 
                 {/* List View */}
                 <div className={showForm ? 'xl:col-span-3' : 'xl:col-span-4'}>
-                    <div className="bg-white rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                    <div className="bg-background rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-8 border-b border-border flex items-center justify-between">
                             <h2 className="font-black text-slate-900 uppercase tracking-widest text-xs flex items-center gap-2">
                                 <LayoutGrid className="w-4 h-4 text-primary" />
                                 Active Fee Structures
                             </h2>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-foreground opacity-50 uppercase tracking-widest">
                                 <TrendingUp className="w-3 h-3 text-emerald-500" />
                                 {structures.length} Live Schedules
                             </div>
@@ -206,7 +206,7 @@ export default function FeeConfigPage() {
                         {isLoading && structures.length === 0 ? (
                             <div className="p-20 text-center space-y-4">
                                 <RefreshCcw className="w-10 h-10 text-slate-200 animate-spin mx-auto" />
-                                <p className="text-slate-400 font-medium italic">Loading financial matrices...</p>
+                                <p className="text-foreground opacity-50 font-medium italic">Loading financial matrices...</p>
                             </div>
                         ) : structures.length === 0 ? (
                             <div className="p-20 text-center space-y-6">
@@ -215,19 +215,19 @@ export default function FeeConfigPage() {
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-slate-900 font-black uppercase tracking-widest text-sm">No active schedules</p>
-                                    <p className="text-slate-400 text-xs font-medium">Create your first fee structure to begin billing students.</p>
+                                    <p className="text-foreground opacity-50 text-xs font-medium">Create your first fee structure to begin billing students.</p>
                                 </div>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-slate-50/50">
-                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name & Code</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Class Tier</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Cycle</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Tuition Amount</th>
-                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Protocol Actions</th>
+                                        <tr className="bg-background">
+                                            <th className="px-8 py-5 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Name & Code</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Class Tier</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Academic Cycle</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest text-right">Tuition Amount</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest text-center">Protocol Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -235,7 +235,7 @@ export default function FeeConfigPage() {
                                             <tr key={s.id} className="hover:bg-slate-50/80 transition-colors group">
                                                 <td className="px-8 py-6">
                                                     <div className="font-black text-slate-900 uppercase tracking-tight group-hover:text-primary transition-colors">{s.name}</div>
-                                                    <div className="text-[10px] text-slate-400 font-medium">ID: {s.id.substring(0,8)}...</div>
+                                                    <div className="text-[10px] text-foreground opacity-50 font-medium">ID: {s.id.substring(0,8)}...</div>
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <span className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-600 uppercase tracking-widest border border-slate-200">
@@ -247,7 +247,7 @@ export default function FeeConfigPage() {
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
                                                     <div className="text-lg font-black text-slate-900 tracking-tighter">{formatCurrency(s.totalAmount)}</div>
-                                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Annual Gross</div>
+                                                    <div className="text-[9px] text-foreground opacity-50 font-bold uppercase tracking-widest">Annual Gross</div>
                                                 </td>
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center justify-center gap-3">
@@ -260,7 +260,7 @@ export default function FeeConfigPage() {
                                                             Sync Students
                                                         </button>
                                                         <button className="p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                                                            <ChevronRight className="w-4 h-4 text-slate-400" />
+                                                            <ChevronRight className="w-4 h-4 text-foreground opacity-50" />
                                                         </button>
                                                     </div>
                                                 </td>

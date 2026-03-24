@@ -79,17 +79,17 @@ export default function LoginPage() {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-[1100px] grid grid-cols-1 lg:grid-cols-2 bg-white/5 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden shadow-2xl premium-shadow"
+        className="w-full max-w-[1100px] grid grid-cols-1 lg:grid-cols-2 bg-background/5 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden shadow-2xl premium-shadow"
       >
         {/* Left Side: Illustration & Branding */}
-        <div className="relative hidden lg:flex flex-col justify-center p-16 text-white overflow-hidden bg-white/5 border-r border-white/5">
+        <div className="relative hidden lg:flex flex-col justify-center p-16 text-white overflow-hidden bg-background/5 border-r border-white/5">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
             className="mb-8"
           >
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
+            <div className="w-16 h-16 bg-background/10 rounded-2xl flex items-center justify-center mb-6">
                 <Zap className="w-8 h-8 text-white fill-white" />
             </div>
             <h1 className="text-5xl font-bold mb-4 tracking-tight leading-tight">
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 transition={{ delay: 0.4 + (i * 0.1) }}
                 className="flex items-center gap-4 text-white/50"
               >
-                <div className="p-2 bg-white/5 rounded-lg">
+                <div className="p-2 bg-background/5 rounded-lg">
                   <feature.icon className="w-5 h-5" />
                 </div>
                 <span className="font-medium text-sm">{feature.text}</span>
@@ -126,10 +126,10 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side: Login Form */}
-        <div className="p-8 lg:p-16 flex flex-col justify-center bg-white">
+        <div className="p-8 lg:p-16 flex flex-col justify-center bg-background">
           <div className="mb-10 text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">Internal Portal</h2>
-            <p className="text-slate-500 font-medium">Authorized credentials required</p>
+            <h2 className="text-3xl font-bold text-foreground mb-2">Internal Portal</h2>
+            <p className="text-foreground opacity-60 font-medium">Authorized credentials required</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -141,9 +141,9 @@ export default function LoginPage() {
 
             {/* Identifier Field */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 ml-1">Username or Email</label>
+              <label className="text-sm font-bold text-foreground ml-1">Username or Email</label>
               <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground opacity-50 group-focus-within:text-primary transition-colors">
                   <User className="w-5 h-5" />
                 </div>
                 <input
@@ -151,7 +151,7 @@ export default function LoginPage() {
                   type="text"
                   placeholder="your.email@school.com"
                   className={cn(
-                    "w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary focus:bg-white transition-all text-slate-800 font-medium",
+                    "w-full pl-12 pr-4 py-4 bg-muted/50 border-2 border-border rounded-2xl outline-none focus:border-primary focus:bg-background transition-all text-foreground font-medium",
                     errors.identifier && "border-red-500 focus:border-red-500"
                   )}
                 />
@@ -164,10 +164,10 @@ export default function LoginPage() {
             {/* Password Field */}
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
-                <label className="text-sm font-bold text-slate-700">Password</label>
+                <label className="text-sm font-bold text-foreground">Password</label>
               </div>
               <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground opacity-50 group-focus-within:text-primary transition-colors">
                   <Lock className="w-5 h-5" />
                 </div>
                 <input
@@ -175,14 +175,14 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   className={cn(
-                    "w-full pl-12 pr-12 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary focus:bg-white transition-all text-slate-800 font-medium",
+                    "w-full pl-12 pr-12 py-4 bg-muted/50 border-2 border-border rounded-2xl outline-none focus:border-primary focus:bg-background transition-all text-foreground font-medium",
                     errors.password && "border-red-500 focus:border-red-500"
                   )}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground opacity-50 hover:text-slate-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -211,8 +211,8 @@ export default function LoginPage() {
           </form>
 
           {/* Footer help */}
-          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
-             <p className="text-slate-400 text-sm font-medium">
+          <div className="mt-10 pt-8 border-t border-border text-center">
+             <p className="text-foreground opacity-50 text-sm font-medium">
                Authorized Personnel Only. Contact system administrator for access help.
              </p>
           </div>

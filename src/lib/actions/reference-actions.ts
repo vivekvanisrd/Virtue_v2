@@ -7,7 +7,7 @@ export async function getAdmissionReferenceData() {
     try {
         const context = await getTenantContext();
         
-        const [branches, academicYears, classes, feeSchedules] = await Promise.all([
+        const [branches, academicYears, classes, feeSchedules, school] = await Promise.all([
             prisma.branch.findMany({
                 where: { schoolId: context.schoolId },
                 select: { id: true, name: true }
@@ -23,6 +23,10 @@ export async function getAdmissionReferenceData() {
             prisma.feeStructure.findMany({
                 where: { schoolId: context.schoolId },
                 select: { id: true, name: true }
+            }),
+            prisma.school.findUnique({
+                where: { id: context.schoolId },
+                select: { name: true }
             })
         ]);
 
@@ -32,7 +36,8 @@ export async function getAdmissionReferenceData() {
                 branches,
                 academicYears,
                 classes,
-                feeSchedules
+                feeSchedules,
+                schoolName: school?.name || "Virtue School"
             }
         };
     } catch (e: any) {

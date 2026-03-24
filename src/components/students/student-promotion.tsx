@@ -32,7 +32,7 @@ export function StudentPromotionManager() {
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="bg-background rounded-3xl border border-border shadow-sm p-8 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden">
       {/* Decorative BG */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-fuchsia-500/5 blur-[100px] rounded-full pointer-events-none" />
@@ -42,14 +42,14 @@ export function StudentPromotionManager() {
           <Sparkles className="w-8 h-8" />
         </div>
         
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Year-End Promotions & Consent</h2>
-        <p className="text-slate-500 font-medium mb-10">Generate unique, secure re-admission consent links for parents. This automates the fee generation and profile update process for the upcoming academic year.</p>
+        <h2 className="text-3xl font-black text-foreground tracking-tight mb-2">Year-End Promotions & Consent</h2>
+        <p className="text-foreground opacity-60 font-medium mb-10">Generate unique, secure re-admission consent links for parents. This automates the fee generation and profile update process for the upcoming academic year.</p>
 
-        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="bg-muted/50 p-6 rounded-2xl border border-border flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1 text-left">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Target Class to Promote</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block">Target Class to Promote</label>
             <select 
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-bold opacity-80 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
             >
@@ -59,8 +59,8 @@ export function StudentPromotionManager() {
           </div>
 
           <div className="flex-1 text-left">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Target Academic Year</label>
-            <div className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-black cursor-not-allowed">
+            <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block">Target Academic Year</label>
+            <div className="w-full bg-background/50 border border-border rounded-xl px-4 py-3 text-foreground font-black opacity-90 cursor-not-allowed">
               {TARGET_YEAR}
             </div>
           </div>
@@ -69,7 +69,7 @@ export function StudentPromotionManager() {
         <button 
           onClick={handleGenerate}
           disabled={!selectedClass || loading}
-          className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-xl transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-4 bg-primary hover:bg-primary/90 text-white font-black rounded-xl transition-all shadow-xl shadow-primary/10 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
              <><Loader2 className="w-5 h-5 animate-spin" /> Processing Batch...</>
@@ -86,21 +86,21 @@ export function StudentPromotionManager() {
         )}
 
         {linksGenerated && (
-          <div className="mt-8 text-left border-t border-slate-100 pt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
-            <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+          <div className="mt-8 text-left border-t border-border pt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
+            <h3 className="text-sm font-black text-foreground mb-4 flex items-center gap-2">
               <Send className="w-4 h-4 text-primary" /> Distribute Links
             </h3>
-            <p className="text-xs text-slate-500 mb-4">Links have been generated in the database. You can now use the Communication module to bulk SMS these links to parents, or copy them individually below.</p>
+            <p className="text-xs text-foreground opacity-60 mb-4">Links have been generated in the database. You can now use the Communication module to bulk SMS these links to parents, or copy them individually below.</p>
             
             {/* Mock List of links for demo purposes */}
             <div className="space-y-3">
               {[1, 2].map((i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:border-primary/50 transition-colors">
+                <div key={i} className="flex items-center justify-between p-3 bg-background border border-border rounded-xl hover:border-primary/50 transition-colors">
                   <div>
-                    <p className="text-xs font-bold text-slate-700">Student Name {i}</p>
-                    <p className="text-[10px] text-slate-400">Consent Status: <span className="text-orange-500 font-bold">Pending</span></p>
+                    <p className="text-xs font-bold text-foreground opacity-70">Student Name {i}</p>
+                    <p className="text-[10px] text-foreground opacity-50">Consent Status: <span className="text-orange-500 font-bold">Pending</span></p>
                   </div>
-                  <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-primary transition-colors">
+                  <button className="p-2 hover:bg-muted/50 rounded-lg text-foreground opacity-50 hover:text-primary transition-colors">
                     <Copy className="w-4 h-4" />
                   </button>
                 </div>

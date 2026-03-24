@@ -62,79 +62,79 @@ export function SchoolCreationForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* School Basic Info */}
               <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-sm font-black text-foreground opacity-50 uppercase tracking-widest flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
                   School Identity
                 </h3>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 ml-1">Unique School ID</label>
+                  <label className="text-xs font-bold text-foreground ml-1">Unique School ID</label>
                   <input
                     required
                     name="schoolId"
                     placeholder="e.g. VIRTUE-HQ"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-primary focus:bg-white transition-all outline-none font-bold text-slate-800"
+                    className="w-full px-4 py-3 bg-muted/50 border-2 border-border rounded-xl focus:border-primary focus:bg-background transition-all outline-none font-bold text-foreground"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 ml-1">Full School Name</label>
+                  <label className="text-xs font-bold text-foreground ml-1">Full School Name</label>
                   <input
                     required
                     name="name"
                     placeholder="e.g. Virtue Modern School"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-primary focus:bg-white transition-all outline-none font-bold text-slate-800"
+                    className="w-full px-4 py-3 bg-muted/50 border-2 border-border rounded-xl focus:border-primary focus:bg-background transition-all outline-none font-bold text-foreground"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 ml-1">Internal Code</label>
+                  <label className="text-xs font-bold text-foreground ml-1">Internal Code</label>
                   <input
                     required
                     name="code"
                     placeholder="e.g. VMS"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-primary focus:bg-white transition-all outline-none font-bold text-slate-800"
+                    className="w-full px-4 py-3 bg-muted/50 border-2 border-border rounded-xl focus:border-primary focus:bg-background transition-all outline-none font-bold text-foreground"
                   />
                 </div>
               </div>
 
               {/* Branch & Admin Info */}
               <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-sm font-black text-foreground opacity-50 uppercase tracking-widest flex items-center gap-2">
                   <Globe className="w-4 h-4" />
                   Initial Deployment
                 </h3>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 ml-1">First Branch Name</label>
+                  <label className="text-xs font-bold text-foreground ml-1">First Branch Name</label>
                   <input
                     required
                     name="branchName"
                     placeholder="e.g. Main Campus"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-primary focus:bg-white transition-all outline-none font-bold text-slate-800"
+                    className="w-full px-4 py-3 bg-muted/50 border-2 border-border rounded-xl focus:border-primary focus:bg-background transition-all outline-none font-bold text-foreground"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 ml-1">Branch Code</label>
+                  <label className="text-xs font-bold text-foreground ml-1">Branch Code</label>
                   <input
                     required
                     name="branchCode"
                     placeholder="e.g. MAIN"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-primary focus:bg-white transition-all outline-none font-bold text-slate-800"
+                    className="w-full px-4 py-3 bg-muted/50 border-2 border-border rounded-xl focus:border-primary focus:bg-background transition-all outline-none font-bold text-foreground"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 ml-1">Owner Email</label>
+                  <label className="text-xs font-bold text-foreground ml-1">Owner Email</label>
                   <input
                     required
                     type="email"
                     name="adminEmail"
                     placeholder="owner@school.com"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-primary focus:bg-white transition-all outline-none font-bold text-slate-800"
+                    className="w-full px-4 py-3 bg-muted/50 border-2 border-border rounded-xl focus:border-primary focus:bg-background transition-all outline-none font-bold text-foreground"
                   />
-                  <p className="text-[10px] text-slate-400 font-medium italic mt-1 leading-tight">
+                  <p className="text-[10px] text-foreground opacity-50 font-medium italic mt-1 leading-tight">
                     This email will be the primary access key for the school owner.
                   </p>
                 </div>
@@ -172,8 +172,8 @@ export function SchoolCreationForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 italic">Instance Ready</h2>
-            <p className="text-slate-500 font-bold max-w-xs">
+            <h2 className="text-2xl font-black text-foreground italic">Instance Ready</h2>
+            <p className="text-foreground opacity-60 font-bold max-w-xs">
               The school has been successfully registered in the multi-tenant registry.
             </p>
           </motion.div>

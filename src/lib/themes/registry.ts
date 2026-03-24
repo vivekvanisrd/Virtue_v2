@@ -59,6 +59,21 @@ export const themes: Theme[] = [
       "--card": "#000000",
       "--sidebar-bg": "#000000",
     }
+  },
+  {
+    id: "virtue-classic",
+    name: "Virtue Classic",
+    colors: {
+      "--background": "#ffffff",
+      "--foreground": "#000000",
+      "--primary": "#0047ab",
+      "--primary-foreground": "#ffffff",
+      "--accent": "#f7941d",
+      "--muted": "#f1f5f9",
+      "--border": "#e2e8f0",
+      "--card": "#ffffff",
+      "--sidebar-bg": "#ffffff",
+    }
   }
 ];
 
