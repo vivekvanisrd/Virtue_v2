@@ -104,7 +104,7 @@ async function main() {
             await prisma.$transaction(async (tx) => {
                 const student = await tx.student.create({
                     data: {
-                        admissionId: admissionNo || `MIG-${Math.random().toString(36).substring(7)}`,
+                        admissionNumber: admissionNo || `MIG-${Math.random().toString(36).substring(7)}`,
                         firstName: firstName,
                         lastName: lastName,
                         schoolId: SCHOOL_ID,

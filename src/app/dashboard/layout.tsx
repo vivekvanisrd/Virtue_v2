@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import DashboardShell from "@/components/layout/dashboard-shell";
 import { getTenantContext } from "@/lib/utils/tenant-context";
 import { redirect } from "next/navigation";

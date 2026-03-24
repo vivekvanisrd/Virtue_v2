@@ -53,7 +53,7 @@ export async function createSchoolAction(formData: {
       // and the multi-tenancy logic will link them via the Staff record.
       const staff = await tx.staff.create({
         data: {
-          employeeId: "ADMIN-001",
+          staffCode: "ADMIN-001",
           firstName: "School",
           lastName: "Admin",
           email: formData.adminEmail,

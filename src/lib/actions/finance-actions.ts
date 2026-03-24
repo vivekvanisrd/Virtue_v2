@@ -62,12 +62,12 @@ export async function recordFeeCollection(params: {
     if (!activeFY) throw new Error("Active Financial Year not found for this school.");
 
     // 2. Scoped Receipt Number
-    const receiptNumber = await CounterService.generateFormattedId({
+    const receiptNumber = await CounterService.generateReceiptNumber({
       schoolId: context.schoolId,
+      schoolCode: context.schoolId, // Using schoolId as schoolCode here for simplicity in this legacy call
       branchId: context.branchId,
-      type: "RECEIPT",
-      year: new Date().getFullYear().toString(),
-      prefix: "VR-REC"
+      branchCode: context.branchId.split('-').pop() || "MNB01", 
+      year: new Date().getFullYear().toString()
     });
 
     // 3. Atomic Financial Operation

@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Virtue V2 | Next Gen School ERP",
-  description: "Experience lightning-fast school management with Virtue 2.0",
+  title: "Virtue V2 | Enterprise School ERP",
+  description: "Experience lightning-fast school management with Virtue Enterprise",
 };
 
 import { UIProvider } from "@/providers/ui-provider";

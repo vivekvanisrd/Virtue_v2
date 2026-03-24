@@ -1,3 +1,7 @@
+export const dynamic = "force-dynamic";
+
+import { OverviewContent } from "@/components/dashboard/overview";
+
 export default function DashboardPage() {
-  return null; // Content is managed by the Tab system in the Shell
+  return <OverviewContent />;
 }

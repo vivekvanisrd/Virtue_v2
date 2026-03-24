@@ -69,7 +69,7 @@ export async function initializeSystem(data: SetupInput) {
       
       const owner = await tx.staff.create({
         data: {
-          employeeId: employeeId,
+        staffCode: employeeId,
           schoolId: school.id,
           branchId: branch.id,
           firstName: validatedData.ownerFirstName,
@@ -130,7 +130,12 @@ export async function claimSchoolOwnership(schoolId: string) {
 
     // Check if user is already linked elsewhere
     const existingLink = await prisma.staff.findUnique({
-      where: { userId: user.id }
+      where: { 
+        schoolId_userId: { 
+          schoolId, 
+          userId: user.id 
+        } 
+      }
     });
 
     if (existingLink) {

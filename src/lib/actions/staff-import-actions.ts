@@ -8,7 +8,7 @@ import { logActivity } from "@/lib/utils/audit-logger";
 const csvRowSchema = z.object({
   firstName: z.string().min(2, "First Name required"),
   lastName: z.string().min(1, "Last Name required"),
-  employeeId: z.string().min(2, "Employee ID required"),
+  staffCode: z.string().min(2, "Employee ID required"),
   email: z.string().email("Valid email required").optional().or(z.literal("")),
   phone: z.string().min(10, "Phone must be at least 10 chars").optional().or(z.literal("")),
   role: z.string().min(2, "Role is required"),
@@ -54,12 +54,12 @@ export async function importStaffCSV(records: any[], schoolId: string, branchId:
   // But doing a pre-check allows granular error reporting per row.
   const existingStaff = await prisma.staff.findMany({
     where: { schoolId },
-    select: { employeeId: true, email: true, phone: true }
+    select: { staffCode: true, email: true, phone: true }
   });
 
   const existingEmails = new Set(existingStaff.filter(s => s.email).map(s => s.email?.toLowerCase()));
   const existingPhones = new Set(existingStaff.filter(s => s.phone).map(s => s.phone));
-  const existingEmployeeIds = new Set(existingStaff.map(s => s.employeeId.toUpperCase()));
+  const existingEmployeeIds = new Set(existingStaff.map(s => s.staffCode.toUpperCase()));
 
   const validRecordsToInsert: any[] = [];
   
@@ -78,7 +78,7 @@ export async function importStaffCSV(records: any[], schoolId: string, branchId:
       
       const email = row.email ? row.email.toLowerCase() : undefined;
       const phone = row.phone;
-      const empId = row.employeeId.toUpperCase();
+      const empId = row.staffCode.toUpperCase();
       const fullName = `${row.firstName} ${row.lastName}`;
 
       // 2. Validate Global System DB Duplicates
@@ -94,7 +94,7 @@ export async function importStaffCSV(records: any[], schoolId: string, branchId:
 
       if (duplicateReason !== "") {
         result.skippedCount++;
-        result.errors.push({ row: rowNum, employeeId: row.employeeId, name: fullName, reason: duplicateReason });
+        result.errors.push({ row: rowNum, employeeId: row.staffCode, name: fullName, reason: duplicateReason });
         continue; // Skip insertion for this row
       }
 
@@ -108,7 +108,7 @@ export async function importStaffCSV(records: any[], schoolId: string, branchId:
         firstName: row.firstName,
         lastName: row.lastName,
         middleName: row.middleName || null,
-        employeeId: empId,
+        staffCode: empId,
         email: email || null,
         phone: phone || null,
         role: row.role.toUpperCase(), // Ensure we cast role securely
@@ -123,7 +123,7 @@ export async function importStaffCSV(records: any[], schoolId: string, branchId:
       const zErr = err.issues ? err.issues.map((iss:any) => iss.message).join(", ") : "Invalid data structure";
       result.errors.push({ 
         row: rowNum, 
-        employeeId: rawRow.employeeId || "?", 
+        employeeId: rawRow.staffCode || "?", 
         name: `${rawRow.firstName || '?'} ${rawRow.lastName || '?'}`, 
         reason: zErr 
       });

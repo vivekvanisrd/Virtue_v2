@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -77,7 +79,7 @@ export default function InstanceFactory() {
         addLog(`OK: School ${res.schoolId} synchronized.`);
         addLog("OK: Admin staff record linked.");
         addLog("OK: Tenancy counters initialized.");
-        setResult({ success: true, message: res.message, schoolId: res.schoolId || '' });
+        setResult({ success: true, message: res.message || "Success", schoolId: res.schoolId || '' });
     } else {
         addLog(`ERROR: ${res.error}`);
         setResult({ success: false, message: res.error || "Provisioning failed." });
