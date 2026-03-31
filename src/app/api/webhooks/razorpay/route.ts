@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { recordFeeCollection } from "@/lib/actions/finance-actions";
 
 /**
