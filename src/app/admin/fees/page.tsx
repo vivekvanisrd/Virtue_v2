@@ -26,6 +26,7 @@ export default async function FeesPage() {
             <WalletCards className="w-3.5 h-3.5" />
             Financial Management Engine
           </div>
+    </TabProvider>
           <h1 className="text-5xl font-black text-foreground font-black tracking-tighter leading-tight sm:text-6xl animate-in slide-in-from-left duration-700">
             Fee Collection <span className="text-primary italic font-serif">Portal.</span>
           </h1>
@@ -33,6 +34,7 @@ export default async function FeesPage() {
             Atomic ledger entries, automated discount realization (Term 3), and parent-facing roadmap visualizers for zero-friction collections.
           </p>
         </div>
+    </TabProvider>
 
         {/* Real-time KPI Cards */}
         <div className="flex flex-wrap items-center gap-4 animate-in fade-in zoom-in duration-1000">
@@ -66,9 +68,12 @@ export default async function FeesPage() {
                 <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Advanced Setup</p>
                 <p className="text-xs font-black uppercase tracking-widest">Fee Configuration</p>
             </div>
+    </TabProvider>
           </Link>
         </div>
+    </TabProvider>
       </div>
+    </TabProvider>
 
       {/* Void Request Manager (Manager's Audit Tray) */}
       <VoidRequestManager />
@@ -78,6 +83,7 @@ export default async function FeesPage() {
         <FeeCollectionForm />
       </section>
     </div>
+    </TabProvider>
   );
 }
 
@@ -87,6 +93,7 @@ function KPICard({ icon, label, value, trend, sub }: any) {
       <div className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-foreground opacity-50">
         {icon}
       </div>
+    </TabProvider>
       <div>
         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">{label}</p>
         <div className="flex items-baseline gap-2">
@@ -94,7 +101,10 @@ function KPICard({ icon, label, value, trend, sub }: any) {
           {trend && <span className="text-[10px] font-bold text-green-500">{trend}</span>}
           {sub && <span className="text-[10px] font-bold text-slate-300">{sub}</span>}
         </div>
+    </TabProvider>
       </div>
+    </TabProvider>
     </div>
+    </TabProvider>
   );
 }
