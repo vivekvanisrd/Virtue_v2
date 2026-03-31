@@ -14,7 +14,9 @@ import {
   ArrowLeft,
   CalendarDays,
   User,
-  Users
+  Users,
+  Zap,
+  Trash2
 } from "lucide-react";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 import { 
@@ -22,6 +24,7 @@ import {
   recordFeeCollection, 
   findPotentialSiblings 
 } from "@/lib/actions/finance-actions";
+import { createPaymentLinkAction } from "@/lib/actions/payment-actions";
 import { 
   calculateTermBreakdown, 
   formatCurrency, 
@@ -62,7 +65,9 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     accountNo: "",
     chequeNo: "",
     upiId: "",
-    transactionId: ""
+    transactionId: "",
+    paymentLink: "",
+    linkLoading: false
   });
   const [showQR, setShowQR] = useState(false);
   const [siblings, setSiblings] = useState<any[]>([]);
@@ -215,6 +220,35 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const totals = getBatchTotals();
   const grandTotal = totals.terms + totals.lateFees;
 
+  const generateRazorpayLink = async () => {
+    if (settlements.length === 0 || settlements.every(s => s.selectedTerms.length === 0)) return;
+    
+    setPaymentDetails(prev => ({ ...prev, linkLoading: true }));
+    setError(null);
+
+    // For Razorpay links, we use the first student as the primary customer for the batch
+    const primary = settlements[0];
+    const total = grandTotal;
+    const allTerms = settlements.flatMap(s => s.selectedTerms.map(t => `${s.student.firstName}:${t}`));
+
+    const res = await createPaymentLinkAction({
+      amount: total,
+      studentId: primary.student.id,
+      studentName: `${primary.student.firstName} ${primary.student.lastName}`,
+      email: primary.student.guardianEmail || undefined,
+      contact: primary.student.guardianPhone || undefined,
+      notes: `Batch Settlement for ${settlements.length} students`,
+      terms: allTerms
+    });
+
+    if (res.success && res.shortUrl) {
+      setPaymentDetails(prev => ({ ...prev, paymentLink: res.shortUrl as string }));
+    } else {
+      setError(res.error || "Failed to generate Razorpay link");
+    }
+    setPaymentDetails(prev => ({ ...prev, linkLoading: false }));
+  };
+
   const processPayment = async () => {
     if (settlements.length === 0 || settlements.every(s => s.selectedTerms.length === 0)) return;
     
@@ -277,7 +311,15 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       // Clean up batch state
       setSettlements([]);
       setSiblings([]);
-      setPaymentDetails({ bankName: "", accountNo: "", chequeNo: "", upiId: "", transactionId: "" });
+      setPaymentDetails({ 
+        bankName: "", 
+        accountNo: "", 
+        chequeNo: "", 
+        upiId: "", 
+        transactionId: "",
+        paymentLink: "",
+        linkLoading: false
+      });
     }
     
     setCollectionLoading(false);
@@ -561,13 +603,16 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                         { id: "Cash", icon: Banknote },
                         { id: "UPI", icon: QrCode },
                         { id: "Cheque", icon: CreditCard },
+                        { id: "Razorpay", icon: Zap },
                       ].map(mode => (
                         <button
                           key={mode.id}
                           onClick={() => setPaymentMode(mode.id)}
                           className={cn(
                             "flex-1 flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
-                            paymentMode === mode.id ? "bg-primary border-primary text-white shadow-xl" : "bg-slate-50 border-slate-100 text-slate-400"
+                            paymentMode === mode.id 
+                              ? (mode.id === "Razorpay" ? "bg-amber-500 border-amber-600 text-white shadow-xl" : "bg-primary border-primary text-white shadow-xl")
+                              : "bg-slate-50 border-slate-100 text-slate-400"
                           )}
                         >
                           <mode.icon className="w-5 h-5" />
@@ -578,19 +623,41 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   </div>
 
                   {paymentMode !== "Cash" && (
-                     <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="grid grid-cols-1 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         {paymentMode === "Cheque" ? (
-                          <>
+                          <div className="grid grid-cols-2 gap-3">
                             <input placeholder="Cheque No" value={paymentDetails.chequeNo} onChange={(e) => setPaymentDetails({...paymentDetails, chequeNo: e.target.value})} className="bg-white border-slate-200 border rounded-lg p-2 text-[10px] font-bold" />
                             <input placeholder="Bank" value={paymentDetails.bankName} onChange={(e) => setPaymentDetails({...paymentDetails, bankName: e.target.value})} className="bg-white border-slate-200 border rounded-lg p-2 text-[10px] font-bold" />
-                          </>
-                        ) : (
-                          <>
+                          </div>
+                        ) : paymentMode === "UPI" ? (
+                          <div className="flex gap-3">
                             <input placeholder="TXN Reference" value={paymentDetails.transactionId} onChange={(e) => setPaymentDetails({...paymentDetails, transactionId: e.target.value})} className="bg-white border-slate-200 border rounded-lg p-3 text-[10px] font-bold flex-1" />
                             <button onClick={() => setShowQR(true)} className="px-4 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase">Show QR</button>
-                          </>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                             {paymentDetails.paymentLink ? (
+                               <div className="flex flex-col gap-2">
+                                  <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Active Payment Link Generated</p>
+                                  <div className="flex gap-2">
+                                     <input readOnly value={paymentDetails.paymentLink} className="flex-1 bg-white border-amber-200 border rounded-xl p-3 text-xs font-mono text-amber-700" />
+                                     <button 
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(paymentDetails.paymentLink);
+                                          alert("Link Copied to Clipboard!");
+                                        }}
+                                        className="px-4 bg-amber-500 text-white rounded-xl text-[10px] font-black"
+                                     >
+                                        COPY
+                                     </button>
+                                  </div>
+                               </div>
+                             ) : (
+                               <p className="text-[10px] font-medium text-slate-400 italic">Click 'Generate Link' to create a unique Razorpay invoice for this batch.</p>
+                             )}
+                          </div>
                         )}
-                     </div>
+                      </div>
                   )}
                 </div>
 
@@ -607,11 +674,18 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   </div>
 
                   <button
-                    onClick={processPayment}
-                    disabled={collectionLoading || grandTotal === 0}
-                    className="w-full bg-slate-900 text-white p-6 rounded-[2rem] font-black text-xl hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-4"
+                    onClick={paymentMode === "Razorpay" ? generateRazorpayLink : processPayment}
+                    disabled={collectionLoading || paymentDetails.linkLoading || grandTotal === 0}
+                    className={cn(
+                      "w-full p-6 rounded-[2rem] font-black text-xl transition-all disabled:opacity-50 flex items-center justify-center gap-4",
+                      paymentMode === "Razorpay" ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-slate-900 hover:bg-slate-800 text-white"
+                    )}
                   >
-                    {collectionLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>COMPLETE BATCH SETTLEMENT</>}
+                    {collectionLoading || paymentDetails.linkLoading ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <>{paymentMode === "Razorpay" ? "GENERATE RAZORPAY LINK" : "COMPLETE BATCH SETTLEMENT"}</>
+                    )}
                   </button>
                 </div>
               </div>
