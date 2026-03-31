@@ -34,6 +34,8 @@ export const studentAdmissionSchema = z.object({
   email: globalEmailSchema.optional().or(z.literal("")),
 
   // Academic
+  admissionNumber: z.string().optional(),
+  studentCode: z.string().optional(),
   branchId: z.string().min(1, "Branch is required"),
   academicYearId: z.string().min(1, "Academic Year is required"),
   admissionDate: z.string().min(1, "Admission Date is required"),

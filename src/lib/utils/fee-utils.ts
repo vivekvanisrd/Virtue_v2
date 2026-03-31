@@ -1,54 +1,92 @@
 import { Decimal } from "@prisma/client/runtime/library";
 
+export interface TermDetail {
+  amount: number;
+  dueDate: Date;
+  isPaid: boolean;
+  label: string;
+}
+
 export interface FeeBreakdown {
-  term1: number;
-  term2: number;
-  term3: number;
+  term1: TermDetail;
+  term2: TermDetail;
+  term3: TermDetail;
   totalDiscount: number;
   annualNet: number;
+  paymentType: string;
 }
 
 /**
- * Calculates the 50/25/25 split for annual tuition fees.
- * Realizes all discounts exclusively in the 3rd term (Late Realization).
+ * Calculates the breakdown for annual tuition fees.
+ * Term-wise: 50% / 25% / 25%
+ * Annual: 100% / 0% / 0%
  * 
  * @param annualTuition Total annual amount (Gross)
  * @param totalDiscount Sum of all applied discounts
+ * @param paymentType "Term-wise" or "Annual"
  */
 export const calculateTermBreakdown = (
   annualTuition: number | Decimal,
-  totalDiscount: number | Decimal = 0
+  totalDiscount: number | Decimal = 0,
+  paymentType: string = "Term-wise"
 ): FeeBreakdown => {
   const tuition = typeof annualTuition === 'number' ? annualTuition : Number(annualTuition);
   const discount = typeof totalDiscount === 'number' ? totalDiscount : Number(totalDiscount);
   
-  // Strict legacy split: 50% / 25% / 25%
-  const term1 = Math.round(tuition * 0.5);
-  const term2 = Math.round(tuition * 0.25);
-  const term3Base = Math.round(tuition * 0.25);
-  
-  // Realize all discounts in Term 3 (User preference)
-  // If discount exceeds Term 3, we cap at zero. 
-  // (In a real audit, we'd flag if discount > 25% of annual tuition)
-  const term3 = Math.max(0, term3Base - discount);
-  
-  const annualNet = term1 + term2 + term3;
+  let t1Amt, t2Amt, t3Amt;
+
+  if (paymentType === "Annual") {
+    t1Amt = Math.max(0, tuition - discount);
+    t2Amt = 0;
+    t3Amt = 0;
+  } else {
+    // Strict legacy split: 50% / 25% / 25% with recursive discount handling
+    let remainingDiscount = discount;
+    
+    let t3Base = Math.round(tuition * 0.25);
+    let t2Base = Math.round(tuition * 0.25);
+    let t1Base = Math.round(tuition * 0.5);
+
+    // Apply discount starting from Term 3 backwards
+    t3Amt = Math.max(0, t3Base - remainingDiscount);
+    remainingDiscount = Math.max(0, remainingDiscount - t3Base);
+
+    t2Amt = Math.max(0, t2Base - remainingDiscount);
+    remainingDiscount = Math.max(0, remainingDiscount - t2Base);
+
+    t1Amt = Math.max(0, t1Base - remainingDiscount);
+  }
+
+  const currentYear = new Date().getFullYear();
   
   return {
-    term1,
-    term2,
-    term3,
+    term1: { 
+        amount: t1Amt, 
+        dueDate: new Date(currentYear, 5, 10), // June 10
+        isPaid: false, 
+        label: paymentType === "Annual" ? "Annual Settlement" : "Term 1 (50%)" 
+    },
+    term2: { 
+        amount: t2Amt, 
+        dueDate: new Date(currentYear, 9, 10), // Oct 10
+        isPaid: false, 
+        label: "Term 2 (25%)" 
+    },
+    term3: { 
+        amount: t3Amt, 
+        dueDate: new Date(currentYear + 1, 0, 10), // Jan 10
+        isPaid: false, 
+        label: "Term 3 (Settlement)" 
+    },
     totalDiscount: discount,
-    annualNet
+    annualNet: t1Amt + t2Amt + t3Amt,
+    paymentType
   };
 };
 
 /**
  * High-visibility late fee calculation
  * Legacy Rule: ₹5 per day from the first day late.
- * 
- * @param dueDate The deadline for the fee payment
- * @returns Object with amount and days late count
  */
 export const calculateLateFee = (dueDate: Date): { amount: number; daysLate: number } => {
   const today = new Date();
@@ -68,6 +106,55 @@ export const calculateLateFee = (dueDate: Date): { amount: number; daysLate: num
     amount: daysLate * 5,
     daysLate
   };
+};
+
+/**
+ * Validates if the payment meets the cumulative milestone (50/75/100%).
+ * 
+ * @param paymentFor The term being paid
+ * @param newTotalPaid Total paid after this transaction
+ * @param netAnnual Annual fee after all discounts
+ */
+export const validateMilestone = (
+  paymentFor: string, 
+  newTotalPaid: number, 
+  netAnnual: number
+): { success: boolean; required: number; percent: number } => {
+  let threshold = 0;
+  let percent = 0;
+
+  if (paymentFor === "term1") { threshold = netAnnual * 0.50; percent = 50; }
+  else if (paymentFor === "term2") { threshold = netAnnual * 0.75; percent = 75; }
+  else if (paymentFor === "term3") { threshold = netAnnual * 1.00; percent = 100; }
+  else return { success: true, required: 0, percent: 0 };
+
+  return {
+    success: newTotalPaid >= (threshold - 1), // Allow 1 rupee rounding buffer
+    required: threshold,
+    percent
+  };
+};
+
+/**
+ * Checks if Advance payment is allowed (Legacy rule: current year must be clear).
+ */
+export const canPayAdvance = (totalPaid: number, netAnnual: number): boolean => {
+  return totalPaid >= (netAnnual - 1);
+};
+
+/**
+ * Generates a standard UPI Intent string for QR code generation.
+ * Format: upi://pay?pa=VPA&pn=NAME&am=AMOUNT&tr=REF&tn=NOTE
+ */
+export const generateUPIString = (params: {
+  vpa: string;
+  name: string;
+  amount: number;
+  reference: string;
+  note: string;
+}) => {
+  const { vpa, name, amount, reference, note } = params;
+  return `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${amount}&tr=${encodeURIComponent(reference)}&tn=${encodeURIComponent(note)}&cu=INR`;
 };
 
 /**

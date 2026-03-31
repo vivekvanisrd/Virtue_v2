@@ -51,6 +51,7 @@ const menuItems: MenuItem[] = [
     id: "students", 
     name: "Students", 
     icon: GraduationCap, 
+    component: "Students",
     subItems: [
       { id: "students-all", name: "All Students", component: "Students" },
       { id: "students-add", name: "Add Student", component: "Students" },
@@ -63,18 +64,20 @@ const menuItems: MenuItem[] = [
     id: "salaries", 
     name: "Salaries", 
     icon: Briefcase,
+    component: "Salaries",
     requiredRole: ROLES.ACCOUNTANT,
     subItems: [
-      { id: "salary-dashboard", name: "Salary Dashboard", component: "Salaries" },
-      { id: "salary-manager", name: "Unified Manager", component: "Salaries" },
+      { id: "salary-dashboard", name: "Salary Hub", component: "Salaries" },
+      { id: "salary-manager", name: "Unified Payroll Manager", component: "Salaries" },
       { id: "salary-batches", name: "Payroll Batches", component: "Salaries" },
-      { id: "salary-payments", name: "Record Payments", component: "Salaries" },
+      { id: "salary-payments", name: "Manage Salary Registry", component: "Salaries" },
     ]
   },
   { 
     id: "finance", 
     name: "Finance", 
     icon: Wallet,
+    component: "Finance",
     requiredRole: ROLES.ACCOUNTANT,
     subItems: [
       { id: "fee-collection", name: "Fee Collection", component: "Finance" },
@@ -89,9 +92,11 @@ const menuItems: MenuItem[] = [
     id: "staff", 
     name: "Staff", 
     icon: Users,
+    component: "Staff",
     requiredRole: ROLES.PRINCIPAL,
     subItems: [
       { id: "staff-directory", name: "Directory", component: "Staff" },
+      { id: "staff-attendance", name: "Attendance Ledger", component: "Staff" },
       { id: "staff-roles", name: "Role Management", component: "Staff" },
       { id: "staff-import", name: "Bulk Import", component: "Staff" }
     ]
@@ -115,9 +120,9 @@ const menuItems: MenuItem[] = [
     id: "settings", 
     name: "Settings", 
     icon: Settings, 
-    requiredRole: ROLES.OWNER,
     subItems: [
       { id: "settings-general", name: "General Settings", component: "Settings" },
+      { id: "settings-banking", name: "Banking Integration", component: "Settings" },
       { id: "settings-audit", name: "System Audit Log", component: "Settings" }
     ]
   },
@@ -242,12 +247,12 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
         <div className={cn("flex items-center justify-between mb-8 lg:mb-10 relative z-10 p-6", isCollapsed && "justify-center px-0")}>
           {!isCollapsed && (
             <div className="flex items-center gap-4 p-2 animate-in fade-in duration-500">
-              <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shadow-lg shadow-accent/20 shrink-0">
-                <Sparkles className="w-6 h-6 text-white fill-white" />
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-black/5 shrink-0 overflow-hidden border border-slate-100">
+                <img src="/school-logo.png" alt="School Logo" className="w-full h-full object-contain p-1" />
               </div>
               <div className="truncate">
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Virtue V2</h1>
-                <p className="text-[8px] uppercase tracking-[2px] text-foreground opacity-40 font-bold">Enterprise</p>
+                <h1 className="text-lg font-black tracking-tight text-slate-900 italic">Virtue V2</h1>
+                <p className="text-[8px] uppercase tracking-[2px] text-slate-400 font-bold">Enterprise Suite</p>
               </div>
             </div>
           )}
@@ -304,7 +309,14 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen, userRole = ROLES.STAFF 
             return (
               <div key={item.id} className="space-y-1">
                 <button
-                  onClick={(e) => hasSubItems ? toggleExpand(item.id, e) : handleOpenTab(item)}
+                  onClick={(e) => {
+                    if (hasSubItems) {
+                      toggleExpand(item.id, e);
+                      if (item.component) handleOpenTab(item);
+                    } else {
+                      handleOpenTab(item);
+                    }
+                  }}
                   title={isCollapsed ? item.name : ""}
                   className={cn(
                     "group flex items-center gap-4 w-full text-left rounded-2xl transition-all duration-300 relative",

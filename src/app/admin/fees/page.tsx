@@ -1,6 +1,9 @@
 import { FeeCollectionForm } from "@/components/finance/FeeCollectionForm";
+import { VoidRequestManager } from "@/components/finance/VoidRequestManager";
 import { WalletCards, TrendingUp, Users, Clock, Settings2 } from "lucide-react";
 import Link from "next/link";
+import { getFinanceKPIs } from "@/lib/actions/finance-actions";
+import { formatCurrency } from "@/lib/utils/fee-utils";
 
 /**
  * FeesPage
@@ -8,7 +11,10 @@ import Link from "next/link";
  * The main administrative entry point for fee management.
  * Provides high-level KPIs and the primary collection form.
  */
-export default function FeesPage() {
+export default async function FeesPage() {
+  const kpiRes = await getFinanceKPIs();
+  const kpis = (kpiRes.success && kpiRes.data) ? kpiRes.data : { dailyRevenue: 0, collectionsToday: 0, voidRequests: 0, activeFYName: "N/A" };
+
   return (
     <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-10 min-h-screen bg-background">
       {/* Dynamic Header Section */}
@@ -31,19 +37,25 @@ export default function FeesPage() {
           <KPICard 
             icon={<TrendingUp className="w-4 h-4" />} 
             label="Daily Revenue" 
-            value="₹1,42,850" 
-            trend="+12%" 
+            value={formatCurrency(kpis.dailyRevenue)} 
+            trend={kpis.dailyRevenue > 0 ? "+Live" : undefined} 
           />
           <KPICard 
             icon={<Users className="w-4 h-4" />} 
             label="Collections" 
-            value="24" 
+            value={kpis.collectionsToday.toString()} 
             sub="Today" 
+          />
+          <KPICard 
+            icon={<Settings2 className="w-4 h-4" />} 
+            label="Void Req" 
+            value={kpis.voidRequests?.toString() || "0"} 
+            trend={kpis.voidRequests > 0 ? "Action Req" : undefined}
           />
           <KPICard 
             icon={<Clock className="w-4 h-4" />} 
             label="Fiscal Year" 
-            value="2024-25" 
+            value={kpis.activeFYName} 
             sub="Active" 
           />
           <Link href="/admin/fees/config" className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-4 rounded-3xl flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-slate-900/10">
@@ -55,6 +67,9 @@ export default function FeesPage() {
           </Link>
         </div>
       </div>
+
+      {/* Void Request Manager (Manager's Audit Tray) */}
+      <VoidRequestManager />
 
       {/* Main Interactive Form */}
       <section className="animate-in fade-in slide-in-from-bottom-10 duration-1000">

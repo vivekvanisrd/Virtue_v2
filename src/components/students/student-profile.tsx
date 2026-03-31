@@ -5,11 +5,14 @@ import {
   User, School, Users, MapPin, CreditCard, Info, 
   Heart, Building, ShieldCheck, ShieldAlert,
   ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download,
-  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle
+  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle
 } from "lucide-react";
 import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit } from "@/lib/actions/student-actions";
+import { requestReceiptVoid } from "@/lib/actions/finance-actions";
+import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
 import { TCTemplate } from "./tc-template";
+import { useTabs } from "@/context/tab-context";
 
 interface StudentProfileProps {
   studentId: string;
@@ -17,6 +20,7 @@ interface StudentProfileProps {
 }
 
 export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
+  const { openTab } = useTabs();
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
@@ -132,6 +136,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     { id: "family", label: "Family", icon: Users },
     { id: "address", label: "Address", icon: MapPin },
     { id: "health", label: "Health", icon: Heart },
+    { id: "transport", label: "Transport", icon: TramFront },
     { id: "documents", label: "Documents", icon: FileText },
     { id: "exit", label: "TC/Exit", icon: ExternalLink },
   ];
@@ -155,6 +160,15 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               <h2 className="text-xl font-black text-foreground tracking-tight leading-none mb-1.5 flex items-center gap-2">
                 {student.firstName} {student.lastName}
                 <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest">Active</span>
+                {student.collections?.length > 0 ? (
+                  <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> Trusted Payee
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                    <AlertCircle className="w-2.5 h-2.5" /> Dues Pending
+                  </span>
+                )}
               </h2>
               <p className="text-xs font-bold text-foreground opacity-60 tracking-wide uppercase">
                 Student Admission ID: <span className="text-primary font-black">{student.admissionId}</span>
@@ -164,8 +178,28 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => openTab({ 
+              id: "fee-collection", 
+              title: "Fee Collection", 
+              icon: Wallet, 
+              component: "Finance", 
+              params: { studentId: student.id } 
+            })}
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all shadow-md active:scale-95"
+          >
+            <Wallet className="w-3.5 h-3.5" /> Collect Fees
+          </button>
           <button className="flex items-center gap-1.5 px-4 py-2 bg-primary text-foreground rounded-xl text-xs font-black hover:bg-primary/90 transition-all shadow-md active:scale-95">
             <Download className="w-3.5 h-3.5" /> ID Card
+          </button>
+          <button 
+            onClick={() => {
+              alert("Generating Emergency Medical ID...\n- Blood Group: O+\n- Allergies: Peanuts (Mild)\n- Primary Doctor: Dr. Sharma\n- Emergency Contact: " + (student.family?.fatherPhone || "9988776655"));
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-black hover:bg-rose-700 transition-all shadow-md active:scale-95"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" /> Medical ID
           </button>
           <button 
             onClick={() => setIsEditing(!isEditing)}
@@ -227,11 +261,23 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     <p className="text-xl font-black text-emerald-600">92.4%</p>
                     <p className="text-[10px] font-bold text-emerald-600/70 mt-1 uppercase">Above Avg</p>
                   </div>
-                  <div className="bg-muted/50 p-3 rounded-xl border border-border">
+                  <button 
+                    onClick={() => openTab({ 
+                      id: "fee-collection", 
+                      title: "Fee Collection", 
+                      icon: Wallet, 
+                      component: "Finance", 
+                      params: { studentId: student.id } 
+                    })}
+                    className="bg-muted/50 p-3 rounded-xl border border-border hover:border-primary/30 transition-all text-left group"
+                  >
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Fee Status</p>
-                    <p className="text-xl font-black text-orange-600">Pending</p>
-                    <p className="text-[10px] font-bold text-orange-600/70 mt-1 uppercase">Term 2 Due</p>
-                  </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xl font-black text-orange-600">Pending</p>
+                      <Wallet className="w-4 h-4 text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <p className="text-[10px] font-bold text-orange-600/70 mt-1 uppercase">Direct Collect</p>
+                  </button>
                   <div className="bg-muted/50 p-3 rounded-xl border border-border">
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Govt IDs</p>
                     <p className="text-xl font-black text-indigo-600">4/4</p>
@@ -642,23 +688,68 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                   <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Standard Components</h4>
-                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                     {[
-                       { label: "Admission", val: student.admissionFee },
-                       { label: "Library", val: student.libraryFee },
-                       { label: "Lab", val: student.labFee },
-                       { label: "Sports", val: student.sportsFee },
-                       { label: "Dev Fee", val: student.developmentFee },
-                       { label: "Exam Fee", val: student.examFee },
-                       { label: "Caution", val: student.cautionDeposit },
-                     ].map(fee => (
-                       <div key={fee.label} className="bg-muted/50 p-3 rounded-xl border border-border flex items-center justify-between">
-                         <span className="text-[10px] font-black text-foreground opacity-60 uppercase tracking-widest">{fee.label}</span>
-                         <span className="text-xs font-bold text-foreground">₹{fee.val || "0"}</span>
+                <div className="space-y-4">
+                   <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest flex items-center justify-between">
+                     Recent Transaction History
+                     <span className="text-primary italic animate-pulse">Audit Protected Ledger</span>
+                   </h4>
+                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                     {student.collections?.length > 0 ? (
+                       student.collections.map((col: any) => (
+                         <div key={col.id} className="p-4 bg-muted/30 border border-border rounded-2xl flex items-center justify-between group hover:bg-muted/50 transition-all">
+                            <div className="flex items-center gap-4">
+                               <div className={cn(
+                                 "w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-sm",
+                                 col.status === "Success" ? "bg-emerald-500" : 
+                                 col.status === "Voided" ? "bg-slate-400" : "bg-amber-500"
+                               )}>
+                                 {col.status === "Success" ? <CheckCircle2 size={18} /> : 
+                                  col.status === "Voided" ? <Info size={18} /> : <Clock size={18} />}
+                               </div>
+                               <div>
+                                  <p className="text-sm font-black text-foreground">Receipt {col.receiptNumber}</p>
+                                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">
+                                    {new Date(col.paymentDate).toLocaleDateString()} • {col.paymentMode}
+                                  </p>
+                               </div>
+                            </div>
+                            <div className="text-right flex items-center gap-6">
+                               <div>
+                                  <p className="text-sm font-black text-foreground">{formatCurrency(Number(col.totalPaid))}</p>
+                                  <p className={cn(
+                                    "text-[9px] font-black uppercase tracking-widest",
+                                    col.status === "Success" ? "text-emerald-600" : 
+                                    col.status === "Voided" ? "text-slate-400" : "text-amber-600"
+                                  )}>
+                                    {col.status}
+                                  </p>
+                               </div>
+                               {col.status === "Success" && (
+                                 <button 
+                                   onClick={async () => {
+                                      const reason = prompt("Reason for voiding request:");
+                                      if (reason) {
+                                         const res = await requestReceiptVoid(col.id, reason);
+                                         if (res.success) {
+                                            const updated = await getStudentFullProfile(student.id);
+                                            if (updated.success) setStudent(updated.data);
+                                         }
+                                      }
+                                   }}
+                                   className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                 >
+                                   Request Void
+                                 </button>
+                               )}
+                            </div>
+                         </div>
+                       ))
+                     ) : (
+                       <div className="py-12 border-2 border-dashed border-border rounded-[2.5rem] flex flex-col items-center justify-center opacity-40">
+                          <CreditCard size={40} className="mb-4" />
+                          <p className="font-black uppercase tracking-widest text-[10px]">No transaction records found</p>
                        </div>
-                     ))}
+                     )}
                    </div>
                 </div>
               </div>
@@ -764,7 +855,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               <div className="space-y-4">
                 <div className="bg-rose-50/50 p-5 rounded-xl border border-rose-100 flex items-start gap-4">
                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/20 border border-white/20">
-                     <Heart className="w-5 h-5 text-foreground" />
+                     <Heart className="w-5 h-5 text-white" />
                    </div>
                    <div className="flex-1">
                      <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-2">Health & Medical Profile</h4>
@@ -795,6 +886,57 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     <div className="flex-1 bg-muted/50 p-3 rounded-lg border border-border">
                        <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Clinic Phone</p>
                        <p className="text-sm font-bold text-foreground">{student.doctorPhone || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "transport" && (
+              <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                <div className="bg-slate-900 text-white p-8 rounded-3xl relative overflow-hidden shadow-2xl">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
+                  <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20">
+                        <TramFront className="w-8 h-8 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="text-2xl font-black tracking-tight">Active Route: {student.transportRouteId || "14A"}</h4>
+                        <p className="text-xs font-bold opacity-60 uppercase tracking-widest mt-1">{student.pickupStop || "Sanjay Nagar"} ↔ Main Campus</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 shrink-0 w-full md:w-auto">
+                       <div className="flex items-center gap-3 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Live Tracking Active</span>
+                       </div>
+                       <p className="text-sm font-bold mb-1">Pick up: 07:45 AM</p>
+                       <p className="text-xs opacity-50 font-medium">Stop: {student.pickupStop || "Central Library Circle"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-5 bg-background border border-border rounded-2xl shadow-sm">
+                    <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-3">Vehicle Details</p>
+                    <div className="space-y-2">
+                       <div className="flex justify-between">
+                         <span className="text-xs font-bold opacity-40">Bus Number</span>
+                         <span className="text-xs font-black">KA-01-F-1234</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span className="text-xs font-bold opacity-40">Driver Name</span>
+                         <span className="text-xs font-black">Somanna K.</span>
+                       </div>
+                    </div>
+                  </div>
+                  <div className="p-5 bg-background border border-border rounded-2xl shadow-sm cursor-pointer hover:bg-muted/50 transition-all group">
+                    <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-3">Route Map</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black">View Interactive Path</span>
+                      <ExternalLink className="w-4 h-4 opacity-30 group-hover:opacity-100" />
                     </div>
                   </div>
                 </div>

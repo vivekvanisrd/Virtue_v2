@@ -16,10 +16,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
     redirect("/login");
   }
   
-  if (context.role === "DEVELOPER") {
-    redirect("/developer/dashboard");
-  }
-
   // Fetch current academic year
   const activeYear = await prisma.academicYear.findFirst({
     where: { 

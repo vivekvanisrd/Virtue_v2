@@ -7,6 +7,20 @@ import { calculateTermBreakdown } from "../utils/fee-utils";
 import { Decimal } from "@prisma/client/runtime/library";
 
 /**
+ * serialize
+ * 
+ * Safely converts Prisma-specific types (like Decimal) into plain JSON-serializable numbers
+ * to prevent Next.js Client Component errors.
+ */
+const serialize = <T>(data: T): T => {
+  return JSON.parse(JSON.stringify(data, (key, value) => 
+    (value instanceof Decimal || (value && typeof value === 'object' && value.constructor?.name === 'Decimal')) 
+      ? Number(value) 
+      : value
+  ));
+};
+
+/**
  * Fetches all fee structures for the current school instance
  */
 export async function getFeeStructures() {
@@ -21,7 +35,7 @@ export async function getFeeStructures() {
             orderBy: { academicYear: { name: 'desc' } }
         });
 
-        return { success: true, data: structures };
+        return { success: true, data: serialize(structures) };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -89,7 +103,7 @@ export async function upsertFeeStructure(data: {
         });
 
         revalidatePath("/admin/fees");
-        return { success: true, data: structure };
+        return { success: true, data: serialize(structure) };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -175,6 +189,54 @@ export async function applyFeeStructureToClass(structureId: string) {
 
     } catch (error: any) {
         console.error("[FEE SYNC ERROR]", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Assigns a specific structure to a single student
+ */
+export async function assignFeeStructureToStudent(studentId: string, structureId: string) {
+    try {
+        const context = await getTenantContext();
+        const { calculateTermBreakdown } = await import("../utils/fee-utils");
+        
+        const structure = await prisma.feeStructure.findUnique({
+            where: { id: structureId }
+        });
+
+        if (!structure) throw new Error("Structure not found.");
+
+        const totalAmount = Number(structure.totalAmount);
+        const { term1, term2, term3 } = calculateTermBreakdown(totalAmount, 0);
+
+        await prisma.financialRecord.upsert({
+            where: { studentId },
+            update: {
+                annualTuition: totalAmount,
+                tuitionFee: totalAmount,
+                term1Amount: term1,
+                term2Amount: term2,
+                term3Amount: term3,
+                feeStructureId: structure.id,
+                netTuition: totalAmount
+            },
+            create: {
+                studentId,
+                schoolId: context.schoolId,
+                annualTuition: totalAmount,
+                tuitionFee: totalAmount,
+                term1Amount: term1,
+                term2Amount: term2,
+                term3Amount: term3,
+                feeStructureId: structure.id,
+                netTuition: totalAmount
+            }
+        });
+
+        revalidatePath("/admin/fees");
+        return { success: true, message: "Fee structure assigned to student." };
+    } catch (error: any) {
         return { success: false, error: error.message };
     }
 }

@@ -21,20 +21,17 @@ export async function getDashboardStatsAction() {
       }
     });
 
-    // Simple finance sum for balance (example logic)
-    const financialSummary = await prisma.financialRecord.aggregate({
-      where: { schoolId: context.schoolId },
-      _sum: {
-        tuitionFee: true,
-        admissionFee: true,
-        transportFee: true
-      }
+    // Get Collections Today (Last 24h)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dailyRevenue = await prisma.collection.aggregate({
+      where: { 
+        schoolId: context.schoolId,
+        paymentDate: { gte: today },
+        status: "Success"
+      },
+      _sum: { totalPaid: true }
     });
-
-    const totalBalance = 
-      Number(financialSummary._sum.tuitionFee || 0) + 
-      Number(financialSummary._sum.admissionFee || 0) + 
-      Number(financialSummary._sum.transportFee || 0);
 
     // Get actual pending issues (e.g., pending enquiries)
     const pendingIssues = await prisma.enquiry.count({
@@ -44,12 +41,17 @@ export async function getDashboardStatsAction() {
       }
     });
 
-    // Get current academic year
-    const activeYear = await prisma.academicYear.findFirst({
+    // Get Pending Voids (Audit Pulse)
+    const voidRequests = await prisma.collection.count({
       where: { 
         schoolId: context.schoolId,
-        isCurrent: true
-      },
+        status: "VoidRequested"
+      }
+    });
+
+    // Get active academic year
+    const activeYear = await prisma.academicYear.findFirst({
+      where: { schoolId: context.schoolId, isCurrent: true },
       select: { name: true }
     });
 
@@ -58,8 +60,9 @@ export async function getDashboardStatsAction() {
       data: {
         studentCount,
         teacherCount,
-        financeBalance: `₹${(totalBalance / 100000).toFixed(1)}L`,
-        pendingIssues,
+        financeBalance: `₹${(Number(dailyRevenue._sum.totalPaid || 0)).toLocaleString()}`,
+        pendingIssues: pendingIssues,
+        voidRequests,
         academicYear: activeYear?.name || "Session 2025-26"
       }
     };

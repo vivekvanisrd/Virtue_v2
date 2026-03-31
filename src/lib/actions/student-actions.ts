@@ -588,3 +588,64 @@ export async function getTCPrintData(studentId: string) {
     return { success: false, error: "Failed to fetch TC data." };
   }
 }
+
+/**
+ * Fetches high-level statistics for the Student Hub Dashboard.
+ */
+export async function getStudentHubStats() {
+  try {
+    const context = await getTenantContext();
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [totalStudents, newAdmissions, genderCounts, attendanceToday] = await Promise.all([
+      prisma.student.count({
+        where: { schoolId: context.schoolId, status: "Active" }
+      }),
+      prisma.student.count({
+        where: { 
+          schoolId: context.schoolId, 
+          createdAt: { gte: startOfMonth } 
+        }
+      }),
+      prisma.student.groupBy({
+        by: ['gender'],
+        where: { schoolId: context.schoolId, status: "Active" },
+        _count: true
+      }),
+      prisma.studentAttendance.count({
+        where: {
+          schoolId: context.schoolId,
+          date: { gte: today },
+          status: "Present"
+        }
+      })
+    ]);
+
+    // Calculate trends (Simulated for Demo, would use history table in production)
+    const enrollmentTrends = [
+      { month: "Jan", count: 120 },
+      { month: "Feb", count: 145 },
+      { month: "Mar", count: 180 }
+    ];
+
+    return {
+      success: true,
+      data: {
+        totalStudents,
+        newAdmissions,
+        attendanceToday: totalStudents > 0 ? ((attendanceToday / totalStudents) * 100).toFixed(1) + "%" : "0%",
+        genderDistribution: genderCounts.map((g: any) => ({
+          label: g.gender || "Other",
+          count: g._count,
+          percentage: totalStudents > 0 ? Math.round((g._count / totalStudents) * 100) : 0
+        })),
+        enrollmentTrends
+      }
+    };
+  } catch (error) {
+    console.error("Student Hub Stats Error:", error);
+    return { success: false, error: "Failed to load hub statistics." };
+  }
+}

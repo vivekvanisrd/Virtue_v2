@@ -14,9 +14,16 @@ import { FinanceContent } from "../dashboard/finance";
 import { StaffRolesManager } from "../dashboard/staff-roles";
 import { StaffImportManager } from "../dashboard/staff-import";
 import { ActivityLogViewer } from "../dashboard/activity-log";
+import { StaffContent } from "../dashboard/staff";
+import { StudentHub } from "../students/StudentHub";
+import { SalaryHub } from "../salaries/SalaryHub";
+import { StaffHub } from "../dashboard/staff-hub";
+import { SalariesContent } from "../dashboard/salaries";
+import { BankSettings } from "../dashboard/bank-settings";
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
+  console.log("[WORKSPACE_RENDERER] Active:", activeTabId, "Tabs:", tabs.map(t => t.id));
 
   return (
     <div className="flex-1 relative">
@@ -26,24 +33,33 @@ function WorkspaceRenderer() {
           className={tab.id === activeTabId ? "block animate-in fade-in slide-in-from-bottom-2 duration-300" : "hidden"}
         >
           {tab.id === "overview" && <OverviewContent />}
-          {(tab.id === "students" || tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries") && (
+          {tab.id === "students" && <StudentHub />}
+          {(tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries" || tab.id === "students-attendance" || tab.id === "students-exams" || tab.id === "students-import") && (
             <StudentsContent tabId={tab.id} />
           )}
-          {tab.id === "finance" && <FinanceContent />}
-          
-          {tab.id === "staff-roles" && <StaffRolesManager />}
-          {tab.id === "staff-import" && <StaffImportManager />}
-          {(tab.id === "staff" || tab.id === "staff-directory") && (
-            <GenericModule 
-              title="Staff Directory" 
-              description="Modern Staff directory systems for Virtue School"
-            />
+          {tab.id.startsWith("student-profile-") && (
+            <StudentsContent tabId="student-profile" params={{ studentId: tab.id.replace("student-profile-", "") }} />
+          )}
+          {(tab.id === "finance" || /fee|finance/i.test(tab.id)) && (
+            <FinanceContent tabId={tab.id} params={tab.params} />
           )}
 
+          {/* Staff Module */}
+          {tab.id === "staff" && <StaffHub />}
+          {(tab.id === "staff-directory" || tab.id === "staff-attendance" || tab.id === "staff-roles" || tab.id === "staff-import") && (
+            <StaffContent tabId={tab.id} />
+          )}
+
+          {/* Salaries Module */}
+          {(tab.id === "salaries" || /salary/i.test(tab.id)) && (
+             <SalariesContent tabId={tab.id} />
+          )}
+
+          {tab.id === "settings-banking" && <BankSettings schoolId="VR-SCH01" />}
           {tab.id === "settings-audit" && <ActivityLogViewer />}
-          
+
           {/* Generic mappings for other cataloged modules */}
-          {["salaries", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
+          {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
             <GenericModule 
               title={tab.title} 
               description={`Modern ${tab.title} and information systems for Virtue School`}
@@ -51,10 +67,10 @@ function WorkspaceRenderer() {
           )}
 
           {/* Fallback for truly unknown tabs */}
-          {!["overview", "students", "students-all", "students-add", "students-promotion", "students-reports", "finance", "salaries", "accounting", "teachers", "staff", "staff-directory", "staff-roles", "staff-import", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
+          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary/i.test(tab.id)) && (
             <div className="flex flex-col items-center justify-center h-full text-foreground opacity-30 py-40">
-              <h2 className="text-2xl font-bold italic">Module Implementation Pending</h2>
-              <p>The {tab.title} section is coming soon.</p>
+              <h2 className="text-2xl font-bold italic text-rose-500">Module Implementation Pending (HARD_OVERRIDE_V7)</h2>
+              <p>The {tab.title} section (ID: {tab.id}) is coming soon.</p>
             </div>
           )}
         </div>

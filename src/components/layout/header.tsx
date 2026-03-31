@@ -21,7 +21,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick, userEmail, userRole, userName, academicYear }: HeaderProps) {
   return (
-    <header className="h-16 lg:h-16 glass border-b border-black/[0.03] sticky top-0 z-40 px-4 lg:px-6 flex items-center justify-between">
+    <header className="h-16 lg:h-16 glass border-b border-black/[0.03] sticky top-0 z-50 px-4 lg:px-6 flex items-center justify-between">
       {/* Mobile Menu & Logo */}
       <div className="flex items-center gap-4 lg:hidden">
         <button 
@@ -31,10 +31,10 @@ export function Header({ onMenuClick, userEmail, userRole, userName, academicYea
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden border border-slate-100 shadow-sm">
+                <img src="/school-logo.png" alt="Logo" className="w-full h-full object-contain p-0.5" />
             </div>
-            <span className="font-bold text-foreground text-sm">Virtue V2</span>
+            <span className="font-black text-slate-900 text-sm italic tracking-tighter">Virtue V2</span>
         </div>
       </div>
 

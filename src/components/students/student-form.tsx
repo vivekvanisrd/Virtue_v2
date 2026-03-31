@@ -9,6 +9,7 @@ import {
   MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTabs } from "@/context/tab-context";
 import { studentAdmissionSchema, type StudentAdmissionData } from "@/types/student";
 import { submitAdmissionAction, searchStudentsAction } from "@/lib/actions/student-actions";
 import { getAdmissionReferenceData, getSectionsByClass } from "@/lib/actions/reference-actions";
@@ -25,8 +26,6 @@ const steps = [
   { id: 7, title: "Review",    icon: CheckCircle2 },
 ];
 
-// Reusable compact input
-// Reusable compact input
 function Field({ label, error, children, className }: { label: string; error?: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -43,6 +42,7 @@ const inputCls = "bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm 
 const selectCls = "bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-full shadow-sm";
 
 export function StudentForm() {
+  const { setTabDirty } = useTabs();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -75,20 +75,13 @@ export function StudentForm() {
         const res = await getAdmissionReferenceData();
         if (res.success && res.data) {
             setRefData(res.data);
-            
-            // Set default values if not already set
-            const currentAY = res.data.academicYears.find((y: any) => y.isCurrent);
-            if (currentAY) {
-                // We'll use setValue or just rely on defaultValues if we can find them.
-                // For now, these will be populated in selects.
-            }
         }
         setIsLoadingRef(false);
     }
     fetchRefData();
   }, []);
 
-  const { register, handleSubmit, formState: { errors }, watch, reset, trigger } = useForm<StudentAdmissionData>({
+  const { register, handleSubmit, formState: { errors, isDirty }, watch, reset, trigger } = useForm<StudentAdmissionData>({
     resolver: zodResolver(studentAdmissionSchema) as any,
     mode: "onBlur",
     defaultValues: {
@@ -101,6 +94,14 @@ export function StudentForm() {
       transportRequired: false,
     },
   });
+
+  // Track Dirty State for Workspace Guard
+  useEffect(() => {
+    setTabDirty("students-add", isDirty);
+    return () => {
+      setTabDirty("students-add", false);
+    };
+  }, [isDirty, setTabDirty]);
 
   const onSubmit = async (data: StudentAdmissionData) => {
     setIsSubmitting(true);

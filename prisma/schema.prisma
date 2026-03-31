@@ -18,6 +18,7 @@ model School {
   highestClass         String?
   createdAt            DateTime                     @default(now())
   updatedAt            DateTime                     @updatedAt
+  status               String                       @default("Active")
   academicHist         AcademicHistory[]
   academicRecs         AcademicRecord[]
   academicYears        AcademicYear[]
@@ -30,9 +31,11 @@ model School {
   docRecords           Document[]
   enquiries            Enquiry[]
   examResults          ExamResult[]
+  examTypes            ExamType[]
   feeStructures        FeeStructure[]
   finRecords           FinancialRecord[]
   financialYears       FinancialYear[]
+  gradeScales          GradeScale[]
   journalEntries       JournalEntry[]
   notifications        Notification[]
   routes               Route[]
@@ -40,6 +43,7 @@ model School {
   students             Student[]
   attendance           StudentAttendance[]
   transportAssignments StudentTransportAssignment[]
+  subjects             Subject[]
   counters             TenancyCounter[]
 }
 
@@ -88,23 +92,25 @@ model FinancialYear {
 }
 
 model Class {
-  id              String            @id
+  id              String              @id
   name            String
   level           Int
   history         AcademicHistory[]
   academicRecords AcademicRecord[]
   feeStructures   FeeStructure[]
   sections        Section[]
+  attendance      StudentAttendance[]
   subjects        Subject[]
 }
 
 model Section {
-  id              String            @id
+  id              String              @id
   name            String
   classId         String
   history         AcademicHistory[]
   academicRecords AcademicRecord[]
-  class           Class             @relation(fields: [classId], references: [id])
+  class           Class               @relation(fields: [classId], references: [id])
+  attendance      StudentAttendance[]
 }
 
 model Student {
@@ -219,18 +225,18 @@ model FamilyDetail {
   fatherEmail         String?
   fatherOccupation    String?
   fatherQualification String?
-  fatherAadhaar       String?
   motherName          String?
   motherPhone         String?
   motherAltPhone      String?
   motherEmail         String?
   motherOccupation    String?
   motherQualification String?
-  motherAadhaar       String?
   whatsappNumber      String?
   emergencyName       String?
   emergencyPhone      String?
   emergencyRelation   String?
+  fatherAadhaar       String?
+  motherAadhaar       String?
   student             Student @relation(fields: [studentId], references: [id])
 }
 
@@ -390,6 +396,7 @@ model Collection {
   paymentDate      DateTime      @default(now())
   collectedBy      String
   journalEntryId   String?       @unique
+  status           String        @default("Success")
   branch           Branch        @relation(fields: [branchId], references: [id])
   journalEntry     JournalEntry? @relation(fields: [journalEntryId], references: [id])
   school           School        @relation(fields: [schoolId], references: [id])
@@ -511,6 +518,7 @@ model Staff {
   documents          Document[]
   branch             Branch             @relation(fields: [branchId], references: [id])
   school             School             @relation(fields: [schoolId], references: [id])
+  advances           StaffAdvance[]
   attendance         StaffAttendance[]
   bank               StaffBank?
   professional       StaffProfessional?
@@ -525,15 +533,37 @@ model Staff {
 }
 
 model StaffProfessional {
-  id              String   @id @default(uuid())
-  staffId         String   @unique
-  designation     String
-  department      String?
-  qualification   String?
-  experienceYears Float?
-  dateOfJoining   DateTime
-  basicSalary     Decimal  @db.Decimal(12, 2)
-  staff           Staff    @relation(fields: [staffId], references: [id])
+  id                 String   @id @default(uuid())
+  staffId            String   @unique
+  designation        String
+  department         String?
+  qualification      String?
+  experienceYears    Float?
+  dateOfJoining      DateTime
+  basicSalary        Decimal  @db.Decimal(12, 2)
+  daAmount           Decimal  @default(0) @db.Decimal(12, 2)
+  isDAEnabled        Boolean  @default(false)
+  isESIEnabled       Boolean  @default(false)
+  isPFEnabled        Boolean  @default(false)
+  hraAmount          Decimal  @default(0) @db.Decimal(12, 2)
+  isPTEnabled        Boolean  @default(false)
+  specialAllowance   Decimal  @default(0) @db.Decimal(12, 2)
+  transportAllowance Decimal  @default(0) @db.Decimal(12, 2)
+  casualLeaveBalance Int      @default(0)
+  sickLeaveBalance   Int      @default(0)
+  staff              Staff    @relation(fields: [staffId], references: [id])
+}
+
+model StaffAdvance {
+  id            String   @id @default(uuid())
+  staffId       String
+  amount        Decimal  @db.Decimal(12, 2)
+  balance       Decimal  @db.Decimal(12, 2)
+  installment   Decimal  @db.Decimal(12, 2)
+  disbursedDate DateTime @default(now())
+  status        String   @default("Active")
+  reason        String?
+  staff         Staff    @relation(fields: [staffId], references: [id])
 }
 
 model StaffStatutory {
@@ -564,6 +594,26 @@ model StaffAttendance {
   checkIn  DateTime?
   checkOut DateTime?
   staff    Staff     @relation(fields: [staffId], references: [id])
+}
+
+model StudentAttendance {
+  id        String    @id @default(uuid())
+  studentId String
+  date      DateTime  @default(now())
+  status    String    @default("Present")
+  remarks   String?
+  schoolId  String
+  classId   String?
+  entryTime DateTime?
+  sectionId String?
+  session   String    @default("Morning")
+  class     Class?    @relation(fields: [classId], references: [id])
+  school    School    @relation(fields: [schoolId], references: [id])
+  section   Section?  @relation(fields: [sectionId], references: [id])
+  student   Student   @relation(fields: [studentId], references: [id])
+
+  @@index([studentId])
+  @@index([date])
 }
 
 model Route {
@@ -629,26 +679,19 @@ model Subject {
   name        String
   code        String       @unique
   classId     String?
+  schoolId    String
   examResults ExamResult[]
   class       Class?       @relation(fields: [classId], references: [id])
-}
-
-model StudentAttendance {
-  id        String   @id @default(uuid())
-  studentId String
-  date      DateTime
-  status    String
-  remarks   String?
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id])
-  student   Student  @relation(fields: [studentId], references: [id])
+  school      School       @relation(fields: [schoolId], references: [id])
 }
 
 model ExamType {
   id           String       @id @default(uuid())
   name         String
   academicYear String
+  schoolId     String
   results      ExamResult[]
+  school       School       @relation(fields: [schoolId], references: [id])
 }
 
 model GradeScale {
@@ -656,6 +699,8 @@ model GradeScale {
   grade    String
   minScore Int
   maxScore Int
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id])
 }
 
 model ExamResult {
@@ -667,6 +712,7 @@ model ExamResult {
   totalMarks    Decimal  @db.Decimal(5, 2)
   remarks       String?
   schoolId      String
+  passMarks     Decimal  @default(33) @db.Decimal(5, 2)
   examType      ExamType @relation(fields: [examTypeId], references: [id])
   school        School   @relation(fields: [schoolId], references: [id])
   student       Student  @relation(fields: [studentId], references: [id])
@@ -752,6 +798,17 @@ model Enquiry {
   referredBy       String?
   referrerPhone    String?
   school           School   @relation(fields: [schoolId], references: [id])
+}
+model GlobalSetting {
+  id        String   @id @default(uuid())
+  schoolId  String
+  key       String
+  value     String   @db.Text
+  isSecret  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, key])
 }
 
 model StudentConsent {

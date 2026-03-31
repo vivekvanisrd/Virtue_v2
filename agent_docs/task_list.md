@@ -13,5 +13,5 @@
     - [x] Build search results UI dropdown
     - [x] Implement strict Aadhaar duplicate blocking logic
 - [x] Fix Prisma `Decimal` serialization error for Next.js Client Components
-- [ ] Test the full student admission flow with valid/invalid data
-- [ ] Verify data persistence in the database
+- [x] Test the full student admission flow with valid/invalid data
+- [x] Verify data persistence in the database

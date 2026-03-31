@@ -1,0 +1,2 @@
+firstName,lastName,middleName,dateOfBirth,gender,bloodGroup,category,aadhaarNumber,phone,email,branchName,academicYearName,admissionDate,className,sectionName,rollNumber,fatherName,fatherPhone,fatherAadhaar,motherName,motherPhone,tuitionFee,admissionFee,transportFee,currentAddress,city,pincode,medicalConditions,previousSchool
+John,Doe,,2012-05-15,Male,B+,GEN,123456789012,9000000000,john@example.com,Main Branch,2024-2025,2024-03-20,10th,A,01,Robert Doe,9876543210,210987654321,Jane Doe,9876543211,45000,5000,0,123 High Street,Bangalore,560001,None,Greenwood High

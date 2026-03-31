@@ -13,16 +13,19 @@ import {
   Layout
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTabs } from "@/context/tab-context";
 import { getDashboardStatsAction } from "@/lib/actions/dashboard-actions";
 
 // Static stats removed in favor of dynamic fetching
 
 export function OverviewContent() {
+  const { openTab } = useTabs();
   const [data, setData] = React.useState({
     studentCount: "...",
     teacherCount: "...",
     financeBalance: "...",
     pendingIssues: "...",
+    voidRequests: 0,
     academicYear: ""
   });
   const [activities, setActivities] = React.useState<any[]>([]);
@@ -35,6 +38,7 @@ export function OverviewContent() {
           teacherCount: res.data.teacherCount.toLocaleString(),
           financeBalance: res.data.financeBalance,
           pendingIssues: res.data.pendingIssues.toString(),
+          voidRequests: res.data.voidRequests || 0,
           academicYear: res.data.academicYear
         });
       }
@@ -50,15 +54,40 @@ export function OverviewContent() {
   }, []);
 
   const stats = [
-    { label: "Total Students", value: data.studentCount, icon: GraduationCap, color: "bg-blue-500" },
-    { label: "Total Teachers", value: data.teacherCount, icon: Users, color: "bg-purple-500" },
-    { label: "Finance Balance", value: data.financeBalance, icon: CreditCard, color: "bg-green-500" },
-    { label: "Pending Enquiries", value: data.pendingIssues, icon: Zap, color: "bg-orange-500" },
+    { id: "students-all", label: "Total Students", value: data.studentCount, icon: GraduationCap, color: "bg-blue-500", component: "Students" },
+    { id: "staff-directory", label: "Total Teachers", value: data.teacherCount, icon: Users, color: "bg-purple-500", component: "Staff" },
+    { id: "finance", label: "Collected Today", value: data.financeBalance, icon: CreditCard, color: "bg-emerald-500", component: "Finance" },
+    { id: "students-enquiries", label: "Pending Enquiries", value: data.pendingIssues, icon: Zap, color: "bg-orange-500", component: "Students" },
   ];
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      {/* 1. Header Section */}
+      {/* 1. Audit Alert Banner */}
+      {data.voidRequests > 0 && (
+         <motion.div 
+           initial={{ height: 0, opacity: 0 }} 
+           animate={{ height: "auto", opacity: 1 }}
+           className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex items-center justify-between gap-4"
+         >
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-10 bg-rose-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-rose-200">
+                  <ShieldCheck className="w-5 h-5" />
+               </div>
+               <div>
+                  <p className="text-xs font-black text-rose-900 uppercase">Action Required: {data.voidRequests} Void Requests</p>
+                  <p className="text-[10px] font-bold text-rose-700 opacity-60">Manager authorization needed for receipt reversals</p>
+               </div>
+            </div>
+            <button 
+              onClick={() => openTab({ id: "finance", title: "Finance Hub", icon: CreditCard, component: "Finance" })}
+              className="px-4 py-2 bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-rose-600 transition-all"
+            >
+               Go to Audit Tray
+            </button>
+         </motion.div>
+      )}
+
+      {/* 2. Header Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
         <motion.div
            initial={{ opacity: 0, x: -20 }}
@@ -69,17 +98,23 @@ export function OverviewContent() {
         </motion.div>
         
         <div className="flex gap-2 w-full lg:w-auto">
-             <button className="flex-1 lg:flex-none px-4 py-2 bg-background border border-border rounded-xl font-bold text-foreground opacity-60 hover:opacity-100 hover:bg-muted transition-all text-[10px] lg:text-xs premium-shadow">
-                Reports
+             <button 
+               onClick={() => openTab({ id: "finance", title: "Finance Hub", icon: CreditCard, component: "Finance" })}
+               className="flex-1 lg:flex-none px-4 py-2 bg-background border border-border rounded-xl font-bold text-foreground opacity-60 hover:opacity-100 hover:bg-muted transition-all text-[10px] lg:text-xs premium-shadow"
+             >
+                Finance Hub
              </button>
-             <button className="flex-1 lg:flex-none px-4 py-2 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all text-[10px] lg:text-xs premium-shadow shadow-primary/20">
-                Action Center
+             <button 
+               onClick={() => openTab({ id: "fee-collection", title: "Fee Collection", icon: CreditCard, component: "Finance" })}
+               className="flex-1 lg:flex-none px-4 py-2 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all text-[10px] lg:text-xs premium-shadow shadow-primary/20"
+             >
+                Start Collection
              </button>
         </div>
       </div>
 
-      {/* 2. Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+      {/* 3. Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -87,6 +122,7 @@ export function OverviewContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
             className="group bg-background p-5 lg:p-6 rounded-2xl border border-border premium-shadow hover:scale-[1.02] transition-all cursor-pointer overflow-hidden relative"
+            onClick={() => openTab({ id: stat.id, title: stat.label, icon: stat.icon, component: stat.component as any })}
           >
             <div className={cn("absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-5 group-hover:scale-150 transition-transform duration-700", stat.color)} />
             
