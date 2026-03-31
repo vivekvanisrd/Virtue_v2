@@ -20,6 +20,7 @@ import { SalaryHub } from "../salaries/SalaryHub";
 import { StaffHub } from "../dashboard/staff-hub";
 import { SalariesContent } from "../dashboard/salaries";
 import { BankSettings } from "../dashboard/bank-settings";
+import { VelocityAttendance } from "../attendance/VelocityAttendance";
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -57,6 +58,14 @@ function WorkspaceRenderer() {
 
           {tab.id === "settings-banking" && <BankSettings schoolId="VR-SCH01" />}
           {tab.id === "settings-audit" && <ActivityLogViewer />}
+          
+          {/* Attendance Hub Mappings */}
+          {(tab.id === "attendance-student" || tab.id === "students-attendance") && (
+            <VelocityAttendance />
+          )}
+          {tab.id === "attendance-staff" && (
+            <StaffContent tabId="staff-attendance" />
+          )}
 
           {/* Generic mappings for other cataloged modules */}
           {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (

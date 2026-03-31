@@ -32,12 +32,12 @@ interface Student {
 }
 
 interface VelocityAttendanceProps {
-  students: Student[];
-  classId: string;
-  sectionId: string;
+  students?: any[];
+  classId?: string;
+  sectionId?: string;
 }
 
-export function VelocityAttendance({ students, classId, sectionId }: VelocityAttendanceProps) {
+export function VelocityAttendance({ students = [], classId, sectionId }: VelocityAttendanceProps) {
   const [viewMode, setViewMode] = useState<"Swipe" | "Grid">("Swipe");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [marked, setMarked] = useState<Record<string, "Present" | "Absent" | "Late">>({});

@@ -57,6 +57,7 @@ const menuItems: MenuItem[] = [
       { id: "students-add", name: "Add Student", component: "Students" },
       { id: "students-enquiries", name: "Enquiries", component: "Students" },
       { id: "students-promotion", name: "Student Promotion", component: "Students" },
+      { id: "students-attendance", name: "Daily Attendance", component: "Students" },
       { id: "students-reports", name: "Reports", component: "Students" },
     ]
   },
@@ -111,7 +112,15 @@ const menuItems: MenuItem[] = [
       { id: "acad-exams", name: "Examinations", component: "Academics" },
     ]
   },
-  { id: "attendance", name: "Attendance", icon: CalendarCheck, component: "Attendance" },
+  { 
+    id: "attendance", 
+    name: "Attendance", 
+    icon: CalendarCheck, 
+    subItems: [
+      { id: "attendance-student", name: "Velocity Run (Students)", component: "Attendance" },
+      { id: "attendance-staff", name: "Payroll Ledger (Staff)", component: "Attendance" },
+    ]
+  },
   { id: "activities", name: "Activities", icon: Trophy, component: "Activities" },
   { id: "library", name: "Library", icon: Library, component: "Library" },
   { id: "transport", name: "Transport", icon: Bus, component: "Transport" },
