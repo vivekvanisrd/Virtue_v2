@@ -207,7 +207,7 @@ export function StaffAttendanceSheet() {
                         </td>
 
                         <td className="px-8 py-6 text-right">
-                           {attendance[s.id]?.checkIn && attendance[s.id]?.checkIn > "09:00" && (
+                           {attendance[s.id]?.checkIn && attendance[s.id]!.checkIn! > "09:00" && (
                               <span className="px-2 py-1 bg-amber-50 text-amber-600 text-[8px] font-black uppercase rounded-md border border-amber-100">Late Comer</span>
                            )}
                         </td>
