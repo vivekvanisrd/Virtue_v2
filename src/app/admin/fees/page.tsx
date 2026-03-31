@@ -1,3 +1,4 @@
+import { TabProvider } from "@/context/tab-context";
 import { FeeCollectionForm } from "@/components/finance/FeeCollectionForm";
 import { VoidRequestManager } from "@/components/finance/VoidRequestManager";
 import { WalletCards, TrendingUp, Users, Clock, Settings2 } from "lucide-react";
@@ -16,6 +17,7 @@ export default async function FeesPage() {
   const kpis = (kpiRes.success && kpiRes.data) ? kpiRes.data : { dailyRevenue: 0, collectionsToday: 0, voidRequests: 0, activeFYName: "N/A" };
 
   return (
+    <TabProvider>
     <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-10 min-h-screen bg-background">
       {/* Dynamic Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
