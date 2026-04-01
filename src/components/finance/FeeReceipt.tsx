@@ -188,7 +188,9 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
             <img src="/school-logo.png" alt="School Logo" className="w-full h-full object-contain p-1" />
           </div>
           <div className="text-center">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic leading-none mb-1">VIRTUE INTERNATIONAL</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic leading-none mb-1 text-center">
+              {school.name.toUpperCase()}
+            </h1>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Official Student Payment Receipt</p>
           </div>
         </div>

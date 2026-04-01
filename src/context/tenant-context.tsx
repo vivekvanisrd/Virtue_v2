@@ -33,3 +33,13 @@ export function useTenant() {
   }
   return context;
 }
+
+/**
+ * useOptionalTenant
+ * 
+ * Safe version of useTenant for public-facing components (like EnquiryForm).
+ * Returns undefined if no provider is present, allowing components to fall back to defaults.
+ */
+export function useOptionalTenant() {
+  return useContext(TenantContext);
+}

@@ -1,6 +1,8 @@
 import React from "react";
 import { PublicPaymentPortal } from "@/components/finance/PublicPaymentPortal";
 
+export const dynamic = "force-dynamic";
+
 type Params = Promise<{ token: string }>;
 
 export default async function PublicPaymentPage({ params }: { params: Params }) {

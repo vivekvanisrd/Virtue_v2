@@ -1,6 +1,8 @@
 import React from "react";
 import { EnquiryForm } from "@/components/students/enquiry-form";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Admissions Enquiry | Virtue Modern School",
   description: "Register your interest for the upcoming academic year.",
