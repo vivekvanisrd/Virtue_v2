@@ -35,7 +35,7 @@ export default function V2PulseDashboard() {
             getDatabaseHealth(),
             getGlobalData()
         ]);
-        if (hRes.success) setStats(hRes.data);
+        if (hRes.success) setStats({ ...hRes.stats, ...hRes.system });
         if (gRes.success) setGlobal(gRes.data);
         setIsLoading(false);
     }
@@ -67,10 +67,10 @@ export default function V2PulseDashboard() {
       {/* 🏮 Gaugues Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {[
-            { label: 'DB Connections', value: stats?.activeConnections || '---', icon: Database, color: 'indigo' },
-            { label: 'Tenancy Integrity', value: '100%', icon: ShieldCheck, color: 'emerald' },
-            { label: 'Global Latency', value: '14ms', icon: Globe, color: 'cyan' },
-            { label: 'API Uptime', value: '99.9%', icon: Zap, color: 'amber' }
+            { label: 'Registry Enrollment', value: stats?.students?.toLocaleString() || '---', icon: Users, color: 'indigo' },
+            { label: 'Operational Nodes', value: stats?.branches?.toLocaleString() || '---', icon: Building2, color: 'emerald' },
+            { label: 'Global Ledger', value: stats?.receipts?.toLocaleString() || '---', icon: Database, color: 'cyan' },
+            { label: 'Network Uptime', value: '99.9%', icon: Zap, color: 'amber' }
         ].map((g, i) => (
             <motion.div 
                 key={i} 

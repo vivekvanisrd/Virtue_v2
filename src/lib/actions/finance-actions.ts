@@ -451,8 +451,12 @@ export async function createRazorpayOrderAction(params: {
     // 2% Convenience Fee Enrichment
     const baseAmount = params.amountPaid;
     const lateFee = params.lateFeePaid || 0;
-    const convenienceFee = (baseAmount + lateFee) * 0.02;
-    const totalAmountIncludingFee = baseAmount + lateFee + convenienceFee;
+    
+    // Gateway Fee: 1.5% | GST: 18% of the Fee
+    const gatewayFee = (baseAmount + lateFee) * 0.015;
+    const gst = gatewayFee * 0.18;
+    const totalConvenience = gatewayFee + gst;
+    const totalAmountIncludingFee = baseAmount + lateFee + totalConvenience;
 
     const order = await razorpay.orders.create({
       amount: Math.round(totalAmountIncludingFee * 100), // Conversion to Paisa
@@ -464,8 +468,10 @@ export async function createRazorpayOrderAction(params: {
         terms: params.selectedTerms.join(','),
         baseAmount: baseAmount.toString(),
         lateFee: lateFee.toString(),
-        convenienceFee: convenienceFee.toString(),
-        type: "FEE_COLLECTION_V2"
+        convenienceFee: totalConvenience.toFixed(2),
+        gatewayFee: gatewayFee.toFixed(2),
+        gst: gst.toFixed(2),
+        type: "FEE_COLLECTION_V2_TAXED"
       }
     });
 
@@ -477,7 +483,7 @@ export async function createRazorpayOrderAction(params: {
         currency: order.currency,
         baseAmount,
         lateFee,
-        convenienceFee
+        convenienceFee: totalConvenience
       }
     };
   } catch (error: any) {

@@ -20,10 +20,12 @@ export async function createPaymentLinkAction(details: {
   try {
     const context = await getTenantContext();
     
-    // 2% Convenience Fee Enrichment (match parent portal)
+    // Professional Fee Calculation: 1.5% Gateway Fee + 18% GST on the fee
     const baseAmount = details.amount;
-    const convenienceFee = baseAmount * 0.02;
-    const totalAmount = baseAmount + convenienceFee;
+    const gatewayFee = baseAmount * 0.015;
+    const gst = gatewayFee * 0.18;
+    const totalConvenience = gatewayFee + gst;
+    const totalAmount = baseAmount + totalConvenience;
 
     // Create the payment link
     const response = await razorpay.paymentLink.create({
@@ -47,7 +49,9 @@ export async function createPaymentLinkAction(details: {
         schoolId: context.schoolId,
         terms: details.terms.join(","),
         type: "FEE_COLLECTION",
-        convenienceFee: "2%"
+        convenienceFee: "1.5% + 18% GST",
+        gatewayFee: gatewayFee.toFixed(2),
+        gst: gst.toFixed(2)
       },
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?tab=finance&status=success`,
       callback_method: "get"

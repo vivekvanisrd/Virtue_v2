@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { getPublicPaymentDetails, validatePaymentGate, createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/lib/actions/finance-actions";
 import { QRCodeSVG } from "qrcode.react";
+import { FeeReceipt } from "./FeeReceipt";
 
 export function PublicPaymentPortal({ token }: { token: string }) {
   const [step, setStep] = useState<"verify" | "choice" | "pay">("verify");
@@ -32,6 +33,7 @@ export function PublicPaymentPortal({ token }: { token: string }) {
   const [admissionId, setAdmissionId] = useState("");
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [successReceipt, setSuccessReceipt] = useState<any>(null);
 
   useEffect(() => {
     async function loadPublic() {
@@ -52,7 +54,11 @@ export function PublicPaymentPortal({ token }: { token: string }) {
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     document.body.appendChild(script);
-    return () => { document.body.removeChild(script); };
+    return () => { 
+      if (document.body.contains(script)) {
+        document.body.removeChild(script); 
+      }
+    };
   }, []);
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -76,12 +82,18 @@ export function PublicPaymentPortal({ token }: { token: string }) {
     setError("");
 
     try {
-      // Create the Order on the Backend with metadata for the Webhook
+      // Calculate Professional Fees (1.5% + 18% GST)
+      const baseAmount = verifiedData.baseAmount;
+      const gatewayFee = baseAmount * 0.015;
+      const gst = gatewayFee * 0.18;
+      const totalConvenience = gatewayFee + gst;
+
+      // Create the Order on the Backend
       const orderRes = await createRazorpayOrderAction({
-        amountPaid: verifiedData.baseAmount,
+        amountPaid: baseAmount,
         studentId: verifiedData.studentId,
         selectedTerms: [verifiedData.termId],
-        lateFeePaid: 0 // In future, pass actual late fee from verifiedData if applicable
+        lateFeePaid: 0
       });
 
       if (!orderRes.success || !orderRes.data) throw new Error(orderRes.error);
@@ -94,24 +106,28 @@ export function PublicPaymentPortal({ token }: { token: string }) {
         description: `Fee Settlement - ${verifiedData.termId.toUpperCase()}`,
         order_id: orderRes.data.id,
         handler: async (response: any) => {
-          // Client-side verification (for instant UI feedback)
+          // Client-side verification
           const verifyRes = await verifyRazorpayPaymentAction({
             ...response,
             studentId: verifiedData.studentId,
             selectedTerms: [verifiedData.termId],
             amountPaid: verifiedData.baseAmount,
             lateFeePaid: 0,
-            convenienceFee: orderRes.data.convenienceFee
+            convenienceFee: totalConvenience
           });
 
           if (verifyRes.success) {
-            setStep("pay"); // Success state
+            setSuccessReceipt(verifyRes.data);
+            setStep("pay");
           } else {
             setError("Verification Failed: " + verifyRes.error);
           }
         },
         prefill: {
           name: verifiedData.studentName,
+        },
+        modal: {
+          ondismiss: () => setProcessing(false)
         },
         theme: { color: "#0047ab" }
       };
@@ -122,7 +138,8 @@ export function PublicPaymentPortal({ token }: { token: string }) {
       console.error("[RAZORPAY_ERROR]", err);
       setError(err.message || "Could not initiate payment session.");
     } finally {
-      setProcessing(false);
+      // Delay processing state reset to allow modal to handle itself
+      setTimeout(() => setProcessing(false), 2000);
     }
   };
 
@@ -149,6 +166,11 @@ export function PublicPaymentPortal({ token }: { token: string }) {
       </div>
     );
   }
+
+  const baseAmount = verifiedData?.baseAmount || 0;
+  const gatewayFee = baseAmount * 0.015;
+  const gstOnFee = gatewayFee * 0.18;
+  const totalPayable = baseAmount + gatewayFee + gstOnFee;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 md:p-10 font-sans selection:bg-blue-100">
@@ -188,7 +210,6 @@ export function PublicPaymentPortal({ token }: { token: string }) {
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#0047ab]/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
         
         <div className="p-10 md:p-14 relative z-10">
-          
           <AnimatePresence mode="wait">
             
             {/* 🛡️ STEP 1: IDENTITY GATE */}
@@ -284,16 +305,19 @@ export function PublicPaymentPortal({ token }: { token: string }) {
                      <div className="space-y-4">
                         <div className="flex justify-between items-center text-slate-500">
                            <span className="text-xs font-bold uppercase tracking-widest">Base Fee Amount</span>
-                           <span className="text-lg font-black text-slate-900">{formatCurrency(verifiedData.baseAmount)}</span>
+                           <span className="text-lg font-black text-slate-900">{formatCurrency(baseAmount)}</span>
                         </div>
                         <div className="flex justify-between items-center text-[#0047ab]">
-                           <span className="text-xs font-bold uppercase tracking-widest">Gateway / Service Charge</span>
-                           <span className="text-lg font-black">{formatCurrency(verifiedData.baseAmount * 0.02)}</span>
+                           <div className="flex flex-col">
+                              <span className="text-xs font-bold uppercase tracking-widest">Convenience Fee</span>
+                              <span className="text-[9px] font-black uppercase opacity-40">1.5% Gateway + 18% GST</span>
+                           </div>
+                           <span className="text-lg font-black">{formatCurrency(gatewayFee + gstOnFee)}</span>
                         </div>
                         <div className="h-px bg-slate-200 my-4" />
                         <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-200">
                            <span className="text-sm font-black uppercase tracking-[0.2em] text-[#0047ab]">Total Payable</span>
-                           <span className="text-4xl font-black italic tracking-tighter text-slate-900">{formatCurrency(verifiedData.baseAmount * 1.02)}</span>
+                           <span className="text-4xl font-black italic tracking-tighter text-slate-900">{formatCurrency(totalPayable)}</span>
                         </div>
                      </div>
                   </div>
@@ -304,7 +328,7 @@ export function PublicPaymentPortal({ token }: { token: string }) {
                        disabled={processing}
                        className="w-full py-7 bg-[#0047ab] text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-blue-900/30 hover:bg-slate-900 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50"
                      >
-                       {processing ? "AUTHENTICATING SESSION..." : "PAY & SETTLE LEDGER"}
+                       {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "PAY & SETTLE LEDGER"}
                      </button>
                      <div className="flex items-center justify-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all">
                         <Lock className="w-3 h-3" />
@@ -314,54 +338,46 @@ export function PublicPaymentPortal({ token }: { token: string }) {
               </motion.div>
             )}
 
-            {/* ✅ STEP 3: SUCCESS CONFIRMATION */}
-            {step === "pay" && (
+            {/* ✅ STEP 3: SUCCESS RECEIPT */}
+            {step === "pay" && successReceipt && (
               <motion.div 
                 key="success"
-                initial={{ scale: 0.8, opacity: 0 }}
+                initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="text-center py-10 space-y-8"
+                className="py-6"
               >
-                  <div className="relative inline-block">
-                     <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-[3rem] flex items-center justify-center mx-auto shadow-xl">
-                        <CheckCircle2 className="w-12 h-12" />
-                     </div>
-                     <motion.div 
-                        animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        className="absolute inset-0 bg-emerald-500 rounded-[3rem] blur-xl -z-10" 
-                     />
-                  </div>
+                 <div className="flex flex-col items-center mb-10 text-center gap-4">
+                    <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center text-emerald-500 shadow-xl shadow-emerald-500/10">
+                      <CheckCircle2 className="w-10 h-10" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Settlement Complete</h2>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ledger Entry Recorded Successfully</p>
+                    </div>
+                 </div>
 
-                  <div>
-                     <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-2">Transaction Success</p>
-                     <h2 className="text-4xl font-black italic tracking-tighter text-slate-900 uppercase">SETTLEMENT RECORDED</h2>
-                     <p className="text-sm font-medium text-slate-400 mt-4 max-w-sm mx-auto leading-relaxed">The tuition fee for <span className="font-black text-slate-700">{verifiedData.studentName}</span> has been successfully cleared in the school ledger.</p>
-                  </div>
-                  
-                  <div className="bg-slate-50 p-8 rounded-[2.5rem] space-y-2 border border-slate-100 shadow-inner">
-                     <div className="flex items-center justify-center gap-2 mb-2">
-                        <ReceiptText className="w-4 h-4 text-[#0047ab]" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verification Hash #SAL-9912</span>
-                     </div>
-                     <p className="text-3xl font-black text-slate-900 italic tracking-tighter">{formatCurrency(verifiedData.baseAmount * 1.02)}</p>
-                     <p className="text-[10px] font-black text-[#0047ab] uppercase tracking-[0.2em]">{verifiedData.termId} PAID FULL</p>
-                  </div>
+                 <div className="scale-[0.8] origin-top -mt-10 mb-10">
+                    <FeeReceipt 
+                      student={successReceipt.student} 
+                      receipt={successReceipt} 
+                      schoolInfo={{
+                        name: publicData.schoolName,
+                        address: "School Campus, Institutional Registry",
+                        phone: "Institutional Helpline Active",
+                        email: `accounts@${publicData.schoolName.toLowerCase().replace(/\s+/g, '')}.com`
+                      }}
+                    />
+                 </div>
 
-                  <div className="flex flex-col gap-3">
-                     <button className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl flex items-center justify-center gap-3 hover:bg-black transition-all">
-                        <Download className="w-5 h-5" /> DOWNLOAD OFFICIAL RECEIPT
-                     </button>
-                     <button onClick={() => window.location.reload()} className="py-4 text-[10px] font-black text-[#0047ab] uppercase tracking-widest hover:underline">Close Session</button>
-                  </div>
+                 <div className="flex flex-col gap-4">
+                    <button onClick={() => window.location.reload()} className="py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-[#0047ab] hover:underline transition-all">Exit Secure Portal</button>
+                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
         </div>
       </div>
 
-      {/* 🚀 TRUST SECTION */}
       <div className="mt-16 flex flex-col items-center gap-6 animate-in fade-in duration-1000">
          <div className="flex items-center gap-8 opacity-30 grayscale hover:grayscale-0 transition-all duration-700">
             <img src="https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg" alt="Razorpay" className="h-5" />
