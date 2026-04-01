@@ -74,32 +74,19 @@ export async function POST(req: NextRequest) {
     console.log(`[RAZORPAY_WEBHOOK] 🔔 Received Event: ${event}`);
 
     // 3. Handle Successful Settlements (Orders & Payment Links)
-    if (event === "order.paid") {
-      const order = payload.payload.order.entity;
-      const notes = order.notes || {};
+    if (event === "order.paid" || event === "payment.captured") {
+      const payment = payload.payload.payment?.entity || {};
+      const order = payload.payload.order?.entity || {};
+      
+      // Multi-entity notes fallback (Check payment first, then order)
+      const notes = { ...(order.notes || {}), ...(payment.notes || {}) };
       const termsRaw = notes.terms || notes.selectedTerms || "";
+      const studentId = notes.studentId;
 
-      if (notes.type === "FEE_COLLECTION_V2" || notes.type === "FEE_COLLECTION_V2_TAXED") {
+      if (studentId) {
         await processCollectionFlow({
-          referenceId: order.id,
-          studentId: notes.studentId,
-          terms: termsRaw.split(",").filter(Boolean),
-          baseAmount: Number(notes.baseAmount),
-          lateFee: Number(notes.lateFee || 0),
-          convenienceFee: Number(notes.convenienceFee || 0)
-        });
-      }
-    }
-
-    if (event === "payment.captured") {
-      const payment = payload.payload.payment.entity;
-      const notes = payment.notes || {};
-      const termsRaw = notes.terms || notes.selectedTerms || "";
-
-      if (notes.type === "FEE_COLLECTION_V2" || notes.type === "FEE_COLLECTION_V2_TAXED") {
-        await processCollectionFlow({
-          referenceId: payment.id,
-          studentId: notes.studentId,
+          referenceId: payment.id || order.id,
+          studentId: studentId,
           terms: termsRaw.split(",").filter(Boolean),
           baseAmount: Number(notes.baseAmount || (payment.amount / 100) / 1.0177),
           lateFee: Number(notes.lateFee || 0),
@@ -108,6 +95,8 @@ export async function POST(req: NextRequest) {
           customerContact: payment.contact,
           customerEmail: payment.email
         });
+      } else {
+        console.warn(`[RAZORPAY_WEBHOOK] ⚠️ Payment ${payment.id || order.id} received but no studentId found in notes.`);
       }
     }
 
