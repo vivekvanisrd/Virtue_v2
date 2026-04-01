@@ -99,6 +99,9 @@ export async function recordFeeCollection(params: {
   lateFeeWaived: boolean;
   waiverReason?: string;
   convenienceFee?: number; // Optional 2% Gateway Charge
+  bankRrn?: string;        // Optional High-Fidelity Metadata
+  customerContact?: string;
+  customerEmail?: string;
 }) {
   try {
     const context = await getTenantContext();
@@ -109,6 +112,21 @@ export async function recordFeeCollection(params: {
       where: { schoolId: context.schoolId, isCurrent: true }
     });
     if (!activeFY) throw new Error("Active Financial Year not found.");
+
+    // IDEMPOTENCY CHECK: Ensure this specific transaction (Razorpay/Reference) isn't already recorded
+    if (params.paymentReference) {
+      const existing = await prisma.collection.findFirst({
+        where: { 
+          schoolId: context.schoolId,
+          paymentReference: params.paymentReference,
+          status: "Success"
+        }
+      });
+      if (existing) {
+        console.warn(`[FINANCE_IDEMPOTENCY] Reference ${params.paymentReference} already settled. Skipping duplicate.`);
+        return { success: true, data: existing }; // Idempotent return
+      }
+    }
 
     // 2. Load Student Fee Context for Milestone Validation
     const student = await prisma.student.findUnique({
@@ -193,6 +211,9 @@ export async function recordFeeCollection(params: {
             terms: params.selectedTerms,
             lateFeeWaived: params.lateFeeWaived,
             waiverReason: params.waiverReason,
+            bankRrn: params.bankRrn,
+            customerContact: params.customerContact,
+            customerEmail: params.customerEmail,
             auditMeta: {
               tuitionPortion: params.amountPaid,
               lateFeePortion: params.lateFeePaid,
@@ -416,7 +437,12 @@ export async function getStudentFeeStatus(studentId: string) {
     // Sync isPaid status from history
     const paidTerms = student.collections.flatMap((c: any) => {
       const allocated = c.allocatedTo as any;
-      return allocated?.terms || [];
+      if (!allocated) return [];
+      
+      const termsFromList = allocated.terms || [];
+      const legacyTerms = ["term1", "term2", "term3"].filter(t => (allocated as any)[t] > 0);
+      
+      return [...new Set([...termsFromList, ...legacyTerms])];
     });
 
     breakdown.term1.isPaid = paidTerms.includes("term1");
@@ -448,7 +474,23 @@ export async function createRazorpayOrderAction(params: {
   try {
     const context = await getTenantContext();
     
-    // 2% Convenience Fee Enrichment
+    // IDEMPOTENCY GUARD: Check if ANY term in this order is already paid
+    const existingSuccessfulCollection = await prisma.collection.findFirst({
+      where: {
+        studentId: params.studentId,
+        status: "Success",
+        allocatedTo: {
+          path: ['terms'],
+          array_contains: params.selectedTerms 
+        }
+      }
+    });
+
+    if (existingSuccessfulCollection) {
+      throw new Error(`Double Payment Blocked: Term(s) ${params.selectedTerms.join(', ')} are already paid or in-process.`);
+    }
+
+    // 1.5% Gateway Fee + 18% GST (1.77% multiplier)
     const baseAmount = params.amountPaid;
     const lateFee = params.lateFeePaid || 0;
     
@@ -527,13 +569,50 @@ export async function verifyRazorpayPaymentAction(params: {
       selectedTerms: params.selectedTerms,
       amountPaid: params.amountPaid,
       paymentMode: "Razorpay",
-      paymentReference: params.razorpay_order_id,
+      paymentReference: params.razorpay_payment_id, // Standardize on Payment ID
       lateFeePaid: params.lateFeePaid,
       convenienceFee: params.convenienceFee,
       lateFeeWaived: false
     });
 
     return result;
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * getRazorpayReport
+ * 
+ * High-fidelity audit report matching the Razorpay Dashboard.
+ */
+export async function getRazorpayReport() {
+  try {
+    const context = await getTenantContext();
+    const collections = await prisma.collection.findMany({
+      where: { 
+        schoolId: context.schoolId,
+        paymentMode: "Razorpay"
+      },
+      include: {
+        student: {
+          select: {
+            firstName: true,
+            lastName: true,
+            admissionNumber: true,
+            family: {
+              select: {
+                fatherPhone: true,
+                motherPhone: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { paymentDate: "desc" }
+    });
+
+    return { success: true, data: serialize(collections) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

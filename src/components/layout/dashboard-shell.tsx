@@ -10,6 +10,7 @@ import { GenericModule } from "../dashboard/generic-module";
 import { OverviewContent } from "../dashboard/overview";
 import { StudentsContent } from "../dashboard/students";
 import { FinanceContent } from "../dashboard/finance";
+import RazorpaySimulationLab from "../developer/RazorpaySimulationLab";
 
 import { StaffRolesManager } from "../dashboard/staff-roles";
 import { StaffImportManager } from "../dashboard/staff-import";
@@ -42,7 +43,7 @@ function WorkspaceRenderer() {
           {tab.id.startsWith("student-profile-") && (
             <StudentsContent tabId="student-profile" params={{ studentId: tab.id.replace("student-profile-", "") }} />
           )}
-          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll/i.test(tab.id)) && (
+          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll|razorpay/i.test(tab.id)) && (
             <FinanceContent 
                tabId={tab.id.startsWith("fee-collection") ? "fee-collection" : tab.id} 
                params={tab.params || {}} 
@@ -71,6 +72,10 @@ function WorkspaceRenderer() {
             <StaffContent tabId="staff-attendance" />
           )}
 
+          {tab.id === "razorpay-lab" && (
+            <RazorpaySimulationLab />
+          )}
+
           {/* Generic mappings for other cataloged modules */}
           {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
             <GenericModule 
@@ -80,7 +85,7 @@ function WorkspaceRenderer() {
           )}
 
           {/* Fallback for truly unknown tabs */}
-          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary/i.test(tab.id)) && (
+          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay/i.test(tab.id)) && (
             <div className="flex flex-col items-center justify-center h-full text-foreground opacity-30 py-40">
               <h2 className="text-2xl font-bold italic text-rose-500">Module Implementation Pending (HARD_OVERRIDE_V7)</h2>
               <p>The {tab.title} section (ID: {tab.id}) is coming soon.</p>

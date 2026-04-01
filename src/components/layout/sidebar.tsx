@@ -85,6 +85,7 @@ const menuItems: MenuItem[] = [
       { id: "fee-manager", name: "Fee Management", component: "Finance" },
       { id: "discounts", name: "Discounts", component: "Finance" },
       { id: "payment-requests", name: "Payment Requests", component: "Finance" },
+      { id: "razorpay-audit", name: "Razorpay Audit", component: "Finance" },
     ]
   },
   { id: "accounting", name: "Accounting", icon: Calculator, component: "Accounting", requiredRole: ROLES.ACCOUNTANT },
@@ -140,7 +141,11 @@ const menuItems: MenuItem[] = [
     name: "Developer Portal", 
     icon: Terminal, 
     requiredRole: ROLES.DEVELOPER,
-    component: "Developer Dashboard"
+    component: "Developer Dashboard",
+    subItems: [
+      { id: "dev-dashboard", name: "Overview", component: "Developer Dashboard" },
+      { id: "razorpay-lab", name: "Razorpay Simulation Lab", component: "Razorpay Lab" }
+    ]
   },
 ];
 

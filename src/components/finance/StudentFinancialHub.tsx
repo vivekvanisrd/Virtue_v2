@@ -22,15 +22,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { FeeReceipt } from "./FeeReceipt";
 import { formatCurrency } from "@/lib/utils/fee-utils";
+import { supabase } from "@/lib/supabase/client";
 import { 
   getStudentFeeStatus, 
   findPotentialSiblings, 
   createRazorpayOrderAction, 
   verifyRazorpayPaymentAction, 
-  generatePaymentLinkAction 
+  generatePaymentLinkAction,
+  getRazorpayReport
 } from "@/lib/actions/finance-actions";
 import { QRCodeSVG } from "qrcode.react";
+import RazorpayPaymentReport from "./RazorpayPaymentReport";
 
 declare global {
   interface Window {
@@ -43,6 +47,7 @@ interface StudentFinancialHubProps {
 }
 
 export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
+  const [view, setView] = useState<'hub' | 'audit'>('hub');
   const [loading, setLoading] = useState(true);
   const [studentData, setStudentData] = useState<any>(null);
   const [siblings, setSiblings] = useState<any[]>([]);
@@ -50,22 +55,52 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   const [activeTerm, setActiveTerm] = useState<string>("term1");
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [success, setSuccess] = useState<any>(null);
   const [payTarget, setPayTarget] = useState<{termId: string, amount: number} | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
+  const loadData = async () => {
+    if (view === 'audit') return; // Skip student data in audit view
+    setLoading(true);
+    const [res, sibs] = await Promise.all([
+      getStudentFeeStatus(studentId),
+      findPotentialSiblings(studentId)
+    ]);
+    
+    if (res.success) setStudentData(res.data);
+    if (sibs.success) setSiblings(sibs.data);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      const [res, sibs] = await Promise.all([
-        getStudentFeeStatus(studentId),
-        findPotentialSiblings(studentId)
-      ]);
-      
-      if (res.success) setStudentData(res.data);
-      if (sibs.success) setSiblings(sibs.data);
-      setLoading(false);
-    }
     loadData();
+  }, [studentId, view]);
+
+  // ─── REAL-TIME SYNC (Lightning Speed) ───
+  useEffect(() => {
+    if (!studentId) return;
+    
+    // Subscribe to NEW collections for this student
+    const channel = supabase
+      .channel(`student_fin_${studentId}`)
+      .on(
+        'postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'Collection',
+          filter: `studentId=eq.${studentId}` 
+        }, 
+        () => {
+          // Trigger a silent re-fetch when a remote payment is detected
+          loadData(); 
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [studentId]);
 
   // Dynamically load Razorpay script
@@ -127,8 +162,7 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
           });
 
           if (verifyRes.success) {
-            alert("Payment Successful! Receipt generated.");
-            window.location.reload();
+            setSuccess(verifyRes.data);
           } else {
             alert("Verification Failed: " + verifyRes.error);
           }
@@ -150,6 +184,14 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
     }
   };
 
+  if (view === 'audit') {
+    return (
+      <div className="max-w-7xl mx-auto p-4 md:p-12">
+        <RazorpayPaymentReport onBack={() => setView('hub')} />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20 animate-pulse">
@@ -165,6 +207,38 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
 
   const outstanding = (Number(studentData.financial?.netTuition) || 0) - (studentData.paidTotal || 0);
 
+  if (success) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50 animate-in fade-in zoom-in duration-500 overflow-y-auto min-h-[600px] border border-slate-200 rounded-[3.5rem] mt-6">
+        <div className="flex-1 p-12">
+          <div className="max-w-4xl mx-auto space-y-12 pb-20">
+             <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2.5rem] flex items-center gap-6 shadow-xl shadow-emerald-500/5">
+                <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                   <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-black text-emerald-900 tracking-tight">Payment Successful</h2>
+                  <p className="text-emerald-700/70 font-bold uppercase text-[10px] tracking-widest mt-1">Order Settled & Recorded</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSuccess(null);
+                    setPayTarget(null);
+                    window.location.reload();
+                  }}
+                  className="ml-auto px-8 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-xl"
+                >
+                  FINISH RECONCILIATION
+                </button>
+             </div>
+             
+             <FeeReceipt student={success.student} receipt={success.receipt} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
       
@@ -173,11 +247,21 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
         <div className="lg:col-span-2 bg-[#0047ab] text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-3xl rounded-full -mr-20 -mt-20" />
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-               <div className="p-2 bg-white/10 rounded-xl">
-                  <ShieldCheck className="w-5 h-5 text-white/80" />
-               </div>
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Secure Virtue Wallet</span>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-white/10 rounded-xl">
+                      <ShieldCheck className="w-5 h-5 text-white/80" />
+                   </div>
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Secure Virtue Wallet</span>
+                </div>
+                
+                <button 
+                  onClick={() => setView('audit')}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 transition-colors border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest flex items-center gap-2"
+                >
+                  <Zap className="w-3 h-3 text-amber-400" />
+                  Digital Audit Ledger
+                </button>
             </div>
             
             <p className="text-sm font-bold text-white/60 uppercase tracking-widest mb-1">Total Outstanding Balance</p>
@@ -239,7 +323,10 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          {["term1", "term2", "term3"].map((term: any) => {
            const amount = Number(studentData.financial?.[`${term}Amount`]) || 0;
-           const isPaid = studentData.collections?.some((c: any) => c.status === "Success" && c.allocatedTo?.[term] > 0); 
+           const isPaid = studentData.collections?.some((c: any) => {
+             const allocated = c.allocatedTo as any;
+             return c.status === "Success" && (allocated?.terms?.includes(term) || (allocated && allocated[term] > 0));
+           });
            
            return (
              <div key={term} className={cn(
