@@ -97,3 +97,34 @@ export async function getStudentExamReportAction(studentId: string, examTypeId: 
     return { success: false, error: "Failed to fetch student report." };
   }
 }
+
+/**
+ * Fetches all available classes for the school.
+ */
+export async function getClassesAction() {
+  try {
+    const classes = await prisma.class.findMany({
+      orderBy: { level: 'asc' }
+    });
+    return { success: true, data: JSON.parse(JSON.stringify(classes)) };
+  } catch (e) {
+    console.error("Fetch Classes Error:", e);
+    return { success: false, error: "Failed to fetch classes." };
+  }
+}
+
+/**
+ * Fetches sections for a specific class.
+ */
+export async function getSectionsAction(classId: string) {
+  try {
+    const sections = await prisma.section.findMany({
+      where: { classId },
+      orderBy: { name: 'asc' }
+    });
+    return { success: true, data: JSON.parse(JSON.stringify(sections)) };
+  } catch (e) {
+    console.error("Fetch Sections Error:", e);
+    return { success: false, error: "Failed to fetch sections." };
+  }
+}

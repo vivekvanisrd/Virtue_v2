@@ -123,7 +123,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     setSuccess(null);
     setSearchTerm("");
     setSearchResults([]);
-    setSettlements([]); // Clear previous batch
+    setSettlements([]); // Clear previous payment context
     
     try {
       const result = await getStudentFeeStatus(id);
@@ -135,8 +135,14 @@ export function FeeCollectionForm({ params }: { params?: any }) {
           waiverReason: ""
         }]);
         
-        const sibResult = await findPotentialSiblings(id);
-        if (sibResult.success) setSiblings(sibResult.data);
+        // SIBLING ISOLATION: Only look for siblings for manual search mode.
+        // For direct wallet links (params.studentId), we keep the ledger 100% individual.
+        if (!params?.studentId) {
+          const sibResult = await findPotentialSiblings(id);
+          if (sibResult.success) setSiblings(sibResult.data);
+        } else {
+          setSiblings([]); // Ensure no batching possible in direct mode
+        }
       } else {
         setError(result.error || "Failed to retrieve student profile.");
       }
@@ -237,7 +243,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       studentName: `${primary.student.firstName} ${primary.student.lastName}`,
       email: primary.student.guardianEmail || undefined,
       contact: primary.student.guardianPhone || undefined,
-      notes: `Batch Settlement for ${settlements.length} students`,
+      notes: `Consolidated Payment for ${settlements.length} items`,
       terms: allTerms
     });
 
@@ -256,57 +262,48 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     setError(null);
     setSuccess(null);
 
-    const batchResults: any[] = [];
-    let stopped = false;
+    // 1. Prepare Bulk Payload
+    const settlementsPayload = settlements
+      .filter(s => s.selectedTerms.length > 0)
+      .map(s => {
+        const termTotal = s.selectedTerms.reduce((sum, t) => sum + (s.student.feeBreakdown[t]?.amount || 0), 0);
+        const lateTotal = s.selectedTerms.reduce((sum, t) => {
+          const term = s.student.feeBreakdown[t];
+          if (term && term.dueDate && !term.isPaid) return sum + calculateLateFee(term.dueDate).amount;
+          return sum;
+        }, 0);
 
-    // Process each student settlement in the batch
-    for (const s of settlements) {
-      if (s.selectedTerms.length === 0) continue;
-
-      const termTotal = s.selectedTerms.reduce((sum, t) => sum + (s.student.feeBreakdown[t]?.amount || 0), 0);
-      const lateTotal = s.selectedTerms.reduce((sum, t) => {
-        const term = s.student.feeBreakdown[t];
-        if (term && term.dueDate && !term.isPaid) return sum + calculateLateFee(term.dueDate).amount;
-        return sum;
-      }, 0);
-
-      const result = await recordFeeCollection({
-        studentId: s.student.id,
-        selectedTerms: s.selectedTerms,
-        amountPaid: termTotal,
-        paymentMode,
-        paymentReference: paymentMode === "Cash" ? "" : (paymentDetails.transactionId || paymentDetails.chequeNo),
-        lateFeePaid: s.waivedLateFee ? 0 : lateTotal,
-        lateFeeWaived: s.waivedLateFee,
-        waiverReason: s.waivedLateFee ? s.waiverReason : undefined
+        return {
+          studentId: s.student.id,
+          selectedTerms: s.selectedTerms,
+          amountPaid: termTotal,
+          lateFeePaid: s.waivedLateFee ? 0 : lateTotal,
+          lateFeeWaived: s.waivedLateFee,
+          waiverReason: s.waivedLateFee ? s.waiverReason : undefined
+        };
       });
 
-      if (result.success && result.data) {
-        batchResults.push({
-          student: s.student,
-          receipt: {
-            receiptNumber: result.data.receiptNumber,
-            paymentDate: result.data.paymentDate,
-            amountPaid: termTotal,
-            lateFeePaid: s.waivedLateFee ? 0 : lateTotal,
-            totalPaid: termTotal + (s.waivedLateFee ? 0 : lateTotal),
-            paymentMode,
-            paymentReference: paymentMode === "Cash" ? "" : (paymentDetails.transactionId || paymentDetails.chequeNo),
-            allocatedTo: {
-              terms: s.selectedTerms,
-              lateFeeWaived: s.waivedLateFee,
-              waiverReason: s.waivedLateFee ? s.waiverReason : undefined
-            }
-          }
-        });
-      } else {
-        setError(`Batch item failed for ${s.student.firstName}: ${result.error || "Unknown error"}`);
-        stopped = true;
-        break;
-      }
+    if (settlementsPayload.length === 0) {
+      setCollectionLoading(false);
+      return;
     }
 
-    if (!stopped) {
+    // 2. Atomic Bulk Execution
+    const result = await (await import("@/lib/actions/finance-actions")).recordBulkFeeCollection({
+      settlements: settlementsPayload,
+      paymentMode,
+      paymentReference: paymentMode === "Cash" ? "" : (paymentDetails.transactionId || paymentDetails.chequeNo)
+    });
+
+    if (result.success && Array.isArray(result.data)) {
+      const batchResults = result.data.map((collection: any) => {
+        const student = settlements.find(s => s.student.id === collection.studentId)?.student;
+        return {
+          student,
+          receipt: collection
+        };
+      });
+
       setSuccess(batchResults);
       // Clean up batch state
       setSettlements([]);
@@ -320,6 +317,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         paymentLink: "",
         linkLoading: false
       });
+    } else {
+      setError(result.error || "Batch settlement failed.");
     }
     
     setCollectionLoading(false);
@@ -352,28 +351,46 @@ export function FeeCollectionForm({ params }: { params?: any }) {
           <Wallet className="w-10 h-10" />
         </div>
         <h2 className="text-4xl font-black tracking-tighter text-foreground mb-3">Fee Collection</h2>
-        <p className="text-muted-foreground text-sm max-w-sm font-medium mb-12 opacity-60 text-center">
+        <p className="text-muted-foreground text-sm max-w-sm font-medium mb-8 opacity-60 text-center">
           Enter admission number or student name to begin professional settlement.
         </p>
 
-        <form onSubmit={handleSearch} className="w-full max-w-lg group">
-          <div className="relative">
-            <input 
-              type="text" 
-              placeholder="Admission #, Name, or Phone..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-muted border border-border rounded-3xl px-8 py-6 text-lg font-bold outline-none ring-primary/20 transition-all focus:ring-4 focus:bg-background group-hover:border-primary/50"
-            />
-            <button 
-              type="submit"
-              disabled={loading}
-              className="absolute right-3 top-3 bottom-3 px-8 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-2"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <><Search className="w-4 h-4" /> FIND</>}
-            </button>
+        {error && (
+          <div className="mb-8 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in zoom-in duration-300">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-xs font-black uppercase tracking-tight">{error}</p>
+            {params?.studentId && (
+              <button 
+                onClick={() => selectStudent(params.studentId)}
+                className="ml-auto px-4 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black hover:bg-rose-700 transition-all"
+              >
+                RETRY
+              </button>
+            )}
           </div>
-        </form>
+        )}
+
+        {/* ─── Search & Selection Header (Hidden in Direct Mode) ─── */}
+        {!params?.studentId && (
+          <form onSubmit={handleSearch} className="w-full max-w-lg group">
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="Admission #, Name, or Phone..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-muted border border-border rounded-3xl px-8 py-6 text-lg font-bold outline-none ring-primary/20 transition-all focus:ring-4 focus:bg-background group-hover:border-primary/50"
+              />
+              <button 
+                type="submit"
+                disabled={loading}
+                className="absolute right-3 top-3 bottom-3 px-8 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <><Search className="w-4 h-4" /> FIND</>}
+              </button>
+            </div>
+          </form>
+        )}
 
         <div className="mt-8 w-full max-w-lg space-y-3">
           {searchResults.map((s) => (
@@ -410,12 +427,12 @@ export function FeeCollectionForm({ params }: { params?: any }) {
             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
             
             <div className="relative z-10">
-              {/* Sibling Discovery Bar */}
-              {siblings.length > 0 && settlements.length < 5 && (
+              {/* Sibling Discovery Bar (Disabled in Individual Audit Mode) */}
+              {!params?.studentId && siblings.length > 0 && settlements.length < 5 && (
                 <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-8 p-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl shadow-slate-200"
+                   initial={{ opacity: 0, y: -20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   className="mb-8 p-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl shadow-slate-200 border-l-4 border-primary"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -601,8 +618,6 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     <div className="flex gap-3">
                       {[
                         { id: "Cash", icon: Banknote },
-                        { id: "UPI", icon: QrCode },
-                        { id: "Cheque", icon: CreditCard },
                         { id: "Razorpay", icon: Zap },
                       ].map(mode => (
                         <button
@@ -664,11 +679,11 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                 <div className="space-y-6">
                   <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white shadow-2xl space-y-4">
                      <div className="flex items-center justify-between opacity-50 text-[10px] font-black uppercase tracking-widest">
-                        <span>Batch Net Amount</span>
+                        <span>Net Consolidated Amount</span>
                         <span>{formatCurrency(grandTotal)}</span>
                      </div>
                      <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                        <div className="text-xs font-black uppercase tracking-widest text-primary">Settlement Total</div>
+                        <div className="text-xs font-black uppercase tracking-widest text-primary">Student Settlement Total</div>
                         <div className="text-4xl font-black tracking-tighter">{formatCurrency(grandTotal)}</div>
                      </div>
                   </div>
@@ -684,7 +699,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     {collectionLoading || paymentDetails.linkLoading ? (
                       <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
-                      <>{paymentMode === "Razorpay" ? "GENERATE RAZORPAY LINK" : "COMPLETE BATCH SETTLEMENT"}</>
+                      <>{paymentMode === "Razorpay" ? "GENERATE RAZORPAY LINK" : "COMPLETE INDIVIDUAL SETTLEMENT"}</>
                     )}
                   </button>
                 </div>
@@ -697,10 +712,10 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                      <div className="flex items-center gap-4 p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100">
                         <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                         <div>
-                          <h3 className="text-2xl font-black text-emerald-900 tracking-tight">Batch Settlement Successful</h3>
+                          <h3 className="text-2xl font-black text-emerald-900 tracking-tight">Payment Successful</h3>
                           <p className="text-sm font-bold text-emerald-700 opacity-80">{success.length} Receipts Generated</p>
                         </div>
-                        <button onClick={() => setSuccess(null)} className="ml-auto px-6 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black">NEW BATCH</button>
+                        <button onClick={() => setSuccess(null)} className="ml-auto px-6 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black">NEW PAYMENT</button>
                      </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {success.map((res, i) => (
@@ -762,8 +777,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     vpa: "virtue-academy@upi",
                     name: "Virtue Academy",
                     amount: grandTotal,
-                    reference: settlements[0]?.student.id || "batch",
-                    note: `Batch Fees Settlement`
+                    reference: settlements[0]?.student.id || "student-payment",
+                    note: `Consolidated Fees Settlement`
                   })}
                </div>
 

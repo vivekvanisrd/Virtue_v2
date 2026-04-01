@@ -1,6 +1,6 @@
 "use server";
 
-import Razorpay from "razorpay";
+import { razorpay } from "@/lib/razorpay";
 import { getTenantContext } from "../utils/tenant-context";
 
 /**
@@ -20,25 +20,18 @@ export async function createPaymentLinkAction(details: {
   try {
     const context = await getTenantContext();
     
-    const key_id = process.env.RAZORPAY_KEY_ID;
-    const key_secret = process.env.RAZORPAY_KEY_SECRET;
-
-    if (!key_id || !key_secret) {
-      return { success: false, error: "Razorpay credentials not configured in environment." };
-    }
-
-    const instance = new Razorpay({
-      key_id,
-      key_secret
-    });
+    // 2% Convenience Fee Enrichment (match parent portal)
+    const baseAmount = details.amount;
+    const convenienceFee = baseAmount * 0.02;
+    const totalAmount = baseAmount + convenienceFee;
 
     // Create the payment link
-    const response = await instance.paymentLink.create({
-      amount: Math.round(details.amount * 100), // Razorpay expects paise
+    const response = await razorpay.paymentLink.create({
+      amount: Math.round(totalAmount * 100), // Razorpay expects paise
       currency: "INR",
       accept_partial: false,
       first_min_partial_amount: 0,
-      description: `Fees for ${details.studentName} - ${details.notes}`,
+      description: `Fees for ${details.studentName} (${details.terms.length} items)`,
       customer: {
         name: details.studentName,
         email: details.email || undefined,
@@ -53,7 +46,8 @@ export async function createPaymentLinkAction(details: {
         studentId: details.studentId,
         schoolId: context.schoolId,
         terms: details.terms.join(","),
-        type: "FEE_COLLECTION"
+        type: "FEE_COLLECTION",
+        convenienceFee: "2%"
       },
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?tab=finance&status=success`,
       callback_method: "get"
@@ -67,7 +61,11 @@ export async function createPaymentLinkAction(details: {
     };
 
   } catch (error: any) {
-    console.error("Razorpay Link Error:", error);
-    return { success: false, error: error.message || "Failed to generate payment link" };
+    console.error("[RAZORPAY_LINK_ERROR_FULL]", JSON.stringify(error, null, 2));
+    const detailedError = error.error?.description || error.message || "Unknown Razorpay Error";
+    return { 
+      success: false, 
+      error: `Razorpay: ${detailedError}`
+    };
   }
 }

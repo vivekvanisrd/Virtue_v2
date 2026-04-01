@@ -5,12 +5,10 @@ import { Activity, Clock, FileEdit, PlusCircle, Trash2, User, KeyRound, MonitorC
 import { getRecentActivity } from "@/lib/actions/audit-actions";
 import { cn } from "@/lib/utils";
 
-// Currently assuming a mocked active context
-const MOCK_CONTEXT = {
-  schoolId: "VR-SCH01",
-};
+import { useTenant } from "@/context/tenant-context";
 
 export function ActivityLogViewer() {
+  const { schoolId } = useTenant();
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,7 +18,7 @@ export function ActivityLogViewer() {
 
   const fetchLogs = async () => {
     setIsLoading(true);
-    const res = await getRecentActivity(MOCK_CONTEXT.schoolId, 100);
+    const res = await getRecentActivity(schoolId, 100);
     if (res.success && res.data) {
       setLogs(res.data);
     }

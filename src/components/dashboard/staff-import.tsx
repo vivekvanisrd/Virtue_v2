@@ -14,13 +14,10 @@ import {
 import { importStaffCSV } from "@/lib/actions/staff-import-actions";
 import { cn } from "@/lib/utils";
 
-// Currently assuming a mocked active context
-const MOCK_CONTEXT = {
-  schoolId: "VR-SCH01",
-  branchId: "VR-RCB01",
-};
+import { useTenant } from "@/context/tenant-context";
 
 export function StaffImportManager() {
+  const { schoolId, branchId } = useTenant();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -86,7 +83,7 @@ export function StaffImportManager() {
     setImportResult(null);
 
     // Call server action for validation and insertion
-    const result = await importStaffCSV(parsedData, MOCK_CONTEXT.schoolId, MOCK_CONTEXT.branchId);
+    const result = await importStaffCSV(parsedData, schoolId, branchId);
     
     setImportResult(result);
     setIsImporting(false);

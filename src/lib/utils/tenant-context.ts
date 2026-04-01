@@ -12,6 +12,7 @@ import { tenancyStorage, type TenantStore } from "../auth/tenancy-context";
 export interface TenantContext {
   schoolId: string;
   branchId: string;
+  staffId: string;
   role: "DEVELOPER" | "OWNER" | "PRINCIPAL" | "ACCOUNTANT" | "TEACHER" | "STAFF";
   permissions: string[];
 }
@@ -32,6 +33,7 @@ export async function getTenantContext(): Promise<TenantContext> {
     return {
       schoolId: "",
       branchId: "GLOBAL",
+      staffId: "",
       role: "STAFF", // Safe fallback
       permissions: []
     };
@@ -40,17 +42,25 @@ export async function getTenantContext(): Promise<TenantContext> {
   console.log(`[TENANT-CONTEXT] Session active for: ${session.email} (Role: ${session.role})`);
 
   // Use session data directly (Performance optimization)
-  // For developers, we still check the cookie for school switching
   let schoolId = session.schoolId;
   let branchId = session.branchId || "GLOBAL";
   let isGlobalDev = false;
 
+  // 🏢 BRANCH CONTEXT: Check for active branch selection (Owners/Developers)
+  const cookieStore = await cookies();
+  const activeBranchId = cookieStore.get('v-active-branch')?.value;
+
   if (session.role === "DEVELOPER") {
-    const cookieStore = await cookies();
     const activeSchoolId = cookieStore.get('v-active-school')?.value;
     schoolId = activeSchoolId || session.schoolId;
-    branchId = "GLOBAL";
-    isGlobalDev = !activeSchoolId; // Full global if no school selected
+    branchId = activeBranchId || "GLOBAL"; // Devs can switch branches too
+    isGlobalDev = !activeSchoolId; 
+  } else if (session.role === "OWNER") {
+    // Owners default to GLOBAL (All Branches) unless a branch is selected
+    branchId = activeBranchId || "GLOBAL";
+  } else {
+    // Other roles are locked to their assigned branch
+    branchId = session.branchId || "GLOBAL";
   }
 
   const store: TenantStore = {
@@ -67,26 +77,43 @@ export async function getTenantContext(): Promise<TenantContext> {
     return {
       schoolId,
       branchId: "GLOBAL",
+      staffId: "DEV-BYPASS",
       role: "DEVELOPER",
       permissions: ["*"]
     };
   }
 
-  // Fallback for stale sessions missing branchId
-  branchId = branchId || session.branchId;
-  if (!branchId || branchId === "GLOBAL") {
-    const staff = await prisma.staff.findUnique({
-      where: { id: session.staffId },
-      select: { branchId: true }
-    });
-    if (staff) {
-      branchId = staff.branchId;
+  // --- SELF-HEALING (ADMINS ONLY) ---
+  if (session.role === "DEVELOPER" || session.role === "OWNER") {
+    // Check if branchId exists in DB for this school
+    // This handles stale cookies or legacy IDs (e.g. BR-VIVA-01 vs VIVA-MAIN01)
+    if (branchId && branchId !== "GLOBAL") {
+        const branchExists = await prisma.branch.findUnique({
+            where: { id: branchId },
+            select: { id: true, schoolId: true }
+        });
+
+        if (!branchExists || branchExists.schoolId !== schoolId) {
+            console.warn(`[SELF-HEAL] Branch ${branchId} is stale or invalid. Finding alternative...`);
+            const fallbackBranch = await prisma.branch.findFirst({
+                where: { schoolId },
+                select: { id: true }
+            });
+            
+            if (fallbackBranch) {
+                console.log(`[SELF-HEAL] Auto-correcting to: ${fallbackBranch.id}`);
+                branchId = fallbackBranch.id;
+            } else {
+                branchId = "GLOBAL";
+            }
+        }
     }
   }
 
   return {
-    schoolId: session.schoolId,
-    branchId: branchId || "GLOBAL", 
+    schoolId: schoolId || session.schoolId,
+    branchId: branchId || "GLOBAL",
+    staffId: session.staffId,
     role: session.role as any,
     permissions: []
   };
@@ -110,7 +137,7 @@ export function getTenancyFilters(context: TenantContext) {
   // 🏛️ SCHOOL-LOCKED ROLES: Restricted to their specific school
   return {
     schoolId: context.schoolId,
-    // Owners see everything in the school; others are branch-locked.
-    ...(context.role !== 'OWNER' ? { branchId: context.branchId } : {})
+    // Owners/Developers see everything unless a branch is selected
+    ...(context.branchId !== 'GLOBAL' ? { branchId: context.branchId } : {})
   };
 }

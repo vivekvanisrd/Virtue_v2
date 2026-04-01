@@ -668,19 +668,23 @@ export default function DeveloperDashboardPage() {
       <AnimatePresence>
         {showCreateStaff && (
           <StaffModal 
-            mode="create"
-            schoolId={activeSchoolId}
+            mode="create" 
+            onSuccess={() => { setShowCreateStaff(false); refreshData(); fetchGlobalData(); }} 
+            onClose={() => setShowCreateStaff(false)} 
             schools={globalData?.schools || []}
-            onClose={() => setShowCreateStaff(false)}
-            onSuccess={() => { setShowCreateStaff(false); fetchGlobalData(); refreshData(); }}
+            branches={globalData?.branches || []}
+            schoolId={activeSchoolId}
           />
         )}
+
         {showEditStaff && (
           <StaffModal 
-            mode="edit"
+            mode="edit" 
             staff={showEditStaff}
-            onClose={() => setShowEditStaff(null)}
-            onSuccess={() => { setShowEditStaff(null); fetchGlobalData(); refreshData(); }}
+            onSuccess={() => { setShowEditStaff(null); refreshData(); fetchGlobalData(); }} 
+            onClose={() => setShowEditStaff(null)} 
+            schools={globalData?.schools || []}
+            branches={globalData?.branches || []}
           />
         )}
         {showEditSchool && (
@@ -698,33 +702,37 @@ export default function DeveloperDashboardPage() {
 
 // --- HELPER COMPONENTS ---
 
-function StaffModal({ mode, staff, schoolId, schools, onClose, onSuccess }: any) {
+function StaffModal({ mode, staff, onSuccess, onClose, schools, branches, schoolId }: any) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: staff?.firstName || "",
+    middleName: staff?.middleName || "",
     lastName: staff?.lastName || "",
     email: staff?.email || "",
     phone: staff?.phone || "",
     role: staff?.role || "STAFF",
     status: staff?.status || "Active",
     schoolId: staff?.schoolId || schoolId || schools?.[0]?.id || "",
+    branchId: staff?.branchId || "",
     username: staff?.username || "",
     password: ""
   });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
+    // Identity Protocol Validation
+    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+      alert("Invalid Identity Protocol: Phone number must be exactly 10 digits.");
+      return;
+    }
+
     setLoading(true);
     let res;
     if (mode === 'create') {
       res = await createStaffAction(formData);
     } else {
-      res = await updateStaffAction(staff.id, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        role: formData.role,
-        status: formData.status
-      });
+      res = await updateStaffAction(staff.id, formData);
     }
 
     if (res.success) {
@@ -750,14 +758,22 @@ function StaffModal({ mode, staff, schoolId, schools, onClose, onSuccess }: any)
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
               <input 
                 required
                 value={formData.firstName}
                 onChange={e => setFormData({...formData, firstName: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all font-sans"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Middle Name</label>
+              <input 
+                value={formData.middleName}
+                onChange={e => setFormData({...formData, middleName: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all font-sans"
               />
             </div>
             <div className="space-y-1">
@@ -766,21 +782,31 @@ function StaffModal({ mode, staff, schoolId, schools, onClose, onSuccess }: any)
                 required
                 value={formData.lastName}
                 onChange={e => setFormData({...formData, lastName: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all font-sans"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Email</label>
-            <input 
-              required
-              disabled={mode === 'edit'}
-              type="email"
-              value={formData.email}
-              onChange={e => setFormData({...formData, email: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all disabled:opacity-50"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Email</label>
+              <input 
+                required
+                type="email"
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all font-sans"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+              <input 
+                placeholder="Required for ID"
+                value={formData.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -835,16 +861,35 @@ function StaffModal({ mode, staff, schoolId, schools, onClose, onSuccess }: any)
             </div>
           </div>
 
-          {mode === 'create' && !schoolId && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Tenant</label>
-              <select 
-                value={formData.schoolId}
-                onChange={e => setFormData({...formData, schoolId: e.target.value})}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
-              >
-                {schools.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+          {(mode === 'create' || mode === 'edit') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Tenant</label>
+                <select 
+                  value={formData.schoolId}
+                  onChange={e => setFormData({...formData, schoolId: e.target.value, branchId: ""})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+                >
+                  {!formData.schoolId && <option value="">Select School...</option>}
+                  {schools.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Branch</label>
+                <select 
+                  value={formData.branchId}
+                  onChange={e => setFormData({...formData, branchId: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+                  disabled={!formData.schoolId}
+                >
+                  <option value="">Select Branch...</option>
+                  {(branches || [])
+                    .filter((b: any) => b.schoolId === formData.schoolId)
+                    .map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)
+                  }
+                </select>
+              </div>
             </div>
           )}
 

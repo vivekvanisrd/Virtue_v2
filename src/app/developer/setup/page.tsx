@@ -25,7 +25,19 @@ export default function DeveloperSetupPage() {
   const [success, setSuccess] = useState(false);
   const [linkSuccess, setLinkSuccess] = useState("");
   const [isLinking, setIsLinking] = useState(false);
+  const [discoveredSchoolId, setDiscoveredSchoolId] = useState<string | null>(null);
   const router = useRouter();
+
+  React.useEffect(() => {
+    async function discover() {
+      const { getGlobalData } = await import("@/lib/actions/dev-actions");
+      const result = await getGlobalData();
+      if (result.success && result.data && result.data.schools && result.data.schools.length > 0) {
+        setDiscoveredSchoolId(result.data.schools[0].id);
+      }
+    }
+    discover();
+  }, []);
 
   const { register, handleSubmit, formState: { errors } } = useForm<SetupInput>({
     resolver: zodResolver(setupSchema),
@@ -55,9 +67,10 @@ export default function DeveloperSetupPage() {
   };
 
   const onLinkClaim = async () => {
+    if (!discoveredSchoolId) return;
     setIsLinking(true);
     setErrorText("");
-    const result = await claimSchoolOwnership("VR-SCH01");
+    const result = await claimSchoolOwnership(discoveredSchoolId);
     if (result.success) {
       setLinkSuccess(result.message || "Linked Successfully!");
       setTimeout(() => router.push("/dashboard"), 2000);
@@ -117,27 +130,29 @@ export default function DeveloperSetupPage() {
         )}
 
         {/* Quick Link Section */}
-        <div className="mb-8 bg-blue-600 p-8 rounded-[30px] shadow-lg text-white">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
-                <ShieldCheck className="w-8 h-8" />
+        {discoveredSchoolId && (
+          <div className="mb-8 bg-blue-600 p-8 rounded-[30px] shadow-lg text-white animate-in slide-in-from-top-4 duration-500">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold italic">Detected Existing School Core</h2>
+                  <p className="text-blue-100 text-sm opacity-90">Your account is currently unlinked. Connect to {discoveredSchoolId} to resume management.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold italic">Detected 400+ Orphaned Records</h2>
-                <p className="text-blue-100 text-sm opacity-90">Your account is currently unlinked. Connect to the existing school core.</p>
-              </div>
+              <button 
+                onClick={onLinkClaim}
+                disabled={isLinking}
+                className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold shadow-xl hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+              >
+                {isLinking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Building className="w-5 h-5" />}
+                Link to existing School ({discoveredSchoolId})
+              </button>
             </div>
-            <button 
-              onClick={onLinkClaim}
-              disabled={isLinking}
-              className="px-8 py-4 bg-white text-blue-600 rounded-2xl font-bold shadow-xl hover:bg-blue-50 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-            >
-              {isLinking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Building className="w-5 h-5" />}
-              Link to existing School (VR-SCH01)
-            </button>
           </div>
-        </div>
+        )}
 
         <div className="relative flex items-center py-5 mb-8">
           <div className="flex-grow border-t border-slate-200"></div>

@@ -88,17 +88,23 @@ export class IdGenerator {
 
   /**
    * generateBranchId
-   * Format: {SCH}-BR-{SEQ_3} (as per Spec 2.2 / implementation history)
-   * Note: The spec says {SCH}-BR-RCB for a specific branch code.
-   * If the user provides a custom code, we use it. If not, auto-generate.
+   * Format: {SCH}-{BRANCH_CODE}{SEQ_2}
+   * Example: VIVA-MAIN01, ELT-BLR01
    */
-  static async generateBranchId(schoolId: string, schoolCode: string, tx?: any): Promise<string> {
+  static async generateBranchId(params: {
+    schoolId: string;
+    schoolCode: string;
+    branchCode?: string; // e.g. MAIN, BLR, IND
+  }, tx?: any): Promise<string> {
+    const branchCode = (params.branchCode || "BR").toUpperCase();
+    
+    // We use a counter specific to this branch code prefix to ensure 01, 02 per location
     const seq = await CounterService.getNextSequence({
-      schoolId,
-      type: "BRANCH",
+      schoolId: params.schoolId,
+      type: `BRANCH_${branchCode}`,
       year: "GLOBAL"
     }, tx);
 
-    return `${schoolCode}-BR-${seq.toString().padStart(3, '0')}`;
+    return `${params.schoolCode}-${branchCode}${seq.toString().padStart(2, '0')}`;
   }
 }

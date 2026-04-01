@@ -15,12 +15,10 @@ import {
 import { importStudentsAction } from "@/lib/actions/student-import-actions";
 import { cn } from "@/lib/utils";
 
-// Mocking active context for now
-const MOCK_CONTEXT = {
-  schoolId: "VR-SCH01",
-};
+import { useTenant } from "@/context/tenant-context";
 
 export function StudentImportHub() {
+  const { schoolId } = useTenant();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -69,7 +67,7 @@ export function StudentImportHub() {
   const handleImport = async () => {
     if (parsedData.length === 0) return;
     setIsImporting(true);
-    const result = await importStudentsAction(parsedData, MOCK_CONTEXT.schoolId);
+    const result = await importStudentsAction(parsedData, schoolId);
     setImportResult(result);
     setIsImporting(false);
   };

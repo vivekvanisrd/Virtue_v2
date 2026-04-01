@@ -60,7 +60,7 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
           </div>
           <div className="text-center">
             <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic leading-none mb-1">VIRTUE INTERNATIONAL</h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Official Fee Settlement Receipt</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Official Student Payment Receipt</p>
           </div>
         </div>
           <div className="text-xs text-slate-400 font-medium leading-relaxed max-w-xs">
@@ -123,7 +123,7 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
           <tbody className="divide-y divide-slate-50">
             <tr className="text-sm font-bold text-slate-700">
               <td className="py-6 px-2">
-                Tuition Fee Settlement
+                Consolidated Fee Payment
                 <p className="text-[10px] text-slate-400 font-medium">Academic Session 2024-25</p>
               </td>
               <td className="py-6 px-2 text-right uppercase tracking-tighter">
@@ -152,7 +152,7 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
               <td className="py-8 px-2" colSpan={2}>
                 <div className="flex items-center gap-2 text-emerald-600">
                   <CheckCircle2 className="w-5 h-5" />
-                  <p className="text-sm font-black uppercase tracking-widest">Transaction Verified & Sealed</p>
+                  <p className="text-sm font-black uppercase tracking-widest">Electronic Payment Verified & Sealed</p>
                 </div>
               </td>
               <td className="py-8 px-2 text-right">

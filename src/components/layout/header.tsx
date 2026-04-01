@@ -10,6 +10,7 @@ import {
   LogOut
 } from "lucide-react";
 import { ThemeCustomizer } from "./theme-customizer";
+import { BranchSwitcher } from "./BranchSwitcher";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -17,9 +18,19 @@ interface HeaderProps {
   userRole?: string;
   userName?: string;
   academicYear?: string;
+  branches?: any[];
+  activeBranchId?: string;
 }
 
-export function Header({ onMenuClick, userEmail, userRole, userName, academicYear }: HeaderProps) {
+export function Header({ 
+  onMenuClick, 
+  userEmail, 
+  userRole, 
+  userName, 
+  academicYear,
+  branches,
+  activeBranchId
+}: HeaderProps) {
   return (
     <header className="h-16 lg:h-16 glass border-b border-black/[0.03] sticky top-0 z-50 px-4 lg:px-6 flex items-center justify-between">
       {/* Mobile Menu & Logo */}
@@ -36,6 +47,13 @@ export function Header({ onMenuClick, userEmail, userRole, userName, academicYea
             </div>
             <span className="font-black text-slate-900 text-sm italic tracking-tighter">Virtue V2</span>
         </div>
+      </div>
+
+      {/* Branch Switcher (Administrative Roles Only) */}
+      <div className="flex-1 flex max-w-xl mx-4">
+        {branches && branches.length > 0 && (
+          <BranchSwitcher branches={branches} activeBranchId={activeBranchId} />
+        )}
       </div>
 
       {/* Search Bar (Hidden on Mobile) */}

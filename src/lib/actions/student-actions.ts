@@ -37,7 +37,16 @@ export async function submitAdmissionAction(formData: any) {
 
     // 3. Scoped ID Generation (Spec V1 Alignment)
     const year = new Date().getFullYear().toString();
-    const currentAY = validatedData.academicYearId || "VR-AY-2026-27";
+    
+    // Fetch Current Academic Year if not provided
+    let currentAY = validatedData.academicYearId;
+    if (!currentAY) {
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { schoolId: context.schoolId, isCurrent: true },
+        select: { id: true }
+      });
+      currentAY = activeYear?.id || "2026-27";
+    }
     
     // Fetch School and Branch Codes for ID generation
     const [school, branch] = await Promise.all([
@@ -84,7 +93,7 @@ export async function submitAdmissionAction(formData: any) {
 
     // 5. Transactional Insert (Atomic)
     const result = await prisma.$transaction(async (tx: any) => {
-      return await tx.student.create({
+      const student = await tx.student.create({
         data: {
           studentCode,
           admissionNumber,
@@ -249,6 +258,46 @@ export async function submitAdmissionAction(formData: any) {
           } : {}),
         }
       });
+
+      // 6. NEW: Accrual Accounting Injection (Income Recognition)
+      // Debit: Accounts Receivable (1200) | Credit: Income Accounts (3000s)
+      const coaAR = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
+      const coaTuition = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3001" } });
+      const coaAdmission = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3002" } });
+      const coaTransport = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3003" } });
+      const coaLibrary = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3004" } });
+      const coaLab = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3005" } });
+
+      if (coaAR && coaTuition) {
+        await tx.journalEntry.create({
+          data: {
+            schoolId: context.schoolId,
+            financialYearId: currentAY,
+            entryType: "ADMISSION_ACCRUAL",
+            totalDebit: annualFee + (validatedData.transportFee || 0),
+            totalCredit: annualFee + (validatedData.transportFee || 0),
+            description: `Initial Fee Accrual for Student: ${admissionNumber} (${validatedData.firstName})`,
+            lines: {
+              create: [
+                { accountId: coaAR.id, debit: annualFee + (validatedData.transportFee || 0), credit: 0 }, // Dr. Receivable
+                { accountId: coaTuition.id, debit: 0, credit: validatedData.tuitionFee || 0 }, // Cr. Tuition Income
+                ...(coaAdmission && validatedData.admissionFee ? [{ accountId: coaAdmission.id, debit: 0, credit: validatedData.admissionFee }] : []),
+                ...(coaTransport && validatedData.transportFee ? [{ accountId: coaTransport.id, debit: 0, credit: validatedData.transportFee }] : []),
+                ...(coaLibrary && validatedData.libraryFee ? [{ accountId: coaLibrary.id, debit: 0, credit: validatedData.libraryFee }] : []),
+                ...(coaLab && validatedData.labFee ? [{ accountId: coaLab.id, debit: 0, credit: validatedData.labFee }] : [])
+              ]
+            }
+          }
+        });
+
+        // Update balance on Receivable account
+        await tx.chartOfAccount.update({ 
+          where: { id: coaAR.id }, 
+          data: { currentBalance: { increment: annualFee + (validatedData.transportFee || 0) } } 
+        });
+      }
+
+      return student;
     }, {
       timeout: 30000 // 30 seconds
     });
@@ -280,6 +329,8 @@ export async function getStudentListAction(filters?: {
 }) {
   try {
     const context = await getTenantContext();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     const students = await prisma.student.findMany({
       where: {
@@ -308,6 +359,13 @@ export async function getStudentListAction(filters?: {
           }
         },
         financial: true,
+        attendance: {
+          where: {
+            date: today,
+            session: "Morning" // Can be made dynamic later
+          },
+          take: 1
+        }
       },
       orderBy: {
         createdAt: 'desc'

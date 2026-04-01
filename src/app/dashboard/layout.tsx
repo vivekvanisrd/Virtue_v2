@@ -25,12 +25,20 @@ export default async function Layout({ children }: { children: React.ReactNode }
     select: { name: true }
   });
 
+  // 🏢 BRANCH AUDIT: Fetch available branches only for administrative roles
+  const branches = (context.role === "OWNER" || context.role === "DEVELOPER")
+    ? await prisma.branch.findMany({ where: { schoolId: context.schoolId }, select: { id: true, name: true, code: true } })
+    : [];
+
   return (
     <DashboardShell 
       userEmail={session.email} 
-      userRole={context.role} // Keeping original context.role as session.role might not be available or correct here
+      userRole={context.role} 
       userName={session.name}
+      schoolId={session.schoolId}
       academicYear={activeYear?.name || "Session 2025-26"}
+      branches={JSON.parse(JSON.stringify(branches))}
+      activeBranchId={context.branchId}
     >
       {children}
     </DashboardShell>

@@ -10,6 +10,19 @@ import { revalidatePath } from "next/cache";
 import { getTenantContext, getTenancyFilters } from "../utils/tenant-context";
 
 /**
+ * CACHE: Global revalidation of all routes
+ */
+export async function purgeSystemCache() {
+    try {
+        console.log("[PURGE] Initiating global cache revalidation...");
+        revalidatePath("/", "layout");
+        return { success: true, message: "Global cache revalidated successfully." };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * UTILITY: Get record counts for health monitoring
  */
 export async function getDatabaseHealth() {
@@ -95,6 +108,7 @@ export async function unlockAccount(identifier: string) {
     try {
         console.log(`[DEV] Unlocking account: ${identifier}`);
         
+        const context = await getTenantContext();
         // Log the unlock action
         await (prisma as any).activityLog.create({
             data: {
@@ -103,7 +117,7 @@ export async function unlockAccount(identifier: string) {
                 entityId: identifier,
                 details: `Developer initiated emergency unlock for ${identifier}`,
                 userId: 'DEV_HUB',
-                schoolId: 'VR-SCH01' 
+                schoolId: context.schoolId 
             }
         }).catch(() => console.log("Audit log failed but unlock proceeding"));
 
@@ -140,6 +154,7 @@ export async function provisionInstance(data: {
     schoolName: string;
     schoolCode: string;
     city: string;
+    branchCode?: string; // New: Optional branch code
     adminName: string;
     adminEmail: string;
     adminPhone: string;
@@ -160,44 +175,80 @@ export async function provisionInstance(data: {
                 }
             });
 
-            // 2. Create Initial Branch
-            const branchCode = "RCB"; // Default for first branch
-            const branchId = `${school.id}-BR-${branchCode}`;
+            // 2. Create Initial Branch (Semantic: SCH-CODE01)
+            const bCode = (data.branchCode || "MAIN").toUpperCase();
+            const branchId = await IdGenerator.generateBranchId({
+                schoolId: school.id,
+                schoolCode: school.code,
+                branchCode: bCode
+            }, tx);
+
             const branch = await tx.branch.create({
                 data: {
                     id: branchId,
                     schoolId: school.id,
-                    name: "Main Branch",
-                    code: branchCode,
+                    name: `${bCode} Campus`,
+                    code: bCode,
                     address: data.city
                 }
             });
 
-            // 3. Create Current Academic Year (2026-27)
-            await tx.academicYear.create({
+            // 3. Dynamic Year Calculation (Auto-AY/FY)
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const isAfterApril = now.getMonth() >= 3; // April is month 3 (0-indexed)
+            
+            const ayStartYear = isAfterApril ? currentYear : currentYear - 1;
+            const ayEndYear = ayStartYear + 1;
+            const ayLabel = `${ayStartYear}-${ayEndYear.toString().slice(-2)}`; // e.g. "2026-27"
+
+            // Academic Year
+            const ay = await tx.academicYear.create({
                 data: {
-                    id: `${school.id}-AY-2026-27`,
-                    name: "2026-27",
-                    startDate: new Date("2026-06-01"),
-                    endDate: new Date("2027-03-31"),
+                    id: `${school.id}-AY-${ayLabel}`,
+                    name: ayLabel,
+                    startDate: new Date(`${ayStartYear}-06-01`),
+                    endDate: new Date(`${ayEndYear}-03-31`),
                     isCurrent: true,
                     schoolId: school.id
                 }
             });
 
-            // 4. Create Financial Year (2026-27)
-            await tx.financialYear.create({
+            // Financial Year
+            const fy = await tx.financialYear.create({
                 data: {
-                    id: `${school.id}-FY-2026-27`,
-                    name: "2026-27",
-                    startDate: new Date("2026-04-01"),
-                    endDate: new Date("2027-03-31"),
+                    id: `${school.id}-FY-${ayLabel}`,
+                    name: ayLabel,
+                    startDate: new Date(`${ayStartYear}-04-01`),
+                    endDate: new Date(`${ayEndYear}-03-31`),
                     isCurrent: true,
                     schoolId: school.id
                 }
             });
 
-            // 6. Mandatory Default Chart of Accounts (Spec Support)
+            // 4. Default Academic Hierarchy Seeding
+            const defaultClasses = ["Nursery", "LKG", "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+            for (const clsName of defaultClasses) {
+                const clsId = `${school.id}-CLS-${clsName.toUpperCase().replace(/\s+/g, '')}`;
+                await tx.class.create({
+                    data: {
+                        id: clsId,
+                        name: `Class ${clsName}`,
+                        level: defaultClasses.indexOf(clsName) + 1,
+                    }
+                });
+
+                // Default Section A for each class
+                await tx.section.create({
+                    data: {
+                        id: `${clsId}-SEC-A`,
+                        name: "Section A",
+                        classId: clsId
+                    }
+                });
+            }
+
+            // 5. Mandatory Default Chart of Accounts
             const accounts = [
                 { code: "1001", name: "Cash in Hand", type: "ASSET" },
                 { code: "1002", name: "Bank Account", type: "ASSET" },
@@ -218,7 +269,7 @@ export async function provisionInstance(data: {
                 });
             }
 
-            // 7. Supabase Auth Provisioning (Emergency/Admin)
+            // 6. Supabase Auth Provisioning
             let authUserId: string | null = null;
             const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
             
@@ -232,7 +283,7 @@ export async function provisionInstance(data: {
 
                     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
                         email: data.adminEmail,
-                        password: `Virtue@${data.schoolCode}`, // Temporary password
+                        password: `Virtue@${data.schoolCode}`,
                         email_confirm: true,
                         user_metadata: {
                             full_name: data.adminName,
@@ -241,43 +292,37 @@ export async function provisionInstance(data: {
                         }
                     });
 
-                    if (authData?.user) {
-                        authUserId = authData.user.id;
-                    } else if (authError) {
-                        console.error(`[FACTORY] Auth provisioning skipped: ${authError.message}`);
-                    }
+                    if (authData?.user) authUserId = authData.user.id;
                 } catch (e) {
                     console.error(`[FACTORY] Auth provisioning failed:`, e);
                 }
             }
 
-            // 8. Create Admin Staff (OWNER) - Spec 2.4 Align
+            // 7. Create Admin Staff (OWNER)
             const staffCode = await IdGenerator.generateStaffCode(school.id, school.code, "Owner/Partner", tx);
             const names = data.adminName.split(' ');
-            const firstName = names[0];
-            const lastName = names.length > 1 ? names.slice(1).join(' ') : 'Admin';
-
+            
             await tx.staff.create({
                 data: {
                     staffCode: staffCode,
-                    firstName: firstName,
-                    lastName: lastName,
+                    firstName: names[0],
+                    lastName: names.length > 1 ? names.slice(1).join(' ') : 'Admin',
                     email: data.adminEmail,
                     phone: data.adminPhone,
                     schoolId: school.id,
                     branchId: branch.id,
-                    userId: authUserId, // Linked to Supabase Auth
+                    userId: authUserId,
                     role: "OWNER",
                     status: "Active"
-                } as any // Bypass stale Prisma types
+                } as any
             });
 
-            // 9. Initialize Tenancy Counters (Spec V1 Atomic)
-            // Note: branchId defaults to "GLOBAL" for school-wide counters in schema now
+            // 8. Initialize Tenancy Counters
             const counters = [
-                { type: "ADMISSION", year: "2026-27", branch: branch.id },
-                { type: "RECEIPT", year: "2026-27", branch: branch.id },
-                { type: "STUDENT", year: "2026-27", branch: "GLOBAL" },
+                { type: "ADMISSION", year: ayLabel, branch: branch.id },
+                { type: "RECEIPT", year: ayLabel, branch: branch.id },
+                { type: "STUDENT", year: ayLabel, branch: "GLOBAL" },
+                { type: `BRANCH_${bCode}`, year: "GLOBAL", branch: "GLOBAL" }, // Reserve sequence for primary branch code
                 { type: "STAFF_OWN", year: "GLOBAL", branch: "GLOBAL" }
             ];
 
@@ -288,7 +333,7 @@ export async function provisionInstance(data: {
                         branchId: c.branch,
                         type: c.type,
                         year: c.year,
-                        lastValue: 0
+                        lastValue: c.type === `BRANCH_${bCode}` ? 1 : 0
                     }
                 });
             }
@@ -545,6 +590,7 @@ export async function createStaffAction(data: {
     phone: string;
     role: string;
     schoolId: string;
+    branchId?: string;
     password?: string;
     username?: string;
 }) {
@@ -552,8 +598,12 @@ export async function createStaffAction(data: {
         const school = await prisma.school.findUnique({ where: { id: data.schoolId } });
         if (!school) throw new Error("Target school not found.");
 
-        const branch = await prisma.branch.findFirst({ where: { schoolId: data.schoolId } });
-        if (!branch) throw new Error("School has no branches initialized.");
+        let targetBranchId = data.branchId;
+        if (!targetBranchId) {
+            const branch = await prisma.branch.findFirst({ where: { schoolId: data.schoolId } });
+            if (!branch) throw new Error("School has no branches initialized.");
+            targetBranchId = branch.id;
+        }
 
         const staffCode = await IdGenerator.generateStaffCode(school.id, school.code, data.role, prisma as any);
         
@@ -568,10 +618,10 @@ export async function createStaffAction(data: {
                 firstName: data.firstName,
                 lastName: data.lastName,
                 email: data.email,
-                phone: data.phone,
+                phone: data.phone || null, // Convert "" to null for unique constraint tolerance
                 role: data.role as any,
                 schoolId: data.schoolId,
-                branchId: branch.id,
+                branchId: targetBranchId,
                 status: "Active",
                 passwordHash,
                 username
@@ -595,18 +645,42 @@ export async function createStaffAction(data: {
  */
 export async function updateStaffAction(id: string, data: Partial<{
     firstName: string;
+    middleName?: string;
     lastName: string;
     role: string;
     status: string;
+    schoolId?: string;
+    branchId?: string;
+    email?: string;
+    phone?: string;
+    username?: string;
+    password?: string;
 }>) {
     try {
+        const updateData: any = { ...data };
+
+        // 1. Password Hashing (Identity Protocol V2)
+        // Only update passwordHash if a non-empty string is provided
+        if (data.password && data.password.trim().length > 0) {
+            updateData.passwordHash = await bcrypt.hash(data.password, 10);
+        }
+        
+        // Always remove the virtual 'password' field before hitting Prisma
+        delete updateData.password;
+
+        // 2. Phone unique constraint tolerance (convert "" to null)
+        if (updateData.phone === "") {
+            updateData.phone = null;
+        }
+
         const staff = await prisma.staff.update({
             where: { id },
-            data: data as any
+            data: updateData
         });
         revalidatePath("/developer/dashboard");
         return { success: true, message: `Updated ${staff.staffCode} successfully.` };
     } catch (e: any) {
+        console.error("[UPDATE STAFF ERROR]", e);
         return { success: false, error: e.message };
     }
 }

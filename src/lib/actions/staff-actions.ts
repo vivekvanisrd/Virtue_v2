@@ -162,7 +162,10 @@ export async function getStaffHubStats() {
   try {
     const context = await getTenantContext();
     
-    const [totalStaff, activeStaff, supportStaff] = await Promise.all([
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [totalStaff, activeStaff, supportStaff, newHires] = await Promise.all([
       prisma.staff.count({ where: { schoolId: context.schoolId } }),
       prisma.staff.count({ where: { schoolId: context.schoolId, status: "Active" } }),
       prisma.staff.count({ 
@@ -170,6 +173,12 @@ export async function getStaffHubStats() {
           schoolId: context.schoolId, 
           role: { in: ["SUPPORT", "DRIVERS", "SECURITY"] } 
         } 
+      }),
+      prisma.staffProfessional.count({
+        where: {
+          staff: { schoolId: context.schoolId },
+          dateOfJoining: { gte: thirtyDaysAgo }
+        }
       })
     ]);
 
@@ -178,7 +187,8 @@ export async function getStaffHubStats() {
       data: {
         totalStaff,
         activeStaff,
-        supportStaff
+        supportStaff,
+        newHires
       }
     };
   } catch (error) {
@@ -207,7 +217,8 @@ export async function getSalaryHubStats() {
       success: true,
       data: {
         totalBudget: totalBudget.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }),
-        staffCount
+        staffCount,
+        currentMonth: new Date().toLocaleString('default', { month: 'short' })
       }
     };
   } catch (error) {

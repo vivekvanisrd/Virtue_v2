@@ -43,7 +43,7 @@ export async function submitEnquiryAction(data: {
 
         const result = await prisma.enquiry.create({
             data: {
-                schoolId: data.schoolId || "VR-SCH01", // Fallback to main school for public form
+                schoolId: data.schoolId, 
                 studentFirstName: data.studentFirstName,
                 studentLastName: data.studentLastName,
                 parentName: data.parentName,

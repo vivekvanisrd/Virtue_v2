@@ -5,7 +5,7 @@ import {
   User, School, Users, MapPin, CreditCard, Info, 
   Heart, Building, ShieldCheck, ShieldAlert,
   ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download,
-  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle
+  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit
 } from "lucide-react";
 import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit } from "@/lib/actions/student-actions";
 import { requestReceiptVoid } from "@/lib/actions/finance-actions";
@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
 import { TCTemplate } from "./tc-template";
 import { useTabs } from "@/context/tab-context";
+import { StudentFinancialHub } from "../finance/StudentFinancialHub";
 
 interface StudentProfileProps {
   studentId: string;
@@ -43,8 +44,6 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
 
   const handleUpdate = async (updatedData: any) => {
     setIsUpdating(true);
-    // Ensure nested data is prepared if flattened in state for some reason
-    // But here we'll assume the state matches the DB structure
     const res = await updateStudentProfile(studentId, updatedData);
     if (res.success) {
       setStudent({ ...student, ...updatedData });
@@ -86,7 +85,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
   if (showTCPreview && tcPreviewData) {
     return (
       <div className="fixed inset-0 z-[100] bg-background overflow-auto flex flex-col">
-        <div className="bg-background border-b border-border shadow-sm">
+        <div className="bg-background border-b border-border shadow-sm p-4 flex items-center justify-between">
            <div className="flex items-center gap-3">
              <button onClick={() => setShowTCPreview(false)} className="p-2 hover:bg-background/10 rounded-lg text-foreground">
                 <ArrowLeft className="w-5 h-5" />
@@ -180,8 +179,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
         <div className="flex items-center gap-2">
           <button 
             onClick={() => openTab({ 
-              id: "fee-collection", 
-              title: "Fee Collection", 
+              id: `fee-collection-${student.id}`, 
+              title: `Fees: ${student.firstName}`, 
               icon: Wallet, 
               component: "Finance", 
               params: { studentId: student.id } 
@@ -263,8 +262,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   </div>
                   <button 
                     onClick={() => openTab({ 
-                      id: "fee-collection", 
-                      title: "Fee Collection", 
+                      id: `fee-collection-${student.id}`, 
+                      title: `Fees: ${student.firstName}`, 
                       icon: Wallet, 
                       component: "Finance", 
                       params: { studentId: student.id } 
@@ -417,7 +416,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                         </div>
                       ))
                     ) : (
-                      <div className="col-span-2 py-16 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-2xl bg-muted/50/30">
+                      <div className="col-span-2 py-16 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-2xl bg-muted/50">
                         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                           <FileText className="w-6 h-6 text-foreground opacity-30" />
                         </div>
@@ -460,7 +459,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                       { label: "APAAR (One Nation One ID)", value: student.academic?.apaarId, status: "Under Sync" },
                       { label: "Samagra ID", value: student.academic?.samagraId, status: "Active" }
                     ].map(item => (
-                                          <div key={item.label} className="bg-background p-3 rounded-xl border border-indigo-100 shadow-sm">
+                       <div key={item.label} className="bg-background p-3 rounded-xl border border-indigo-100 shadow-sm">
                         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">{item.label}</p>
                         <div className="flex items-center justify-between">
                           <p className="text-base font-black text-indigo-900 tracking-tight">{item.value || "PENDING"}</p>
@@ -499,7 +498,6 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             {activeTab === "family" && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Father Details */}
                   <div className="bg-muted/50 p-4 rounded-xl border border-border">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -552,7 +550,6 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     </div>
                   </div>
 
-                  {/* Mother Details */}
                   <div className="bg-muted/50 p-4 rounded-xl border border-border">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -646,112 +643,12 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     </button>
                   </div>
                 </div>
-
-                <div className="bg-background p-6 rounded-2xl border border-border">
-                   <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-4">TC Generation History</h4>
-                   <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                      <Clock className="w-8 h-8 text-foreground opacity-30 mb-2" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">No prior TC issued for this student</p>
-                   </div>
-                </div>
               </div>
             )}
 
             {activeTab === "financial" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Fee Structure & Plan</h4>
-                      <p className="text-xl font-black text-foreground tracking-tight">
-                        {student.paymentType || student.financial?.paymentType || "Term-wise (50/25/25)"}
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-emerald-100/50 flex items-center justify-between">
-                       <span className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Base Tuition</span>
-                       <span className="text-sm font-bold text-foreground">₹{student.tuitionFee || "0"}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Active Discounts</h4>
-                      <p className="text-sm font-bold text-slate-800 mt-2">
-                        {student.discountId1 ? student.discountReason1 || student.discountId1 : "No Active Discounts"}
-                      </p>
-                    </div>
-                    {student.discountId1 && (
-                      <div className="mt-4 flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-100/50 px-2 py-1 rounded w-fit">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                   <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest flex items-center justify-between">
-                     Recent Transaction History
-                     <span className="text-primary italic animate-pulse">Audit Protected Ledger</span>
-                   </h4>
-                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                     {student.collections?.length > 0 ? (
-                       student.collections.map((col: any) => (
-                         <div key={col.id} className="p-4 bg-muted/30 border border-border rounded-2xl flex items-center justify-between group hover:bg-muted/50 transition-all">
-                            <div className="flex items-center gap-4">
-                               <div className={cn(
-                                 "w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-sm",
-                                 col.status === "Success" ? "bg-emerald-500" : 
-                                 col.status === "Voided" ? "bg-slate-400" : "bg-amber-500"
-                               )}>
-                                 {col.status === "Success" ? <CheckCircle2 size={18} /> : 
-                                  col.status === "Voided" ? <Info size={18} /> : <Clock size={18} />}
-                               </div>
-                               <div>
-                                  <p className="text-sm font-black text-foreground">Receipt {col.receiptNumber}</p>
-                                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">
-                                    {new Date(col.paymentDate).toLocaleDateString()} • {col.paymentMode}
-                                  </p>
-                               </div>
-                            </div>
-                            <div className="text-right flex items-center gap-6">
-                               <div>
-                                  <p className="text-sm font-black text-foreground">{formatCurrency(Number(col.totalPaid))}</p>
-                                  <p className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest",
-                                    col.status === "Success" ? "text-emerald-600" : 
-                                    col.status === "Voided" ? "text-slate-400" : "text-amber-600"
-                                  )}>
-                                    {col.status}
-                                  </p>
-                               </div>
-                               {col.status === "Success" && (
-                                 <button 
-                                   onClick={async () => {
-                                      const reason = prompt("Reason for voiding request:");
-                                      if (reason) {
-                                         const res = await requestReceiptVoid(col.id, reason);
-                                         if (res.success) {
-                                            const updated = await getStudentFullProfile(student.id);
-                                            if (updated.success) setStudent(updated.data);
-                                         }
-                                      }
-                                   }}
-                                   className="opacity-0 group-hover:opacity-100 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                                 >
-                                   Request Void
-                                 </button>
-                               )}
-                            </div>
-                         </div>
-                       ))
-                     ) : (
-                       <div className="py-12 border-2 border-dashed border-border rounded-[2.5rem] flex flex-col items-center justify-center opacity-40">
-                          <CreditCard size={40} className="mb-4" />
-                          <p className="font-black uppercase tracking-widest text-[10px]">No transaction records found</p>
-                       </div>
-                     )}
-                   </div>
-                </div>
+              <div className="animate-in fade-in zoom-in-95 duration-500 h-full overflow-y-auto custom-scrollbar">
+                <StudentFinancialHub studentId={studentId} />
               </div>
             )}
 
@@ -994,8 +891,3 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     </div>
   );
 }
-
-// Minimal dummy for Edit (to be replaced)
-function Edit({ className }: { className?: string }) { return <ExternalLink className={className} />; }
-const primary = "text-violet-600";
-const bgPrimary = "bg-violet-600";

@@ -20,9 +20,42 @@ export async function submitStudentAttendanceAction(records: {
 }[]) {
   try {
     const context = await getTenantContext();
+    const todayStr = records[0]?.date || new Date().toISOString().split('T')[0];
+    const classId = records[0]?.classId;
+
+    // 1. TEACHER OWNERSHIP CHECK
+    if (context.role === "STAFF" || context.role === "TEACHER") {
+       const staff = await prisma.staff.findUnique({
+         where: { id: context.staffId }
+       });
+       
+       if (staff && staff.assignedClassId && classId && staff.assignedClassId !== classId) {
+          return { success: false, error: "ACCESS DENIED: You are only authorized to mark attendance for your assigned class." };
+       }
+    }
+
+    // 2. THE 10-MINUTE LOCK CHECK
+    if (context.role !== "PRINCIPAL" && context.role !== "OWNER" && classId) {
+       const firstRecord = await prisma.studentAttendance.findFirst({
+         where: { 
+           classId: classId,
+           date: { gte: new Date(new Date(todayStr).setHours(0,0,0,0)) },
+           schoolId: context.schoolId
+         },
+         orderBy: { createdAt: 'asc' }
+       });
+
+       if (firstRecord) {
+          const diffMs = new Date().getTime() - new Date(firstRecord.createdAt).getTime();
+          const diffMins = diffMs / (1000 * 60);
+          
+          if (diffMins > 10) {
+             return { success: false, error: "🔒 ATTENDANCE FINALIZED: The 10-minute grace period for corrections has expired. Please contact management for modifications." };
+          }
+       }
+    }
     
     // We'll perform an upsert for each student for that date/session.
-    // This allows teachers to 'Update' if they made a mistake.
     const result = await prisma.$transaction(
       records.map((r) => {
         const attendanceDate = new Date(r.date);

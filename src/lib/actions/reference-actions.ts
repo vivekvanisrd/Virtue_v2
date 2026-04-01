@@ -57,3 +57,40 @@ export async function getSectionsByClass(classId: string) {
         return { success: false, error: e.message };
     }
 }
+
+/**
+ * Fetches common organizational data for staff management
+ */
+export async function getStaffReferenceData() {
+    try {
+        const context = await getTenantContext();
+        
+        const [branches, departments, designations] = await Promise.all([
+            prisma.branch.findMany({
+                where: { schoolId: context.schoolId },
+                select: { id: true, name: true }
+            }),
+            prisma.staffProfessional.findMany({
+                where: { staff: { schoolId: context.schoolId } },
+                distinct: ['department'],
+                select: { department: true }
+            }),
+            prisma.staffProfessional.findMany({
+                where: { staff: { schoolId: context.schoolId } },
+                distinct: ['designation'],
+                select: { designation: true }
+            })
+        ]);
+
+        return {
+            success: true,
+            data: {
+                branches,
+                departments: departments.map((d: any) => d.department).filter(Boolean),
+                designations: designations.map((d: any) => d.designation).filter(Boolean)
+            }
+        };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}

@@ -2,6 +2,7 @@
 import { createClient } from "../supabase/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
+import { IdGenerator } from "../id-generator";
 
 import { setupSchema, SetupInput } from "@/lib/validations/setup";
 
@@ -12,17 +13,14 @@ export async function initializeSystem(data: SetupInput) {
     // 1. Check if schools already exist (To prevent accidental re-runs without Developer auth)
     const existingSchoolsCount = await prisma.school.count();
     
-    // In a fully deployed app, we would verify the user is a SUPER_ADMIN or DEVELOPER here.
-    // Let's proceed assuming they are authorized or this is a fresh setup.
-
     // 2. Perform everything in a transaction to ensure atomic setup
     const result = await prisma.$transaction(async (tx: any) => {
       
       // Step A: Create School
       const school = await tx.school.create({
         data: {
-          id: validatedData.schoolCode,
-          code: validatedData.schoolCode,
+          id: validatedData.schoolCode.toUpperCase(),
+          code: validatedData.schoolCode.toUpperCase(),
           name: validatedData.schoolName,
           address: validatedData.address,
           phone: validatedData.phone,
@@ -30,22 +28,27 @@ export async function initializeSystem(data: SetupInput) {
         },
       });
 
-      // Step B: Create Main Branch
-      const branchId = `${validatedData.schoolCode}-MNB01`;
+      // Step B: Create Main Branch (Semantic: SCH-MAIN01)
+      const branchId = await IdGenerator.generateBranchId({
+        schoolId: school.id,
+        schoolCode: school.code,
+        branchCode: "MAIN"
+      }, tx);
+
       const branch = await tx.branch.create({
         data: {
           id: branchId,
           schoolId: school.id,
           name: "Main Branch",
-          code: `${validatedData.schoolCode}01`,
+          code: "MAIN",
           address: validatedData.address,
           phone: validatedData.phone,
         },
       });
 
-      // Step C: Create Academic Year
-      const yearSuffix = validatedData.academicYear.split("-")[1]; // gets "26" from "2025-26"
-      const academicYearId = `${school.id}-AY-${validatedData.academicYear.split("-")[0]}${yearSuffix}`;
+      // Step C: Create Academic Year (Refactored to be cleaner)
+      const ayLabel = validatedData.academicYear; // e.g. "2025-26"
+      const academicYearId = `${school.id}-AY-${ayLabel}`;
       
       const startDate = new Date(validatedData.academicYearStart);
       const endDate = new Date(startDate);
@@ -56,31 +59,27 @@ export async function initializeSystem(data: SetupInput) {
         data: {
           id: academicYearId,
           schoolId: school.id,
-          name: validatedData.academicYear,
+          name: ayLabel,
           startDate: startDate,
           endDate: endDate,
           isCurrent: true,
         },
       });
 
-      // Step D: Create Owner Staff Record
-      // The OWNER is basically the primary administrator for the school.
-      const employeeId = `${school.id}-OWN-001`;
+      // Step D: Create Owner Staff Record (Dynamic ID)
+      const staffCode = await IdGenerator.generateStaffCode(school.id, school.code, "Owner/Partner", tx);
       
       const owner = await tx.staff.create({
         data: {
-        staffCode: employeeId,
+          staffCode: staffCode,
           schoolId: school.id,
           branchId: branch.id,
           firstName: validatedData.ownerFirstName,
           lastName: validatedData.ownerLastName,
           email: validatedData.ownerEmail,
           phone: validatedData.ownerPhone,
-          role: "OWNER", // Explicitly setting Core RBAC Role!
+          role: "OWNER",
           status: "Active",
-          // If using Supabase Auth, you would create the Auth User here or via API 
-          // and store the auth.users ID in `userId`. 
-          // For now, we store their intent to setup password in the frontend.
         },
       });
 

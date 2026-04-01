@@ -5,6 +5,7 @@ import { AlertTriangle, Wallet, ArrowRight, ShieldAlert, CheckCircle2, User, Rec
 import { FeeCollectionForm } from "../finance/FeeCollectionForm";
 import { FeeStructureManager } from "../finance/FeeStructureManager";
 import { DailyCollectionSummary } from "../finance/DailyCollectionSummary";
+import { PayrollManager } from "../finance/PayrollManager";
 import { useTabs } from "@/context/tab-context";
 import { 
   getRevenueLeakageReport, 
@@ -63,24 +64,20 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
     });
   };
 
-  if (tabId === "fee-collection") {
-    return (
-      <div className="relative">
-        <div className="fixed top-24 right-6 z-[9999] bg-slate-900/90 text-white p-3 rounded-2xl border border-white/20 shadow-2xl backdrop-blur-md font-mono text-[10px] space-y-1 w-48 pointer-events-none select-none animate-in fade-in slide-in-from-right-4 duration-500">
-          <div className="flex items-center justify-between border-b border-white/10 pb-1 mb-1">
-            <span className="font-black uppercase tracking-widest text-[8px] opacity-50">Diagnostics (v4.0)</span>
-            <div className={cn("w-2 h-2 rounded-full", params?.studentId ? "bg-emerald-400 animate-pulse" : "bg-amber-400")} />
-          </div>
-          <div className="flex justify-between"><span>ParamsID:</span> <span className="text-blue-300 font-bold">{params?.studentId ? params.studentId.slice(0,8) + '...' : 'NULL'}</span></div>
-          <p className="text-[8px] opacity-40 font-bold uppercase mt-1">Status: {params?.studentId ? "DeepLink Active" : "Searching"}</p>
-        </div>
-        <FeeCollectionForm key={params?.studentId || "fee-search"} params={params} />
-      </div>
-    );
+  // Detect if we should FORCE the Fee Collection form (DeepLink Mode)
+  const isDirectCollection = tabId === "fee-collection" || params?.studentId;
+
+  if (isDirectCollection) {
+    const activeStudentId = params?.studentId;
+    return <FeeCollectionForm key={activeStudentId || "fee-search"} params={params} />;
   }
 
   if (tabId === "fee-manager") {
     return <FeeStructureManager />;
+  }
+
+  if (tabId === "payroll") {
+    return <PayrollManager />;
   }
 
   return (
@@ -130,6 +127,12 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
                         className="px-10 py-5 bg-white/10 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest backdrop-blur-sm hover:bg-white/20 transition-all flex items-center gap-3"
                       >
                         <Settings2 className="w-4 h-4" /> Update Structure
+                      </button>
+                      <button 
+                        onClick={() => openTab({ id: "payroll", title: "Monthly Payroll", icon: ReceiptText, component: "Finance" })}
+                        className="px-10 py-5 bg-indigo-500/20 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest backdrop-blur-sm border border-indigo-500/30 hover:bg-indigo-500/40 transition-all flex items-center gap-3"
+                      >
+                        <ReceiptText className="w-4 h-4" /> Payroll Engine
                       </button>
                   </div>
            </div>

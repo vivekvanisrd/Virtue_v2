@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { provisionInstance } from '@/lib/actions/dev-actions';
-import { IdGenerator } from '@/lib/id-generator';
+import { suggestSchoolCodesAction, suggestBranchCodesAction } from '@/lib/actions/nomenclature-actions';
 
 const STEPS = [
   { id: 'identity', title: 'Instance Identity', icon: Building2 },
@@ -36,26 +36,34 @@ export default function InstanceFactory() {
     schoolName: '',
     schoolCode: '',
     city: '',
+    branchCode: '', // NEW: Custom branch code
     adminName: '',
     adminEmail: '',
     adminPhone: ''
   });
   
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [branchSuggestions, setBranchSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; schoolId?: string } | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
-  // Suggest codes when school name changes
+  // Suggest branch codes when city changes (LOCATION INTELLIGENCE)
   useEffect(() => {
-    if (formData.schoolName.length > 3 && !formData.schoolCode) {
-        // Mock suggestion logic for client-side purely for UI speed, 
-        // real logic would call a server action or the id-generator if it were a server component
-        const words = formData.schoolName.toUpperCase().split(' ').filter(Boolean);
-        const code = words.map(w => w[0]).join('').substring(0, 4);
-        if (code.length >= 2) setSuggestions([code, words[0].substring(0, 3)]);
-    }
-  }, [formData.schoolName]);
+    const fetchBranchSuggestions = async () => {
+        if (formData.city.length >= 3 && !formData.branchCode) {
+            const res = await suggestBranchCodesAction(formData.city);
+            if (res.success) {
+                setBranchSuggestions(res.codes);
+            }
+        } else if (formData.city.length < 3) {
+            setBranchSuggestions([]);
+        }
+    };
+
+    const timer = setTimeout(fetchBranchSuggestions, 400);
+    return () => clearTimeout(timer);
+  }, [formData.city, formData.branchCode]);
 
   const addLog = (msg: string) => {
     setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
@@ -71,6 +79,7 @@ export default function InstanceFactory() {
     
     addLog("Initializing Atomic Provisioning Sequence...");
     addLog(`Target: ${formData.schoolName} (${formData.schoolCode})`);
+    addLog(`Branch Path: ${formData.branchCode || 'MAIN'}`);
     
     const res = await provisionInstance(formData);
     
@@ -219,6 +228,33 @@ export default function InstanceFactory() {
                         onChange={(e) => setFormData({...formData, city: e.target.value})}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Primary Branch Code</label>
+                    <div className="relative group">
+                      <Zap className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-600 group-focus-within:text-red-500 transition-colors" />
+                      <input 
+                        type="text"
+                        placeholder="e.g. BLR, MAIN"
+                        className="w-full bg-neutral-900 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all uppercase"
+                        value={formData.branchCode}
+                        onChange={(e) => setFormData({...formData, branchCode: e.target.value})}
+                      />
+                    </div>
+                    {branchSuggestions.length > 0 && !formData.branchCode && (
+                       <div className="flex gap-2 mt-2">
+                        {branchSuggestions.map(s => (
+                          <button 
+                            key={s}
+                            onClick={() => setFormData({...formData, branchCode: s})}
+                            className="text-[10px] px-3 py-1 bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-lg text-neutral-400 hover:text-emerald-400 transition-all"
+                          >
+                            Suggest: {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}

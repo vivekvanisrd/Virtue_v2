@@ -3,6 +3,7 @@
 import prisma from "../prisma";
 import { createClient } from "../supabase/server";
 import { revalidatePath } from "next/cache";
+import { IdGenerator } from "../id-generator";
 
 const SUPER_ADMIN_EMAILS = ["vivekvanisrd@gmail.com"];
 
@@ -37,23 +38,27 @@ export async function createSchoolAction(formData: {
         },
       });
 
-      // 2. Create Initial Branch
-      const branchId = `${formData.schoolId}-BR-01`;
+      // 2. Create Initial Branch (Semantic: SCH-CODE01)
+      const branchId = await IdGenerator.generateBranchId({
+        schoolId: school.id,
+        schoolCode: school.code,
+        branchCode: formData.branchCode || "MAIN"
+      }, tx);
+
       const branch = await tx.branch.create({
         data: {
           id: branchId,
           schoolId: school.id,
           name: formData.branchName,
-          code: formData.branchCode,
+          code: formData.branchCode || "MAIN",
         },
       });
 
-      // 3. Create Admin Staff/User stub
-      // In this version, we assume the admin will sign up/login with this email
-      // and the multi-tenancy logic will link them via the Staff record.
+      // 3. Create Admin Staff (OWNER)
+      const staffCode = await IdGenerator.generateStaffCode(school.id, school.code, "Owner/Partner", tx);
       const staff = await tx.staff.create({
         data: {
-          staffCode: "ADMIN-001",
+          staffCode: staffCode,
           firstName: "School",
           lastName: "Admin",
           email: formData.adminEmail,

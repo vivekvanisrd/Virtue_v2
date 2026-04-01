@@ -11,10 +11,10 @@ import {
 
 const prisma = new PrismaClient();
 
-const CSV_PATH = 'j:/virtue_fb/csv/rcbBook.csv';
-const SCHOOL_ID = 'VR-SCH01';
-const BRANCH_ID = 'VR-RCB01';
-const ACADEMIC_YEAR_ID = 'VR-AY-2026-27';
+const CSV_PATH = process.argv[2] || 'j:/virtue_fb/csv/rcbBook.csv';
+const SCHOOL_ID = process.argv[3] || 'VIVA';
+const BRANCH_ID = process.argv[4] || 'VIVA-BR-01';
+const ACADEMIC_YEAR_ID = process.argv[5] || 'VIVA-AY-2026-27';
 
 // Mapping for Classes
 const CLASS_MAPPING: Record<string, string> = {

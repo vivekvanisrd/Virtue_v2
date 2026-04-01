@@ -14,14 +14,10 @@ import { getStaffMembers, updateStaffRole } from "@/lib/actions/role-actions";
 import { ROLES, Role, canManageRole } from "@/lib/utils/rbac";
 import { cn } from "@/lib/utils";
 
-// Mocking the current active user's role and school for demo purposes
-// In production, this comes from Supabase Session/Auth Context
-const CURRENT_SCENARIO = {
-  actingUserRole: ROLES.OWNER, 
-  schoolId: "VR-SCH01" // Active school in the current DB
-};
+import { useTenant } from "@/context/tenant-context";
 
 export function StaffRolesManager() {
+  const { schoolId, userRole: actingUserRole } = useTenant();
   const [staffList, setStaffList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,7 +30,7 @@ export function StaffRolesManager() {
 
   const loadStaff = async () => {
     setIsLoading(true);
-    const result = await getStaffMembers(CURRENT_SCENARIO.schoolId);
+    const result = await getStaffMembers(schoolId);
     if (result.success && result.data) {
       setStaffList(result.data);
     }
@@ -46,7 +42,7 @@ export function StaffRolesManager() {
     setMessage(null);
 
     const result = await updateStaffRole(
-      CURRENT_SCENARIO.actingUserRole, 
+      actingUserRole as Role, 
       staffId, 
       newRole as Role
     );
@@ -85,10 +81,10 @@ export function StaffRolesManager() {
           </p>
         </div>
         
-        {/* Mock Context Indicator */}
+        {/* Context Indicator */}
         <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-bold flex items-center gap-2 border border-blue-100">
           <ShieldAlert className="w-4 h-4" />
-          Acting as: {CURRENT_SCENARIO.actingUserRole}
+          Acting as: {actingUserRole}
         </div>
       </div>
 
@@ -142,8 +138,8 @@ export function StaffRolesManager() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredStaff.map((staff) => {
-                  const isActingUser = false; // Mock - would check if staff.id === currentUser.id
-                  const canManage = canManageRole(CURRENT_SCENARIO.actingUserRole, staff.role) && !isActingUser;
+                  const isActingUser = false; // Add logic if needed
+                  const canManage = canManageRole(actingUserRole as Role, staff.role) && !isActingUser;
 
                   return (
                     <tr key={staff.id} className="hover:bg-muted/50/50 transition-colors group">
@@ -188,7 +184,7 @@ export function StaffRolesManager() {
                           >
                             {Object.values(ROLES).map(role => {
                               // Only show roles the acting user is allowed to assign
-                              const canAssign = canManageRole(CURRENT_SCENARIO.actingUserRole, role);
+                              const canAssign = canManageRole(actingUserRole as Role, role);
                               if (!canAssign && staff.role !== role) return null; // Hide roles they can't assign (except current)
                               
                               return (

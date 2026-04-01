@@ -8,8 +8,10 @@ import {
   unlockAccount, 
   runDiagnostics, 
   resetUserPassword,
-  createUserAccount
+  createUserAccount,
+  purgeSystemCache
 } from "@/lib/actions/dev-actions";
+import { refreshSessionAction } from "@/lib/actions/auth-native";
 import { 
   ShieldAlert, 
   Lock, 
@@ -32,14 +34,16 @@ import { cn } from "@/lib/utils";
 
 export default function ToolboxPage() {
   const [identifier, setIdentifier] = useState("");
-  const [unlockStatus, setUnlockStatus] = useState<{ success?: boolean; message?: string; error?: string } | null>(null);
+  const [unlockStatus, setUnlockStatus] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<any[] | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isRunningDiag, setIsRunningDiag] = useState(false);
   const [resetId, setResetId] = useState("");
   const [newPass, setNewPass] = useState("");
-  const [resetStatus, setResetStatus] = useState<{ success?: boolean; message?: string; error?: string } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<any>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [traceId, setTraceId] = useState("");
 
   useEffect(() => {
@@ -68,12 +72,28 @@ export default function ToolboxPage() {
     if (!resetId) return;
     setIsResetting(true);
     const result = await resetUserPassword(resetId, newPass || undefined);
-    setResetStatus(result);
+    setStatusMsg(result);
     setIsResetting(false);
     if (result.success) {
       setResetId("");
       setNewPass("");
     }
+  };
+
+  const handlePurge = async () => {
+    setIsPurging(true);
+    setStatusMsg(null);
+    const result = await purgeSystemCache();
+    setStatusMsg(result);
+    setIsPurging(false);
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setStatusMsg(null);
+    const result = await refreshSessionAction();
+    setStatusMsg(result);
+    setIsSyncing(false);
   };
 
   return (
@@ -120,7 +140,7 @@ export default function ToolboxPage() {
                 <input 
                   type="text" 
                   placeholder="Username / Email / User ID" 
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-red-500/50 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-red-500/50 transition-all font-mono"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                 />
@@ -210,22 +230,22 @@ export default function ToolboxPage() {
               </button>
 
               <AnimatePresence>
-                {resetStatus && (
+                {statusMsg && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     className={cn(
                       "p-4 rounded-xl border text-xs",
-                      resetStatus.success ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                      statusMsg.success ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-amber-500/10 border-amber-500/20 text-amber-400"
                     )}
                   >
                     <div className="flex items-center gap-2 font-bold mb-1">
-                      {resetStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                      {resetStatus.success ? "RESET SUCCESS" : "PROTOCOL WARNING"}
+                      {statusMsg.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                      {statusMsg.success ? "RESET SUCCESS" : "PROTOCOL WARNING"}
                     </div>
-                    {resetStatus.success ? resetStatus.message : resetStatus.error}
-                    {!resetStatus.success && (resetStatus as any).code === "MISSING_KEY" && (
+                    {statusMsg.success ? statusMsg.message : statusMsg.error}
+                    {!statusMsg.success && (statusMsg as any).code === "MISSING_KEY" && (
                         <div className="mt-2 p-2 bg-black/40 rounded border border-white/5 text-[9px] uppercase tracking-tighter italic">
                             ACTION REQUIRED: ADD SUPABASE_SERVICE_ROLE_KEY TO .ENV
                         </div>
@@ -258,7 +278,7 @@ export default function ToolboxPage() {
                 />
                 <input 
                   type="text" 
-                  placeholder="School ID (VIVA)" 
+                  placeholder="Target School ID" 
                   className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 px-4 text-xs focus:outline-none focus:border-blue-500/50 transition-all font-mono uppercase"
                   id="prov-school"
                 />
@@ -300,6 +320,44 @@ export default function ToolboxPage() {
               >
                 <RefreshCcw className={cn("w-4 h-4 text-blue-400", isRunningDiag && "animate-spin")} />
               </button>
+            </div>
+
+            <div className="space-y-4">
+              <button 
+                onClick={handlePurge}
+                disabled={isPurging}
+                className="w-full py-4 bg-emerald-600/10 border border-emerald-500/30 hover:bg-emerald-600/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {isPurging ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                Purge System Route Cache
+              </button>
+
+              <button 
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="w-full py-4 bg-blue-600/10 border border-blue-500/30 hover:bg-blue-600/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {isSyncing ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+                Sync Session Credentials
+              </button>
+
+              <AnimatePresence>
+                {statusMsg && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className={cn(
+                      "p-4 rounded-xl border text-[10px] font-bold uppercase tracking-wider",
+                      statusMsg.success ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"
+                    )}
+                  >
+                    {statusMsg.success ? "SEQUENCE COMPLETE" : "EXECUTION FAILED"}
+                    <div className="mt-1 opacity-60 font-medium normal-case tracking-normal">
+                      {statusMsg.message || statusMsg.error}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="space-y-3">

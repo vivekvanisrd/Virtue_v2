@@ -10,8 +10,10 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getStaffHubStats } from "@/lib/actions/staff-actions";
+import { useTenant } from "@/context/tenant-context";
 
 export function StaffHub() {
+  const { academicYear } = useTenant();
   const [stats, setStats] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 

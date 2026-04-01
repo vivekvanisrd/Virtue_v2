@@ -36,8 +36,9 @@ model School {
   finRecords           FinancialRecord[]
   financialYears       FinancialYear[]
   gradeScales          GradeScale[]
-  journalEntries       JournalEntry[]
+  journals             JournalEntry[]
   notifications        Notification[]
+  payrollRuns         PayrollRun[]
   routes               Route[]
   staff                Staff[]
   students             Student[]
@@ -101,6 +102,7 @@ model Class {
   sections        Section[]
   attendance      StudentAttendance[]
   subjects        Subject[]
+  classTeacher    Staff?              @relation("ClassTeacher")
 }
 
 model Section {
@@ -389,6 +391,7 @@ model Collection {
   branchId         String
   amountPaid       Decimal       @db.Decimal(12, 2)
   lateFeePaid      Decimal       @default(0) @db.Decimal(12, 2)
+  convenienceFee   Decimal?      @db.Decimal(12, 2)
   totalPaid        Decimal       @db.Decimal(12, 2)
   paymentMode      String
   paymentReference String?
@@ -396,6 +399,7 @@ model Collection {
   paymentDate      DateTime      @default(now())
   collectedBy      String
   journalEntryId   String?       @unique
+  isAutomated      Boolean       @default(false)
   status           String        @default("Success")
   branch           Branch        @relation(fields: [branchId], references: [id])
   journalEntry     JournalEntry? @relation(fields: [journalEntryId], references: [id])
@@ -524,6 +528,9 @@ model Staff {
   professional       StaffProfessional?
   statutory          StaffStatutory?
   vehicleAssignments VehicleStaff[]
+  salarySlips        SalarySlip[]
+  assignedClassId    String?            @unique
+  assignedClass      Class?             @relation("ClassTeacher", fields: [assignedClassId], references: [id])
 
   @@unique([schoolId, staffCode])
   @@unique([schoolId, email])
@@ -799,11 +806,12 @@ model Enquiry {
   referrerPhone    String?
   school           School   @relation(fields: [schoolId], references: [id])
 }
+
 model GlobalSetting {
   id        String   @id @default(uuid())
   schoolId  String
   key       String
-  value     String   @db.Text
+  value     String
   isSecret  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -839,4 +847,44 @@ model ActivityLog {
   ipAddress  String?
   createdAt  DateTime @default(now())
   school     School   @relation(fields: [schoolId], references: [id])
+}
+
+model PayrollRun {
+  id            String       @id @default(uuid())
+  schoolId      String
+  month         Int
+  year          Int
+  status        String       @default("Draft") // Draft, Approved, Paid
+  totalGross    Decimal      @db.Decimal(15, 2)
+  totalNet      Decimal      @db.Decimal(15, 2)
+  processedBy   String?
+  processedAt   DateTime?
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  school        School       @relation(fields: [schoolId], references: [id])
+  slips         SalarySlip[]
+
+  @@unique([schoolId, month, year])
+}
+
+model SalarySlip {
+  id              String     @id @default(uuid())
+  payrollRunId    String
+  staffId         String
+  baseAmount      Decimal    @db.Decimal(12, 2)
+  arrears         Decimal    @default(0) @db.Decimal(12, 2)
+  allowances      Json?      // {hra, da, special, etc}
+  deductions      Json?      // {pf, esi, pt, advance}
+  grossSalary     Decimal    @db.Decimal(12, 2)
+  netSalary       Decimal    @db.Decimal(12, 2)
+  status          String     @default("Pending") // Pending, Paid
+  paymentMode     String?
+  paymentRef      String?
+  paidAt          DateTime?
+  payrollRun      PayrollRun @relation(fields: [payrollRunId], references: [id])
+  staff           Staff      @relation(fields: [staffId], references: [id])
+
+  @@unique([payrollRunId, staffId])
 }

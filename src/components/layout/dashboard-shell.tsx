@@ -16,14 +16,15 @@ import { StaffImportManager } from "../dashboard/staff-import";
 import { ActivityLogViewer } from "../dashboard/activity-log";
 import { StaffContent } from "../dashboard/staff";
 import { StudentHub } from "../students/StudentHub";
-import { SalaryHub } from "../salaries/SalaryHub";
 import { StaffHub } from "../dashboard/staff-hub";
 import { SalariesContent } from "../dashboard/salaries";
 import { BankSettings } from "../dashboard/bank-settings";
 import { VelocityAttendance } from "../attendance/VelocityAttendance";
+import { TenantProvider, useTenant } from "@/context/tenant-context";
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
+  const { schoolId } = useTenant();
   console.log("[WORKSPACE_RENDERER] Active:", activeTabId, "Tabs:", tabs.map(t => t.id));
 
   return (
@@ -35,14 +36,17 @@ function WorkspaceRenderer() {
         >
           {tab.id === "overview" && <OverviewContent />}
           {tab.id === "students" && <StudentHub />}
-          {(tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries" || tab.id === "students-attendance" || tab.id === "students-exams" || tab.id === "students-import") && (
+          {(tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries" || tab.id === "students-exams" || tab.id === "students-import") && (
             <StudentsContent tabId={tab.id} />
           )}
           {tab.id.startsWith("student-profile-") && (
             <StudentsContent tabId="student-profile" params={{ studentId: tab.id.replace("student-profile-", "") }} />
           )}
-          {(tab.id === "finance" || /fee|finance/i.test(tab.id)) && (
-            <FinanceContent tabId={tab.id} params={tab.params} />
+          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll/i.test(tab.id)) && (
+            <FinanceContent 
+               tabId={tab.id.startsWith("fee-collection") ? "fee-collection" : tab.id} 
+               params={tab.params || {}} 
+            />
           )}
 
           {/* Staff Module */}
@@ -56,7 +60,7 @@ function WorkspaceRenderer() {
              <SalariesContent tabId={tab.id} />
           )}
 
-          {tab.id === "settings-banking" && <BankSettings schoolId="VR-SCH01" />}
+          {tab.id === "settings-banking" && <BankSettings schoolId={schoolId} />}
           {tab.id === "settings-audit" && <ActivityLogViewer />}
           
           {/* Attendance Hub Mappings */}
@@ -94,41 +98,57 @@ export default function DashboardShell({
   userRole,
   userName,
   academicYear,
+  branches = [],
+  activeBranchId = "GLOBAL",
+  schoolId,
 }: {
   children: React.ReactNode;
   userEmail?: string;
   userRole?: string;
   userName?: string;
   academicYear?: string;
+  branches?: any[];
+  activeBranchId?: string;
+  schoolId?: string;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
   return (
     <TabProvider>
-      <div className="flex min-h-screen bg-background selection:bg-primary/10 selection:text-primary relative">
-        <Sidebar 
-          isMobileOpen={isMobileOpen} 
-          setIsMobileOpen={setIsMobileOpen} 
-          userRole={userRole as any}
-        />
-        
-        <main className="flex-1 min-h-screen bg-background transition-all duration-300">
-          <Header 
-            onMenuClick={() => setIsMobileOpen(true)} 
-            userEmail={userEmail}
-            userRole={userRole}
-            userName={userName}
-            academicYear={academicYear}
+      <TenantProvider value={{ 
+        schoolId: schoolId || "", 
+        branchId: activeBranchId || "", 
+        userRole: userRole || "", 
+        userName: userName || "",
+        academicYear: academicYear || "" 
+      }}>
+        <div className="flex min-h-screen bg-background selection:bg-primary/10 selection:text-primary relative">
+          <Sidebar 
+            isMobileOpen={isMobileOpen} 
+            setIsMobileOpen={setIsMobileOpen} 
+            userRole={userRole as any}
           />
-          <TabList />
           
-          <div className="p-4 lg:p-4 max-w-[1600px] mx-auto">
-            <main className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar space-y-4 lg:space-y-6">
-              <WorkspaceRenderer />
-            </main>
-          </div>
-        </main>
-      </div>
+          <main className="flex-1 min-h-screen bg-background transition-all duration-300">
+            <Header 
+              onMenuClick={() => setIsMobileOpen(true)} 
+              userEmail={userEmail}
+              userRole={userRole}
+              userName={userName}
+              academicYear={academicYear}
+              branches={branches}
+              activeBranchId={activeBranchId}
+            />
+            <TabList />
+            
+            <div className="p-4 lg:p-4 max-w-[1600px] mx-auto">
+              <main className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar space-y-4 lg:space-y-6">
+                <WorkspaceRenderer />
+              </main>
+            </div>
+          </main>
+        </div>
+      </TenantProvider>
     </TabProvider>
   );
 }

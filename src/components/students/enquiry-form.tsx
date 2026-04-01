@@ -9,6 +9,7 @@ import { DefaultValues } from "react-hook-form";
 import { submitEnquiryAction } from "@/lib/actions/enquiry-actions";
 import { User, Phone, Mail, School, CheckCircle2, ChevronRight, Loader2, Users } from "lucide-react";
 import { globalPhoneSchema, globalEmailSchema } from "@/lib/utils/validations";
+import { useTenant } from "@/context/tenant-context";
 
 const inputCls = "w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder-foreground opacity-30 focus:outline-none focus:border-primary focus:bg-muted transition-all";
 
@@ -40,14 +41,16 @@ export function EnquiryForm() {
     }
   });
 
+  const { schoolId, academicYear } = useTenant();
+
   const onSubmit = async (data: EnquiryFormData) => {
     setLoading(true);
     setServerError(null);
 
     const submitData = {
-      schoolId: "VR-SCH01",
+      schoolId: schoolId,
       ...data,
-      academicYear: "2026-27"
+      academicYear: academicYear || "2026-27"
     };
 
     const result = await submitEnquiryAction(submitData);

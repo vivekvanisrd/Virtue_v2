@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,17 +40,44 @@ export function StaffForm() {
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, reset, trigger, getValues } = useForm<StaffOnboardingData>({
+  const { register, handleSubmit, formState: { errors }, reset, trigger, getValues, setValue } = useForm<StaffOnboardingData>({
     resolver: zodResolver(staffOnboardingSchema) as any,
     mode: "onBlur",
     defaultValues: {
       gender: "Female",
       role: "Teacher",
       dateOfJoining: new Date().toISOString().split("T")[0],
-      branchId: "MAIN-BR",
       department: "Academics"
     },
   });
+
+  const [refData, setRefData] = useState<{
+    branches: any[],
+    departmentCounters?: any
+  }>({
+    branches: [],
+  });
+  const [isLoadingRef, setIsLoadingRef] = useState(true);
+
+  // Fetch Reference Data (Branches)
+  useEffect(() => {
+    async function fetchRefData() {
+        setIsLoadingRef(true);
+        const { getAdmissionReferenceData } = await import("@/lib/actions/reference-actions");
+        const res = await getAdmissionReferenceData();
+        if (res.success && res.data) {
+            setRefData({
+              branches: res.data.branches
+            });
+            // Automatically set first branch if not already set
+            if (res.data.branches.length > 0) {
+               setValue("branchId", res.data.branches[0].id);
+            }
+        }
+        setIsLoadingRef(false);
+    }
+    fetchRefData();
+  }, [setValue]);
 
   const onSubmit = async (data: StaffOnboardingData) => {
     setIsSubmitting(true);
@@ -206,9 +233,14 @@ export function StaffForm() {
                         </select>
                       </Field>
                       <Field label="BRANCH" error={errors.branchId?.message}>
-                        <select {...register("branchId")} className={selectCls}>
-                          <option value="MAIN-BR">Main Campus (MAIN-BR)</option>
-                          <option value="DEFAULT">Global Staff (DEFAULT)</option>
+                        <select {...register("branchId")} className={selectCls} disabled={isLoadingRef}>
+                          {refData.branches.length === 0 ? (
+                            <option value="">No Branches Found</option>
+                          ) : (
+                            refData.branches.map(b => (
+                              <option key={b.id} value={b.id}>{b.name} ({b.id})</option>
+                            ))
+                          )}
                         </select>
                       </Field>
                     </div>
