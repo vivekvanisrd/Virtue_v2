@@ -58,6 +58,33 @@ export async function findPotentialSiblings(studentId: string) {
 }
 
 /**
+ * getSchoolInfoAction
+ * 
+ * Retrieves the professional school name for the current branch/tenant.
+ */
+export async function getSchoolInfoAction() {
+  try {
+    const context = await getTenantContext();
+    const branch = await prisma.branch.findUnique({
+      where: { id: context.branchId },
+      include: { school: true }
+    });
+    
+    if (!branch) {
+      // Fallback to school info if branch not found (Global Dev mode)
+      const school = await prisma.school.findUnique({
+        where: { id: context.schoolId }
+      });
+      return { success: true, name: school?.name || "Virtue Education" };
+    }
+
+    return { success: true, name: branch.name || branch.school?.name || "Virtue Academy" };
+  } catch (error) {
+    return { success: true, name: "Virtue Academy" }; // Resilient fallback
+  }
+}
+
+/**
  * recordFeeCollection
  * 
  * Atomic transaction to record payment with strict term-locking and waiver audit.

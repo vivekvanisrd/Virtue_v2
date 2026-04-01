@@ -16,13 +16,17 @@ import {
   User,
   Users,
   Zap,
-  Trash2
+  Trash2,
+  Copy,
+  TrendingUp,
+  MessageSquare
 } from "lucide-react";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 import { 
   getStudentFeeStatus, 
   recordFeeCollection, 
-  findPotentialSiblings 
+  findPotentialSiblings,
+  getSchoolInfoAction
 } from "@/lib/actions/finance-actions";
 import { createPaymentLinkAction } from "@/lib/actions/payment-actions";
 import { 
@@ -59,6 +63,13 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const [success, setSuccess] = useState<any[] | null>(null); // Array of results for batch
   const [error, setError] = useState<string | null>(null);
   
+  // --- NEW WORKFLOW STATES ---
+  const [step, setStep] = useState<"selection" | "denomination">("selection");
+  const [denominations, setDenominations] = useState<Record<number, number>>({
+    500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 2: 0, 1: 0
+  });
+  const [showParentMsg, setShowParentMsg] = useState(false);
+  const [schoolName, setSchoolName] = useState("Virtue Academy");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [paymentDetails, setPaymentDetails] = useState({
     bankName: "",
@@ -83,6 +94,14 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     setTabDirty("fee-collection", isDirty);
     return () => setTabDirty("fee-collection", false);
   }, [settlements, paymentDetails, setTabDirty]);
+
+  useEffect(() => {
+    async function loadSchool() {
+      const res = await getSchoolInfoAction();
+      if (res.success && res.name) setSchoolName(res.name);
+    }
+    loadSchool();
+  }, []);
 
   // Wrap useTabs to be fault-tolerant on static pages without a TabProvider
   let openTab: any;
@@ -226,6 +245,9 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const totals = getBatchTotals();
   const grandTotal = totals.terms + totals.lateFees;
 
+  const tallyTotal = Object.entries(denominations).reduce((sum, [val, count]) => sum + (Number(val) * count), 0);
+  const isTallyValid = tallyTotal === grandTotal;
+
   const generateRazorpayLink = async () => {
     if (settlements.length === 0 || settlements.every(s => s.selectedTerms.length === 0)) return;
     
@@ -249,6 +271,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
 
     if (res.success && res.shortUrl) {
       setPaymentDetails(prev => ({ ...prev, paymentLink: res.shortUrl as string }));
+      setShowParentMsg(true); // Automatically show the message template
     } else {
       setError(res.error || "Failed to generate Razorpay link");
     }
@@ -308,6 +331,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       // Clean up batch state
       setSettlements([]);
       setSiblings([]);
+      setStep("selection"); // Reset workflow step
+      setDenominations({ 500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 2: 0, 1: 0 }); // Reset notes
       setPaymentDetails({ 
         bankName: "", 
         accountNo: "", 
@@ -323,6 +348,48 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     
     setCollectionLoading(false);
   };
+
+  if (success) {
+    return (
+      <div className="flex flex-col h-full bg-background animate-in fade-in duration-500">
+        <div className="flex-1 p-8">
+          <div className="max-w-6xl mx-auto space-y-8">
+             <div className="flex items-center gap-4 p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 shadow-xl shadow-emerald-500/5">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                <div>
+                  <h3 className="text-3xl font-black text-emerald-900 tracking-tight">Payment Successful</h3>
+                  <p className="text-sm font-bold text-emerald-700 opacity-80">{success.length} Receipts Generated & Recorded</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSuccess(null);
+                    // If we were in direct mode, we might want to stay there or go back to search
+                    if (!params?.studentId) setSettlements([]); 
+                  }} 
+                  className="ml-auto px-8 py-3 bg-emerald-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg"
+                >
+                  NEW SETTLEMENT
+                </button>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                {success.map((res, i) => (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 30 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    transition={{ delay: i * 0.1 }}
+                    key={i} 
+                    className="origin-top"
+                  >
+                    <FeeReceipt student={res.student} receipt={res.receipt} />
+                  </motion.div>
+                ))}
+             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (settlements.length === 0) {
     if ((loading || !!params?.studentId) && !error) {
@@ -689,7 +756,15 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   </div>
 
                   <button
-                    onClick={paymentMode === "Razorpay" ? generateRazorpayLink : processPayment}
+                    onClick={() => {
+                      if (paymentMode === "Razorpay") {
+                        generateRazorpayLink();
+                      } else if (paymentMode === "Cash") {
+                        setStep("denomination");
+                      } else {
+                        processPayment();
+                      }
+                    }}
                     disabled={collectionLoading || paymentDetails.linkLoading || grandTotal === 0}
                     className={cn(
                       "w-full p-6 rounded-[2rem] font-black text-xl transition-all disabled:opacity-50 flex items-center justify-center gap-4",
@@ -699,40 +774,20 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     {collectionLoading || paymentDetails.linkLoading ? (
                       <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
-                      <>{paymentMode === "Razorpay" ? "GENERATE RAZORPAY LINK" : "COMPLETE INDIVIDUAL SETTLEMENT"}</>
+                      <>{paymentMode === "Razorpay" ? "GENERATE RAZORPAY LINK" : "COLLECT FEE"}</>
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Success Stacks */}
-              <AnimatePresence mode="wait">
-                {success && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-12 space-y-8">
-                     <div className="flex items-center gap-4 p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100">
-                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                        <div>
-                          <h3 className="text-2xl font-black text-emerald-900 tracking-tight">Payment Successful</h3>
-                          <p className="text-sm font-bold text-emerald-700 opacity-80">{success.length} Receipts Generated</p>
-                        </div>
-                        <button onClick={() => setSuccess(null)} className="ml-auto px-6 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black">NEW PAYMENT</button>
-                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {success.map((res, i) => (
-                          <div key={i} className="scale-90 origin-top">
-                            <FeeReceipt student={res.student} receipt={res.receipt} />
-                          </div>
-                        ))}
-                     </div>
-                  </motion.div>
-                )}
-                {error && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 p-6 bg-rose-50 rounded-[2rem] border border-rose-100 flex items-center gap-4">
-                    <AlertCircle className="w-6 h-6 text-rose-500" />
-                    <p className="font-black text-rose-900 text-sm uppercase tracking-tight">{error}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  {error && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 p-6 bg-rose-50 rounded-[2rem] border border-rose-100 flex items-center gap-4">
+                      <AlertCircle className="w-6 h-6 text-rose-500" />
+                      <p className="font-black text-rose-900 text-sm uppercase tracking-tight">{error}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
             </div>
           </div>
           
@@ -749,7 +804,126 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         </div>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
+        {step === "denomination" && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-6">
+            <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }} 
+               animate={{ scale: 1, opacity: 1 }} 
+               exit={{ scale: 0.9, opacity: 0 }}
+               className="bg-white rounded-[3rem] p-10 max-w-xl w-full relative shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mt-10 -mr-10" />
+              
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                    <Banknote className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black tracking-tight">Cash Denomination</h3>
+                    <p className="text-[10px] font-black opacity-40 uppercase tracking-widest leading-none">Verify Physical Currency Tally</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setStep("selection")} 
+                  className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                >
+                  Close & Back
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                 {[500, 200, 100, 50, 20, 10, 5, 2, 1].map(note => (
+                   <div key={note} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-12 text-center text-xs font-black text-slate-400">₹{note}</div>
+                      <input 
+                        type="number"
+                        min="0"
+                        value={denominations[note] || ""}
+                        onChange={(e) => setDenominations(prev => ({ ...prev, [note]: parseInt(e.target.value) || 0 }))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-black focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        placeholder="0"
+                      />
+                   </div>
+                 ))}
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between items-center opacity-40 text-[10px] font-black uppercase tracking-widest mb-1">
+                   <span>Fee Amount Due</span>
+                   <span className="text-slate-900">{formatCurrency(grandTotal)}</span>
+                </div>
+                <div className="flex justify-between items-end">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculated Tally</p>
+                   <p className={cn("text-3xl font-black tracking-tighter", isTallyValid ? "text-emerald-600" : "text-rose-600")}>
+                     {formatCurrency(tallyTotal)}
+                   </p>
+                </div>
+                {!isTallyValid && (
+                  <div className="p-3 bg-rose-50 text-rose-600 rounded-xl flex items-center gap-2 text-[10px] font-black uppercase tracking-tight italic">
+                    <AlertCircle className="w-4 h-4" />
+                    Needs to match {formatCurrency(grandTotal)}
+                  </div>
+                )}
+                <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                   <motion.div 
+                     initial={{ width: 0 }}
+                     animate={{ width: `${Math.min((tallyTotal/grandTotal)*100, 100)}%` }}
+                     className={cn("h-full", isTallyValid ? "bg-emerald-500" : "bg-primary")}
+                   />
+                </div>
+              </div>
+
+              <button 
+                disabled={!isTallyValid || collectionLoading}
+                onClick={processPayment}
+                className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+              >
+                {collectionLoading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <><CheckCircle2 className="w-4 h-4" /> CONFIRM & RECEIVE</>}
+              </button>
+            </motion.div>
+          </div>
+        )}
+
+        {showParentMsg && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[3.5rem] p-12 max-w-lg w-full relative shadow-2xl">
+               <div className="flex flex-col items-center text-center">
+                 <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[2rem] flex items-center justify-center mb-6">
+                   <MessageSquare className="w-10 h-10" />
+                 </div>
+                 <h3 className="text-3xl font-black mb-2 tracking-tight">Parent Message</h3>
+                 <p className="text-sm opacity-50 mb-8 font-medium italic">Professional payment link generated and ready for sharing.</p>
+                 
+                 <div className="w-full bg-slate-900 text-slate-300 p-8 rounded-[2.5rem] text-left text-xs font-bold leading-relaxed mb-8 relative group">
+                    <p className="opacity-80">
+                      Hi Parent,<br/><br/>
+                      Greetings from <span className="text-white font-black">{schoolName}</span>.<br/>
+                      The school fee for <span className="text-white font-black">{settlements[0]?.student.firstName}</span> regarding <span className="text-primary font-black">{settlements[0]?.selectedTerms.join(", ").toUpperCase()}</span> is due.<br/><br/>
+                      Total Amount: <span className="text-primary text-lg font-black">{formatCurrency(grandTotal)}</span><br/><br/>
+                      Please pay securely using the link below:<br/>
+                      <span className="text-blue-400 break-all underline decoration-slate-700">{paymentDetails.paymentLink}</span><br/><br/>
+                      Thank you.
+                    </p>
+                 </div>
+
+                 <button 
+                    onClick={() => {
+                      const msg = `Hi Parent,\nGreetings from ${schoolName}.\nThe school fee for ${settlements[0]?.student.firstName} regarding ${settlements[0]?.selectedTerms.join(", ").toUpperCase()} is due.\nTotal Amount: ${formatCurrency(grandTotal)}\nPlease pay securely at: ${paymentDetails.paymentLink}\nThank you.`;
+                      navigator.clipboard.writeText(msg);
+                      alert("Message Copied to Clipboard!");
+                    }}
+                    className="w-full py-5 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-primary/20"
+                 >
+                    <Copy className="w-4 h-4" /> COPY PARENT MESSAGE
+                 </button>
+                 <button onClick={() => setShowParentMsg(false)} className="mt-4 text-[10px] font-black uppercase opacity-40 hover:opacity-100 transition-opacity">CLOSE</button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+
         {showQR && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[3rem] p-10 max-w-sm w-full text-center relative shadow-2xl">

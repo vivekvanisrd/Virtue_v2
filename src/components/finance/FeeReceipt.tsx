@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
-import { CheckCircle2, ShieldCheck, Printer, Download } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { CheckCircle2, ShieldCheck, Printer, Download, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
+import { toPng } from "html-to-image";
+import { jsPDF } from "jspdf";
 
 interface FeeReceiptProps {
   student: any;
@@ -49,8 +51,135 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
     minute: "2-digit",
   });
 
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!receiptRef.current) return;
+    setDownloading(true);
+
+    try {
+      // 1. Temporarily remove boarder/radius for the capture to look like a sheet
+      const originalClass = receiptRef.current.className;
+      receiptRef.current.className = "bg-white p-20 w-[210mm] min-h-[297mm] mx-auto"; // A4 dimensions
+
+      // 2. Generate High Resolution PNG
+      const dataUrl = await toPng(receiptRef.current, {
+        cacheBust: true,
+        pixelRatio: 2, // Retain sharpness
+        backgroundColor: '#ffffff',
+      });
+
+      // 3. Reset Styling
+      receiptRef.current.className = originalClass;
+
+      // 4. Create PDF
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Receipt_${receipt.receiptNumber}_${student.firstName}.pdf`);
+
+    } catch (error) {
+      console.error("[PDF_GEN_ERROR]", error);
+      alert("Failed to create PDF. Please try the Print option.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (!receiptRef.current) return;
+
+    // 1. Create a hidden iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    // 2. Copy all styles from the main document to the iframe
+    const styles = Array.from(document.styleSheets);
+    let styleHtml = '';
+    try {
+      styles.forEach(sheet => {
+        if (sheet.href) {
+          styleHtml += `<link rel="stylesheet" href="${sheet.href}">`;
+        } else {
+          const rules = Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+          styleHtml += `<style>${rules}</style>`;
+        }
+      });
+    } catch (e) {
+      console.warn("Style extraction inhibited by CORS, falling back to basic styles.");
+    }
+
+    // 3. Construct the printable content
+    const content = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Virtue Receipt - ${receipt.receiptNumber}</title>
+          ${styleHtml}
+          <style>
+            @page { size: auto; margin: 0; }
+            body { 
+              margin: 0; 
+              padding: 0; 
+              background: white !important; 
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important;
+            }
+            .print-wrapper {
+              padding: 40px !important;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            .print\\:hidden { display: none !important; }
+            * { box-sizing: border-box; }
+          </style>
+        </head>
+        <body>
+          <div class="print-wrapper">
+            ${receiptRef.current.innerHTML}
+          </div>
+          <script>
+            window.onload = () => {
+              setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                  window.parent.document.body.removeChild(window.frameElement);
+                }, 100);
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(content);
+    doc.close();
+  };
+
   return (
-    <div className="bg-white p-12 rounded-[3.5rem] border shadow-2xl max-w-4xl mx-auto print:shadow-none print:border-none print:p-0">
+    <div 
+      ref={receiptRef}
+      className="printable-receipt bg-white p-12 rounded-[3.5rem] border shadow-2xl max-w-4xl mx-auto print:shadow-none print:border-none print:p-0"
+    >
       {/* Receipt Header */}
       <div className="flex justify-between items-start border-b-2 border-slate-100 pb-10 mb-10">
         <div className="space-y-4">
@@ -186,15 +315,22 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
       {/* Quick Actions (Dashboard Only) */}
       <div className="mt-12 flex gap-4 print:hidden">
         <button 
-          onClick={() => window.print()}
+          onClick={handlePrint}
           className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all active:scale-[0.98]"
         >
           <Printer className="w-4 h-4" /> Print Document
         </button>
         <button 
-          className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-[0.98]"
+          onClick={handleDownloadPDF}
+          disabled={downloading}
+          className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-[0.98] disabled:opacity-50"
         >
-          <Download className="w-4 h-4" /> Save as PDF
+          {downloading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          Download as PDF
         </button>
       </div>
     </div>
