@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
           entityType: "WEBHOOK",
           entityId: "SIGNATURE_FAIL",
           action: "REJECTED",
-          details: `Signature Mismatch. Check RAZORPAY_WEBHOOK_SECRET vs Dashboard. Signature: ${signature.slice(0, 8)}...`,
+          details: `Signature Mismatch. Check RAZORPAY_WEBHOOK_SECRET vs Dashboard. Signature: ${(signature || "NONE").slice(0, 8)}...`,
           ipAddress: req.headers.get("x-forwarded-for") || "unknown"
         }
       });
