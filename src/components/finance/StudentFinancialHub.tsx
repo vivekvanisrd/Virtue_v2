@@ -96,9 +96,15 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
     setProcessing(true);
 
     try {
+      const baseAmount = payTarget.amount;
+      const gatewayFee = baseAmount * 0.015;
+      const gst = gatewayFee * 0.18;
+      const totalFee = gatewayFee + gst;
+
       const orderRes = await createRazorpayOrderAction({
-        amountPaid: payTarget.amount * 1.02,
-        studentId: studentData.id
+        amountPaid: baseAmount,
+        studentId: studentData.id,
+        selectedTerms: [payTarget.termId]
       });
 
       if (!orderRes.success || !orderRes.data) throw new Error(orderRes.error || "Order generation failed.");
@@ -115,8 +121,9 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
             ...response,
             studentId: studentData.id,
             selectedTerms: [payTarget.termId],
-            amountPaid: payTarget.amount * 1.02,
-            lateFeePaid: 0
+            amountPaid: baseAmount,
+            lateFeePaid: 0,
+            convenienceFee: totalFee
           });
 
           if (verifyRes.success) {
