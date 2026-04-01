@@ -27,6 +27,19 @@ export async function createPaymentLinkAction(details: {
     const totalConvenience = gatewayFee + gst;
     const totalAmount = baseAmount + totalConvenience;
 
+    // Dynamic Origin Detection for Callback
+    let origin = process.env.NEXT_PUBLIC_APP_URL || 'https://virtue-psi.vercel.app';
+    
+    try {
+      const { headers } = await import("next/headers");
+      const host = (await headers()).get("host");
+      if (host && !host.includes("localhost")) {
+        origin = `https://${host}`;
+      }
+    } catch (e) {
+      console.warn("[CALLBACK_ORIGIN_FALLBACK]", e);
+    }
+
     // Create the payment link
     const response = await razorpay.paymentLink.create({
       amount: Math.round(totalAmount * 100), // Razorpay expects paise
@@ -53,7 +66,7 @@ export async function createPaymentLinkAction(details: {
         gatewayFee: gatewayFee.toFixed(2),
         gst: gst.toFixed(2)
       },
-      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?tab=finance&status=success`,
+      callback_url: `${origin}/dashboard?tab=finance&status=success`,
       callback_method: "get"
     });
 

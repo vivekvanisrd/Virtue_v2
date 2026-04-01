@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
       const order = payload.payload.order.entity;
       const notes = order.notes;
 
-      if (notes.type === "FEE_COLLECTION_V2") {
+      // Recognize both legacy and new professional taxed tags
+      if (notes.type === "FEE_COLLECTION_V2" || notes.type === "FEE_COLLECTION_V2_TAXED") {
         await processCollectionFlow({
           referenceId: order.id,
           studentId: notes.studentId,
@@ -63,13 +64,13 @@ export async function POST(req: NextRequest) {
       const link = payload.payload.payment_link.entity;
       const notes = link.notes;
 
-      if (notes.type === "FEE_COLLECTION" || notes.type === "FEE_COLLECTION_V2") {
+      if (notes.type === "FEE_COLLECTION" || notes.type === "FEE_COLLECTION_V2" || notes.type === "FEE_COLLECTION_V2_TAXED") {
         const studentId = notes.studentId;
         const terms = notes.terms.split(",");
         const totalPaid = link.amount_paid / 100; // Paisa to INR
         
-        // On generic links, we assume the 2% is part of the total
-        const baseAmount = totalPaid / 1.02; 
+        // Professional Calculation: 1.5% + 18% GST on Fee = 1.0177 multiplier
+        const baseAmount = totalPaid / 1.0177; 
         const convenienceFee = totalPaid - baseAmount;
 
         await processCollectionFlow({
