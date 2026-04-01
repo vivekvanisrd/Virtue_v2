@@ -537,6 +537,7 @@ export async function createRazorpayOrderAction(params: {
  * verifyRazorpayPaymentAction
  * 
  * Cryptographic signature verification and atomic ledger posting.
+ * FOR LOGGED-IN STAFF USE ONLY. Session required.
  */
 export async function verifyRazorpayPaymentAction(params: {
   razorpay_order_id: string;
@@ -549,8 +550,6 @@ export async function verifyRazorpayPaymentAction(params: {
   convenienceFee: number;
 }) {
   try {
-    const context = await getTenantContext();
-    
     // 1. Digital Signature Verification
     const body = params.razorpay_order_id + "|" + params.razorpay_payment_id;
     const expectedSignature = crypto
@@ -563,19 +562,164 @@ export async function verifyRazorpayPaymentAction(params: {
     }
 
     // 2. Atomic Ledger Posting
-    // We pass the convenienceFee here to ensure the 100/2 split in the Journal Entry
     const result = await recordFeeCollection({
       studentId: params.studentId,
       selectedTerms: params.selectedTerms,
       amountPaid: params.amountPaid,
       paymentMode: "Razorpay",
-      paymentReference: params.razorpay_payment_id, // Standardize on Payment ID
+      paymentReference: params.razorpay_payment_id,
       lateFeePaid: params.lateFeePaid,
       convenienceFee: params.convenienceFee,
       lateFeeWaived: false
     });
 
     return result;
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * verifyPublicRazorpayPaymentAction
+ * 
+ * SESSION-FREE version for the Public Payment Portal.
+ * Looks up school context from the studentId — no login cookie required.
+ * This is what fires when a parent pays from an external payment link.
+ */
+export async function verifyPublicRazorpayPaymentAction(params: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  studentId: string;
+  selectedTerms: string[];
+  amountPaid: number;
+  lateFeePaid: number;
+  convenienceFee: number;
+}) {
+  try {
+    // 1. Cryptographic Signature Verification
+    const body = params.razorpay_order_id + "|" + params.razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== params.razorpay_signature) {
+      throw new Error("Payment Verification Failed: Digital signature mismatch.");
+    }
+
+    // 2. Load student to discover school context (NO SESSION NEEDED)
+    const student = await prisma.student.findUnique({
+      where: { id: params.studentId },
+      include: {
+        financial: true,
+        collections: { where: { status: "Success" } }
+      }
+    });
+    if (!student) throw new Error("Student not found.");
+
+    const schoolId = student.schoolId;
+
+    // 3. Find active financial year directly from school
+    const activeFY = await prisma.financialYear.findFirst({
+      where: { schoolId, isCurrent: true }
+    });
+    if (!activeFY) throw new Error("No active Financial Year found for school.");
+
+    // 4. Find branch from school
+    const branch = await prisma.branch.findFirst({ where: { schoolId } });
+    const branchId = branch?.id || "GLOBAL";
+
+    // 5. Idempotency: never double-record
+    const existing = await prisma.collection.findFirst({
+      where: { paymentReference: params.razorpay_payment_id }
+    });
+    if (existing) {
+      // Return existing receipt data
+      const receiptData = await prisma.collection.findUnique({
+        where: { id: existing.id },
+        include: { student: { include: { academic: { include: { class: true } }, family: true } } }
+      });
+      return { success: true, data: serialize(receiptData) };
+    }
+
+    // 6. Atomic transaction
+    const result = await prisma.$transaction(async (tx: any) => {
+      const { CounterService } = await import("../services/counter-service");
+      const receiptNumber = await CounterService.generateReceiptNumber({
+        schoolId,
+        schoolCode: schoolId,
+        branchId,
+        branchCode: branchId.split('-').pop() || "MAIN",
+        year: new Date().getFullYear().toString()
+      }, tx);
+
+      const lateFee = params.lateFeePaid || 0;
+      const convenience = params.convenienceFee || 0;
+      const totalPaid = params.amountPaid + lateFee + convenience;
+
+      const collection = await tx.collection.create({
+        data: {
+          receiptNumber,
+          studentId: params.studentId,
+          schoolId,
+          branchId,
+          financialYearId: activeFY.id,
+          amountPaid: params.amountPaid,
+          lateFeePaid: lateFee,
+          convenienceFee: convenience,
+          totalPaid,
+          paymentMode: "Razorpay",
+          paymentReference: params.razorpay_payment_id,
+          collectedBy: "PARENT_PORTAL",
+          isAutomated: true,
+          status: "Success",
+          collectionDate: new Date(),
+          allocatedTo: {
+            terms: params.selectedTerms,
+            lateFeeWaived: false,
+            waiverReason: "[Parent Portal Auto-Settlement]"
+          }
+        },
+        include: {
+          student: {
+            include: { academic: { include: { class: true } }, family: true }
+          }
+        }
+      });
+
+      // Journal Entry
+      const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1110" } });
+      const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1200" } });
+      const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4200" } });
+
+      if (cashAcc && arAcc) {
+        const lines: any[] = [
+          { accountId: cashAcc.id, debit: totalPaid, credit: 0 },
+          { accountId: arAcc.id, debit: 0, credit: params.amountPaid + lateFee }
+        ];
+        if (convenience > 0 && serviceAcc) {
+          lines.push({ accountId: serviceAcc.id, debit: 0, credit: convenience });
+        }
+        await tx.journalEntry.create({
+          data: {
+            schoolId, financialYearId: activeFY.id, entryType: "RECEIPT",
+            totalDebit: totalPaid, totalCredit: totalPaid,
+            description: `Parent Portal Settlement (${params.selectedTerms.join(", ")}) - ${params.razorpay_payment_id}`,
+            lines: { create: lines }
+          }
+        });
+        await tx.chartOfAccount.update({ where: { id: cashAcc.id }, data: { currentBalance: { increment: totalPaid } } });
+        await tx.chartOfAccount.update({ where: { id: arAcc.id }, data: { currentBalance: { decrement: params.amountPaid + lateFee } } });
+        if (convenience > 0 && serviceAcc) {
+          await tx.chartOfAccount.update({ where: { id: serviceAcc.id }, data: { currentBalance: { increment: convenience } } });
+        }
+      }
+
+      return collection;
+    });
+
+    return { success: true, data: serialize(result) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

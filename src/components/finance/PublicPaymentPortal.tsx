@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/fee-utils";
-import { getPublicPaymentDetails, validatePaymentGate, createRazorpayOrderAction, verifyRazorpayPaymentAction } from "@/lib/actions/finance-actions";
+import { getPublicPaymentDetails, validatePaymentGate, createRazorpayOrderAction, verifyPublicRazorpayPaymentAction } from "@/lib/actions/finance-actions";
 import { QRCodeSVG } from "qrcode.react";
 import { FeeReceipt } from "./FeeReceipt";
 
@@ -107,8 +107,11 @@ export function PublicPaymentPortal({ token }: { token: string }) {
         order_id: orderRes.data.id,
         handler: async (response: any) => {
           setProcessing(true);
-          const verifyRes = await verifyRazorpayPaymentAction({
-            ...response,
+          // Use SESSION-FREE verification — parent has no ERP login
+          const verifyRes = await verifyPublicRazorpayPaymentAction({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
             studentId: verifiedData.studentId,
             selectedTerms: [verifiedData.termId],
             amountPaid: verifiedData.baseAmount,
@@ -120,7 +123,7 @@ export function PublicPaymentPortal({ token }: { token: string }) {
             setSuccessReceipt(verifyRes.data);
             setStep("success");
           } else {
-            setError("Verification Failed: " + verifyRes.error);
+            setError("Payment verification failed: " + verifyRes.error);
           }
           setProcessing(false);
         },
@@ -146,33 +149,56 @@ export function PublicPaymentPortal({ token }: { token: string }) {
 
   if (step === "success" && successReceipt) {
     return (
-      <div className="min-h-screen bg-white flex flex-col p-6 animate-in fade-in zoom-in duration-500">
-        <div className="max-w-4xl mx-auto w-full space-y-8">
-          <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2.5rem] flex items-center gap-6 shadow-xl shadow-emerald-500/5">
-            <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <div>
-              <h2 className="text-3xl font-black text-emerald-900 tracking-tight">Payment Successful</h2>
-              <p className="text-emerald-700/70 font-bold">Your fee settlement has been recorded in the school ledger.</p>
-            </div>
+      <div className="min-h-screen bg-white flex flex-col">
+        {/* Success Banner — hidden when printing */}
+        <div className="print:hidden bg-emerald-50 border-b border-emerald-100 p-5 flex flex-wrap items-center gap-4 animate-in slide-in-from-top duration-500">
+          <div className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+            <CheckCircle2 className="w-7 h-7" />
           </div>
-          
-          <FeeReceipt 
-            student={successReceipt.student} 
-            receipt={successReceipt.receipt} 
-          />
-          
-          <div className="text-center pb-12">
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">Official Digital Receipt • Virtue Education</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-black text-emerald-900">Payment Successful! 🎉</h2>
+            <p className="text-emerald-700 text-xs font-semibold">Ledger updated. Your official receipt is ready below.</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-6 py-3 bg-[#0047ab] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-slate-900 transition-all"
             >
-              Finish & Back to Verify
+              <Download className="w-4 h-4" /> Print / PDF
             </button>
           </div>
         </div>
+
+        {/* Receipt Body */}
+        <div id="payment-receipt" className="flex-1 p-6 md:p-12 max-w-4xl mx-auto w-full">
+          <FeeReceipt
+            student={successReceipt.student}
+            receipt={successReceipt}
+          />
+        </div>
+
+        {/* Footer Actions — hidden when printing */}
+        <div className="print:hidden border-t border-slate-100 p-6 flex flex-wrap justify-center gap-4">
+          <button
+            onClick={() => window.print()}
+            className="px-8 py-4 bg-[#0047ab] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:bg-slate-900 transition-all flex items-center gap-3"
+          >
+            <Download className="w-5 h-5" /> Download Receipt as PDF
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all"
+          >
+            Close Portal
+          </button>
+        </div>
+
+        <style>{`
+          @media print {
+            body > *:not(#payment-receipt) { display: none !important; }
+            #payment-receipt { display: block !important; position: static !important; }
+          }
+        `}</style>
       </div>
     );
   }
