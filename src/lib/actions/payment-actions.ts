@@ -15,7 +15,8 @@ export async function createPaymentLinkAction(details: {
   email?: string,
   contact?: string,
   notes: string,
-  terms: string[]
+  terms: string[],
+  baseAmount?: number
 }) {
   try {
     const context = await getTenantContext();
@@ -62,6 +63,7 @@ export async function createPaymentLinkAction(details: {
         schoolId: context.schoolId,
         terms: details.terms.join(","),
         type: "FEE_COLLECTION",
+        baseAmount: (details.baseAmount || details.amount).toFixed(2),
         convenienceFee: "1.5% + 18% GST",
         gatewayFee: gatewayFee.toFixed(2),
         gst: gst.toFixed(2)

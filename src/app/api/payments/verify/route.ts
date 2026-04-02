@@ -38,9 +38,10 @@ export async function GET(req: NextRequest) {
   }
 
   // --- 3. Cryptographic Signature Verification ---
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  // NOTE: Payment Link callbacks are signed with KEY_SECRET (not webhook secret)
+  const secret = process.env.RAZORPAY_KEY_SECRET;
   if (!secret) {
-    console.error("[PAYMENT_VERIFY] ❌ RAZORPAY_WEBHOOK_SECRET missing.");
+    console.error("[PAYMENT_VERIFY] ❌ RAZORPAY_KEY_SECRET missing.");
     return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
   }
 

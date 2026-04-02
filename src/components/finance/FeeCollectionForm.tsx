@@ -254,10 +254,10 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     setPaymentDetails(prev => ({ ...prev, linkLoading: true }));
     setError(null);
 
-    // For Razorpay links, we use the first student as the primary customer for the batch
     const primary = settlements[0];
     const total = grandTotal;
-    const allTerms = settlements.flatMap(s => s.selectedTerms.map(t => `${s.student.firstName}:${t}`));
+    // Terms: store as plain IDs only (term1,term2,term3) — webhook/verify use these to mark isPaid
+    const allTerms = settlements.flatMap(s => s.selectedTerms);
 
     const res = await createPaymentLinkAction({
       amount: total,
@@ -266,7 +266,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       email: primary.student.guardianEmail || undefined,
       contact: primary.student.guardianPhone || undefined,
       notes: `Consolidated Payment for ${settlements.length} items`,
-      terms: allTerms
+      terms: allTerms,
+      baseAmount: total
     });
 
     if (res.success && res.shortUrl) {
