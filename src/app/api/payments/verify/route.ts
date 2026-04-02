@@ -173,9 +173,7 @@ export async function GET(req: NextRequest) {
           paymentMode: "Razorpay",
           paymentReference: paymentId,
           collectedBy: "SYSTEM_RAZORPAY_CALLBACK",
-          isAutomated: true,
           status: "Success",
-          collectionDate: new Date(),
           allocatedTo: {
             terms,
             bankRrn: payment.acquirer_data?.rrn || payment.acquirer_data?.upi_transaction_id,

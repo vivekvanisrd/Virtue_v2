@@ -223,9 +223,7 @@ async function processCollectionFlow(data: {
           paymentMode: "Razorpay",
           paymentReference: data.referenceId,
           collectedBy: "SYSTEM_RAZORPAY",
-          isAutomated: true,
           status: "Success",
-          collectionDate: new Date(),
           allocatedTo: {
             terms: data.terms,
             bankRrn: data.bankRrn,
