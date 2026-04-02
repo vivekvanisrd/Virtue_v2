@@ -66,7 +66,7 @@ export async function createPaymentLinkAction(details: {
         gatewayFee: gatewayFee.toFixed(2),
         gst: gst.toFixed(2)
       },
-      callback_url: `${origin}/dashboard?tab=finance&status=success`,
+      callback_url: `${origin}/dashboard?tab=finance`,
       callback_method: "get"
     });
 

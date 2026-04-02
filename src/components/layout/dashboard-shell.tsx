@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 
@@ -11,6 +11,7 @@ import { OverviewContent } from "../dashboard/overview";
 import { StudentsContent } from "../dashboard/students";
 import { FinanceContent } from "../dashboard/finance";
 import RazorpaySimulationLab from "../developer/RazorpaySimulationLab";
+import { RazorpayCallbackHandler } from "../finance/RazorpayCallbackHandler";
 
 import { StaffRolesManager } from "../dashboard/staff-roles";
 import { StaffImportManager } from "../dashboard/staff-import";
@@ -151,6 +152,11 @@ export default function DashboardShell({
                 <WorkspaceRenderer />
               </main>
             </div>
+
+            {/* Intercepts Razorpay callback params & records payment */}
+            <Suspense fallback={null}>
+              <RazorpayCallbackHandler />
+            </Suspense>
           </main>
         </div>
       </TenantProvider>
