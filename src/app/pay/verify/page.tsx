@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 
-export default function PaymentVerifyPage() {
+/**
+ * 🏛️ SOVEREIGN PAYMENT VERIFICATION (Core Logic)
+ */
+function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -38,10 +41,10 @@ export default function PaymentVerifyPage() {
           }, 1500);
         } else {
           setStatus("error");
-          setMessage(data.message || data.error || "Payment verification failed. Please contact the administrator.");
+          setMessage(data.message || data.error || "Payment verification failed.");
         }
       })
-      .catch((err) => {
+      .catch(() => {
         setStatus("error");
         setMessage("A network error occurred while verifying your payment.");
       });
@@ -49,36 +52,54 @@ export default function PaymentVerifyPage() {
   }, []);
 
   return (
+    <div className="bg-white max-w-sm w-full rounded-3xl p-8 shadow-2xl shadow-slate-200/50 flex flex-col items-center">
+      {status === "loading" && (
+        <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-6 border-4 border-slate-100 animate-pulse">
+          <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+        </div>
+      )}
+      
+      {status === "success" && (
+        <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mb-6 animate-in zoom-in slide-in-from-bottom-4">
+          <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+        </div>
+      )}
+      
+      {status === "error" && (
+        <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mb-6">
+          <XCircle className="w-10 h-10 text-rose-500" />
+        </div>
+      )}
+
+      <h1 className="text-xl font-black text-slate-900 tracking-tight mb-2">
+        {status === "loading" && "Confirming Payment"}
+        {status === "success" && "Transaction Verified"}
+        {status === "error" && "Verification Error"}
+      </h1>
+      
+      <p className="text-sm font-bold text-slate-500 max-w-[250px] leading-relaxed">
+        {message}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * 👑 PRIMARY EXPORT (Wrapped in Suspense for Production Build)
+ */
+export default function PaymentVerifyPage() {
+  return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-      <div className="bg-white max-w-sm w-full rounded-3xl p-8 shadow-2xl shadow-slate-200/50 flex flex-col items-center">
-        {status === "loading" && (
+      <Suspense fallback={
+        <div className="bg-white max-w-sm w-full rounded-3xl p-8 shadow-2xl shadow-slate-200/50 flex flex-col items-center">
           <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-6 border-4 border-slate-100 animate-pulse">
             <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
           </div>
-        )}
-        
-        {status === "success" && (
-          <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mb-6 animate-in zoom-in slide-in-from-bottom-4">
-            <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-          </div>
-        )}
-        
-        {status === "error" && (
-          <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mb-6">
-            <XCircle className="w-10 h-10 text-rose-500" />
-          </div>
-        )}
-
-        <h1 className="text-xl font-black text-slate-900 tracking-tight mb-2">
-          {status === "loading" && "Confirming Payment"}
-          {status === "success" && "Transaction Verified"}
-          {status === "error" && "Verification Error"}
-        </h1>
-        
-        <p className="text-sm font-bold text-slate-500 max-w-[250px] leading-relaxed">
-          {message}
-        </p>
-      </div>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight mb-2">Initializing...</h1>
+        </div>
+      }>
+        <VerifyContent />
+      </Suspense>
     </div>
   );
 }

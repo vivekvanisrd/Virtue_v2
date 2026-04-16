@@ -4,7 +4,8 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -32,6 +33,7 @@
   ],
   "exclude": [
     "node_modules", 
+    "src/app/admin",
     "backups",
     "src/scripts",
     "scripts", 

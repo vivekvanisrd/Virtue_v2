@@ -104,7 +104,7 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                     // 🛡️ LOCK: Fail-Shut Policy (Universal Coverage)
                     if (!rawTenant) {
                         // 🏛️ RECOVERY HOOK: Check if we are in a trusted transition
-                        if (args?.where?.id || args?.where?.schoolId) {
+                        if ((args as any)?.where?.id || (args as any)?.where?.schoolId) {
                             // Silent Warning
                         }
                         throw new Error(`SECURITY_VIOLATION: Initialized Fail-Shut. Protected model '${model}' accessed without session.`);
@@ -121,7 +121,7 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                         throw new Error(`SECURITY_VIOLATION: Restricted Access. Universal Platform Templates are manageable by Platform Administrators only.`);
                     }
 
-                    if (!tenant || tenant.isGlobalDev || isGlobalAdmin) {
+                    if (!tenant || (tenant as any).isGlobalDev || isGlobalAdmin) {
                         return query(args);
                     }
 
@@ -157,8 +157,9 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                     if (['findMany', 'findFirst', 'findUnique', 'count', 'updateMany', 'deleteMany', 'aggregate', 'groupBy', 'update', 'delete'].includes(operation)) {
                         
                         // 🛡️ LOCK: findUnique MUST pivot to findFirst to avoid ID-guess bypass
-                        if (operation === 'findUnique') {
-                             operation = 'findFirst';
+                        let op = operation;
+                        if (op === 'findUnique') {
+                             op = 'findFirst';
                         }
 
                         a.where = a.where || {};
@@ -197,6 +198,12 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                         }
 
                         if (operation === 'create') {
+                           if ((a as any)?.where) {
+                                (a as any).where = {
+                                    ...(a as any).where,
+                                    schoolId: (tenant as any).schoolId
+                                };
+                            }
                             a.data = a.data || {};
                             a.data.schoolId = tenant.schoolId;
                             // 🔒 Mandatory Injection

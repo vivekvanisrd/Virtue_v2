@@ -7,7 +7,7 @@ const MAX_REQ_PER_MIN = 60;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
+  const ip = (request as any).ip || request.headers.get('x-forwarded-for') || 'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
   
   // 1. Get Session Cookie

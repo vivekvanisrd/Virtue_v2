@@ -28,6 +28,8 @@ export async function createSchoolAction(formData: {
   try {
     await checkSuperAdmin();
 
+    const session = await getSovereignIdentity();
+
     const result = await prisma.$transaction(async (tx: any) => {
       // 1. Create School
       const school = await tx.school.create({
