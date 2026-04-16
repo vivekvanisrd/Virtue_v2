@@ -20,6 +20,25 @@ export interface Theme {
 
 export const themes: Theme[] = [
   {
+    id: "pava-bright",
+    name: "PaVa-EDUX Bright (Sky & Saffron)",
+    colors: {
+      "--background": "#ffffff",
+      "--foreground": "#333333",
+      "--primary": "#4DA8DA",
+      "--primary-foreground": "#ffffff",
+      "--accent": "#FF9933",
+      "--muted": "#F5F5F5",
+      "--border": "#DDDDDD",
+      "--card": "#ffffff",
+      "--sidebar-bg": "#1E5F8A",
+      "--sidebar-foreground": "#ffffff",
+      "--sidebar-muted": "rgba(255, 255, 255, 0.6)",
+      "--header-bg": "#1E5F8A",
+      "--header-foreground": "#ffffff",
+    }
+  },
+  {
     id: "midnight",
     name: "Midnight Premium",
     colors: {
@@ -93,25 +112,6 @@ export const themes: Theme[] = [
       "--sidebar-muted": "rgba(0, 0, 0, 0.4)",
       "--header-bg": "#ffffff",
       "--header-foreground": "#000000",
-    }
-  },
-  {
-    id: "pava-bright",
-    name: "PaVa-EDUX Bright (Sky & Saffron)",
-    colors: {
-      "--background": "#ffffff",
-      "--foreground": "#333333",
-      "--primary": "#4DA8DA",
-      "--primary-foreground": "#ffffff",
-      "--accent": "#FF9933",
-      "--muted": "#F5F5F5",
-      "--border": "#DDDDDD",
-      "--card": "#ffffff",
-      "--sidebar-bg": "#1E5F8A",
-      "--sidebar-foreground": "#ffffff",
-      "--sidebar-muted": "rgba(255, 255, 255, 0.6)",
-      "--header-bg": "#1E5F8A",
-      "--header-foreground": "#ffffff",
     }
   }
 ];

@@ -147,7 +147,7 @@ export default function DashboardShell({
             isOperationalReady={isOperationalReady}
           />
           
-          <main className="flex-1 min-h-screen bg-background transition-all duration-300">
+          <main className="flex-1 min-h-screen bg-background transition-all duration-300 overflow-hidden flex flex-col">
             <Header 
               onMenuClick={() => setIsMobileOpen(true)} 
               userEmail={userEmail}
@@ -161,10 +161,10 @@ export default function DashboardShell({
             />
             <TabList />
             
-            <div className="p-4 lg:p-4 max-w-[1600px] mx-auto">
-              <main className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar space-y-4 lg:space-y-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="p-4 lg:p-6 max-w-[1600px] mx-auto space-y-4 lg:space-y-6">
                 <WorkspaceRenderer />
-              </main>
+              </div>
             </div>
 
             {/* Intercepts Razorpay callback params & records payment */}

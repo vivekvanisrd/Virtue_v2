@@ -392,14 +392,14 @@ export function Sidebar({
                   )}
                 </button>
 
-                {/* Sub Items Accordion */}
+                {/* 🛡️ RENDER GUARD: Strictly hide sub-menus if collapsed to prevent UI leakage */}
                 <AnimatePresence>
                   {hasSubItems && isExpanded && !isCollapsed && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden pl-11 space-y-1"
+                      className="overflow-hidden pl-11 space-y-1 pointer-events-auto"
                     >
                       {item.subItems!.map((sub) => (
                         <button
@@ -408,8 +408,8 @@ export function Sidebar({
                           className={cn(
                             "flex items-center w-full px-4 py-1.5 rounded-xl text-xs font-bold transition-all border-l-2",
                             activeTabId === sub.id 
-                              ? "text-accent border-accent bg-accent/5" 
-                              : "text-sidebar-muted border-transparent hover:text-white hover:bg-white/5"
+                               ? "text-accent border-accent bg-accent/5" 
+                               : "text-sidebar-muted border-transparent hover:text-white hover:bg-white/5"
                           )}
                         >
                           {sub.name}
