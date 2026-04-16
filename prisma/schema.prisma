@@ -8,71 +8,199 @@ datasource db {
 }
 
 model School {
-  id                   String                       @id
+  id                    String                       @id
+  name                  String
+  code                  String                       @unique
+  address               String?
+  phone                 String?
+  email                 String?
+  logo                  String?
+  highestClass          String?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  status                String                       @default("Active")
+  dnaVersion            String                       @default("v1")
+  isGenesis             Boolean                      @default(false)
+  metadata              Json?
+  tenantId              String?
+  academicHist          AcademicHistory[]
+  academicRecs          AcademicRecord[]
+  academicYears         AcademicYear[]
+  activityLogs          ActivityLog[]
+  Address               Address[]
+  BankDetail            BankDetail[]
+  branches              Branch[]
+  accounts              ChartOfAccount[]
+  Class                 Class[]
+  collections           Collection[]
+  creditNotes           CreditNote[]
+  discounts             Discount[]
+  discountTypes         DiscountType[]
+  docRecords            Document[]
+  enquiries             Enquiry[]
+  examResults           ExamResult[]
+  examTypes             ExamType[]
+  FamilyDetail          FamilyDetail[]
+  feeComponents         FeeComponentMaster[]
+  feeStructures         FeeStructure[]
+  feeTemplateComponents FeeTemplateComponent[]
+  financialAuditLogs    FinancialAuditLog[]
+  finRecords            FinancialRecord[]
+  financialYears        FinancialYear[]
+  gradeScales           GradeScale[]
+  journals              JournalEntry[]
+  MedicalRecord         MedicalRecord[]
+  notifications         Notification[]
+  payrollRuns           PayrollRun[]
+  PreviousSchool        PreviousSchool[]
+  routes                Route[]
+  SalaryRevision        SalaryRevision[]
+  SalarySlip            SalarySlip[]
+  Section               Section[]
+  SovereignEvent        SovereignEvent[]
+  sovereignRoles        SovereignRole[]
+  staff                 Staff[]
+  StaffAdvance          StaffAdvance[]
+  StaffAsset            StaffAsset[]
+  StaffAttendance       StaffAttendance[]
+  StaffBank             StaffBank[]
+  staffCategories       StaffCategory[]
+  staffDepartments      StaffDepartment[]
+  StaffKYC              StaffKYC[]
+  StaffProfessional     StaffProfessional[]
+  StaffStatutory        StaffStatutory[]
+  students              Student[]
+  attendance            StudentAttendance[]
+  studentFeeComponents  StudentFeeComponent[]
+  transportAssignments  StudentTransportAssignment[]
+  subjects              Subject[]
+  counters              TenancyCounter[]
+  TransportAssignment   TransportAssignment[]
+  TransportDetail       TransportDetail[]
+  TransportStop         TransportStop[]
+  unlockRequests        UnlockRequest[]
+}
+
+model PlatformAdmin {
+  id                   String                 @id @default(uuid())
   name                 String
-  code                 String                       @unique
-  address              String?
-  phone                String?
-  email                String?
-  logo                 String?
-  highestClass         String?
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  status               String                       @default("Active")
-  academicHist         AcademicHistory[]
-  academicRecs         AcademicRecord[]
-  academicYears        AcademicYear[]
-  activityLogs         ActivityLog[]
-  branches             Branch[]
-  accounts             ChartOfAccount[]
-  collections          Collection[]
-  discounts            Discount[]
-  discountTypes        DiscountType[]
-  docRecords           Document[]
-  enquiries            Enquiry[]
-  examResults          ExamResult[]
-  examTypes            ExamType[]
-  feeStructures        FeeStructure[]
-  finRecords           FinancialRecord[]
-  financialYears       FinancialYear[]
-  gradeScales          GradeScale[]
-  journals             JournalEntry[]
-  notifications        Notification[]
-  payrollRuns         PayrollRun[]
-  routes               Route[]
-  staff                Staff[]
-  students             Student[]
-  attendance           StudentAttendance[]
-  transportAssignments StudentTransportAssignment[]
-  subjects             Subject[]
-  counters             TenancyCounter[]
+  email                String                 @unique
+  username             String                 @unique
+  passwordHash         String
+  metadata             Json?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  PlatformAcademicYear PlatformAcademicYear[]
+  PlatformClass        PlatformClass[]
+}
+
+model PlatformClass {
+  id              String            @id @default(uuid())
+  name            String            @unique
+  level           Int               @unique
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  platformAdminId String?
+  platformAdmin   PlatformAdmin?    @relation(fields: [platformAdminId], references: [id])
+  sections        PlatformSection[]
+}
+
+model PlatformSection {
+  id              String        @id @default(uuid())
+  name            String
+  platformClassId String
+  platformClass   PlatformClass @relation(fields: [platformClassId], references: [id])
+}
+
+model PlatformAcademicYear {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  startMonth      Int
+  endMonth        Int
+  createdAt       DateTime       @default(now())
+  platformAdminId String?
+  platformAdmin   PlatformAdmin? @relation(fields: [platformAdminId], references: [id])
 }
 
 model Branch {
-  id              String           @id
-  schoolId        String
-  name            String
-  code            String
-  address         String?
-  phone           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  academicRecords AcademicRecord[]
-  school          School           @relation(fields: [schoolId], references: [id])
-  accounts        ChartOfAccount[]
-  collections     Collection[]
-  feeStructures   FeeStructure[]
-  staff           Staff[]
+  id                   String                 @id
+  schoolId             String
+  name                 String
+  code                 String
+  address              String?
+  phone                String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  status               String                 @default("Active")
+  isGenesis            Boolean                @default(false)
+  dnaVersion           String                 @default("v1")
+  source               String?
+  mode                 String?
+  triggeredBy          String?
+  metadata             Json?
+  tenantId             String?
+  academicHistory      AcademicHistory[]      @relation("BranchHistory")
+  academicRecords      AcademicRecord[]
+  activityLogs         ActivityLog[]          @relation("BranchLogs")
+  Address              Address[]
+  BankDetail           BankDetail[]
+  books                Book[]                 @relation("BranchBooks")
+  school               School                 @relation(fields: [schoolId], references: [id])
+  accounts             ChartOfAccount[]
+  Class                Class[]
+  collections          Collection[]
+  Discount             Discount[]
+  DiscountType         DiscountType[]
+  enquiries            Enquiry[]              @relation("BranchEnquiries")
+  examResults          ExamResult[]           @relation("BranchExamResults")
+  examTypes            ExamType[]             @relation("BranchExamTypes")
+  FamilyDetail         FamilyDetail[]
+  FeeComponentMaster   FeeComponentMaster[]
+  feeStructures        FeeStructure[]
+  FeeTemplateComponent FeeTemplateComponent[]
+  FinancialRecord      FinancialRecord[]
+  libraryIssues        IssueReturn[]          @relation("BranchLibraryIssues")
+  libraryMembers       LibraryMember[]        @relation("BranchLibraryMembers")
+  MedicalRecord        MedicalRecord[]
+  notifications        Notification[]         @relation("BranchNotifications")
+  payrollRuns          PayrollRun[]           @relation("BranchPayroll")
+  PreviousSchool       PreviousSchool[]
+  routes               Route[]                @relation("BranchRoutes")
+  SalaryRevision       SalaryRevision[]
+  salarySlips          SalarySlip[]           @relation("BranchSlips")
+  Section              Section[]
+  staff                Staff[]
+  StaffAdvance         StaffAdvance[]
+  StaffAsset           StaffAsset[]
+  StaffAttendance      StaffAttendance[]
+  StaffBank            StaffBank[]
+  StaffKYC             StaffKYC[]
+  StaffProfessional    StaffProfessional[]
+  StaffStatutory       StaffStatutory[]
+  students             Student[]              @relation("BranchStudents")
+  StudentFeeComponent  StudentFeeComponent[]
+  subjects             Subject[]              @relation("BranchSubjects")
+  TransportDetail      TransportDetail[]
+  vehicles             Vehicle[]              @relation("BranchVehicles")
+  vehicleStops         VehicleStop[]          @relation("BranchStops")
+  attendancePolicies   AttendancePolicy[]
 
   @@unique([schoolId, code])
 }
 
 model AcademicYear {
-  id            String            @id
+  id            String            @id @default(uuid())
   name          String
   startDate     DateTime
   endDate       DateTime
   isCurrent     Boolean           @default(false)
+  isLocked      Boolean           @default(false)
+  isGenesis     Boolean           @default(false)
+  dnaVersion    String            @default("v1")
+  source        String?
+  mode          String?
+  triggeredBy   String?
+  metadata      Json?
   createdAt     DateTime          @default(now())
   schoolId      String
   history       AcademicHistory[]
@@ -82,88 +210,124 @@ model AcademicYear {
 }
 
 model FinancialYear {
-  id        String         @id
-  name      String
-  startDate DateTime
-  endDate   DateTime
-  isCurrent Boolean        @default(false)
-  schoolId  String
-  school    School         @relation(fields: [schoolId], references: [id])
-  journals  JournalEntry[]
+  id          String         @id @default(uuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean        @default(false)
+  isLocked    Boolean        @default(false)
+  isGenesis   Boolean        @default(false)
+  dnaVersion  String         @default("v1")
+  source      String?
+  mode        String?
+  triggeredBy String?
+  metadata    Json?
+  schoolId    String
+  school      School         @relation(fields: [schoolId], references: [id])
+  journals    JournalEntry[]
 }
 
 model Class {
-  id              String              @id
+  id              String              @id @default(uuid())
   name            String
   level           Int
+  isGenesis       Boolean             @default(false)
+  dnaVersion      String              @default("v1")
+  source          String?
+  mode            String?
+  triggeredBy     String?
+  schoolId        String
+  branchId        String
   history         AcademicHistory[]
   academicRecords AcademicRecord[]
+  branch          Branch              @relation(fields: [branchId], references: [id])
+  school          School              @relation(fields: [schoolId], references: [id])
   feeStructures   FeeStructure[]
   sections        Section[]
+  classTeacher    Staff?              @relation("ClassTeacher")
   attendance      StudentAttendance[]
   subjects        Subject[]
-  classTeacher    Staff?              @relation("ClassTeacher")
 }
 
 model Section {
-  id              String              @id
+  id              String              @id @default(uuid())
   name            String
   classId         String
+  isGenesis       Boolean             @default(false)
+  dnaVersion      String              @default("v1")
+  source          String?
+  mode            String?
+  triggeredBy     String?
+  schoolId        String
+  branchId        String
   history         AcademicHistory[]
   academicRecords AcademicRecord[]
+  branch          Branch              @relation(fields: [branchId], references: [id])
   class           Class               @relation(fields: [classId], references: [id])
+  school          School              @relation(fields: [schoolId], references: [id])
   attendance      StudentAttendance[]
 }
 
 model Student {
-  id              String                      @id @default(uuid())
-  admissionNumber String?
-  studentCode     String?
-  firstName       String
-  middleName      String?
-  lastName        String?
-  email           String?
-  phone           String?
-  dob             DateTime?
-  gender          String?
-  bloodGroup      String?
-  category        String?
-  aadhaarNumber   String?
-  aadhaarVerified Boolean                     @default(false)
-  motherTongue    String?
-  placeOfBirth    String?
-  birthCertNo     String?
-  usnSrnNumber    String?
-  studentPhoto    String?
-  minorityStatus  Boolean                     @default(false)
-  bplStatus       Boolean                     @default(false)
-  disabilityType  String?
-  createdAt       DateTime                    @default(now())
-  updatedAt       DateTime                    @updatedAt
-  schoolId        String
-  status          String                      @default("Active")
-  history         AcademicHistory[]
-  academic        AcademicRecord?
-  address         Address?
-  bank            BankDetail?
-  collections     Collection[]
-  documents       Document[]
-  examResults     ExamResult[]
-  family          FamilyDetail?
-  financial       FinancialRecord?
-  libraryMember   LibraryMember?
-  medical         MedicalRecord?
-  previousSchool  PreviousSchool?
-  school          School                      @relation(fields: [schoolId], references: [id])
-  attendance      StudentAttendance[]
-  consents        StudentConsent[]
-  transportAssign StudentTransportAssignment?
-  transport       TransportDetail?
+  id               String                      @id @default(uuid())
+  registrationId   String?                     @unique
+  admissionNumber  String?
+  studentCode      String?
+  firstName        String
+  middleName       String?
+  lastName         String?
+  email            String?
+  phone            String?
+  dob              DateTime?
+  gender           String?
+  bloodGroup       String?
+  category         String?
+  aadhaarNumber    String?
+  aadhaarVerified  Boolean                     @default(false)
+  motherTongue     String?
+  placeOfBirth     String?
+  birthCertNo      String?
+  usnSrnNumber     String?
+  studentPhoto     String?
+  minorityStatus   Boolean                     @default(false)
+  bplStatus        Boolean                     @default(false)
+  disabilityType   String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  isDeleted        Boolean                     @default(false)
+  deletedAt        DateTime?
+  schoolId         String?
+  branchId         String?
+  status           String                      @default("Active")
+  history          AcademicHistory[]
+  academic         AcademicRecord?
+  address          Address?
+  bank             BankDetail?
+  collections      Collection[]
+  creditNotes      CreditNote[]
+  documents        Document[]
+  examResults      ExamResult[]
+  family           FamilyDetail?
+  financial        FinancialRecord?
+  libraryMember    LibraryMember?
+  medical          MedicalRecord?
+  previousSchool   PreviousSchool?
+  branch           Branch?                     @relation("BranchStudents", fields: [branchId], references: [id])
+  school           School?                     @relation(fields: [schoolId], references: [id])
+  attendance       StudentAttendance[]
+  consents         StudentConsent[]
+  transportAssign  StudentTransportAssignment?
+  newTransport     TransportAssignment?        @relation("NewTransport")
+  transportHistory TransportCollection[]       @relation("TransportHistory")
+  transport        TransportDetail?
+  unlockRequests   UnlockRequest[]
 
-  @@unique([schoolId, studentCode])
-  @@unique([schoolId, admissionNumber])
+  @@unique([schoolId, branchId, studentCode])
+  @@unique([schoolId, branchId, admissionNumber])
+  @@index([branchId])
   @@index([schoolId])
   @@index([studentCode])
+  @@index([registrationId])
 }
 
 model AcademicHistory {
@@ -179,16 +343,26 @@ model AcademicHistory {
   exitDate        DateTime?
   tcNumber        String?
   leavingReason   String?
+  admissionNumber String?
+  studentCode     String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  schoolId        String
+  isGenesis       Boolean      @default(false)
+  role            Role         @default(STAFF)
+  ownerScope      OwnerScope   @default(BRANCH_ONLY)
+  schoolId        String?
+  branchId        String?
   academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
+  branch          Branch?      @relation("BranchHistory", fields: [branchId], references: [id])
   class           Class        @relation(fields: [classId], references: [id])
-  school          School       @relation(fields: [schoolId], references: [id])
+  school          School?      @relation(fields: [schoolId], references: [id])
   section         Section?     @relation(fields: [sectionId], references: [id])
   student         Student      @relation(fields: [studentId], references: [id])
+  collections     Collection[]
 
   @@unique([studentId, academicYearId])
+  @@unique([schoolId, branchId, admissionNumber])
+  @@index([branchId])
 }
 
 model AcademicRecord {
@@ -210,10 +384,10 @@ model AcademicRecord {
   boardingType  String?
   group         String?
   subcategory   String?
-  schoolId      String
+  schoolId      String?
   branch        Branch   @relation(fields: [branchId], references: [id])
   class         Class?   @relation(fields: [classId], references: [id])
-  school        School   @relation(fields: [schoolId], references: [id])
+  school        School?  @relation(fields: [schoolId], references: [id])
   section       Section? @relation(fields: [sectionId], references: [id])
   student       Student  @relation(fields: [studentId], references: [id])
 }
@@ -239,6 +413,10 @@ model FamilyDetail {
   emergencyRelation   String?
   fatherAadhaar       String?
   motherAadhaar       String?
+  schoolId            String?
+  branchId            String?
+  branch              Branch? @relation(fields: [branchId], references: [id])
+  school              School? @relation(fields: [schoolId], references: [id])
   student             Student @relation(fields: [studentId], references: [id])
 }
 
@@ -251,6 +429,10 @@ model Address {
   state            String?
   country          String? @default("India")
   pincode          String?
+  schoolId         String?
+  branchId         String?
+  branch           Branch? @relation(fields: [branchId], references: [id])
+  school           School? @relation(fields: [schoolId], references: [id])
   student          Student @relation(fields: [studentId], references: [id])
 }
 
@@ -262,6 +444,10 @@ model TransportDetail {
   pickupStop        String?
   dropStop          String?
   monthlyFee        Decimal? @db.Decimal(10, 2)
+  schoolId          String?
+  branchId          String?
+  branch            Branch?  @relation(fields: [branchId], references: [id])
+  school            School?  @relation(fields: [schoolId], references: [id])
   student           Student  @relation(fields: [studentId], references: [id])
 }
 
@@ -272,6 +458,10 @@ model MedicalRecord {
   allergies         String?
   doctorName        String?
   doctorPhone       String?
+  schoolId          String?
+  branchId          String?
+  branch            Branch? @relation(fields: [branchId], references: [id])
+  school            School? @relation(fields: [schoolId], references: [id])
   student           Student @relation(fields: [studentId], references: [id])
 }
 
@@ -282,6 +472,10 @@ model BankDetail {
   accountNumber String?
   ifscCode      String?
   bankBranch    String?
+  schoolId      String?
+  branchId      String?
+  branch        Branch? @relation(fields: [branchId], references: [id])
+  school        School? @relation(fields: [schoolId], references: [id])
   student       Student @relation(fields: [studentId], references: [id])
 }
 
@@ -293,6 +487,10 @@ model PreviousSchool {
   tcNumber         String?
   dateOfLeaving    DateTime?
   reasonForLeaving String?
+  schoolId         String?
+  branchId         String?
+  branch           Branch?   @relation(fields: [branchId], references: [id])
+  school           School?   @relation(fields: [schoolId], references: [id])
   student          Student   @relation(fields: [studentId], references: [id])
 }
 
@@ -311,33 +509,36 @@ model Document {
 }
 
 model FinancialRecord {
-  id               String        @id @default(uuid())
-  studentId        String        @unique
-  annualTuition    Decimal?      @db.Decimal(12, 2)
-  totalDiscount    Decimal?      @default(0) @db.Decimal(12, 2)
-  netTuition       Decimal?      @db.Decimal(12, 2)
-  term1Amount      Decimal?      @db.Decimal(12, 2)
-  term2Amount      Decimal?      @db.Decimal(12, 2)
-  term3Amount      Decimal       @default(0) @db.Decimal(12, 2)
-  admissionFee     Decimal?      @db.Decimal(12, 2)
-  cautionDeposit   Decimal?      @db.Decimal(12, 2)
-  computerFee      Decimal?      @db.Decimal(12, 2)
-  developmentFee   Decimal?      @db.Decimal(12, 2)
-  examFee          Decimal?      @db.Decimal(12, 2)
+  id               String                @id @default(uuid())
+  studentId        String                @unique
+  annualTuition    Decimal?              @db.Decimal(12, 2)
+  totalDiscount    Decimal?              @default(0) @db.Decimal(12, 2)
+  netTuition       Decimal?              @db.Decimal(12, 2)
+  term1Amount      Decimal?              @db.Decimal(12, 2)
+  term2Amount      Decimal?              @db.Decimal(12, 2)
+  term3Amount      Decimal               @default(0) @db.Decimal(12, 2)
+  admissionFee     Decimal?              @db.Decimal(12, 2)
+  cautionDeposit   Decimal?              @db.Decimal(12, 2)
+  computerFee      Decimal?              @db.Decimal(12, 2)
+  developmentFee   Decimal?              @db.Decimal(12, 2)
+  examFee          Decimal?              @db.Decimal(12, 2)
   feeScheduleId    String?
-  labFee           Decimal?      @db.Decimal(12, 2)
-  libraryFee       Decimal?      @db.Decimal(12, 2)
-  miscellaneousFee Decimal?      @db.Decimal(12, 2)
+  labFee           Decimal?              @db.Decimal(12, 2)
+  libraryFee       Decimal?              @db.Decimal(12, 2)
+  miscellaneousFee Decimal?              @db.Decimal(12, 2)
   paymentType      String?
-  sportsFee        Decimal?      @db.Decimal(12, 2)
-  transportFee     Decimal?      @db.Decimal(12, 2)
-  tuitionFee       Decimal?      @db.Decimal(12, 2)
+  sportsFee        Decimal?              @db.Decimal(12, 2)
+  transportFee     Decimal?              @db.Decimal(12, 2)
+  tuitionFee       Decimal?              @db.Decimal(12, 2)
   feeStructureId   String?
-  schoolId         String
+  schoolId         String?
+  branchId         String?
   discounts        Discount[]
-  feeStructure     FeeStructure? @relation(fields: [feeStructureId], references: [id])
-  school           School        @relation(fields: [schoolId], references: [id])
-  student          Student       @relation(fields: [studentId], references: [id])
+  branch           Branch?               @relation(fields: [branchId], references: [id])
+  feeStructure     FeeStructure?         @relation(fields: [feeStructureId], references: [id])
+  school           School?               @relation(fields: [schoolId], references: [id])
+  student          Student               @relation(fields: [studentId], references: [id])
+  components       StudentFeeComponent[]
 }
 
 model Discount {
@@ -347,6 +548,11 @@ model Discount {
   discountTypeId     String
   amount             Decimal         @db.Decimal(12, 2)
   status             String          @default("Pending")
+  authorizerId       String?
+  reason             String?
+  branchId           String?
+  authorizer         Staff?          @relation("DiscountAuthorizer", fields: [authorizerId], references: [id])
+  branch             Branch?         @relation(fields: [branchId], references: [id])
   discountType       DiscountType    @relation(fields: [discountTypeId], references: [id])
   school             School          @relation(fields: [schoolId], references: [id])
   financialRecord    FinancialRecord @relation(fields: [studentFinancialId], references: [id])
@@ -359,56 +565,125 @@ model DiscountType {
   description String?
   percentage  Decimal?   @db.Decimal(5, 2)
   schoolId    String
+  branchId    String?
+  isActive    Boolean    @default(true)
   discounts   Discount[]
+  branch      Branch?    @relation(fields: [branchId], references: [id])
   school      School     @relation(fields: [schoolId], references: [id])
 }
 
+model FeeComponentMaster {
+  id                String                 @id @default(uuid())
+  schoolId          String
+  name              String
+  type              String                 @default("ANCILLARY")
+  isOneTime         Boolean                @default(false)
+  isRefundable      Boolean                @default(false)
+  accountCode       String?
+  isGenesis         Boolean                @default(false)
+  dnaVersion        String                 @default("v1")
+  source            String?
+  triggeredBy       String?
+  branchId          String?
+  branch            Branch?                @relation(fields: [branchId], references: [id])
+  school            School                 @relation(fields: [schoolId], references: [id])
+  templateLinks     FeeTemplateComponent[]
+  studentComponents StudentFeeComponent[]
+
+  @@unique([schoolId, branchId, name])
+}
+
 model FeeStructure {
-  id             String            @id @default(uuid())
+  id             String                 @id @default(uuid())
   structureCode  String?
   branchId       String
   classId        String?
   academicYearId String
   name           String
   schoolId       String
-  totalAmount    Decimal           @db.Decimal(12, 2)
-  academicYear   AcademicYear      @relation(fields: [academicYearId], references: [id])
-  branch         Branch            @relation(fields: [branchId], references: [id])
-  class          Class?            @relation(fields: [classId], references: [id])
-  school         School            @relation(fields: [schoolId], references: [id])
+  totalAmount    Decimal                @db.Decimal(12, 2)
+  isGenesis      Boolean                @default(false)
+  dnaVersion     String                 @default("v1")
+  source         String?
+  mode           String?
+  triggeredBy    String?
+  academicYear   AcademicYear           @relation(fields: [academicYearId], references: [id])
+  branch         Branch                 @relation(fields: [branchId], references: [id])
+  class          Class?                 @relation(fields: [classId], references: [id])
+  school         School                 @relation(fields: [schoolId], references: [id])
+  components     FeeTemplateComponent[]
   students       FinancialRecord[]
 
   @@unique([schoolId, structureCode])
   @@index([schoolId])
 }
 
+model FeeTemplateComponent {
+  id              String             @id @default(uuid())
+  schoolId        String?
+  branchId        String?
+  templateId      String
+  componentId     String
+  amount          Decimal            @db.Decimal(12, 2)
+  scheduleType    String             @default("ONE_TIME")
+  branch          Branch?            @relation(fields: [branchId], references: [id])
+  masterComponent FeeComponentMaster @relation(fields: [componentId], references: [id])
+  school          School?            @relation(fields: [schoolId], references: [id])
+  template        FeeStructure       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model StudentFeeComponent {
+  id                 String             @id @default(uuid())
+  schoolId           String?
+  branchId           String?
+  studentFinancialId String
+  componentId        String
+  baseAmount         Decimal            @db.Decimal(12, 2)
+  waiverAmount       Decimal            @default(0) @db.Decimal(12, 2)
+  discountAmount     Decimal            @default(0) @db.Decimal(12, 2)
+  isApplicable       Boolean            @default(true)
+  waiverReason       String?
+  authorizerId       String?
+  lastModifiedAt     DateTime           @updatedAt
+  authorizer         Staff?             @relation(fields: [authorizerId], references: [id])
+  branch             Branch?            @relation(fields: [branchId], references: [id])
+  masterComponent    FeeComponentMaster @relation(fields: [componentId], references: [id])
+  school             School?            @relation(fields: [schoolId], references: [id])
+  financialRecord    FinancialRecord    @relation(fields: [studentFinancialId], references: [id])
+}
+
 model Collection {
-  id               String        @id @default(uuid())
+  id               String           @id @default(uuid())
   receiptNumber    String
   studentId        String
+  admissionId      String?
   financialYearId  String
   schoolId         String
   branchId         String
-  amountPaid       Decimal       @db.Decimal(12, 2)
-  lateFeePaid      Decimal       @default(0) @db.Decimal(12, 2)
-  convenienceFee   Decimal?      @db.Decimal(12, 2)
-  totalPaid        Decimal       @db.Decimal(12, 2)
+  amountPaid       Decimal          @db.Decimal(12, 2)
+  lateFeePaid      Decimal          @default(0) @db.Decimal(12, 2)
+  convenienceFee   Decimal?         @db.Decimal(12, 2)
+  totalPaid        Decimal          @db.Decimal(12, 2)
   paymentMode      String
   paymentReference String?
   allocatedTo      Json?
-  paymentDate      DateTime      @default(now())
+  paymentDate      DateTime         @default(now())
   collectedBy      String
-  journalEntryId   String?       @unique
-  isAutomated      Boolean       @default(false)
-  status           String        @default("Success")
-  branch           Branch        @relation(fields: [branchId], references: [id])
-  journalEntry     JournalEntry? @relation(fields: [journalEntryId], references: [id])
-  school           School        @relation(fields: [schoolId], references: [id])
-  student          Student       @relation(fields: [studentId], references: [id])
+  journalEntryId   String?          @unique
+  isAutomated      Boolean          @default(false)
+  status           String           @default("Success")
+  isDeleted        Boolean          @default(false)
+  deletedAt        DateTime?
+  admission        AcademicHistory? @relation(fields: [admissionId], references: [id])
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  journalEntry     JournalEntry?    @relation(fields: [journalEntryId], references: [id])
+  school           School           @relation(fields: [schoolId], references: [id])
+  student          Student          @relation(fields: [studentId], references: [id])
 
   @@unique([schoolId, receiptNumber])
   @@index([schoolId])
   @@index([receiptNumber])
+  @@index([admissionId])
 }
 
 model ChartOfAccount {
@@ -496,46 +771,60 @@ model PaymentExecution {
   paymentMode      String
   reference        String?
   executedAt       DateTime       @default(now())
+  isDeleted        Boolean        @default(false)
+  deletedAt        DateTime?
   paymentRequest   PaymentRequest @relation(fields: [paymentRequestId], references: [id])
 }
 
 model Staff {
-  id                 String             @id @default(uuid())
-  staffCode          String
-  firstName          String
-  middleName         String?
-  lastName           String
-  email              String?
-  phone              String?
-  dob                DateTime?
-  gender             String?
-  branchId           String
-  schoolId           String
-  photoUrl           String?
-  status             String             @default("Active")
-  userId             String?
-  role               String             @default("STAFF")
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  passwordHash       String?
-  username           String?            @unique
-  documents          Document[]
-  branch             Branch             @relation(fields: [branchId], references: [id])
-  school             School             @relation(fields: [schoolId], references: [id])
-  advances           StaffAdvance[]
-  attendance         StaffAttendance[]
-  bank               StaffBank?
-  professional       StaffProfessional?
-  statutory          StaffStatutory?
-  vehicleAssignments VehicleStaff[]
-  salarySlips        SalarySlip[]
-  assignedClassId    String?            @unique
-  assignedClass      Class?             @relation("ClassTeacher", fields: [assignedClassId], references: [id])
+  id                  String                @id @default(uuid())
+  staffCode           String
+  firstName           String
+  middleName          String?
+  lastName            String
+  email               String?
+  phone               String?
+  dob                 DateTime?
+  gender              String?
+  branchId            String
+  schoolId            String
+  photoUrl            String?
+  status              String                @default("Active")
+  userId              String?
+  role                String                @default("STAFF")
+  address             String?
+  onboardingStatus    String?               @default("JOINED")
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  passwordHash        String?
+  username            String?               @unique
+  assignedClassId     String?               @unique
+  departmentId        String?
+  categoryId          String?
+  Discount            Discount[]            @relation("DiscountAuthorizer")
+  documents           Document[]
+  salarySlips         SalarySlip[]
+  assignedClass       Class?                @relation("ClassTeacher", fields: [assignedClassId], references: [id])
+  branch              Branch                @relation(fields: [branchId], references: [id])
+  category            StaffCategory?        @relation(fields: [categoryId], references: [id])
+  department          StaffDepartment?      @relation(fields: [departmentId], references: [id])
+  school              School                @relation(fields: [schoolId], references: [id])
+  advances            StaffAdvance[]
+  attendance          StaffAttendance[]
+  bank                StaffBank?
+  professional        StaffProfessional?
+  statutory           StaffStatutory?
+  exceptions          AttendanceException[]
+  faceProfile         StaffFaceProfile?
+  attendancePolicyId  String?
+  attendancePolicy    AttendancePolicy?     @relation(fields: [attendancePolicyId], references: [id])
+  StudentFeeComponent StudentFeeComponent[]
+  vehicleAssignments  VehicleStaff[]
 
-  @@unique([schoolId, staffCode])
-  @@unique([schoolId, email])
-  @@unique([schoolId, phone])
-  @@unique([schoolId, userId])
+  @@unique([branchId, staffCode])
+  @@unique([branchId, email])
+  @@unique([branchId, phone])
+  @@unique([branchId, userId])
   @@index([schoolId])
 }
 
@@ -558,6 +847,10 @@ model StaffProfessional {
   transportAllowance Decimal  @default(0) @db.Decimal(12, 2)
   casualLeaveBalance Int      @default(0)
   sickLeaveBalance   Int      @default(0)
+  schoolId           String?
+  branchId           String?
+  branch             Branch?  @relation(fields: [branchId], references: [id])
+  school             School?  @relation(fields: [schoolId], references: [id])
   staff              Staff    @relation(fields: [staffId], references: [id])
 }
 
@@ -570,27 +863,40 @@ model StaffAdvance {
   disbursedDate DateTime @default(now())
   status        String   @default("Active")
   reason        String?
+  schoolId      String?
+  branchId      String?
+  branch        Branch?  @relation(fields: [branchId], references: [id])
+  school        School?  @relation(fields: [schoolId], references: [id])
   staff         Staff    @relation(fields: [staffId], references: [id])
 }
 
 model StaffStatutory {
-  id        String  @id @default(uuid())
-  staffId   String  @unique
-  panNumber String? @unique
-  pfNumber  String? @unique
-  uanNumber String? @unique
-  esiNumber String? @unique
-  staff     Staff   @relation(fields: [staffId], references: [id])
+  id            String  @id @default(uuid())
+  staffId       String  @unique
+  panNumber     String? @unique
+  pfNumber      String? @unique
+  uanNumber     String? @unique
+  esiNumber     String? @unique
+  aadhaarNumber String?
+  schoolId      String?
+  branchId      String?
+  branch        Branch? @relation(fields: [branchId], references: [id])
+  school        School? @relation(fields: [schoolId], references: [id])
+  staff         Staff   @relation(fields: [staffId], references: [id])
 }
 
 model StaffBank {
-  id            String @id @default(uuid())
-  staffId       String @unique
+  id            String  @id @default(uuid())
+  staffId       String  @unique
   accountName   String
   accountNumber String
   ifscCode      String
   bankName      String
-  staff         Staff  @relation(fields: [staffId], references: [id])
+  schoolId      String?
+  branchId      String?
+  branch        Branch? @relation(fields: [branchId], references: [id])
+  school        School? @relation(fields: [schoolId], references: [id])
+  staff         Staff   @relation(fields: [staffId], references: [id])
 }
 
 model StaffAttendance {
@@ -600,7 +906,17 @@ model StaffAttendance {
   status   String
   checkIn  DateTime?
   checkOut DateTime?
-  staff    Staff     @relation(fields: [staffId], references: [id])
+  schoolId       String?
+  branchId       String?
+  lateMinutes    Int?      @default(0)
+  isFaceVerified Boolean?  @default(false)
+  isOverridden   Boolean?  @default(false)
+  overriddenAt   DateTime?
+  overriddenBy   String?
+  remarks        String?
+  branch         Branch?   @relation(fields: [branchId], references: [id])
+  school         School?   @relation(fields: [schoolId], references: [id])
+  staff          Staff     @relation(fields: [staffId], references: [id])
 }
 
 model StudentAttendance {
@@ -628,20 +944,30 @@ model Route {
   routeName   String
   routeCode   String                       @unique
   schoolId    String
+  branchId    String?
+  branch      Branch?                      @relation("BranchRoutes", fields: [branchId], references: [id])
   school      School                       @relation(fields: [schoolId], references: [id])
   assignments StudentTransportAssignment[]
   vehicles    Vehicle[]
   stops       VehicleStop[]
+
+  @@index([branchId])
 }
 
 model Vehicle {
-  id             String         @id @default(uuid())
-  registrationNo String         @unique
-  model          String?
-  capacity       Int
-  routeId        String
-  route          Route          @relation(fields: [routeId], references: [id])
-  staff          VehicleStaff[]
+  id               String         @id @default(uuid())
+  registrationNo   String         @unique
+  model            String?
+  capacity         Int
+  onboardingStatus String?
+  routeId          String
+  branchId         String
+  schoolId         String
+  branch           Branch         @relation("BranchVehicles", fields: [branchId], references: [id])
+  route            Route          @relation(fields: [routeId], references: [id])
+  staff            VehicleStaff[]
+
+  @@index([branchId])
 }
 
 model VehicleStop {
@@ -651,9 +977,13 @@ model VehicleStop {
   pickupTime        String?
   dropTime          String?
   monthlyFee        Decimal                      @db.Decimal(10, 2)
+  branchId          String?
   dropAssignments   StudentTransportAssignment[] @relation("DropStop")
   pickupAssignments StudentTransportAssignment[] @relation("PickupStop")
+  branch            Branch?                      @relation("BranchStops", fields: [branchId], references: [id])
   route             Route                        @relation(fields: [routeId], references: [id])
+
+  @@index([branchId])
 }
 
 model VehicleStaff {
@@ -687,9 +1017,13 @@ model Subject {
   code        String       @unique
   classId     String?
   schoolId    String
+  branchId    String?
   examResults ExamResult[]
+  branch      Branch?      @relation("BranchSubjects", fields: [branchId], references: [id])
   class       Class?       @relation(fields: [classId], references: [id])
   school      School       @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
 }
 
 model ExamType {
@@ -697,8 +1031,12 @@ model ExamType {
   name         String
   academicYear String
   schoolId     String
+  branchId     String?
   results      ExamResult[]
+  branch       Branch?      @relation("BranchExamTypes", fields: [branchId], references: [id])
   school       School       @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
 }
 
 model GradeScale {
@@ -720,10 +1058,14 @@ model ExamResult {
   remarks       String?
   schoolId      String
   passMarks     Decimal  @default(33) @db.Decimal(5, 2)
+  branchId      String?
+  branch        Branch?  @relation("BranchExamResults", fields: [branchId], references: [id])
   examType      ExamType @relation(fields: [examTypeId], references: [id])
   school        School   @relation(fields: [schoolId], references: [id])
   student       Student  @relation(fields: [studentId], references: [id])
   subject       Subject  @relation(fields: [subjectId], references: [id])
+
+  @@index([branchId])
 }
 
 model Book {
@@ -734,15 +1076,23 @@ model Book {
   isbn        String?
   category    String?
   status      String        @default("Available")
+  branchId    String?
+  branch      Branch?       @relation("BranchBooks", fields: [branchId], references: [id])
   issues      IssueReturn[]
+
+  @@index([branchId])
 }
 
 model LibraryMember {
   id           String        @id @default(uuid())
   studentId    String        @unique
   membershipId String        @unique
+  branchId     String?
   issues       IssueReturn[]
+  branch       Branch?       @relation("BranchLibraryMembers", fields: [branchId], references: [id])
   student      Student       @relation(fields: [studentId], references: [id])
+
+  @@index([branchId])
 }
 
 model IssueReturn {
@@ -753,8 +1103,12 @@ model IssueReturn {
   dueDate    DateTime
   returnDate DateTime?
   status     String        @default("Issued")
+  branchId   String?
   book       Book          @relation(fields: [bookId], references: [id])
+  branch     Branch?       @relation("BranchLibraryIssues", fields: [branchId], references: [id])
   member     LibraryMember @relation(fields: [memberId], references: [id])
+
+  @@index([branchId])
 }
 
 model BiometricTemplate {
@@ -772,7 +1126,11 @@ model Notification {
   schoolId  String
   status    String   @default("Pending")
   type      String
+  branchId  String?
+  branch    Branch?  @relation("BranchNotifications", fields: [branchId], references: [id])
   school    School   @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
 }
 
 model TenancyCounter {
@@ -804,7 +1162,11 @@ model Enquiry {
   updatedAt        DateTime @updatedAt
   referredBy       String?
   referrerPhone    String?
+  branchId         String?
+  branch           Branch?  @relation("BranchEnquiries", fields: [branchId], references: [id])
   school           School   @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
 }
 
 model GlobalSetting {
@@ -846,45 +1208,251 @@ model ActivityLog {
   details    String?
   ipAddress  String?
   createdAt  DateTime @default(now())
+  branchId   String?
+  branch     Branch?  @relation("BranchLogs", fields: [branchId], references: [id])
   school     School   @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
 }
 
 model PayrollRun {
-  id            String       @id @default(uuid())
-  schoolId      String
-  month         Int
-  year          Int
-  status        String       @default("Draft") // Draft, Approved, Paid
-  totalGross    Decimal      @db.Decimal(15, 2)
-  totalNet      Decimal      @db.Decimal(15, 2)
-  processedBy   String?
-  processedAt   DateTime?
-  approvedBy    String?
-  approvedAt    DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  school        School       @relation(fields: [schoolId], references: [id])
-  slips         SalarySlip[]
+  id          String       @id @default(uuid())
+  schoolId    String
+  month       Int
+  year        Int
+  status      String       @default("Draft")
+  totalGross  Decimal      @db.Decimal(15, 2)
+  totalNet    Decimal      @db.Decimal(15, 2)
+  processedBy String?
+  processedAt DateTime?
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  branchId    String?
+  branch      Branch?      @relation("BranchPayroll", fields: [branchId], references: [id])
+  school      School       @relation(fields: [schoolId], references: [id])
+  slips       SalarySlip[]
 
   @@unique([schoolId, month, year])
+  @@index([branchId])
 }
 
 model SalarySlip {
-  id              String     @id @default(uuid())
-  payrollRunId    String
-  staffId         String
-  baseAmount      Decimal    @db.Decimal(12, 2)
-  arrears         Decimal    @default(0) @db.Decimal(12, 2)
-  allowances      Json?      // {hra, da, special, etc}
-  deductions      Json?      // {pf, esi, pt, advance}
-  grossSalary     Decimal    @db.Decimal(12, 2)
-  netSalary       Decimal    @db.Decimal(12, 2)
-  status          String     @default("Pending") // Pending, Paid
-  paymentMode     String?
-  paymentRef      String?
-  paidAt          DateTime?
-  payrollRun      PayrollRun @relation(fields: [payrollRunId], references: [id])
-  staff           Staff      @relation(fields: [staffId], references: [id])
+  id               String     @id @default(uuid())
+  payrollRunId     String
+  staffId          String
+  baseAmount       Decimal    @db.Decimal(12, 2)
+  arrears          Decimal    @default(0) @db.Decimal(12, 2)
+  allowances       Json?
+  deductions       Json?
+  grossSalary      Decimal    @db.Decimal(12, 2)
+  netSalary        Decimal    @db.Decimal(12, 2)
+  status           String     @default("Draft")
+  paymentMode      String?
+  paymentRef       String?
+  paidAt           DateTime?
+  attendedDays     Float?
+  hash             String?
+  lwpDays          Float?     @default(0)
+  paidLeaves       Float?     @default(0)
+  payableDays      Float?
+  snapshot         Json
+  totalWorkingDays Int?
+  updatedAt        DateTime   @default(now()) @updatedAt
+  branchId         String?
+  schoolId         String?
+  branch           Branch?    @relation("BranchSlips", fields: [branchId], references: [id])
+  payrollRun       PayrollRun @relation(fields: [payrollRunId], references: [id])
+  school           School?    @relation(fields: [schoolId], references: [id])
+  staff            Staff      @relation(fields: [staffId], references: [id])
 
   @@unique([payrollRunId, staffId])
+  @@index([branchId])
+}
+
+model SovereignRole {
+  id           String   @id @default(uuid())
+  name         String
+  schoolId     String
+  capabilities Json
+  isCustom     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  school       School   @relation(fields: [schoolId], references: [id])
+}
+
+model SovereignEvent {
+  id        String   @id @default(uuid())
+  type      String
+  payload   Json
+  schoolId  String?
+  branchId  String?
+  timestamp DateTime @default(now())
+  school    School?  @relation(fields: [schoolId], references: [id])
+}
+
+model StaffKYC {
+  id       String  @id @default(uuid())
+  staffId  String  @unique
+  aadhaar  String?
+  pan      String?
+  schoolId String?
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  school   School? @relation(fields: [schoolId], references: [id])
+}
+
+model SalaryRevision {
+  id       String   @id @default(uuid())
+  staffId  String
+  amount   Decimal  @db.Decimal(12, 2)
+  reason   String?
+  date     DateTime @default(now())
+  schoolId String?
+  branchId String?
+  branch   Branch?  @relation(fields: [branchId], references: [id])
+  school   School?  @relation(fields: [schoolId], references: [id])
+}
+
+model StaffAsset {
+  id        String  @id @default(uuid())
+  staffId   String
+  assetName String
+  serialNo  String?
+  status    String  @default("Assigned")
+  schoolId  String?
+  branchId  String?
+  branch    Branch? @relation(fields: [branchId], references: [id])
+  school    School? @relation(fields: [schoolId], references: [id])
+}
+
+model TransportStop {
+  id        String  @id @default(uuid())
+  name      String
+  latitude  Float?
+  longitude Float?
+  schoolId  String?
+  branchId  String?
+  school    School? @relation(fields: [schoolId], references: [id])
+}
+
+model TransportAssignment {
+  id        String  @id @default(uuid())
+  studentId String  @unique
+  routeId   String
+  stopId    String?
+  schoolId  String?
+  branchId  String?
+  school    School? @relation(fields: [schoolId], references: [id])
+  student   Student @relation("NewTransport", fields: [studentId], references: [id])
+}
+
+model FinancialAuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  amount    Decimal  @db.Decimal(12, 2)
+  schoolId  String?
+  branchId  String?
+  timestamp DateTime @default(now())
+  school    School?  @relation(fields: [schoolId], references: [id])
+}
+
+model CreditNote {
+  id        String  @id @default(uuid())
+  studentId String
+  amount    Decimal @db.Decimal(12, 2)
+  reason    String?
+  schoolId  String?
+  branchId  String?
+  school    School? @relation(fields: [schoolId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
+}
+
+model UnlockRequest {
+  id        String  @id @default(uuid())
+  type      String
+  targetId  String
+  reason    String
+  schoolId  String?
+  branchId  String?
+  studentId String
+  school    School? @relation(fields: [schoolId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
+}
+
+model TransportCollection {
+  id        String  @id @default(uuid())
+  studentId String
+  amount    Decimal @db.Decimal(12, 2)
+  month     Int
+  year      Int
+  student   Student @relation("TransportHistory", fields: [studentId], references: [id])
+}
+
+model StaffDepartment {
+  id       String  @id @default(uuid())
+  name     String
+  schoolId String
+  staff    Staff[]
+  school   School  @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, name])
+}
+
+model StaffCategory {
+  id       String  @id @default(uuid())
+  name     String
+  schoolId String
+  staff    Staff[]
+  school   School  @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, name])
+}
+
+enum Role {
+  STAFF
+  OWNER
+  PRINCIPAL
+  TEACHER
+  CLERK
+  DRIVER
+  ATTENDANT
+  CUSTOM
+}
+
+enum OwnerScope {
+  GLOBAL
+  BRANCH_ONLY
+}
+
+model AttendancePolicy {
+  id             String   @id @default(uuid())
+  branchId       String
+  name           String   @default("Default")
+  startMinutes   Int      // 8:30 = 510
+  endMinutes     Int      // 16:30 = 990
+  gracePeriod    Int
+  halfDayMinutes Int
+  weeklyOffs     Int[]    @default([0]) // 0 = Sunday
+  autoHoliday    Boolean  @default(true)
+  branch         Branch   @relation(fields: [branchId], references: [id])
+  staff          Staff[]
+}
+
+model AttendanceException {
+  id        String   @id @default(uuid())
+  staffId   String
+  date      DateTime
+  type      String   // Late-In, Early-Out, Missing-Checkout
+  meta      Json
+  staff     Staff    @relation(fields: [staffId], references: [id])
+}
+
+model StaffFaceProfile {
+  id        String @id @default(uuid())
+  staffId   String @unique
+  faceId    String
+  metadata  Json?
+  staff     Staff  @relation(fields: [staffId], references: [id])
 }

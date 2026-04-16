@@ -19,8 +19,12 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getStaffDirectoryAction, updateStaffProfessionalAction } from "@/lib/actions/staff-actions";
+import { PayrollEngine } from "@/lib/services/payroll-engine";
+import { AlertCircle, CheckCircle } from "lucide-react";
+import { useTabs } from "@/context/tab-context";
 
 export function SalaryRegistry() {
+  const { openTab } = useTabs();
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +51,8 @@ export function SalaryRegistry() {
     setEditingId(s.id);
     const p = s.professional;
     setEditValues({
+      casualLeaveBalance: p?.casualLeaveBalance || 0,
+      sickLeaveBalance: p?.sickLeaveBalance || 0,
       basicSalary: p?.basicSalary || 0,
       isPFEnabled: p?.isPFEnabled || false,
       isESIEnabled: p?.isESIEnabled || false,
@@ -57,7 +63,9 @@ export function SalaryRegistry() {
       transportAllowance: p?.transportAllowance || 0,
       isPTEnabled: p?.isPTEnabled || false,
       designation: p?.designation || "",
-      department: p?.department || ""
+      department: p?.department || "",
+      hraFormula: p?.hraFormula || "",
+      daFormula: p?.daFormula || ""
     });
   };
 
@@ -127,10 +135,12 @@ export function SalaryRegistry() {
                <thead>
                   <tr className="bg-slate-50 border-b border-border font-black text-[10px] uppercase tracking-widest text-foreground/40">
                      <th className="px-8 py-5">Employee Info</th>
+                     <th className="px-8 py-5">KYC Status</th>
                      <th className="px-8 py-5">Basic & DA</th>
                      <th className="px-8 py-5 text-emerald-600">Leaves (CL/SL)</th>
                      <th className="px-8 py-5 text-blue-600">Allowances (HRA/SPL)</th>
                      <th className="px-8 py-5 text-indigo-600">Statutory (PF/ESI/PT)</th>
+                     <th className="px-8 py-5">Bank</th>
                      <th className="px-8 py-5 text-right">Actions</th>
                   </tr>
                </thead>
@@ -143,18 +153,137 @@ export function SalaryRegistry() {
                            animate={{ opacity: 1, y: 0 }}
                            transition={{ delay: i * 0.05 }}
                            key={s.id} 
-                           className="group hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0"
+                           className={cn(
+                              "group hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0",
+                              editingId === s.id && "bg-blue-50/30"
+                           )}
                         >
+                           {(() => {
+                              const prof = editingId === s.id ? editValues : s.professional;
+                              const breakdown = PayrollEngine.calculateStaffRemuneration(prof || {});
+                              
+                              return (
+                                <>
                            <td className="px-8 py-6">
                               <div className="flex items-center gap-4">
                                  <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-xs">
                                     {s.firstName[0]}{s.lastName[0]}
                                  </div>
                                  <div>
-                                    <p className="font-black text-slate-900 tracking-tight leading-none mb-1 text-sm">{s.firstName} {s.lastName}</p>
-                                    <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{s.staffCode}</p>
+                                   <div className="flex items-center gap-2 mb-1">
+                                      <p 
+                                        onClick={() => openTab({ 
+                                           id: `staff-profile-${s.id}`, 
+                                           title: `${s.firstName} Profile`, 
+                                           component: "Staff", 
+                                           params: { staffId: s.id, forceEdit: true } 
+                                        })}
+                                        className="font-black text-slate-900 tracking-tight leading-none text-sm cursor-pointer hover:underline hover:text-primary transition-all"
+                                      >
+                                        {s.firstName} {s.lastName}
+                                      </p>
+                                      <span className={cn(
+                                         "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter",
+                                         s.status === "ACTIVE" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
+                                      )}>
+                                         {s.status}
+                                      </span>
+                                   </div>
+                                   <div className="flex items-center gap-2">
+                                      <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{s.staffCode}</p>
+                                      {s.onboardingStatus !== "JOINED" && (
+                                         <span className="text-[8px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md uppercase tracking-tighter shadow-sm border border-blue-100">
+                                            {s.onboardingStatus}
+                                         </span>
+                                      )}
+                                   </div>
                                  </div>
                               </div>
+                           </td>
+
+                           {/* KYC Column */}
+                           <td className="px-8 py-6">
+                              <div className="flex flex-col gap-1.5">
+                                 <div className="flex items-center gap-2">
+                                    <span className="text-[9px] font-bold opacity-30 w-8 uppercase tracking-widest">PAN</span>
+                                    <span className={cn(
+                                       "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest",
+                                       s.kyc?.panStatus === "VERIFIED" ? "bg-emerald-100 text-emerald-600" : 
+                                       s.kyc?.panStatus === "REJECTED" ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"
+                                    )}>
+                                       {s.kyc?.panStatus || "PENDING"}
+                                    </span>
+                                 </div>
+                                 <div className="flex items-center gap-2">
+                                    <span className="text-[9px] font-bold opacity-30 w-8 uppercase tracking-widest">AAD</span>
+                                    <span className={cn(
+                                       "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest",
+                                       s.kyc?.aadhaarStatus === "VERIFIED" ? "bg-emerald-100 text-emerald-600" : 
+                                       s.kyc?.aadhaarStatus === "REJECTED" ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-400"
+                                    )}>
+                                       {s.kyc?.aadhaarStatus || "PENDING"}
+                                    </span>
+                                 </div>
+                              </div>
+                           </td>
+
+                           <td className="px-8 py-6">
+                              {editingId === s.id ? (
+                                 <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-bold opacity-30 w-8">BAS:</span>
+                                       <input 
+                                          type="number"
+                                          value={editValues.basicSalary}
+                                          onChange={(e) => setEditValues({ ...editValues, basicSalary: parseFloat(e.target.value) })}
+                                          className="w-24 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black outline-none"
+                                       />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-bold opacity-30 w-8">DA:</span>
+                                       <div className="flex items-center gap-1">
+                                          <input 
+                                             type="checkbox"
+                                             checked={editValues.isDAEnabled}
+                                             onChange={() => toggleField("isDAEnabled")}
+                                             className="accent-primary"
+                                          />
+                                          {editValues.isDAEnabled && (
+                                             <input 
+                                                type="text"
+                                                placeholder="Formula (e.g. 0.5 * basic)"
+                                                value={editValues.daFormula}
+                                                onChange={(e) => setEditValues({ ...editValues, daFormula: e.target.value })}
+                                                className="w-40 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black outline-none"
+                                             />
+                                          )}
+                                       </div>
+                                    </div>
+                                    {!breakdown.isCompliant && (
+                                       <div className="flex items-center gap-1 text-[8px] font-black text-rose-500 uppercase tracking-tighter bg-rose-50 p-1 rounded">
+                                          <AlertCircle className="w-2 h-2" />
+                                          50% Rule Violation
+                                       </div>
+                                    )}
+                                 </div>
+                              ) : (
+                                 <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                       <p className="text-sm font-black text-slate-900">{formatINR(breakdown.basic)}</p>
+                                       {!breakdown.isCompliant && (
+                                          <div className="group relative">
+                                             <AlertCircle className="w-3 h-3 text-rose-500 cursor-help" />
+                                             <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-3 bg-slate-900 text-white text-[9px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+                                                {breakdown.violations[0]}
+                                             </div>
+                                          </div>
+                                       )}
+                                    </div>
+                                    {breakdown.da > 0 && (
+                                       <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">+ DA: {formatINR(breakdown.da)}</p>
+                                    )}
+                                 </div>
+                              )}
                            </td>
 
                            {/* Leaves Column */}
@@ -188,49 +317,6 @@ export function SalaryRegistry() {
                               )}
                            </td>
 
-                           {/* Basic & DA Column */}
-                           <td className="px-8 py-6">
-                              {editingId === s.id ? (
-                                 <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold opacity-30 w-8">BAS:</span>
-                                       <input 
-                                          type="number"
-                                          value={editValues.basicSalary}
-                                          onChange={(e) => setEditValues({ ...editValues, basicSalary: parseFloat(e.target.value) })}
-                                          className="w-24 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black outline-none"
-                                       />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-bold opacity-30 w-8">DA:</span>
-                                       <div className="flex items-center gap-1">
-                                          <input 
-                                             type="checkbox"
-                                             checked={editValues.isDAEnabled}
-                                             onChange={() => toggleField("isDAEnabled")}
-                                             className="accent-primary"
-                                          />
-                                          {editValues.isDAEnabled && (
-                                             <input 
-                                                type="number"
-                                                value={editValues.daAmount}
-                                                onChange={(e) => setEditValues({ ...editValues, daAmount: parseFloat(e.target.value) })}
-                                                className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black outline-none"
-                                             />
-                                          )}
-                                       </div>
-                                    </div>
-                                 </div>
-                              ) : (
-                                 <div className="space-y-1">
-                                    <p className="text-sm font-black text-slate-900">{formatINR(Number(s.professional?.basicSalary || 0))}</p>
-                                    {s.professional?.isDAEnabled && (
-                                       <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">+ DA: {formatINR(Number(s.professional?.daAmount || 0))}</p>
-                                    )}
-                                 </div>
-                              )}
-                           </td>
-
                            {/* HRA & Special Allowances */}
                            <td className="px-8 py-6">
                               {editingId === s.id ? (
@@ -238,10 +324,11 @@ export function SalaryRegistry() {
                                     <div className="flex items-center gap-2">
                                        <span className="text-[10px] font-bold opacity-30 w-8">HRA:</span>
                                        <input 
-                                          type="number"
-                                          value={editValues.hraAmount}
-                                          onChange={(e) => setEditValues({ ...editValues, hraAmount: parseFloat(e.target.value) })}
-                                          className="w-24 px-2 py-1 bg-white border border-blue-100 rounded-lg text-xs font-black outline-none"
+                                          type="text"
+                                          placeholder="Formula or Value"
+                                          value={editValues.hraFormula || editValues.hraAmount}
+                                          onChange={(e) => setEditValues({ ...editValues, hraFormula: e.target.value })}
+                                          className="w-40 px-2 py-1 bg-white border border-blue-100 rounded-lg text-[10px] font-black outline-none"
                                        />
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -258,11 +345,18 @@ export function SalaryRegistry() {
                                  <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                        <p className="text-xs font-bold text-slate-500">HRA:</p>
-                                       <p className="text-xs font-black text-slate-900">{formatINR(Number(s.professional?.hraAmount || 0))}</p>
+                                       <p className="text-xs font-black text-slate-900">{formatINR(breakdown.hra)}</p>
+                                       {s.professional?.hraFormula && (
+                                          <ShieldCheck className="w-2.5 h-2.5 text-blue-400" />
+                                       )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                        <p className="text-xs font-bold text-slate-500">SPL:</p>
-                                       <p className="text-xs font-black text-slate-900">{formatINR(Number(s.professional?.specialAllowance || 0))}</p>
+                                       <p className="text-xs font-black text-slate-900">{formatINR(breakdown.specialAllowance)}</p>
+                                    </div>
+                                    <div className="pt-1 mt-1 border-t border-slate-50 flex items-center justify-between">
+                                       <span className="text-[8px] font-bold text-slate-300 uppercase underline decoration-emerald-500/30 underline-offset-4">GROSS</span>
+                                       <span className="text-[10px] font-black text-slate-900">{formatINR(breakdown.grossRemuneration)}</span>
                                     </div>
                                  </div>
                               )}
@@ -291,6 +385,26 @@ export function SalaryRegistry() {
                               </div>
                            </td>
 
+                           {/* Bank Status Column */}
+                           <td className="px-8 py-6">
+                              {s.bank?.accountNumber ? (
+                                 <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                       <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                       <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Validated</span>
+                                    </div>
+                                    <span className="text-[9px] font-bold text-slate-300 font-mono tracking-tighter text-ellipsis overflow-hidden whitespace-nowrap max-w-[150px]">
+                                       {s.bank.bankName} • {s.bank.accountNumber.toString().slice(-4).padStart(s.bank.accountNumber.length, '*')}
+                                    </span>
+                                 </div>
+                              ) : (
+                                 <div className="flex items-center gap-2 text-rose-500 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100 w-fit">
+                                    <Info className="w-3 h-3" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Bank Details Missing</span>
+                                 </div>
+                              )}
+                           </td>
+
                            <td className="px-8 py-6 text-right">
                               {editingId === s.id ? (
                                  <div className="flex items-center justify-end gap-2">
@@ -307,7 +421,10 @@ export function SalaryRegistry() {
                                  </button>
                               )}
                            </td>
-                        </motion.tr>
+                                </>
+                               );
+                            })()}
+                         </motion.tr>
                      ))}
                   </AnimatePresence>
                </tbody>

@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getTenantContext } from "@/lib/utils/tenant-context";
+import { getSovereignIdentity } from "@/lib/auth/backbone";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -19,7 +19,9 @@ export async function submitStudentAttendanceAction(records: {
   date: string;
 }[]) {
   try {
-    const context = await getTenantContext();
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+    const context = identity;
     const todayStr = records[0]?.date || new Date().toISOString().split('T')[0];
     const classId = records[0]?.classId;
 
@@ -111,7 +113,9 @@ export async function submitStudentAttendanceAction(records: {
  */
 export async function getAttendanceStatsAction(classId?: string, sectionId?: string, dateStr?: string) {
   try {
-     const context = await getTenantContext();
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+    const context = identity;
      const date = dateStr ? new Date(dateStr) : new Date();
      date.setHours(0, 0, 0, 0);
 
@@ -195,3 +199,63 @@ export async function submitStaffAttendanceAction(records: {
     return { success: false, error: "Failed to sync staff records." };
   }
 }
+
+/**
+ * 🏛️ SOVEREIGN ATTENDANCE AGGREGATOR
+ * Fetches monthly summary of staff attendance for payroll injection.
+ */
+export async function getMonthlyStaffAttendanceSummary(month: number, year: number, branchId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    const records = await prisma.staffAttendance.findMany({
+      where: {
+        schoolId: identity.schoolId,
+        branchId: branchId,
+        date: { gte: startDate, lte: endDate }
+      }
+    });
+
+    const summary: Record<string, { present: number; absent: number; lwp: number; lateCount: number }> = {};
+
+    records.forEach(r => {
+      if (!summary[r.staffId]) {
+        summary[r.staffId] = { present: 0, absent: 0, lwp: 0, lateCount: 0 };
+      }
+      
+      const status = r.status.toLowerCase();
+      if (status === "present") {
+        summary[r.staffId].present++;
+      } else if (status === "late") {
+        summary[r.staffId].lateCount++;
+        summary[r.staffId].present++;
+      } else if (status === "absent" || status === "lop" || status === "lp") {
+        summary[r.staffId].absent++;
+        summary[r.staffId].lwp++;
+      } else if (status === "half-day") {
+        summary[r.staffId].present += 0.5;
+        summary[r.staffId].lwp += 0.5;
+        summary[r.staffId].absent += 0.5;
+      } else if (status === "leave") {
+        summary[r.staffId].present++; // Already handled as Paid Leave
+      }
+    });
+
+    // 🏛️ SOVEREIGN GRACE LOGIC: Subtract 1st day of absence (Automated Monthly Paid Leave)
+    Object.values(summary).forEach(s => {
+      if (s.lwp > 0) {
+        s.lwp = Math.max(0, s.lwp - 1);
+      }
+    });
+
+    return { success: true, summary };
+  } catch (e) {
+    console.error("Summary Fetch Error:", e);
+    return { success: false, summary: {} };
+  }
+}
+

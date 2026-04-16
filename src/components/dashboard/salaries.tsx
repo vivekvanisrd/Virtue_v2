@@ -1,26 +1,24 @@
 "use client";
 
 import React from "react";
-import { PayrollManager } from "../staff/PayrollManager";
-import { SalaryHub } from "../salaries/SalaryHub";
+import { SalaryCommandCenter } from "../salaries/v2-1/SalaryCommandCenter";
 import { SalaryRegistry } from "../salaries/SalaryRegistry";
 import { StaffAdvanceManager } from "../salaries/StaffAdvanceManager";
+import { useTenant } from "@/context/tenant-context";
 
 interface SalariesContentProps {
   tabId: string;
 }
 
 export function SalariesContent({ tabId }: SalariesContentProps) {
-  if (tabId === "salaries") {
-    return <SalaryHub />;
-  }
+  const { branchId } = useTenant();
 
-  if (tabId === "salary-dashboard") {
-    return <SalaryHub />;
+  if (tabId === "salaries" || tabId === "salary-dashboard") {
+    return <SalaryCommandCenter />;
   }
 
   if (tabId === "salary-manager" || tabId === "salary-batches") {
-    return <PayrollManager />;
+    return <SalaryCommandCenter />;
   }
 
   if (tabId === "salary-payments") {

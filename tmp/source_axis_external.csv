@@ -1,0 +1,44 @@
+﻿"Debit Account Number  
+(Mandatory)","Transaction Amount  
+(Mandatory)","Transaction Currency 
+(Non-Mandatory)","Beneficiary Name  
+(Mandatory)","Beneficiary Account Number
+(Mandatory)","Beneficiary IFSC Code  
+(Mandatory)","Transaction Date  
+(Mandatory)","Payment Mode  
+(Mandatory)",Customer Reference Number(Mandatory),"Beneficiary Nickname/Code  
+(Mandatory)","Bank Account Type 
+(Non-Mandatory)","Debit Narration 
+(Non-Mandatory)","Credit Narration 
+(Non-Mandatory)","Beneficiary Address 1 
+(Non-Mandatory)","Beneficiary Address 2 
+(Non-Mandatory)","Beneficiary Address 3 
+(Non-Mandatory)","Beneficiary City 
+(Non-Mandatory)","Beneficiary State 
+(Non-Mandatory)","Beneficiary Pin Code 
+(Non-Mandatory)","Beneficiary Bank Name 
+(Non-Mandatory)","Beneficiary Email address 1 
+(Non-Mandatory)","Beneficiary Email address 2 
+(Non-Mandatory)","Beneficiary Mobile Number 
+(Non-Mandatory)","Add Info1 
+(Non-Mandatory)","Add Info2 
+(Non-Mandatory)","Add Info3 
+(Non-Mandatory)","Add Info4 
+(Non-Mandatory)","Add Info5 
+(Non-Mandatory)","Add Info6 
+(Non-Mandatory)"
+915010023357136,6134,,T.MANIKANTA REDDY,101820051003932,ADBK0001018,04/04/2026,IMPS,VA042026001,TMANIKANTAREDDY,,,,,,,,,,,,,,,,,,,
+915010023357136,15000,,S.Vibhushree,31420100009766,BARB0BHOSAR,04/04/2026,IMPS,VA042026002,SVibhushree,,,,,,,,,,,,,,,,,,,
+915010023357136,10734,,Dappu Ravi Kumar,   81000100007618,BARB0VJMALK,04/04/2026,IMPS,VA042026003,DappuRaviKumar,,,,,,,,,,,,,,,,,,,
+915010023357136,14000,,Somavathi Vadepalley,566210110002623,BKID0005649,04/04/2026,IMPS,VA042026004,SomavathiVadepalley,,,,,,,,,,,,,,,,,,,
+915010023357136,10000,,Anjali,5334580100,CBIN0284566,04/04/2026,IMPS,VA042026005,Anjali,,,,,,,,,,,,,,,,,,,
+915010023357136,7000,, BHAVANI,7092203821,IDIB000S265,04/04/2026,IMPS,VA042026006,BHAVANI,,,,,,,,,,,,,,,,,,,
+915010023357136,13000,,Peddolla.Spandana,42535362904,SBIN0015519,04/04/2026,IMPS,VA042026007,PeddollaSpandana,,,,,,,,,,,,,,,,,,,
+915010023357136,9000,,MD.Afroz,20279704158,SBIN0015519,04/04/2026,IMPS,VA042026008,MDAfroz,,,,,,,,,,,,,,,,,,,
+915010023357136,14000,,Nallolla .Yadaiah,62092716537,SBIN0020097,04/04/2026,IMPS,VA042026009,NallollaYadaiah,,,,,,,,,,,,,,,,,,,
+915010023357136,15000,,YAZAZUDDIN,62437517635,SBIN0021217,04/04/2026,IMPS,VA042026010,YAZAZUDDIN,,,,,,,,,,,,,,,,,,,
+915010023357136,12000,,ATHAR PASHA,62263573210,SBIN0021217,04/04/2026,IMPS,VA042026011,ATHARPASHA,,,,,,,,,,,,,,,,,,,
+915010023357136,10000,,G0lla.Jagadamba,62203465998,SBIN0021217,04/04/2026,IMPS,VA042026012,G0llaJagadamba,,,,,,,,,,,,,,,,,,,
+915010023357136,7000,,Laxshmi,1081269164,TGRB0008101,04/04/2026,IMPS,VA042026013,Laxshmi,,,,,,,,,,,,,,,,,,,
+915010023357136,7500,,PEDDAGOLLA PADMA,73027818435,TGRB0008165,04/04/2026,IMPS,VA042026014,PEDDAGOLLAPADMA,,,,,,,,,,,,,,,,,,,
+915010023357136,6334,,Pyata.Vinod kumar,73087275983,TGRB0008198,04/04/2026,IMPS,VA042026015,PyataVinodkumar,,,,,,,,,,,,,,,,,,,

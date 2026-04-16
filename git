@@ -1,0 +1,10 @@
+      PID    PPID    PGID     WINPID   TTY         UID    STIME COMMAND
+     1837       1    1837      33328  ?         197608 18:10:50 /usr/bin/mintty
+     1838    1837    1838      34004  pty1      197608 18:10:51 /usr/bin/bash
+     1984    1976    1976      13952  pty1      197608 19:53:46 /c/Program Files/nodejs/node
+     1986    1985    1986      49264  pty2      197608 21:11:26 /usr/bin/bash
+     1976    1838    1976      45656  pty1      197608 19:53:46 /usr/bin/bash
+     1533       1    1533      36816  ?         197608   Apr  2 /usr/bin/mintty
+     1534    1533    1534      25576  pty0      197608   Apr  2 /usr/bin/bash
+     2161    1534    2161      53800  pty0      197608 09:14:12 /usr/bin/PS
+     1985       1    1985      13564  ?         197608 21:11:25 /usr/bin/mintty

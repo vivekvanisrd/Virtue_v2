@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { submitStudentAttendanceAction } from "@/lib/actions/attendance-actions";
 import { getClassesAction, getSectionsAction } from "@/lib/actions/academic-actions";
 import { getStudentListAction } from "@/lib/actions/student-actions";
+import { useTabs } from "@/context/tab-context";
 
 interface Student {
   id: string;
@@ -42,6 +43,7 @@ interface VelocityAttendanceProps {
 }
 
 export function VelocityAttendance({ students: initialStudents = [], classId: initialClassId, sectionId: initialSectionId }: VelocityAttendanceProps) {
+  const { openTab } = useTabs();
   const [marked, setMarked] = useState<Record<string, "Present" | "Absent" | "Late">>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [date] = useState(new Date().toISOString().split("T")[0]);
@@ -289,9 +291,18 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
                      <div className="text-left mb-8">
                         <p className="text-[10px] font-black text-[var(--foreground)]/40 uppercase tracking-widest mb-3 ml-1">Absentees List</p>
                         <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-                           {summary.absentees.map(s => (
-                              <div key={s.id} className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-xl transition-colors hover:bg-red-500/10">
-                                 <span className="text-xs font-black text-[var(--foreground)]">{s.firstName} {s.lastName}</span>
+                            {summary.absentees.map(s => (
+                              <div 
+                                key={s.id} 
+                                onClick={() => openTab({
+                                   id: `student-profile-${s.id}`,
+                                   title: `${s.firstName} Profile`,
+                                   component: "Students",
+                                   params: { studentId: s.id }
+                                })}
+                                className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-xl transition-colors hover:bg-red-500/10 cursor-pointer group"
+                              >
+                                 <span className="text-xs font-black text-[var(--foreground)] group-hover:underline group-hover:text-red-400">{s.firstName} {s.lastName}</span>
                                  <span className="text-[10px] font-bold text-[var(--foreground)]/60">{s.studentCode}</span>
                               </div>
                            ))}
@@ -352,22 +363,26 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
                      key={currentStudent.id}
                      student={currentStudent}
                      onMark={handleMark}
+                     openTab={openTab}
                   />
                ) : (
                   <CompletionCard stats={stats} onSubmit={handleFinalSubmit} onReset={resetAll} loading={isSubmitting} />
                )}
             </AnimatePresence>
          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 w-full max-h-full overflow-y-auto custom-scrollbar pr-2">
-               {students.map((s, i) => (
-                  <GridCell 
-                     key={s.id} 
-                     student={s} 
-                     status={marked[s.id]} 
-                     onClick={(st) => setMarked(prev => ({ ...prev, [s.id]: st }))}
-                  />
-               ))}
-               <div className="col-span-full pt-10">
+            <div className="w-full h-full overflow-y-auto custom-scrollbar p-6">
+               <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-3">
+                  {students.map(s => (
+                     <GridCell 
+                        key={s.id} 
+                        student={s} 
+                        status={marked[s.id]} 
+                        openTab={openTab}
+                        onClick={(status) => setMarked(prev => ({ ...prev, [s.id]: status }))} 
+                     />
+                  ))}
+               </div>
+               <div className="pt-10">
                   <button onClick={handleFinalSubmit} disabled={isSubmitting} className="w-full py-5 bg-white text-slate-900 rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl disabled:opacity-30">
                      {isSubmitting ? "Syncing..." : "Finalize & Submit Attendance"}
                   </button>
@@ -383,7 +398,7 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
 }
 
 /** ─── Swipe Mode Component ─── */
-function SwipeCard({ student, onMark }: { student: Student, onMark: (s: "Present" | "Absent" | "Late") => void }) {
+function SwipeCard({ student, onMark, openTab }: { student: Student, onMark: (s: "Present" | "Absent" | "Late") => void, openTab: any }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
@@ -416,7 +431,17 @@ function SwipeCard({ student, onMark }: { student: Student, onMark: (s: "Present
                 <User className="w-12 h-12 text-white/20" />
              )}
           </div>
-          <h3 className="text-3xl font-black tracking-tighter mb-2 underline decoration-blue-500/20 underline-offset-8 decoration-4">{student.firstName} {student.lastName}</h3>
+          <h3 
+            onClick={() => openTab({
+               id: `student-profile-${student.id}`,
+               title: `${student.firstName} Profile`,
+               component: "Students",
+               params: { studentId: student.id }
+            })}
+            className="text-3xl font-black tracking-tighter mb-2 underline decoration-blue-500/20 underline-offset-8 decoration-4 cursor-pointer hover:text-blue-500 transition-all"
+          >
+            {student.firstName} {student.lastName}
+          </h3>
           <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em]">{student.studentCode}</p>
        </div>
 
@@ -445,7 +470,7 @@ function SwipeCard({ student, onMark }: { student: Student, onMark: (s: "Present
 }
 
 /** ─── Grid Mode Cell ─── */
-function GridCell({ student, status, onClick }: { student: Student, status?: string, onClick: (s: any) => void }) {
+function GridCell({ student, status, onClick, openTab }: { student: Student, status?: string, onClick: (s: any) => void, openTab: any }) {
    return (
       <div 
          onClick={() => onClick(status === "Present" ? "Absent" : "Present")}
@@ -460,12 +485,26 @@ function GridCell({ student, status, onClick }: { student: Student, status?: str
          <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center text-[10px] font-bold mb-1">
             {student.firstName[0]}
          </div>
-         <p className="text-[8px] font-black text-center uppercase tracking-tighter leading-tight opacity-80">{student.firstName}</p>
+         <p 
+            onClick={(e) => {
+               e.stopPropagation();
+               openTab({
+                  id: `student-profile-${student.id}`,
+                  title: `${student.firstName} Profile`,
+                  component: "Students",
+                  params: { studentId: student.id }
+               });
+            }}
+            className="text-[8px] font-black text-center uppercase tracking-tighter leading-tight opacity-80 hover:underline hover:opacity-100 transition-all font-mono"
+         >
+            {student.firstName}
+         </p>
          
-         <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="bg-white text-slate-900 rounded-full p-1 border shadow-2xl shadow-white/40">
-               <ArrowRight className="w-2 h-2" />
-            </div>
+         <div 
+            onClick={(e) => { e.stopPropagation(); onClick("Late"); }}
+            className="absolute -top-1 -right-1 w-5 h-5 bg-white/10 rounded-full border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-amber-500 hover:text-white"
+         >
+            <Timer className="w-2.5 h-2.5" />
          </div>
       </div>
    );

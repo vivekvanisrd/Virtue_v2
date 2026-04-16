@@ -23,6 +23,7 @@ import { SalariesContent } from "../dashboard/salaries";
 import { BankSettings } from "../dashboard/bank-settings";
 import { VelocityAttendance } from "../attendance/VelocityAttendance";
 import { TenantProvider, useTenant } from "@/context/tenant-context";
+import { InstitutionalSetupHub } from "../dashboard/InstitutionalSetupHub";
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -37,6 +38,7 @@ function WorkspaceRenderer() {
           className={tab.id === activeTabId ? "block animate-in fade-in slide-in-from-bottom-2 duration-300" : "hidden"}
         >
           {tab.id === "overview" && <OverviewContent />}
+          {tab.id === "settings" && <InstitutionalSetupHub />}
           {tab.id === "students" && <StudentHub />}
           {(tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries" || tab.id === "students-exams" || tab.id === "students-import") && (
             <StudentsContent tabId={tab.id} />
@@ -53,13 +55,13 @@ function WorkspaceRenderer() {
 
           {/* Staff Module */}
           {tab.id === "staff" && <StaffHub />}
-          {(tab.id === "staff-directory" || tab.id === "staff-attendance" || tab.id === "staff-roles" || tab.id === "staff-import") && (
-            <StaffContent tabId={tab.id} />
+          {(tab.id === "staff-directory" || tab.id === "staff-attendance" || tab.id === "staff-roles" || tab.id === "staff-import" || tab.id.startsWith("staff-profile-") || tab.id.startsWith("staff-financials-")) && (
+            <StaffContent tabId={tab.id} params={tab.params} />
           )}
 
           {/* Salaries Module */}
           {(tab.id === "salaries" || /salary/i.test(tab.id)) && (
-             <SalariesContent tabId={tab.id} />
+            <SalariesContent tabId={tab.id} />
           )}
 
           {tab.id === "settings-banking" && <BankSettings schoolId={schoolId} />}
@@ -78,10 +80,10 @@ function WorkspaceRenderer() {
           )}
 
           {/* Generic mappings for other cataloged modules */}
-          {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].includes(tab.id) && (
+          {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication"].includes(tab.id) && (
             <GenericModule 
               title={tab.title} 
-              description={`Modern ${tab.title} and information systems for Virtue School`}
+              description={`Modern ${tab.title} and information systems powered by PaVa-EDUX`}
             />
           )}
 
@@ -107,6 +109,9 @@ export default function DashboardShell({
   branches = [],
   activeBranchId = "GLOBAL",
   schoolId,
+  schoolName,
+  activeBranchName,
+  isOperationalReady = true,
 }: {
   children: React.ReactNode;
   userEmail?: string;
@@ -115,7 +120,10 @@ export default function DashboardShell({
   academicYear?: string;
   branches?: any[];
   activeBranchId?: string;
+  activeBranchName?: string;
   schoolId?: string;
+  schoolName?: string;
+  isOperationalReady?: boolean;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
@@ -123,16 +131,20 @@ export default function DashboardShell({
     <TabProvider>
       <TenantProvider value={{ 
         schoolId: schoolId || "", 
+        schoolName: schoolName || "PaVa-EDUX",
         branchId: activeBranchId || "", 
         userRole: userRole || "", 
         userName: userName || "",
-        academicYear: academicYear || "" 
+        academicYear: academicYear || "",
+        isOperationalReady
       }}>
         <div className="flex min-h-screen bg-background selection:bg-primary/10 selection:text-primary relative">
           <Sidebar 
             isMobileOpen={isMobileOpen} 
             setIsMobileOpen={setIsMobileOpen} 
             userRole={userRole as any}
+            schoolName={schoolName}
+            isOperationalReady={isOperationalReady}
           />
           
           <main className="flex-1 min-h-screen bg-background transition-all duration-300">
@@ -141,9 +153,11 @@ export default function DashboardShell({
               userEmail={userEmail}
               userRole={userRole}
               userName={userName}
+              schoolName={schoolName}
               academicYear={academicYear}
               branches={branches}
               activeBranchId={activeBranchId}
+              activeBranchName={activeBranchName}
             />
             <TabList />
             

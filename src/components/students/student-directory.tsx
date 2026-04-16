@@ -108,7 +108,9 @@ export function StudentDirectory() {
              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Student Directory</h2>
              <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200">
                 <Terminal className="w-3 h-3 text-slate-400" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{context?.schoolId || "..."}@{context?.branchId || "..."}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  {context?.schoolId || "..."} | {refData.branches.find(b => b.id === context?.branchId)?.name || context?.branchId || "..."}
+                </span>
              </div>
           </div>
           <p className="text-xs font-medium text-slate-400 mt-1 uppercase tracking-widest">Registry of all active academic students</p>
@@ -184,26 +186,30 @@ export function StudentDirectory() {
       {/* ─── Main Content ─── */}
       {loading ? (
         <div className="py-40 flex flex-col items-center justify-center space-y-4">
-           <Loader2 className="w-10 h-10 text-primary animate-spin" />
-           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading Student Records...</p>
+           <div className="relative inline-block">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
+              <Loader2 className="w-12 h-12 text-primary animate-spin relative z-10" />
+           </div>
+           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">Synchronizing Student Registry...</p>
         </div>
       ) : students.length === 0 ? (
-        <div className="py-32 bg-white rounded-[3rem] border border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
-           <div className="p-6 bg-slate-50 rounded-full mb-6">
+        <div className="py-32 bg-white/50 backdrop-blur-xl rounded-[4rem] border border-dashed border-slate-200 flex flex-col items-center justify-center text-center shadow-inner relative overflow-hidden">
+           <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 to-transparent pointer-events-none" />
+           <div className="p-8 bg-white rounded-[2.5rem] mb-6 shadow-xl shadow-slate-200/50 border border-slate-100">
               <User className="w-12 h-12 text-slate-200" />
            </div>
-           <h3 className="text-xl font-black text-slate-900 tracking-tight">No Students Found</h3>
-           <p className="text-sm text-slate-400 mt-2 max-w-xs">We couldn't find any student records matching your current criteria or branch assignment.</p>
+           <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Results Found</h3>
+           <p className="text-sm text-slate-400 mt-2 max-w-xs font-medium">Refine your search parameters or initiate a new admission request from the hub.</p>
            <button 
               onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "" }); setSearchTerm(""); }}
-              className="mt-8 text-xs font-black uppercase tracking-widest text-primary hover:underline"
-           >
-             Reset All Filters
-           </button>
+              className="mt-8 px-8 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all"
+            >
+              Reset Registry Filters
+            </button>
         </div>
       ) : (
         <div className={cn(
-          "grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000",
+          "grid gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000",
           viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
         )}>
            {students.map((student) => (
@@ -212,60 +218,95 @@ export function StudentDirectory() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={cn(
-                  "bg-white rounded-[2.5rem] border border-border overflow-hidden group hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500",
-                  viewMode === "list" && "flex items-center p-4 gap-6"
+                  "bg-white/80 backdrop-blur-xl rounded-[3.5rem] border border-slate-100 overflow-hidden group hover:shadow-[0_40px_100px_rgba(0,0,0,0.06)] hover:border-primary/20 transition-all duration-700",
+                  viewMode === "list" && "flex items-center p-6 gap-8 rounded-[4rem]"
                 )}
              >
                 {/* Visual Header / Avatar */}
                 <div className={cn(
-                   "relative p-6 flex flex-col items-center transition-all duration-700",
-                   viewMode === "grid" ? "bg-slate-50 group-hover:bg-primary/5 h-48 justify-center" : "h-24 w-24 rounded-3xl bg-slate-50 shrink-0"
+                   "relative p-8 flex flex-col items-center transition-all duration-700",
+                   viewMode === "grid" ? "bg-slate-50/50 group-hover:bg-primary/[0.03] h-52 justify-center" : "h-32 w-32 rounded-[2.5rem] bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 shadow-inner"
                 )}>
-                   <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center border border-slate-100 relative z-10">
-                      <User className="w-10 h-10 text-slate-300 group-hover:text-primary transition-colors" />
-                      {student.status === "Active" && (
-                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
-                      )}
+                   <div className="relative">
+                      <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="w-24 h-24 bg-white rounded-[2rem] shadow-[0_10px_30px_rgba(0,0,0,0.05)] border border-slate-100 flex items-center justify-center relative z-10 group-hover:scale-110 transition-transform duration-500">
+                         {student.id.includes("VIVES") ? (
+                            <div className="text-xl font-black text-slate-300 group-hover:text-primary transition-colors">
+                               {student.firstName[0]}{student.lastName?.[0]}
+                            </div>
+                         ) : (
+                            <User className="w-10 h-10 text-slate-200 group-hover:text-primary transition-colors" />
+                         )}
+                         {student.status === "Active" && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full shadow-sm" />
+                         )}
+                      </div>
                    </div>
                    {viewMode === "grid" && (
-                      <div className="mt-4 text-center">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-100">{student.studentCode}</span>
+                      <div className="mt-5">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-white/80 border border-slate-200/50 px-4 py-1.5 rounded-full shadow-sm font-mono tracking-normal">
+                             {(student.registrationId || student.studentCode || "NO_ID")}
+                          </span>
                       </div>
                    )}
                 </div>
 
                 {/* Info Section */}
-                <div className="p-6 flex-1">
-                   <div className="flex justify-between items-start mb-4">
+                 <div className="p-8 flex-1">
+                   <div className="flex justify-between items-start mb-6">
                       <div>
-                         <h4 className="text-lg font-black text-slate-900 tracking-tight leading-none group-hover:text-primary transition-colors">{student.firstName} {student.lastName}</h4>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{student.academic?.class?.name} - {student.academic?.section?.name || "Section A"}</p>
+                         <h4 
+                           onClick={() => openTab({ 
+                              id: `student-profile-${student.id}`, 
+                              title: `${student.firstName} Profile`, 
+                              component: "Students", 
+                              params: { studentId: student.id } 
+                           })}
+                           className="text-xl font-black text-slate-900 tracking-tighter leading-none cursor-pointer hover:underline hover:text-primary transition-all"
+                         >
+                           {student.firstName} {student.lastName}
+                         </h4>
+                         <div className="flex items-center gap-2 mt-3">
+                            <span className="text-[10px] font-black px-2.5 py-1 bg-indigo-500/5 text-indigo-600 border border-indigo-500/10 rounded-lg uppercase tracking-widest">
+                               {student.academic?.class?.name || "Class X"}
+                            </span>
+                            <span className="text-[10px] font-black px-2.5 py-1 bg-slate-50 text-slate-500 border border-slate-100 rounded-lg uppercase tracking-widest">
+                               {student.academic?.section?.name || "Section A"}
+                            </span>
+                         </div>
                       </div>
-                      <div className="p-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer text-slate-300 hover:text-slate-900">
+                      <div className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-2xl transition-all cursor-pointer text-slate-300 hover:text-slate-900 border border-transparent hover:border-slate-100">
                          <MoreHorizontal className="w-5 h-5" />
                       </div>
                    </div>
 
-                   <div className="grid grid-cols-2 gap-4 my-6">
-                      <div className="space-y-1">
-                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Admission No</p>
-                         <p className="text-xs font-bold text-slate-600">{student.admissionNumber}</p>
+                   <div className="grid grid-cols-2 gap-6 my-8">
+                      <div className="space-y-1.5">
+                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Enrollment</p>
+                         <p className="text-xs font-black text-slate-700 tracking-tight">{student.history?.[0]?.admissionNumber || student.admissionNumber || "N/A"}</p>
                       </div>
-                      <div className="space-y-1">
-                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Fees Status</p>
-                         <div className="flex items-center gap-1.5">
-                            <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                            <span className="text-xs font-black text-emerald-600 tracking-tight">VIVA-CLEAR</span>
+                      <div className="space-y-1.5 text-right">
+                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Financials</p>
+                         <div className="flex items-center justify-end gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] font-black text-emerald-600 tracking-widest uppercase italic shadow-emerald-100 drop-shadow-sm">VIVA-CLEAR</span>
                          </div>
                       </div>
                    </div>
 
-                   <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
+                   <div className="flex items-center gap-3 pt-6 border-t border-slate-50">
                       <button 
-                         onClick={() => setSelectedStudentId(student.id)}
-                         className="flex-1 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200 flex items-center justify-center gap-2 hover:bg-black transition-all"
+                         onClick={() => openTab({ 
+                            id: `student-profile-${student.id}`, 
+                            title: `${student.firstName}'s Profile`, 
+                            component: "Students", 
+                            params: { studentId: student.id } 
+                         })}
+                         className="flex-1 py-4 bg-primary text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:bg-primary/90 active:scale-95 transition-all duration-300 relative overflow-hidden group/btn"
                       >
-                         Profile Profile <ChevronRight className="w-3 h-3" />
+                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
+                         <span className="relative z-10 italic">Access Profile</span> 
+                         <ChevronRight className="w-3.5 h-3.5 relative z-10" />
                       </button>
                       <button 
                         onClick={() => openTab({ 
@@ -275,9 +316,9 @@ export function StudentDirectory() {
                           component: "Financials",
                           params: { studentId: student.id } 
                         })}
-                        className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-primary hover:border-primary transition-all"
+                        className="w-14 h-14 bg-white border border-slate-200 rounded-[22px] flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all active:scale-90"
                       >
-                         <Wallet className="w-4 h-4" />
+                         <Wallet className="w-5 h-5" />
                       </button>
                    </div>
                 </div>
