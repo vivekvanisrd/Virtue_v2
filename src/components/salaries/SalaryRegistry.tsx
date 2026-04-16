@@ -190,7 +190,17 @@ export function SalaryRegistry() {
                                       </span>
                                    </div>
                                    <div className="flex items-center gap-2">
-                                      <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{s.staffCode}</p>
+                                      <p 
+                                        onClick={() => openTab({ 
+                                           id: `staff-financials-${s.id}`, 
+                                           title: `${s.firstName} Ledger`, 
+                                           component: "Staff", 
+                                           params: { staffId: s.id, view: "financials" } 
+                                        })}
+                                        className="text-[9px] font-black text-slate-300 uppercase tracking-widest cursor-pointer hover:text-indigo-500 hover:underline transition-all"
+                                      >
+                                        {s.staffCode}
+                                      </p>
                                       {s.onboardingStatus !== "JOINED" && (
                                          <span className="text-[8px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md uppercase tracking-tighter shadow-sm border border-blue-100">
                                             {s.onboardingStatus}

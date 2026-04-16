@@ -599,3 +599,107 @@ export async function getHistoricalPayrollRunsAction() {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * NUCLEAR OPTION: DELETE PAYROLL RUN
+ * ----------------------------------
+ * Atomically wipes a draft and all associated slips.
+ * USE WITH CAUTION.
+ */
+export async function deletePayrollRunAction(runId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Clear Slips first (Cascading safety)
+      await tx.salarySlip.deleteMany({
+        where: { payrollRunId: runId }
+      });
+
+      // 2. Clear the Run
+      await tx.payrollRun.delete({
+        where: { id: runId }
+      });
+    });
+
+    revalidatePath("/dashboard/salaries");
+    return { success: true, message: "Institutional Draft purged successfully." };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * REFRESH ENGINE: SYNC PROFESSIONAL DATA
+ * --------------------------------------
+ * Recalculates all slips in a run based on the LATEST StaffProfessional data.
+ * Useful after profile corrections (e.g. 31k -> 15k).
+ */
+export async function syncPayrollProfessionalAction(runId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+
+    const run = await prisma.payrollRun.findUnique({
+      where: { id: runId },
+      include: { slips: { include: { staff: { include: { professional: true } } } } }
+    });
+
+    if (!run) throw new Error("Payroll Run not found.");
+    if (run.status !== "Draft") throw new Error("Sync only allowed for Drafts.");
+
+    let totalGross = 0;
+    let totalNet = 0;
+
+    await prisma.$transaction(async (tx) => {
+      for (const slip of run.slips) {
+        const prof = slip.staff.professional;
+        if (!prof) continue;
+
+        // Run the calculation engine with current attendance snapshot from existing slip
+        const breakdown = PayrollEngine.calculateStaffRemuneration(prof, {
+          lwpDays: Number(slip.lwpDays || 0),
+          totalDays: Number(slip.totalWorkingDays || 30)
+        });
+
+        const snapshot = {
+          ...breakdown,
+          isPFEnabled: prof.isPFEnabled,
+          isESIEnabled: prof.isESIEnabled,
+          isPTEnabled: prof.isPTEnabled,
+          department: prof.department,
+          designation: prof.designation
+        };
+
+        const g = Number(breakdown.grossRemuneration);
+        const n = Number(breakdown.netSalary);
+        
+        totalGross += g;
+        totalNet += n;
+
+        await tx.salarySlip.update({
+          where: { id: slip.id },
+          data: {
+            baseAmount: breakdown.basic,
+            grossSalary: g,
+            netSalary: n,
+            snapshot: snapshot as any
+          }
+        });
+      }
+
+      // Update Run Totals
+      await tx.payrollRun.update({
+        where: { id: runId },
+        data: { totalGross, totalNet }
+      });
+    });
+
+    revalidatePath("/dashboard/salaries");
+    return { success: true, message: "Draft synchronized with latest Professional Ledger." };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+

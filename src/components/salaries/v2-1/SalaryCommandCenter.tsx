@@ -29,8 +29,11 @@ import {
   finalizePayrollAction, 
   exportBankCSVAction,
   savePayrollDraftAction,
-  getHistoricalPayrollRunsAction
+  getHistoricalPayrollRunsAction,
+  deletePayrollRunAction,
+  syncPayrollProfessionalAction
 } from "@/lib/actions/payroll-actions";
+import { Trash2, RefreshCcw } from "lucide-react";
 
 type ViewMode = "ACTIVE" | "HISTORY";
 
@@ -114,6 +117,34 @@ export function SalaryCommandCenter() {
       setToast({ type: "error", message: e.message || "An unexpected error occurred." });
     } finally {
       setIsExporting(false);
+    }
+  };
+  
+  // 4. 🗑️ DELETE DRAFT HANDLER
+  const handleDeleteDraft = async () => {
+    if (!run?.id) return;
+    if (!confirm("⚠️ SOVEREIGN WARNING: This will permanently delete the active Institutional Draft and all associated slips. Are you sure?")) return;
+    
+    setToast({ type: "loading", message: "Purging Institutional Draft..." });
+    const res = await deletePayrollRunAction(run.id);
+    if (res.success) {
+      setRun(null);
+      setToast({ type: "success", message: "Draft purged successfully." });
+    } else {
+      setToast({ type: "error", message: res.error || "Wipe failed." });
+    }
+  };
+
+  // 5. 🔄 SYNC PROFESSIONAL LEDGER
+  const handleSyncProfessional = async () => {
+    if (!run?.id) return;
+    setToast({ type: "loading", message: "Synchronizing with Master Ledger..." });
+    const res = await syncPayrollProfessionalAction(run.id);
+    if (res.success) {
+      await loadActiveRun();
+      setToast({ type: "success", message: "Draft aligned with latest salary profiles." });
+    } else {
+      setToast({ type: "error", message: res.error || "Sync failed." });
     }
   };
 
@@ -228,9 +259,30 @@ export function SalaryCommandCenter() {
                     <button 
                       onClick={loadActiveRun}
                       className="p-3 bg-white border border-slate-200 rounded-2xl text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm group"
+                      title="Reload/Refresh"
                     >
                       <Zap className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
+
+                    {run && (
+                       <>
+                          <button 
+                            onClick={handleSyncProfessional}
+                            className="p-3 bg-white border border-slate-200 rounded-2xl text-emerald-600 hover:bg-emerald-50 transition-all shadow-sm group"
+                            title="Sync Latest Salary Profiles"
+                          >
+                            <RefreshCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                          </button>
+                          
+                          <button 
+                            onClick={handleDeleteDraft}
+                            className="p-3 bg-white border border-slate-200 rounded-2xl text-rose-600 hover:bg-rose-50 transition-all shadow-sm group"
+                            title="Delete Draft"
+                          >
+                            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </button>
+                       </>
+                    )}
                   </div>
                </div>
 

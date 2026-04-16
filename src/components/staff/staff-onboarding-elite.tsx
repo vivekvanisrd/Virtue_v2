@@ -57,7 +57,7 @@ export function StaffOnboardingElite({
     qualification: "",
     experienceYears: 0,
     dateOfJoining: new Date().toISOString().split('T')[0],
-    basicSalary: 0,
+    basicSalary: 10000,
     // Statutory
     panNumber: "",
     aadhaarNumber: "",
@@ -106,8 +106,16 @@ export function StaffOnboardingElite({
     async function loadRefs() {
       setIsLoadingRef(true);
       try {
-        const { getStaffCategories } = await import("@/lib/actions/staff-config-actions");
-        const catRes = await getStaffCategories(schoolId);
+        const { getStaffCategories, getDepartments, seedDefaultsIfEmpty } = await import("@/lib/actions/staff-config-actions");
+        
+        // 🛡️ GENESIS SEED: Ensure standard roles/depts exist for the institution
+        await seedDefaultsIfEmpty(schoolId);
+
+        const [catRes, deptRes] = await Promise.all([
+          getStaffCategories(schoolId),
+          getDepartments(schoolId)
+        ]);
+
         let branches: any[] = [];
         if (isAdmin) {
           const { getAdmissionReferenceData } = await import("@/lib/actions/reference-actions");
@@ -118,7 +126,11 @@ export function StaffOnboardingElite({
             updateField("branchId", branches[0].id);
           }
         }
-        if (isMounted) setRefData({ categories: catRes.success ? (catRes.data as any[]) : [], branches });
+        if (isMounted) setRefData({ 
+          categories: catRes.success ? (catRes.data as any[]) : [], 
+          departments: deptRes.success ? (deptRes.data as any[]) : [],
+          branches 
+        });
       } catch (e) {
         console.error("❌ [EliteForm] Ref load error", e);
       } finally {
@@ -127,8 +139,7 @@ export function StaffOnboardingElite({
     }
     loadRefs();
     return () => { isMounted = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId]);
+  }, [schoolId, isAdmin]);
 
   const validateStep = (stepNum: number) => {
     let schema: z.ZodObject<any>;
@@ -244,7 +255,8 @@ export function StaffOnboardingElite({
 
          {/* --- STEP 1: IDENTITY (BIO-DATA) --- */}
          {step === 1 && (
-           <div className="space-y-6 animate-in slide-in-from-right duration-500">
+            <div className="space-y-6 animate-in slide-in-from-right duration-500">
+               {/* Designation + Department + Qualification (3-col) */}
               <div className="grid grid-cols-3 gap-6">
                  <div className="col-span-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">First Name</label>
@@ -286,8 +298,12 @@ export function StaffOnboardingElite({
                        type="date" 
                        value={formData.dob}
                        onChange={(e) => updateField("dob", e.target.value)}
-                       className="w-full bg-emerald-50/30 border border-emerald-100 rounded-xl px-4 py-3 text-sm font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                       className={cn(
+                          "w-full bg-emerald-50/30 border rounded-xl px-4 py-3 text-sm font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none",
+                          validationErrors.dob ? "border-rose-400 ring-2 ring-rose-500/10" : "border-emerald-100"
+                       )}
                      />
+                     {validationErrors.dob && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.dob}</p>}
                   </div>
                   <div>
                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Gender</label>
@@ -313,8 +329,6 @@ export function StaffOnboardingElite({
                          <>
                            <option value="Teacher">Teaching Staff</option>
                            <option value="Admin">Administration</option>
-                           <option value="Management">Management Staff</option>
-                           <option value="Support">Support Staff</option>
                          </>
                        ) : (
                          refData.categories.map((cat: any) => (
@@ -361,19 +375,23 @@ export function StaffOnboardingElite({
                   </div>
                </div>
 
-               {/* Residential Address */}
+                {/* Residential Address */}
                <div>
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Residential Address</label>
                   <textarea
                      value={formData.address}
                      onChange={(e) => updateField("address", e.target.value)}
                      rows={2}
-                     className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none resize-none"
+                     className={cn(
+                        "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none resize-none",
+                        validationErrors.address ? "border-rose-400 ring-2 ring-rose-500/10" : "border-slate-200"
+                     )}
                      placeholder="Complete residential address with house number, street, and landmark..."
                   />
+                  {validationErrors.address && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.address}</p>}
                </div>
 
-               {/* Branch Selector — OWNER/DEVELOPER only */}
+                {/* Branch Selector — OWNER/DEVELOPER only */}
                {isAdmin && refData.branches.length > 0 && (
                   <div>
                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Campus Assignment</label>
@@ -381,13 +399,17 @@ export function StaffOnboardingElite({
                         value={formData.branchId}
                         onChange={(e) => updateField("branchId", e.target.value)}
                         disabled={isLoadingRef}
-                        className="w-full bg-rose-50/30 border border-rose-100 rounded-xl px-4 py-3 text-sm font-bold text-rose-700 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all outline-none"
+                        className={cn(
+                           "w-full bg-rose-50/30 border rounded-xl px-4 py-3 text-sm font-bold text-rose-700 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all outline-none",
+                           validationErrors.branchId ? "border-rose-400 ring-2 ring-rose-500/10" : "border-rose-100"
+                        )}
                      >
                         <option value="">Select Campus...</option>
                         {refData.branches.map((b: any) => (
                            <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
                      </select>
+                     {validationErrors.branchId && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.branchId}</p>}
                   </div>
                )}
             </div>
@@ -397,6 +419,7 @@ export function StaffOnboardingElite({
          {step === 2 && (
             <div className="space-y-6 animate-in slide-in-from-right duration-500">
                {/* Designation + Department + Qualification (3-col) */}
+               {/* Designation + Department + Qualification (3-col) */}
                <div className="grid grid-cols-3 gap-6">
                  <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Official Designation</label>
@@ -404,22 +427,34 @@ export function StaffOnboardingElite({
                       type="text" 
                       value={formData.designation}
                       onChange={(e) => updateField("designation", e.target.value)}
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none border-indigo-200 focus:border-indigo-500"
+                      className={cn(
+                        "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all",
+                        validationErrors.designation ? "border-rose-400 ring-2 ring-rose-500/10" : "border-indigo-200 focus:border-indigo-500"
+                      )}
                       placeholder="e.g. Senior Teacher"
                     />
+                    {validationErrors.designation && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.designation}</p>}
                  </div>
                  <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Departmental Vertical</label>
                     <select 
                       value={formData.department}
                       onChange={(e) => updateField("department", e.target.value)}
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                      className={cn(
+                        "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium outline-none",
+                        validationErrors.department ? "border-rose-400 ring-2 ring-rose-500/10" : "border-slate-200"
+                      )}
                     >
-                      <option value="Academics">Academics</option>
-                      <option value="Administration">Administration</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Logistics">Logistics</option>
-                      <option value="Security">Security</option>
+                      {(refData.departments || []).length === 0 ? (
+                        <>
+                           <option value="Academics">Academics</option>
+                           <option value="Administration">Administration</option>
+                        </>
+                      ) : (
+                        (refData.departments || []).map((d: any) => (
+                          <option key={d.id} value={d.name}>{d.name}</option>
+                        ))
+                      )}
                     </select>
                  </div>
                  <div>
@@ -428,9 +463,13 @@ export function StaffOnboardingElite({
                       type="text" 
                       value={formData.qualification}
                       onChange={(e) => updateField("qualification", e.target.value)}
-                      className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none border-indigo-200 focus:border-indigo-500"
+                      className={cn(
+                        "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all",
+                        validationErrors.qualification ? "border-rose-400 ring-2 ring-rose-500/10" : "border-indigo-200 focus:border-indigo-500"
+                      )}
                       placeholder="e.g. M.Sc, B.Ed"
                     />
+                    {validationErrors.qualification && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.qualification}</p>}
                  </div>
                </div>
 
@@ -441,8 +480,12 @@ export function StaffOnboardingElite({
                       type="number" 
                       value={formData.basicSalary}
                       onChange={(e) => updateField("basicSalary", Number(e.target.value))}
-                      className="w-full bg-indigo-50/30 border border-indigo-100 rounded-xl px-4 py-3 text-sm font-bold text-indigo-700 outline-none"
+                      className={cn(
+                        "w-full bg-indigo-50/30 border rounded-xl px-4 py-3 text-sm font-bold text-indigo-700 outline-none transition-all",
+                        validationErrors.basicSalary ? "border-rose-400 ring-2 ring-rose-500/10" : "border-indigo-100"
+                      )}
                     />
+                    {validationErrors.basicSalary && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.basicSalary}</p>}
                  </div>
                  <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Experience (Years)</label>
@@ -461,15 +504,20 @@ export function StaffOnboardingElite({
                     type="date" 
                     value={formData.dateOfJoining}
                     onChange={(e) => updateField("dateOfJoining", e.target.value)}
-                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                    className={cn(
+                       "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium outline-none",
+                       validationErrors.dateOfJoining ? "border-rose-400 ring-2 ring-rose-500/10" : "border-slate-200"
+                    )}
                   />
-               </div>
-            </div>
+                  {validationErrors.dateOfJoining && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.dateOfJoining}</p>}
+                               </div>
+             </div>
          )}
 
          {/* --- STEP 3: FINANCIAL (LANDMARK LAYER) --- */}
          {step === 3 && (
-             <div className="space-y-5 animate-in slide-in-from-right duration-500">
+            <div className="space-y-6 animate-in slide-in-from-right duration-500">
+               {/* Designation + Department + Qualification (3-col) */}
                <div className="flex items-center gap-2 mb-2">
                   <span className="p-2 bg-amber-50 rounded-lg text-amber-600"><Building2 className="w-4 h-4" /></span>
                   <div className="font-bold text-slate-800 text-sm">Banking & Statutory Protocols</div>
