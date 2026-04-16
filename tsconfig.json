@@ -32,6 +32,7 @@
   ],
   "exclude": [
     "node_modules", 
+    "backups",
     "src/scripts",
     "scripts", 
     "tmp", 
