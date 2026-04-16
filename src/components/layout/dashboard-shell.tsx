@@ -147,7 +147,8 @@ export default function DashboardShell({
             isOperationalReady={isOperationalReady}
           />
           
-          <main className="flex-1 min-h-screen bg-background transition-all duration-300 overflow-hidden flex flex-col">
+          {/* [SOVEREIGN_SYNC_V2.1] - Ensures fresh data fetch on every render */}
+          <main className="flex-1 min-h-screen bg-background transition-all duration-300 overflow-hidden flex flex-col relative">
             <Header 
               onMenuClick={() => setIsMobileOpen(true)} 
               userEmail={userEmail}
@@ -161,7 +162,7 @@ export default function DashboardShell({
             />
             <TabList />
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-slate-50/50">
               <div className="p-4 lg:p-6 max-w-[1600px] mx-auto space-y-4 lg:space-y-6">
                 <WorkspaceRenderer />
               </div>
