@@ -4,6 +4,7 @@ import React from "react";
 import { SalaryCommandCenter } from "../salaries/v2-1/SalaryCommandCenter";
 import { SalaryRegistry } from "../salaries/SalaryRegistry";
 import { StaffAdvanceManager } from "../salaries/StaffAdvanceManager";
+import { PrincipalQuickPay } from "../salaries/PrincipalQuickPay";
 import { useTenant } from "@/context/tenant-context";
 
 interface SalariesContentProps {
@@ -15,6 +16,10 @@ export function SalariesContent({ tabId }: SalariesContentProps) {
 
   if (tabId === "salaries" || tabId === "salary-dashboard") {
     return <SalaryCommandCenter />;
+  }
+
+  if (tabId === "salary-quick-view") {
+    return <PrincipalQuickPay />;
   }
 
   if (tabId === "salary-manager" || tabId === "salary-batches") {

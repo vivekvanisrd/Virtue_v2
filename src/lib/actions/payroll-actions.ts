@@ -45,7 +45,7 @@ export async function generatePayrollDraftAction(month: number, year: number, to
     if (existingRun) {
       const slips = await prisma.salarySlip.findMany({
           where: { payrollRunId: existingRun.id },
-          include: { staff: true }
+          include: { staff: { include: { professional: true } } }
       });
 
       const serializedExisting = {
@@ -58,6 +58,17 @@ export async function generatePayrollDraftAction(month: number, year: number, to
             arrears: Number(s.arrears || 0),
             grossSalary: Number(s.grossSalary || 0),
             netSalary: Number(s.netSalary || 0),
+            staff: {
+              ...s.staff,
+              professional: s.staff.professional ? {
+                ...s.staff.professional,
+                basicSalary: Number(s.staff.professional.basicSalary || 0),
+                daAmount: Number(s.staff.professional.daAmount || 0),
+                hraAmount: Number(s.staff.professional.hraAmount || 0),
+                specialAllowance: Number(s.staff.professional.specialAllowance || 0),
+                transportAllowance: Number(s.staff.professional.transportAllowance || 0),
+              } : null
+            }
         }))
       };
       return { success: true, data: serializedExisting, message: "Draft resumed." };

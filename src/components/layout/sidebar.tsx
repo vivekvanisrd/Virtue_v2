@@ -68,6 +68,7 @@ const menuItems: MenuItem[] = [
     component: "Salaries",
     requiredRole: ROLES.ACCOUNTANT,
     subItems: [
+      { id: "salary-quick-view", name: "Principal Quick-Pay", component: "Salaries" },
       { id: "salary-simple", name: "Staff Payroll Entry", component: "Salaries" },
       { id: "salary-dashboard", name: "Salary Hub", component: "Salaries" },
       { id: "salary-manager", name: "Unified Payroll Manager", component: "Salaries" },
