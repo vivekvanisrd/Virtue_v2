@@ -201,7 +201,11 @@ export function PrincipalQuickPay() {
               <tbody className="divide-y divide-slate-50">
                  {run?.slips.map((slip: any) => {
                     const working = editedSlips[slip.id]?.totalWorkingDays ?? (slip.totalWorkingDays || 30);
-                    const present = editedSlips[slip.id]?.attendedDays ?? slip.attendedDays;
+                    // 🏛️ SOVEREIGN VISUAL MATH: Pre-subtract late penalties from the 'Days Present' display
+                    const rawPresent = slip.attendedDays;
+                    const penalties = slip.snapshot?.deductions?.penaltyDays || 0;
+                    const present = editedSlips[slip.id]?.attendedDays ?? (rawPresent - penalties);
+                    
                     const payout = calculatePayout(slip);
                     // 🏛️ SOVEREIGN FALLBACK: Use snapshot basic, fallback to LIVE basic if 0
                     const masterBasic = Number(slip.snapshot?.basic || slip.staff?.professional?.basicSalary || 0);

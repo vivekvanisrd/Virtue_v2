@@ -245,11 +245,10 @@ export async function getMonthlyStaffAttendanceSummary(month: number, year: numb
       }
     });
 
-    // 🏛️ SOVEREIGN GRACE LOGIC: Subtract 1st day of absence (Automated Monthly Paid Leave)
+    // 🏛️ SOVEREIGN ALIGNMENT: Strict industry-standard LWP calculation.
+    // Every absent day (not marked as Paid Leave) is accurately recorded.
     Object.values(summary).forEach(s => {
-      if (s.lwp > 0) {
-        s.lwp = Math.max(0, s.lwp - 1);
-      }
+      // No grace bonus; accuracy is absolute.
     });
 
     return { success: true, summary };
