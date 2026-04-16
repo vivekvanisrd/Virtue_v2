@@ -30,5 +30,18 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "scripts", "tmp", "verify-finance.ts", "verify-tenancy.ts", "prisma/seed.ts"]
+  "exclude": [
+    "node_modules", 
+    "src/scripts",
+    "scripts", 
+    "tmp", 
+    "verify-finance.ts", 
+    "verify-tenancy.ts", 
+    "prisma/seed.ts",
+    "test-*.ts",
+    "verify-*.ts",
+    "get_users.ts",
+    "audit.ts",
+    "temp_*.ts"
+  ]
 }

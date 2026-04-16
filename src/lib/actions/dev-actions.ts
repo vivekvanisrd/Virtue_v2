@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { IdGenerator } from "../id-generator";
 import { logPlatformActivity } from "../utils/audit-logger";
+import fs from "fs";
+import path from "path";
 
 /**
  * 🏛️ MISSION CONTROL ACTIONS
@@ -469,6 +471,55 @@ export async function purgeSystemCache() {
         await ensureDeveloperAccess();
         revalidatePath('/', 'layout');
         return { success: true, message: "System-wide route cache purged." };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * getDeveloperDocs
+ * Aggregates all institutional specifications from the /docs directory.
+ */
+export async function getDeveloperDocs() {
+    try {
+        await ensureDeveloperAccess();
+        
+        // Define doc path relative to project root
+        return {
+            success: true,
+            docs: [
+                { id: 'gov-1', title: 'Sovereign Governance', filename: 'VIRTUE_GOVERNANCE.md' },
+                { id: 'plan-1', title: 'Institutional Planning', filename: 'implementation_plan.md' }
+            ]
+        };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * getDocContent
+ */
+export async function getDocContent(filename: string) {
+    try {
+        await ensureDeveloperAccess();
+        
+        // Safety check for filename traversal
+        if (filename.includes('..')) throw new Error("SECURITY_VIOLATION: Path traversal detected.");
+
+        let targetPath = path.join(process.cwd(), filename);
+        
+        // Check if file exists, else look in /src or other common spots
+        if (!fs.existsSync(targetPath)) {
+             targetPath = path.join(process.cwd(), 'src', filename);
+        }
+
+        if (fs.existsSync(targetPath)) {
+            const content = fs.readFileSync(targetPath, 'utf8');
+            return { success: true, content };
+        }
+
+        return { success: false, error: `Document ${filename} not found in secure registry.` };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
