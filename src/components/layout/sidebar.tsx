@@ -54,7 +54,7 @@ const menuItems: MenuItem[] = [
     component: "Students",
     subItems: [
       { id: "students-all", name: "All Students", component: "Students" },
-      { id: "students-add", name: "Add Student (Locked)", component: "Students" },
+      { id: "students-add", name: "Add Student", component: "Students" },
       { id: "students-enquiries", name: "Enquiries", component: "Students" },
       { id: "students-promotion", name: "Student Promotion", component: "Students" },
       { id: "students-attendance", name: "Daily Attendance", component: "Students" },
@@ -112,6 +112,7 @@ const menuItems: MenuItem[] = [
     icon: BookOpen,
     subItems: [
       { id: "acad-config", name: "Configuration", component: "Academics" },
+      { id: "acad-genesis", name: "Institutional Genesis", component: "Academics" },
       { id: "acad-timetable", name: "Timetables", component: "Academics" },
       { id: "acad-exams", name: "Examinations", component: "Academics" },
     ]
@@ -216,10 +217,6 @@ export function Sidebar({
   }, [resize, stopResizing]);
 
   const handleOpenTab = (item: any) => {
-    if (item.id === "students-add") {
-      alert("🔒 Admission Lock: Please complete the Academic (Class/Section) and Financial (Fee) configuration modules before adding students.");
-      return;
-    }
     openTab({ 
       id: item.id, 
       title: item.name, 

@@ -7,7 +7,7 @@ import {
   ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download,
   ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit
 } from "lucide-react";
-import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit } from "@/lib/actions/student-actions";
+import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit, confirmStudentAdmission } from "@/lib/actions/student-actions";
 import { requestReceiptVoid } from "@/lib/actions/finance-actions";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
@@ -165,25 +165,50 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             <div>
               <h2 className="text-xl font-black text-foreground tracking-tight leading-none mb-1.5 flex items-center gap-2">
                 {student.firstName} {student.lastName}
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest">Active</span>
+                {student.status === "Active" ? (
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest">Admitted</span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest animate-pulse">Provisional</span>
+                )}
                 {student.collections?.length > 0 ? (
                   <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
                     <CheckCircle2 className="w-2.5 h-2.5" /> Trusted Payee
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
                     <AlertCircle className="w-2.5 h-2.5" /> Dues Pending
                   </span>
                 )}
               </h2>
               <p className="text-xs font-bold text-foreground opacity-60 tracking-wide uppercase">
-                Student Admission ID: <span className="text-primary font-black">{student.admissionId}</span>
+                {student.status === "Active" ? "Admission ID" : "Provisional ID"}: <span className="text-primary font-black">{student.admissionNumber || student.registrationId}</span>
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {student.status === "Provisional" && (
+            <button 
+              onClick={async () => {
+                if (!confirm(`Are you sure you want to officially CONFIRM the admission for ${student.firstName}? This will generate a formal Admission Number and update the Ledger.`)) return;
+                setIsUpdating(true);
+                const res = await confirmStudentAdmission(student.id);
+                if (res.success) {
+                  alert("Admission Confirmed Successfully! ID Upgraded.");
+                  window.location.reload();
+                } else {
+                  alert("Confirmation Failed: " + res.error);
+                }
+                setIsUpdating(false);
+              }}
+              disabled={isUpdating}
+              className="flex items-center gap-1.5 px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-50"
+            >
+              {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} 
+              Confirm Admission
+            </button>
+          )}
           <button 
             onClick={() => openTab({ 
               id: `fee-collection-${student.id}`, 
@@ -473,7 +498,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     { label: "Class", value: student.academic?.class?.name || (typeof student.academic?.class === 'string' ? student.academic.class : "N/A") },
                     { label: "Section", value: student.academic?.section?.name || (typeof student.academic?.section === 'string' ? student.academic.section : "N/A") },
                     { label: "Roll Number", value: student.academic?.rollNumber || "Not Assigned" },
-                    { label: "Branch", value: student.academic?.branch || "Main Campus" },
+                    { label: "Branch", value: student.academic?.branch?.name || (typeof student.academic?.branch === 'string' ? student.academic.branch : "Main Campus") },
                     { label: "Boarding", value: student.academic?.boardingType || "Day Scholar" }
                   ].map(item => (
                     <div key={item.label} className="bg-muted/50 p-3 rounded-lg border border-border">

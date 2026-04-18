@@ -256,7 +256,7 @@ export async function syncPayrollStaffAction(runId: string) {
     const newSlips = staffMembers.map((staff: any) => {
       const prof = staff.professional;
       const breakdown = PayrollEngine.calculateStaffRemuneration(prof || {});
-      const totalWorkingDays = 30; // Standard month default
+      const totalWorkingDays = new Date(run.year, run.month, 0).getDate(); // Accurate month length
       
       const snapshot: any = {
         ...breakdown,

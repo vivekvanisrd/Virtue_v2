@@ -24,6 +24,9 @@ import { BankSettings } from "../dashboard/bank-settings";
 import { VelocityAttendance } from "../attendance/VelocityAttendance";
 import { TenantProvider, useTenant } from "@/context/tenant-context";
 import { InstitutionalSetupHub } from "../dashboard/InstitutionalSetupHub";
+import AcademicArchitectHub from "../academics/AcademicArchitectHub";
+import VelocityAttendanceRunner from "../attendance/VelocityAttendanceRunner";
+import GenesisLab from "../../app/dashboard/setup/genesis/page";
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -78,6 +81,11 @@ function WorkspaceRenderer() {
           {tab.id === "razorpay-lab" && (
             <RazorpaySimulationLab />
           )}
+
+          {/* 🎓 Sovereign Academic & Attendance Expansion */}
+          {tab.id === "acad-config" && <AcademicArchitectHub />}
+          {tab.id === "attendance-student" && <VelocityAttendanceRunner />}
+          {tab.id === "acad-genesis" && <GenesisLab />}
 
           {/* Generic mappings for other cataloged modules */}
           {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication"].includes(tab.id) && (

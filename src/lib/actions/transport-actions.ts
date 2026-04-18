@@ -15,7 +15,11 @@ export async function getTransportHubAction() {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     const routes = await prisma.transportRoute.findMany({
-      where: { schoolId: context.schoolId, isActive: true },
+      where: { 
+          schoolId: context.schoolId, 
+          ...(context.branchId && context.branchId !== 'GLOBAL' && { branchId: context.branchId }),
+          isActive: true 
+      },
       include: { stops: { orderBy: { name: 'asc' } } },
       orderBy: { name: 'asc' }
     });
@@ -127,7 +131,13 @@ export async function recordTransportCollectionAction(enquiryId: string, amount:
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     
-    // 1. Generate TS Receipt Number
+    // 1. Dynamic Active Financial Year Guard
+    const activeFY = await prisma.financialYear.findFirst({
+      where: { schoolId: context.schoolId, isCurrent: true }
+    });
+    if (!activeFY) throw new Error("Active Financial Year not found.");
+
+    // 2. Generate TS Receipt Number
     const count = await prisma.transportCollection.count({ where: { schoolId: context.schoolId } });
     const receiptNo = `TS-${new Date().getFullYear()}-${(count + 1).toString().padStart(4, '0')}`;
 
@@ -152,7 +162,8 @@ export async function recordTransportCollectionAction(enquiryId: string, amount:
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
-            financialYearId: "FY2026", // Strict mapping for ERP V3
+            branchId: context.branchId, // Tenancy
+            financialYearId: activeFY.id, // Dynamic
             entryType: "RECEIPT",
             totalDebit: amount,
             totalCredit: amount,

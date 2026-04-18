@@ -22,6 +22,7 @@ interface FeeReceiptProps {
       admissionNumber: string;
       studentCode: string;
     };
+    collectedBy?: string;
   };
   schoolInfo?: {
     name: string;
@@ -313,10 +314,13 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
           </ul>
         </div>
         <div className="flex flex-col items-center justify-center border-l border-slate-50">
-          <div className="w-24 h-24 border-4 border-slate-100 rounded-3xl flex items-center justify-center mb-4 opacity-20">
-             <ShieldCheck className="w-12 h-12" />
+          <div className="w-20 h-20 border border-slate-100 rounded-3xl flex items-center justify-center mb-4 opacity-50 bg-slate-50">
+             <ShieldCheck className="w-10 h-10 text-slate-400" />
           </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Authorized Signature</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-1">Authorized Signature</p>
+          {receipt.collectedBy && (
+            <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">{receipt.collectedBy}</p>
+          )}
         </div>
       </div>
 

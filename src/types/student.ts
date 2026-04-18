@@ -33,7 +33,6 @@ export const studentAdmissionSchema = z.object({
   minorityStatus: z.boolean().default(false),
   bplStatus: z.boolean().default(false),
   disabilityType: z.string().nullable().optional().transform(toTitleCase),
-  phone: globalPhoneSchema.nullable().optional().or(z.literal("")).transform(trim),
   email: globalEmailSchema.nullable().optional().or(z.literal("")).transform(toLowerCase),
 
   // Academic
@@ -50,7 +49,6 @@ export const studentAdmissionSchema = z.object({
   apaarId: z.string().nullable().optional().transform(toUpperCase),
   samagraId: z.string().nullable().optional().transform(toUpperCase),
   stsId: z.string().nullable().optional().transform(toUpperCase),
-  tcNumber: z.string().nullable().optional().transform(toUpperCase),
   admissionType: z.string().default("New").transform(toTitleCase),
   boardingType: z.string().default("Day Scholar").transform(toTitleCase),
   group: z.string().nullable().optional().transform(toUpperCase),

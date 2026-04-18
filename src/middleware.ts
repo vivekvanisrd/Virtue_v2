@@ -3,7 +3,7 @@ import { decrypt } from '@/lib/auth/session';
 
 // 🕵️ RATE LIMIT SENTINEL (In-memory - resets on server restart)
 const rateLimitMap = new Map<string, { count: number, resetAt: number }>();
-const MAX_REQ_PER_MIN = 60;
+const MAX_REQ_PER_MIN = 2000;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -31,6 +31,7 @@ export async function middleware(request: NextRequest) {
   rateLimitMap.set(rateLimitKey, limit);
 
   if (limit.count > MAX_REQ_PER_MIN) {
+     console.error(`🛑 [RATE_LIMIT_EXCEEDED] Key: ${rateLimitKey} Count: ${limit.count}/${MAX_REQ_PER_MIN} Path: ${pathname}`);
      return new NextResponse(
         JSON.stringify({ error: "TOO_MANY_REQUESTS", message: "Security rate limit exceeded. Please slow down.", status: 429 }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }

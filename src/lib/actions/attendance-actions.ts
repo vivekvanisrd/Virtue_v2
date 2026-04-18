@@ -2,7 +2,50 @@
 
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
+import { getTenancyFilters } from "@/lib/utils/tenancy";
 import { revalidatePath } from "next/cache";
+
+/**
+ * Institutional Pulse: Fetches all students in a section with their 
+ * parent's WhatsApp details and today's attendance status.
+ */
+export async function getStudentsForAttendanceAction(sectionId: string, dateStr: string) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+
+        const date = new Date(dateStr);
+        date.setHours(0, 0, 0, 0);
+
+        const students = await prisma.student.findMany({
+            where: {
+                academic: { sectionId },
+                ...getTenancyFilters(identity)
+            },
+            include: {
+                family: {
+                    select: {
+                        fatherName: true,
+                        whatsappNumber: true
+                    }
+                },
+                attendance: {
+                    where: { 
+                        date,
+                        session: "Morning" // Currently defaulted to Morning session
+                    },
+                    take: 1
+                }
+            },
+            orderBy: { firstName: "asc" }
+        });
+
+        return { success: true, data: JSON.parse(JSON.stringify(students)) };
+    } catch (error: any) {
+        console.error("Attendance Fetch Error:", error);
+        return { success: false, error: "Failed to retrieve student roster." };
+    }
+}
 
 /**
  * Velocity Submission: Bulk saves attendance for a class/section.

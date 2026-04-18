@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { GraduationCap, Users, Loader2 } from "lucide-react";
+import { GraduationCap, Users, Loader2, Plus } from "lucide-react";
+import { useTabs } from "@/context/tab-context";
 import { StudentForm } from "../students/student-form";
 import { StudentDirectory } from "../students/student-directory";
 import { EnquiryManager } from "../students/enquiry-manager";
@@ -18,6 +19,7 @@ interface StudentsContentProps {
 }
 
 export function StudentsContent({ tabId, params }: StudentsContentProps) {
+  const { openTab } = useTabs();
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -127,7 +129,10 @@ export function StudentsContent({ tabId, params }: StudentsContentProps) {
             ))}
             <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400">+</div>
           </div>
-          <button className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+          <button 
+            onClick={() => openTab({ id: "students-add", title: "Add Student", icon: Plus, component: "Students" })}
+            className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5 active:scale-95"
+          >
             <GraduationCap className="w-3.5 h-3.5" /> + New Admission
           </button>
         </div>

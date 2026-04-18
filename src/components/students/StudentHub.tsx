@@ -67,10 +67,10 @@ export function StudentHub() {
         
         <div className="flex items-center gap-3">
           <button 
-             onClick={() => alert("🔒 Admission Lock: Please complete the Academic (Class/Section) and Financial (Fee) configuration modules before adding students.")}
-             className="flex items-center gap-2 px-6 py-3 bg-slate-400 text-white cursor-not-allowed rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-200"
+             onClick={() => openTab({ id: "students-add", title: "Add Student", icon: Plus, component: "Students" })}
+             className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-primary/20 hover:scale-105 active:scale-95"
           >
-            <Plus className="w-4 h-4" /> New Admission (Locked)
+            <Plus className="w-4 h-4" /> New Admission
           </button>
           <button 
              onClick={() => openTab({ id: "students-all", title: "Directory", icon: Users, component: "Students" })}

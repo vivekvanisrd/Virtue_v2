@@ -14,6 +14,7 @@ export interface FeeBreakdown {
   totalDiscount: number;
   annualNet: number;
   paymentType: string;
+  ancillary?: Record<string, TermDetail>;
 }
 
 /**

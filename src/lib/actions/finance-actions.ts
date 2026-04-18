@@ -140,13 +140,16 @@ export async function recordFeeCollection(params: {
     const student = await prisma.student.findUnique({
       where: { id: params.studentId },
       include: { 
-        financial: true, 
+        financial: { include: { components: true } }, 
         collections: { where: { status: "Success" } } 
       }
     });
     if (!student || !student.financial) throw new Error("Financial record missing.");
 
-    const netAnnual = Number(student.financial.tuitionFee || 0) - Number(student.financial.totalDiscount || 0);
+    const components = student.financial.components || [];
+    const netAnnual = components.length > 0 
+        ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
+        : Number(student.financial.tuitionFee || student.financial.annualTuition || 0) - Number(student.financial.totalDiscount || 0);
     const prevTotalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid), 0);
     const newTotalPaid = prevTotalPaid + params.amountPaid;
 
@@ -227,7 +230,7 @@ export async function recordFeeCollection(params: {
           totalPaid: totalInBank,
           paymentMode: params.paymentMode,
           paymentReference: params.paymentReference,
-          collectedBy: context.role,
+          collectedBy: context.name || context.role,
           isAutomated: params.paymentMode === "Razorpay",
           status: "Success",
           allocatedTo: {
@@ -273,6 +276,7 @@ export async function recordFeeCollection(params: {
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
+            branchId: context.branchId,
             financialYearId: activeFY.id,
             entryType: "RECEIPT",
             totalDebit: totalInBank,
@@ -293,7 +297,7 @@ export async function recordFeeCollection(params: {
       }
 
       return collection;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     revalidatePath("/admin/fees");
     revalidatePath("/dashboard/finance");
@@ -361,6 +365,7 @@ export async function voidCollectionAction(collectionId: string, reason: string)
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
+            branchId: collection.branchId,
             financialYearId: collection.financialYearId,
             entryType: "REVERSAL",
             totalDebit: collection.journalEntry.totalCredit,
@@ -429,11 +434,14 @@ export async function recordBulkFeeCollection(params: {
     for (const s of params.settlements) {
       const student = await prisma.student.findUnique({
         where: { id: s.studentId },
-        include: { financial: true, collections: { where: { status: "Success" } } }
+        include: { financial: { include: { components: true } }, collections: { where: { status: "Success" } } }
       });
       if (!student || !student.financial) throw new Error(`Financial record missing for student ${s.studentId}`);
 
-      const netAnnual = Number(student.financial.tuitionFee || 0) - Number(student.financial.totalDiscount || 0);
+      const components = student.financial.components || [];
+      const netAnnual = components.length > 0 
+          ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
+          : Number(student.financial.tuitionFee || student.financial.annualTuition || 0) - Number(student.financial.totalDiscount || 0);
       const prevTotalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid), 0);
       const newTotalPaid = prevTotalPaid + s.amountPaid;
 
@@ -483,7 +491,7 @@ export async function recordBulkFeeCollection(params: {
             totalPaid: s.amountPaid + s.lateFeePaid,
             paymentMode: params.paymentMode,
             paymentReference: params.paymentReference,
-            collectedBy: context.role,
+            collectedBy: context.name || context.role,
             status: "Success",
             allocatedTo: {
               terms: s.selectedTerms,
@@ -506,6 +514,7 @@ export async function recordBulkFeeCollection(params: {
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
+            branchId: context.branchId,
             financialYearId: activeFY.id,
             entryType: "RECEIPT",
             totalDebit: batchTotal,
@@ -525,7 +534,7 @@ export async function recordBulkFeeCollection(params: {
       }
 
       return batchResults;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     revalidatePath("/admin/fees");
     revalidatePath("/dashboard/finance");
@@ -552,7 +561,7 @@ export async function getStudentFeeStatus(studentId: string) {
       },
       include: {
         academic: { include: { class: true } },
-        financial: { include: { discounts: { include: { discountType: true } } } },
+        financial: { include: { components: true, discounts: { include: { discountType: true } } } },
         collections: { 
           where: { status: "Success" },
           orderBy: { paymentDate: 'desc' } 
@@ -563,10 +572,22 @@ export async function getStudentFeeStatus(studentId: string) {
     if (!student) throw new Error("Student not found or unauthorized.");
 
     // Calculate dynamic term status
-    const tuition = Number(student.financial?.tuitionFee || 0);
-    const discount = Number(student.financial?.totalDiscount || 0);
+    // TENANCY HARDENED: Resolve financial data with fallback to ledger charges if profile is missing
+    const components = student.financial?.components || [];
+    const tuition = components.length > 0 
+        ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
+        : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
+    const discount = components.length > 0 
+        ? components.reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+        : Number(student.financial?.totalDiscount || 0);
     const paymentType = student.financial?.paymentType || "Term-wise";
-    const breakdown = calculateTermBreakdown(tuition, discount, paymentType);
+    
+    // If tuition is recorded as 0 but ledger has charges, use ledger sum as fallback for visibility
+    const ledgerTuition = tuition === 0 && student.ledgerEntries && student.ledgerEntries.length > 0
+        ? student.ledgerEntries.reduce((sum, entry) => sum + Number(entry.amount), 0)
+        : tuition;
+
+    const breakdown = calculateTermBreakdown(ledgerTuition, discount, paymentType);
 
     // Sync isPaid status from history
     const paidTerms = student.collections.flatMap((c: any) => {
@@ -582,6 +603,33 @@ export async function getStudentFeeStatus(studentId: string) {
     breakdown.term1.isPaid = paidTerms.includes("term1");
     breakdown.term2.isPaid = paidTerms.includes("term2");
     breakdown.term3.isPaid = paidTerms.includes("term3");
+
+    // 4. MAP ANCILLARY FEES (One-time / Monthly / Miscellaneous)
+    const ancillary: Record<string, any> = {};
+    const fin = student.financial;
+    const ancillaryFields = [
+      { key: "admissionFee", label: "Admission Fee" },
+      { key: "cautionDeposit", label: "Caution Deposit" },
+      { key: "transportFee", label: "Transport Fee" },
+      { key: "examFee", label: "Exam Fee" },
+      { key: "computerFee", label: "Computer Fee" },
+      { key: "libraryFee", label: "Library Fee" },
+      { key: "miscellaneousFee", label: "Misc Fee" }
+    ];
+
+    ancillaryFields.forEach(field => {
+       const amount = Number(fin?.[field.key as keyof typeof fin] || 0);
+       if (amount > 0) {
+          ancillary[field.key] = {
+             amount,
+             isPaid: paidTerms.includes(field.key),
+             label: field.label,
+             dueDate: null // Legacy ancillary fees often don't have hard due dates in the profile
+          };
+       }
+    });
+    
+    breakdown.ancillary = ancillary;
 
     return { 
       success: true, 
@@ -847,7 +895,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
         }
         await tx.journalEntry.create({
           data: {
-            schoolId, financialYearId: activeFY.id, entryType: "RECEIPT",
+            schoolId, branchId, financialYearId: activeFY.id, entryType: "RECEIPT",
             totalDebit: totalPaid, totalCredit: totalPaid,
             description: `Parent Portal Settlement (${params.selectedTerms.join(", ")}) - ${params.razorpay_payment_id}`,
             lines: { create: lines }
@@ -1070,7 +1118,7 @@ export async function validatePaymentGate(params: { token: string; admissionNumb
         admissionNumber: params.admissionNumber
       },
       include: { 
-        financial: true,
+        financial: { include: { components: true } },
         collections: { where: { status: "Success" } }
       }
     });
@@ -1079,8 +1127,13 @@ export async function validatePaymentGate(params: { token: string; admissionNumb
 
     // Recalculate fee for this specific term
     const { calculateTermBreakdown } = await import("../utils/fee-utils");
-    const tuition = Number(student.financial?.tuitionFee || 0);
-    const discount = Number(student.financial?.totalDiscount || 0);
+    const components = student.financial?.components || [];
+    const tuition = components.length > 0 
+        ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
+        : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
+    const discount = components.length > 0 
+        ? components.reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+        : Number(student.financial?.totalDiscount || 0);
     const breakdown = calculateTermBreakdown(tuition, discount, student.financial?.paymentType || "Term-wise");
     
     const amount = (breakdown as any)[termId]?.amount || 0;

@@ -6,15 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Users, CreditCard, CheckCircle2, ArrowRight, ArrowLeft,
-  MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert
+  MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/context/tab-context";
 import { studentAdmissionSchema, type StudentAdmissionData } from "@/types/student";
-import { submitAdmissionAction, searchStudentsAction } from "@/lib/actions/student-actions";
+import { submitStandardizedAdmissionAction, searchStudentsAction } from "@/lib/actions/student-actions";
 import { getAdmissionReferenceData, getSectionsByClass } from "@/lib/actions/reference-actions";
-import { AlertCircle } from "lucide-react";
 import { StudentAdmissionSummary } from "./student-admission-summary";
+import { useTenant } from "@/context/tenant-context";
 
 const steps = [
   { id: 1, title: "Personal",  icon: User },
@@ -43,6 +43,7 @@ const selectCls = "bg-white/50 backdrop-blur-md border border-slate-200 rounded-
 
 export function StudentForm() {
   const { setTabDirty } = useTabs();
+  const context = useTenant();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -52,6 +53,7 @@ export function StudentForm() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [duplicateAadhaar, setDuplicateAadhaar] = useState<string | null>(null);
+  const [isAdminOverride, setIsAdminOverride] = useState(false);
   const [refData, setRefData] = useState<{
     branches: any[],
     academicYears: any[],
@@ -81,7 +83,7 @@ export function StudentForm() {
     fetchRefData();
   }, []);
 
-  const { register, handleSubmit, formState: { errors, isDirty }, watch, reset, trigger } = useForm<StudentAdmissionData>({
+  const { register, handleSubmit, formState: { errors, isDirty }, watch, reset, trigger, setValue } = useForm<StudentAdmissionData>({
     resolver: zodResolver(studentAdmissionSchema) as any,
     mode: "onBlur",
     defaultValues: {
@@ -91,25 +93,43 @@ export function StudentForm() {
       admissionType: "New",
       boardingType: "Day Scholar",
       country: "India",
+      state: "Telangana",
       transportRequired: false,
+      admissionFee: "0",
+      cautionDeposit: "0",
+      libraryFee: "0",
+      labFee: "0",
+      sportsFee: "0",
+      developmentFee: "0",
+      examFee: "0",
     },
   });
 
-  // Track Dirty State for Workspace Guard
+  // Track Dirty State and Apply Context Defaults
   useEffect(() => {
     setTabDirty("students-add", isDirty);
+    
+    // 🏢 Identity Auto-Pulse: Pre-select Branch and Current AY
+    if (context?.branchId) {
+      setValue("branchId", context.branchId, { shouldValidate: true });
+    }
+    
+    if (refData.academicYears.length > 0) {
+      const currentAY = refData.academicYears.find(y => y.isCurrent);
+      if (currentAY) setValue("academicYearId", currentAY.id, { shouldValidate: true });
+    }
+
     return () => {
       setTabDirty("students-add", false);
     };
-  }, [isDirty, setTabDirty]);
+  }, [isDirty, setTabDirty, context, refData.academicYears, setValue]);
 
   const onSubmit = async (data: StudentAdmissionData) => {
     console.log("Admission Submission Requested:", data);
     setIsSubmitting(true);
     setFormError(null);
-    
     try {
-      const result = await submitAdmissionAction(data);
+      const result = await submitStandardizedAdmissionAction(data);
       console.log("Admission Submission Result:", result);
       
       if (result.success && result.data) {
@@ -254,6 +274,33 @@ export function StudentForm() {
     }, 600);
     return () => clearTimeout(timer);
   }, [firstName, aadhaarNumber, performSearch]);
+
+  const selectedFeeId = watch("feeScheduleId");
+
+  // 💎 The Financial Pulse: Auto-populate fees from structure
+  useEffect(() => {
+    if (!selectedFeeId) return;
+    const schedule = refData.feeSchedules.find((s) => s.id === selectedFeeId);
+    if (schedule && schedule.components) {
+      // Primary components mapping
+      schedule.components.forEach((comp: any) => {
+        const name = comp.masterComponent.name.toLowerCase();
+        const amt = Number(comp.amount);
+        if (name.includes("tuition")) setValue("tuitionFee", amt);
+        if (name.includes("admission")) setValue("admissionFee", amt);
+        if (name.includes("caution")) setValue("cautionDeposit", amt);
+        if (name.includes("library")) setValue("libraryFee", amt);
+        if (name.includes("lab")) setValue("labFee", amt);
+        if (name.includes("sports")) setValue("sportsFee", amt);
+        if (name.includes("development")) setValue("developmentFee", amt);
+        if (name.includes("exam")) setValue("examFee", amt);
+      });
+    } else if (!selectedFeeId) {
+       // Reset if cleared
+       const fields: (keyof StudentAdmissionData)[] = ["tuitionFee", "admissionFee", "cautionDeposit", "libraryFee", "labFee", "sportsFee", "developmentFee", "examFee"];
+       fields.forEach(f => setValue(f, 0));
+    }
+  }, [selectedFeeId, refData.feeSchedules, setValue]);
 
   if (submitted && submittedData && admissionId) {
     return (
@@ -409,7 +456,7 @@ export function StudentForm() {
                                         P: {student.family?.fatherName || 'N/A'}
                                       </p>
                                       <p className="text-[9px] text-violet-400/80 font-bold uppercase">
-                                        {student.phone || student.family?.fatherPhone || 'No Phone'}
+                                        {student.family?.fatherPhone || 'No Phone'}
                                       </p>
                                     </div>
                                     {student.aadhaarNumber && (
@@ -461,12 +508,6 @@ export function StudentForm() {
                       <option value="">Select</option>
                       {["General","OBC","SC","ST","EWS"].map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                  </Field>
-                  <Field label="Phone" error={errors.phone?.message}>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("phone")} placeholder="XXXXX" className={`${inputCls} pl-10`} />
-                    </div>
                   </Field>
                   <Field label="Email" error={errors.email?.message} className="lg:col-span-2">
                     <input {...register("email")} type="email" placeholder="student@email.com" className={inputCls} />
@@ -526,8 +567,29 @@ export function StudentForm() {
                     <select 
                       {...register("classId", { 
                         onChange: async (e) => {
-                          const res = await getSectionsByClass(e.target.value);
-                          if (res.success) setSections(res.data || []);
+                          const cid = e.target.value;
+                          const res = await getSectionsByClass(cid);
+                          if (res.success && res.data) {
+                            setSections(res.data);
+                            // 🏁 Auto-Section: Select first available section with a slight delay for DOM sync
+                            if (res.data.length > 0) {
+                              setTimeout(() => {
+                                setValue("sectionId", res.data[0].id, { shouldValidate: true, shouldDirty: true });
+                              }, 50);
+                            } else {
+                              setValue("sectionId", "");
+                            }
+                          }
+
+                          // 🎯 The Fee Schedule Pulse: Auto-filter by Class
+                          const schedules = refData.feeSchedules.filter(fs => fs.classId === cid);
+                          if (schedules.length > 0) {
+                            setTimeout(() => {
+                              setValue("feeScheduleId", schedules[0].id, { shouldValidate: true, shouldDirty: true });
+                            }, 50);
+                          } else {
+                            setValue("feeScheduleId", "");
+                          }
                         }
                       })} 
                       className={selectCls} 
@@ -551,12 +613,22 @@ export function StudentForm() {
                     <input {...register("rollNumber")} placeholder="Roll No" className={inputCls} />
                   </Field>
                   <Field label="Fee Schedule" error={errors.feeScheduleId?.message}>
-                    <select {...register("feeScheduleId")} className={selectCls} disabled={isLoadingRef}>
+                    <select 
+                      {...register("feeScheduleId")} 
+                      className={cn(selectCls, watch("classId") && "bg-slate-50/50 cursor-not-allowed opacity-80 font-bold")} 
+                      disabled={isLoadingRef || (watch("classId") !==undefined && watch("classId") !== "")}
+                    >
                       <option value="">Select Schedule</option>
-                      {refData.feeSchedules.map(fs => (
-                        <option key={fs.id} value={fs.id}>{fs.name}</option>
-                      ))}
+                      {refData.feeSchedules
+                        .filter(fs => !watch("classId") || fs.classId === watch("classId"))
+                        .map(fs => (
+                          <option key={fs.id} value={fs.id}>{fs.name} (₹{fs.totalAmount?.toLocaleString()})</option>
+                        ))
+                      }
                     </select>
+                    {watch("classId") && (
+                      <p className="px-3 mt-1 text-[8px] font-black text-primary/60 uppercase tracking-widest italic">✓ Locked to Class Template</p>
+                    )}
                   </Field>
                   <Field label="PEN Number" error={errors.penNumber?.message}>
                     <input {...register("penNumber")} placeholder="PEN" className={inputCls} />
@@ -572,9 +644,6 @@ export function StudentForm() {
                   </Field>
                   <Field label="Biometric ID" error={errors.biometricId?.message}>
                     <input {...register("biometricId")} placeholder="Bio ID" className={inputCls} />
-                  </Field>
-                  <Field label="TC Number" error={errors.tcNumber?.message}>
-                    <input {...register("tcNumber")} placeholder="TC No" className={inputCls} />
                   </Field>
                 </div>
               </div>
@@ -699,8 +768,20 @@ export function StudentForm() {
                   <Field label="Pin Code" error={errors.pinCode?.message}>
                     <input {...register("pinCode")} placeholder="PIN" className={inputCls} />
                   </Field>
-                  <Field label="State" error={errors.state?.message}>
-                    <input {...register("state")} placeholder="State" className={inputCls} />
+                  <Field label="State *" error={errors.state?.message}>
+                    <select {...register("state")} className={selectCls}>
+                      <option value="">Select State</option>
+                      {[
+                        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+                        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", 
+                        "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", 
+                        "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", 
+                        "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", 
+                        "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", 
+                        "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+                        "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+                      ].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </Field>
                   <Field label="Country" error={errors.country?.message}>
                     <input {...register("country")} placeholder="Country" className={inputCls} />
@@ -765,6 +846,26 @@ export function StudentForm() {
                     <p className="text-slate-500 text-sm font-medium">Fee schedule and discount configurations</p>
                   </div>
                 </div>
+                <div className="flex items-center justify-between mb-4 mt-2">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Institutional Configuration</p>
+                    <p className="text-[11px] text-slate-400 font-medium italic">Fees are locked to template values. Adjustment requires override.</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsAdminOverride(!isAdminOverride)}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-[18px] transition-all duration-300 text-[10px] font-black uppercase tracking-tight shadow-sm border",
+                        isAdminOverride 
+                            ? "bg-rose-500/10 text-rose-500 border-rose-500/30 ring-4 ring-rose-500/5 px-6" 
+                            : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+                    )}
+                  >
+                    {isAdminOverride ? <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" /> : <Building className="w-4 h-4" />}
+                    {isAdminOverride ? "Financial Override Active" : "Request Admin Unlock"}
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   <Field label="Payment Type *" error={errors.paymentType?.message} className="lg:col-span-2">
                     <select {...register("paymentType")} className={selectCls}>
@@ -773,31 +874,32 @@ export function StudentForm() {
                     </select>
                   </Field>
                   <Field label="Tuition Fee *" error={errors.tuitionFee?.message}>
-                    <input {...register("tuitionFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("tuitionFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                   <Field label="Admission Fee" error={errors.admissionFee?.message}>
-                    <input {...register("admissionFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("admissionFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                   <Field label="Caution Deposit" error={errors.cautionDeposit?.message}>
-                    <input {...register("cautionDeposit", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("cautionDeposit", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                 </div>
-                <p className="text-[10px] font-bold text-orange-400/70 uppercase tracking-wider">Fee Components (Optional)</p>
+                
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Auxiliary Components</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                   <Field label="Library" error={errors.libraryFee?.message}>
-                    <input {...register("libraryFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("libraryFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                   <Field label="Lab" error={errors.labFee?.message}>
-                    <input {...register("labFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("labFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                   <Field label="Sports" error={errors.sportsFee?.message}>
-                    <input {...register("sportsFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("sportsFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                   <Field label="Development" error={errors.developmentFee?.message}>
-                    <input {...register("developmentFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("developmentFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                   <Field label="Exam" error={errors.examFee?.message}>
-                    <input {...register("examFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
+                    <input {...register("examFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
                   </Field>
                 </div>
                 <p className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider mt-2">Discounts</p>
@@ -866,8 +968,8 @@ export function StudentForm() {
 
             {/* ─── STEP 7: Review ─── */}
             {currentStep === 7 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 mb-8">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-primary" />
                   </div>
@@ -876,27 +978,23 @@ export function StudentForm() {
                     <p className="text-slate-500 text-sm font-medium">Verify all information before completing admission</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                    <p className="text-[10px] text-violet-400 font-bold uppercase mb-2">Step 1 – Personal</p>
-                    <p className="text-xs text-foreground/70">Verify name, DOB, gender, blood group, Aadhaar.</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                    <p className="text-[10px] text-blue-400 font-bold uppercase mb-2">Step 2 – Academic</p>
-                    <p className="text-xs text-foreground/70">Check class, section, branch, Academic Year.</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                    <p className="text-[10px] text-pink-400 font-bold uppercase mb-2">Step 3 – Family</p>
-                    <p className="text-xs text-foreground/70">Verify parent and emergency contact details.</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3 border border-border">
-                    <p className="text-[10px] text-orange-400 font-bold uppercase mb-2">Step 5 – Financial</p>
-                    <p className="text-xs text-foreground/70">Confirm fee components and discounts (Term 3).</p>
-                  </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                  <p className="text-xs text-amber-800 font-bold flex items-center gap-2">
+                    <Info className="w-4 h-4" /> 
+                    PRO TIP: See a mistake? Just click on any detail below to jump back and fix it!
+                  </p>
                 </div>
-                <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-3">
-                  <p className="text-xs text-violet-200 font-medium">
-                    ✓ By submitting, a Student ID will be generated automatically in the format <span className="font-mono">VR-[BRANCH]-STU-XXXXX</span>. Fees will be split 50/25/25 across terms.
+
+                <StudentAdmissionSummary 
+                  studentData={watch()} 
+                  isReviewMode={true}
+                  onEditStep={(stepId) => setCurrentStep(stepId)}
+                />
+
+                <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-4">
+                  <p className="text-xs text-violet-700 font-bold">
+                    ✓ By submitting, a Student ID (VR-[BRANCH]-STU-XXXXX) and Ledger will be created.
                   </p>
                 </div>
               </div>

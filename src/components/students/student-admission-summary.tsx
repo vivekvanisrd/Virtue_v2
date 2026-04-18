@@ -11,12 +11,14 @@ import { toPng } from "html-to-image";
 
 interface SummaryProps {
   studentData: any;
-  admissionId: string;
+  admissionId?: string;
   schoolName?: string;
-  onReset: () => void;
+  onReset?: () => void;
+  isReviewMode?: boolean;
+  onEditStep?: (stepId: number) => void;
 }
 
-export function StudentAdmissionSummary({ studentData, admissionId, schoolName, onReset }: SummaryProps) {
+export function StudentAdmissionSummary({ studentData, admissionId, schoolName, onReset, isReviewMode, onEditStep }: SummaryProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -127,12 +129,31 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
     }
   };
 
-  const InfoRow = ({ label, value, className }: { label: string; value: string | number | null | undefined; className?: string }) => (
-    <div className={cn("grid grid-cols-2 py-1.5 border-b border-border last:border-0", className)}>
-      <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">{label}</span>
-      <span className="text-[12px] font-semibold text-foreground opacity-80">{value || "N/A"}</span>
-    </div>
-  );
+  const InfoRow = ({ label, value, className, targetStep }: { label: string; value: string | number | null | undefined; className?: string; targetStep?: number }) => {
+    const isClickable = isReviewMode && targetStep;
+    
+    return (
+      <div 
+        onClick={() => isClickable && onEditStep?.(targetStep)}
+        className={cn(
+          "grid grid-cols-2 py-1.5 border-b border-border last:border-0", 
+          isClickable && "cursor-pointer hover:bg-primary/5 px-2 rounded-lg transition-all group",
+          className
+        )}
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">{label}</span>
+          {isClickable && <div className="w-1 h-1 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />}
+        </div>
+        <span className={cn(
+          "text-[12px] font-semibold text-foreground opacity-80",
+          isClickable && "group-hover:text-primary transition-colors"
+        )}>
+          {value || "N/A"}
+        </span>
+      </div>
+    );
+  };
 
   const SectionHeader = ({ icon: Icon, title }: { icon: any; title: string }) => (
     <div className="flex items-center gap-2 mb-3 mt-4 first:mt-0">
@@ -145,41 +166,43 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* ─── Header Actions ─── */}
-      <div className="flex items-center justify-between no-print">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+      {/* ─── Header Actions (Hidden in Review Mode) ─── */}
+      {!isReviewMode && (
+        <div className="flex items-center justify-between no-print">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-foreground leading-none">Admission Successful</h2>
+              <p className="text-xs text-foreground opacity-60 mt-1 uppercase font-bold tracking-tight">Record stored in secure cloud repository</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-black text-foreground leading-none">Admission Successful</h2>
-            <p className="text-xs text-foreground opacity-60 mt-1 uppercase font-bold tracking-tight">Record stored in secure cloud repository</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground opacity-70 text-xs font-bold rounded-xl transition-all border border-border"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Print
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-primary/10"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download PDF
+            </button>
+            <button
+              onClick={onReset}
+              className="flex items-center gap-2 px-4 py-2 bg-background border border-border hover:border-primary/50 text-foreground opacity-60 text-xs font-bold rounded-xl transition-all"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              New Admission
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground opacity-70 text-xs font-bold rounded-xl transition-all border border-border"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Print
-          </button>
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-primary/10"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Download PDF
-          </button>
-          <button
-            onClick={onReset}
-            className="flex items-center gap-2 px-4 py-2 bg-background border border-border hover:border-primary/50 text-foreground opacity-60 text-xs font-bold rounded-xl transition-all"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            New Admission
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* ─── Printable Document ─── */}
       <div 
@@ -194,13 +217,15 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
               <h1 className="text-2xl font-black tracking-tighter text-foreground uppercase">{schoolName || "PaVa-EDUX Academy"}</h1>
             </div>
             <p className="text-xs text-foreground opacity-60 max-w-[300px] font-medium leading-relaxed uppercase">
-              Official Student Registration Form <br />
+              {isReviewMode ? "Verification Ledger - Reviewing Entry" : "Official Student Registration Form"} <br />
               Generated on {new Date().toLocaleDateString()}
             </p>
           </div>
           <div className="text-right">
-            <span className="block text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Registration ID</span>
-            <span className="block text-2xl font-black text-primary font-mono">{admissionId}</span>
+            <span className="block text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">
+              {isReviewMode ? "PRE-ADMISSION SCOPE" : "Registration ID"}
+            </span>
+            <span className="block text-2xl font-black text-primary font-mono">{admissionId || "DRAFT_SCOPE"}</span>
           </div>
         </div>
 
@@ -211,24 +236,24 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
             <div>
               <SectionHeader icon={User} title="Student Information" />
               <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
-                <InfoRow label="Full Name" value={`${studentData.firstName} ${studentData.lastName || ""}`} />
-                <InfoRow label="Gender" value={studentData.gender} />
-                <InfoRow label="DOB" value={studentData.dateOfBirth} />
-                <InfoRow label="Aadhaar No" value={studentData.aadhaarNumber} />
-                <InfoRow label="Category" value={studentData.category} />
-                <InfoRow label="Blood Group" value={studentData.bloodGroup} />
+                <InfoRow label="Full Name" value={`${studentData.firstName} ${studentData.lastName || ""}`} targetStep={1} />
+                <InfoRow label="Gender" value={studentData.gender} targetStep={1} />
+                <InfoRow label="DOB" value={studentData.dateOfBirth} targetStep={1} />
+                <InfoRow label="Aadhaar No" value={studentData.aadhaarNumber} targetStep={1} />
+                <InfoRow label="Category" value={studentData.category} targetStep={1} />
+                <InfoRow label="Blood Group" value={studentData.bloodGroup} targetStep={1} />
               </div>
             </div>
 
             <div>
               <SectionHeader icon={School} title="Academic Placement" />
               <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
-                <InfoRow label="Class" value={studentData.className || studentData.classId} />
-                <InfoRow label="Section" value={studentData.sectionName || studentData.sectionId} />
-                <InfoRow label="Academic Year" value={studentData.academicYearId} />
-                <InfoRow label="Admission Date" value={studentData.admissionDate} />
-                <InfoRow label="Branch" value={studentData.branchName || studentData.branchId} />
-                <InfoRow label="PEN Number" value={studentData.penNumber} />
+                <InfoRow label="Class" value={studentData.className || studentData.classId} targetStep={2} />
+                <InfoRow label="Section" value={studentData.sectionName || studentData.sectionId} targetStep={2} />
+                <InfoRow label="Academic Year" value={studentData.academicYearId} targetStep={2} />
+                <InfoRow label="Admission Date" value={studentData.admissionDate} targetStep={2} />
+                <InfoRow label="Branch" value={studentData.branchName || studentData.branchId} targetStep={2} />
+                <InfoRow label="PEN Number" value={studentData.penNumber} targetStep={2} />
               </div>
             </div>
           </div>
@@ -238,28 +263,42 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
             <div>
               <SectionHeader icon={Users} title="Family Details" />
               <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
-                <InfoRow label="Father Name" value={studentData.fatherName} />
-                <InfoRow label="Father Phone" value={studentData.fatherPhone} />
-                <InfoRow label="Father Aadhaar" value={studentData.fatherAadhaar} />
+                <InfoRow label="Father Name" value={studentData.fatherName} targetStep={3} />
+                <InfoRow label="Father Phone" value={studentData.fatherPhone} targetStep={3} />
+                <InfoRow label="Father Aadhaar" value={studentData.fatherAadhaar} targetStep={3} />
                 <hr className="my-2 border-border/30" />
-                <InfoRow label="Mother Name" value={studentData.motherName} />
-                <InfoRow label="Mother Phone" value={studentData.motherPhone} />
-                <InfoRow label="Mother Aadhaar" value={studentData.motherAadhaar} />
-                <InfoRow label="Emergency Contact" value={studentData.emergencyContactPhone} />
+                <InfoRow label="Mother Name" value={studentData.motherName} targetStep={3} />
+                <InfoRow label="Mother Phone" value={studentData.motherPhone} targetStep={3} />
+                <InfoRow label="Mother Aadhaar" value={studentData.motherAadhaar} targetStep={3} />
+                <InfoRow label="Emergency Contact" value={studentData.emergencyContactPhone} targetStep={3} />
               </div>
             </div>
 
             <div>
-              <SectionHeader icon={CreditCard} title="Financial Snapshot" />
-              <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
-                <InfoRow label="Tuition Fee" value={studentData.tuitionFee} />
-                <InfoRow label="Admission Fee" value={studentData.admissionFee} />
-                <InfoRow label="Payment Mode" value={studentData.paymentType} />
-                <div className="flex justify-between items-center py-3 print:py-2 mt-2 border-t border-border">
-                  <span className="text-[10px] font-black text-slate-800 uppercase">Estimated 1st Term Dues</span>
-                  <span className="text-base font-black text-emerald-600">
-                    ₹{(Number(studentData.tuitionFee || 0) + Number(studentData.admissionFee || 0)) * 0.5}
-                  </span>
+              <SectionHeader icon={CreditCard} title="Ledger Inception Preview" />
+              <div className="bg-slate-900/[0.02] p-4 print:p-3 rounded-xl border border-slate-200 shadow-inner">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[11px] font-bold">
+                    <span className="text-slate-400 uppercase tracking-tighter">Initial Charges (Accrual)</span>
+                    <span className="text-slate-400">Amount (₹)</span>
+                  </div>
+                  <hr className="border-slate-200" />
+                  <InfoRow label="Tuition Fee Charge" value={`+${studentData.tuitionFee}`} className="border-0 !py-0.5" targetStep={5} />
+                  <InfoRow label="Admission Fee Charge" value={`+${studentData.admissionFee}`} className="border-0 !py-0.5" targetStep={5} />
+                  {Number(studentData.cautionDeposit || 0) > 0 && <InfoRow label="Caution Deposit" value={`+${studentData.cautionDeposit}`} className="border-0 !py-0.5" targetStep={5} />}
+                  {Number(studentData.libraryFee || 0) > 0 && <InfoRow label="Library Fee" value={`+${studentData.libraryFee}`} className="border-0 !py-0.5" targetStep={5} />}
+                  <hr className="border-slate-200 mt-2" />
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-tight">Opening Ledger Balance</span>
+                    <span className="text-base font-black text-slate-900">
+                      ₹{Number(studentData.tuitionFee || 0) + Number(studentData.admissionFee || 0) + Number(studentData.cautionDeposit || 0) + Number(studentData.libraryFee || 0) + Number(studentData.labFee || 0) + Number(studentData.sportsFee || 0) + Number(studentData.developmentFee || 0) + Number(studentData.examFee || 0)}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 bg-emerald-500/5 border border-emerald-500/20 p-2 rounded-lg">
+                   <p className="text-[9px] text-emerald-600 font-bold uppercase text-center tracking-tighter">
+                     ✓ Ledger Authenticated • No Discounts Applied
+                   </p>
                 </div>
               </div>
             </div>
@@ -270,15 +309,25 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
             <div>
               <SectionHeader icon={MapPin} title="Residence & Transport" />
               <div className="bg-muted/50/50 p-4 print:p-2.5 rounded-xl border border-border/50 grid grid-cols-2 gap-x-12">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">Address</span>
-                  <p className="text-[11px] font-semibold text-slate-700 leading-tight">
+                <div className="space-y-1 group" onClick={() => isReviewMode && onEditStep?.(4)}>
+                  <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight flex items-center gap-1.5">
+                    Address {isReviewMode && <div className="w-1 h-1 rounded-full bg-primary" />}
+                  </span>
+                  <p className={cn(
+                    "text-[11px] font-semibold text-slate-700 leading-tight",
+                    isReviewMode && "group-hover:text-primary cursor-pointer transition-colors"
+                  )}>
                     {studentData.currentAddress}, {studentData.city}, {studentData.pinCode}
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight">Transport Integration</span>
-                  <p className="text-[11px] font-semibold text-slate-700">
+                <div className="space-y-1 group" onClick={() => isReviewMode && onEditStep?.(4)}>
+                  <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tight flex items-center gap-1.5">
+                    Transport {isReviewMode && <div className="w-1 h-1 rounded-full bg-primary" />}
+                  </span>
+                  <p className={cn(
+                    "text-[11px] font-semibold text-slate-700",
+                    isReviewMode && "group-hover:text-primary cursor-pointer transition-colors"
+                  )}>
                     {studentData.transportRequired ? `Required: ${studentData.pickupStop}` : "Not Required"}
                   </p>
                 </div>

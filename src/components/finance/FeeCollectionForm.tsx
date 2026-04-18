@@ -19,7 +19,8 @@ import {
   Trash2,
   Copy,
   TrendingUp,
-  MessageSquare
+  MessageSquare,
+  X
 } from "lucide-react";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 import { 
@@ -200,16 +201,26 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       
       const isSelected = s.selectedTerms.includes(termId);
       let newTerms = [...s.selectedTerms];
+      const breakdown = s.student.feeBreakdown;
       
       if (isSelected) {
+        // Sequential DESELECTION: If unselecting Term 1, must unselect 2 and 3
         if (termId === "term1") newTerms = newTerms.filter(t => t !== "term1" && t !== "term2" && t !== "term3");
         else if (termId === "term2") newTerms = newTerms.filter(t => t !== "term2" && t !== "term3");
         else newTerms = newTerms.filter(t => t !== termId);
       } else {
+        // Sequential SELECTION: If selecting Term 3, must select 1 and 2 (if unpaid)
+        if (termId === "term3") {
+          if (!breakdown.term1.isPaid && !newTerms.includes("term1")) newTerms.push("term1");
+          if (!breakdown.term2.isPaid && !newTerms.includes("term2")) newTerms.push("term2");
+        } else if (termId === "term2") {
+          if (!breakdown.term1.isPaid && !newTerms.includes("term1")) newTerms.push("term1");
+        }
         newTerms.push(termId);
       }
       
-      return { ...s, selectedTerms: newTerms };
+      // Filter unique
+      return { ...s, selectedTerms: Array.from(new Set(newTerms)) };
     }));
   };
 
@@ -223,14 +234,15 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const getBatchTotals = () => {
     return settlements.reduce((acc, s) => {
       const termTotal = s.selectedTerms.reduce((sum, t) => {
-        const breakdown = s.student.feeBreakdown[t];
-        return sum + (breakdown ? breakdown.amount : 0);
+        // Check standard terms first, then ancillary
+        const detail = s.student.feeBreakdown[t] || s.student.feeBreakdown.ancillary?.[t];
+        return sum + (detail ? detail.amount : 0);
       }, 0);
 
       const lateFeeTotal = s.waivedLateFee ? 0 : s.selectedTerms.reduce((sum, t) => {
-        const breakdown = s.student.feeBreakdown[t];
-        if (breakdown && breakdown.dueDate && !breakdown.isPaid) {
-          return sum + calculateLateFee(breakdown.dueDate).amount;
+        const detail = s.student.feeBreakdown[t]; // Only standard terms usually have late fees
+        if (detail && detail.dueDate && !detail.isPaid) {
+          return sum + calculateLateFee(detail.dueDate).amount;
         }
         return sum;
       }, 0);
@@ -279,7 +291,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       studentName: `${primary.student.firstName} ${primary.student.lastName}`,
       email: primary.student.guardianEmail || undefined,
       contact: primary.student.guardianPhone || undefined,
-      notes: `Consolidated Payment for ${settlements.length} items`,
+      notes: `Payment Settlement for ${settlements.length} items`,
       terms: allTerms,
       baseAmount: total,
       batchPayload
@@ -524,162 +536,179 @@ export function FeeCollectionForm({ params }: { params?: any }) {
             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
             
             <div className="relative z-10">
-              {/* Sibling Discovery Bar (Disabled in Individual Audit Mode) */}
-              {!params?.studentId && siblings.length > 0 && settlements.length < 5 && (
-                <motion.div 
-                   initial={{ opacity: 0, y: -20 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   className="mb-8 p-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl shadow-slate-200 border-l-4 border-primary"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Users className="w-5 h-5 text-primary" />
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Discovery Engine</p>
-                        <h4 className="text-sm font-black tracking-tight">Add Siblings to Batch</h4>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-3">
-                    {siblings.filter(sib => !settlements.some(s => s.student.id === sib.id)).map(sib => (
-                      <button
-                        key={sib.id}
-                        onClick={() => addSiblingToBatch(sib.id)}
-                        className="flex items-center gap-4 px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group active:scale-95"
-                      >
-                        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-xs font-black shadow-lg shadow-black/20">
-                          {sib.firstName[0]}
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-bold leading-none mb-1 group-hover:text-primary transition-colors">{sib.firstName}</p>
-                          <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">{sib.academic?.class?.name}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
+               {/* 🛒 The Settlement List: Bulk Processing Ledger View */}
+               <div className="space-y-12">
+                  {settlements.map((s, idx) => (
+                    <motion.div 
+                      key={s.student.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="bg-slate-50 border border-slate-100 rounded-[3rem] p-10 relative overflow-hidden group"
+                    >
+                       <div className="absolute top-0 right-0 p-8">
+                          <button 
+                            onClick={() => {
+                              setSettlements(prev => prev.filter(item => item.student.id !== s.student.id));
+                              if (params?.studentId === s.student.id) {
+                                window.history.back(); // Exit direct mode if first student removed
+                              }
+                            }}
+                            className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all shadow-sm border border-slate-100"
+                          >
+                             <X className="w-5 h-5" />
+                          </button>
+                       </div>
 
-              {/* Global Footer Aggregation */}
-              <div className="mt-16 pt-16 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-12 items-end">
-                <div className="space-y-8">
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Secure Settlement Method</label>
-                    <div className="flex gap-4 p-3 bg-slate-50 border border-slate-100 rounded-[3rem]">
-                      {[
-                        { id: "Cash", icon: Banknote, label: "Hard Currency", color: "bg-slate-900 text-white" },
-                        { id: "Razorpay", icon: Zap, label: "Digital Invoice", color: "bg-amber-500 text-white" },
-                      ].map(mode => (
-                        <button
-                          key={mode.id}
-                          onClick={() => setPaymentMode(mode.id)}
-                          className={cn(
-                            "flex-1 flex flex-col items-center justify-center p-6 rounded-[2.25rem] transition-all duration-500 gap-3 border shadow-sm",
-                            paymentMode === mode.id 
-                              ? (mode.color + " border-transparent shadow-xl scale-[1.05]")
-                              : "bg-white border-slate-100 text-slate-300 hover:text-slate-500 hover:border-slate-200"
-                          )}
-                        >
-                          <mode.icon className={cn("w-6 h-6", paymentMode === mode.id ? "animate-bounce" : "")} />
-                          <span className="text-[10px] font-black uppercase tracking-[0.2em]">{mode.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+                          <div className="lg:col-span-4 space-y-6">
+                             <div className="flex items-center gap-5">
+                                <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center text-primary shadow-xl border border-slate-100">
+                                   <User className="w-10 h-10" />
+                                </div>
+                                <div>
+                                   <h3 className="text-2xl font-black text-slate-900 tracking-tight">{s.student.firstName} {s.student.lastName}</h3>
+                                   <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-3 py-1 rounded-full">{s.student.academic?.class?.name}</span>
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-mono">#{s.student.admissionNumber}</span>
+                                   </div>
+                                </div>
+                             </div>
 
-                  {paymentMode !== "Cash" && (
-                      <div className="p-8 bg-white border border-slate-100 rounded-[3rem] shadow-xl shadow-slate-200/50 animate-in slide-in-from-bottom-5 duration-500">
-                        {paymentMode === "Cheque" ? (
-                          <div className="grid grid-cols-2 gap-4">
-                            <input placeholder="Cheque No" value={paymentDetails.chequeNo} onChange={(e) => setPaymentDetails({...paymentDetails, chequeNo: e.target.value})} className="bg-slate-50 border-slate-100 border-2 rounded-2xl p-4 text-[11px] font-black focus:border-primary transition-all" />
-                            <input placeholder="Bank Name" value={paymentDetails.bankName} onChange={(e) => setPaymentDetails({...paymentDetails, bankName: e.target.value})} className="bg-slate-50 border-slate-100 border-2 rounded-2xl p-4 text-[11px] font-black focus:border-primary transition-all" />
+                             <div className="p-6 bg-white rounded-2xl border border-slate-100 space-y-4 shadow-sm">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                   <span>Annual Fee Template</span>
+                                   <span className="text-slate-900">{formatCurrency(Number(s.student.financial?.tuitionFee || 0))}</span>
+                                </div>
+                                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                   <div className="h-full bg-primary w-2/3" />
+                                </div>
+                             </div>
                           </div>
-                        ) : paymentMode === "UPI" ? (
-                          <div className="flex gap-4">
-                            <input placeholder="TXN Reference ID" value={paymentDetails.transactionId} onChange={(e) => setPaymentDetails({...paymentDetails, transactionId: e.target.value})} className="bg-slate-50 border-slate-100 border-2 rounded-2xl p-4 text-[11px] font-black flex-1 focus:border-primary transition-all" />
-                            <button onClick={() => setShowQR(true)} className="px-8 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-200">SHOW QR</button>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                             {paymentDetails.paymentLink ? (
-                               <div className="flex flex-col gap-3">
-                                  <div className="flex items-center gap-2">
-                                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic">Live Payment Link Active</p>
-                                  </div>
-                                  <div className="flex gap-3">
-                                     <input readOnly value={paymentDetails.paymentLink} className="flex-1 bg-slate-50 border-2 border-amber-100 rounded-2xl p-4 text-xs font-mono text-amber-700 font-bold" />
-                                     <button 
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(paymentDetails.paymentLink);
-                                          alert("Sovereign Link Copied!");
-                                        }}
-                                        className="px-8 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200"
-                                     >
-                                        COPY
-                                     </button>
-                                  </div>
-                               </div>
-                             ) : (
-                               <div className="flex items-center gap-4 text-slate-400">
-                                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 shrink-0 italic text-xl font-black">?</div>
-                                  <p className="text-[11px] font-medium leading-relaxed italic">Click 'Generate Link' to create a unique, audit-Ready Razorpay invoice for this batch settlement.</p>
-                               </div>
+
+                          <div className="lg:col-span-8 space-y-8">
+                             {/* Tuition Section */}
+                             <div className="space-y-3">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Tuition Installments (Sequential)</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                   {Object.entries(s.student.feeBreakdown || {})
+                                     .filter(([key]) => key.startsWith("term"))
+                                     .map(([key, term]: [string, any]) => {
+                                       const isSelected = s.selectedTerms.includes(key);
+                                       const isOverdue = term.dueDate && new Date(term.dueDate) < new Date() && !term.isPaid;
+                                       
+                                       // Sequential Enforcement
+                                       const canSelect = key === "term1" || 
+                                                       (key === "term2" && (s.student.feeBreakdown.term1.isPaid || s.selectedTerms.includes("term1"))) ||
+                                                       (key === "term3" && (s.student.feeBreakdown.term2.isPaid || s.selectedTerms.includes("term2")));
+
+                                       return (
+                                         <button 
+                                           key={key}
+                                           disabled={term.isPaid || !canSelect}
+                                           onClick={() => toggleTermForStudent(s.student.id, key)}
+                                           className={cn(
+                                             "p-6 rounded-[2rem] border-2 transition-all text-left relative overflow-hidden",
+                                             term.isPaid 
+                                               ? "bg-emerald-50 border-emerald-100 opacity-60 cursor-not-allowed"
+                                               : isSelected 
+                                                 ? "bg-white border-primary shadow-xl shadow-primary/10 -translate-y-1"
+                                                 : !canSelect
+                                                   ? "bg-slate-50 border-slate-100 opacity-40 cursor-not-allowed grayscale"
+                                                   : "bg-white border-slate-100 hover:border-slate-200"
+                                           )}
+                                         >
+                                            {isSelected && (
+                                              <div className="absolute top-4 right-4 text-primary">
+                                                 <CheckCircle2 className="w-5 h-5" />
+                                              </div>
+                                            )}
+                                            <div className="space-y-1">
+                                               <p className="text-[9px] font-black uppercase tracking-widest opacity-40">{term.label || key.replace("term", "Term ")}</p>
+                                               <p className="text-xl font-black text-slate-900 tracking-tight">{formatCurrency(term.amount)}</p>
+                                               <div className="flex items-center gap-2">
+                                                  {term.isPaid ? (
+                                                    <span className="text-[8px] font-black uppercase text-emerald-600">Settled</span>
+                                                  ) : (
+                                                    <span className={cn(
+                                                      "text-[8px] font-black uppercase",
+                                                      isOverdue ? "text-rose-600" : "text-slate-400"
+                                                    )}>
+                                                      {term.dueDate ? new Date(term.dueDate).toLocaleDateString() : "No Date"}
+                                                    </span>
+                                                  )}
+                                               </div>
+                                            </div>
+                                         </button>
+                                       );
+                                   })}
+                                </div>
+                             </div>
+
+                             {/* Ancillary Fees Section */}
+                             {Object.keys(s.student.feeBreakdown?.ancillary || {}).length > 0 && (
+                                <div className="space-y-3">
+                                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Other Collections</p>
+                                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                      {Object.entries(s.student.feeBreakdown.ancillary).map(([key, fee]: [string, any]) => {
+                                        const isSelected = s.selectedTerms.includes(key);
+                                        return (
+                                          <button 
+                                            key={key}
+                                            disabled={fee.isPaid}
+                                            onClick={() => toggleTermForStudent(s.student.id, key)}
+                                            className={cn(
+                                              "p-5 rounded-[1.75rem] border-2 transition-all text-left relative overflow-hidden",
+                                              fee.isPaid 
+                                                ? "bg-emerald-50 border-transparent opacity-60"
+                                                : isSelected 
+                                                  ? "bg-white border-primary shadow-lg shadow-primary/5"
+                                                  : "bg-white border-slate-100 hover:border-slate-200"
+                                            )}
+                                          >
+                                             <div className="space-y-1">
+                                                <p className="text-[9px] font-black uppercase tracking-widest opacity-40 truncate">{fee.label}</p>
+                                                <p className="text-lg font-black text-slate-900 tracking-tight">{formatCurrency(fee.amount)}</p>
+                                                {fee.isPaid && <span className="text-[8px] font-black uppercase text-emerald-600">Paid</span>}
+                                             </div>
+                                          </button>
+                                        );
+                                      })}
+                                   </div>
+                                </div>
                              )}
+
+                             {/* Metadata Summary Footer */}
+                             <div className="pt-6 border-t border-slate-200 flex items-center justify-between">
+                                <div className="flex gap-8">
+                                   <div className="space-y-0.5">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Discount</p>
+                                      <p className="text-sm font-black text-slate-900">{formatCurrency(s.student.feeBreakdown.totalDiscount)}</p>
+                                   </div>
+                                   <div className="space-y-0.5">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Annual Net</p>
+                                      <p className="text-sm font-black text-indigo-600">{formatCurrency(s.student.feeBreakdown.annualNet)}</p>
+                                   </div>
+                                   <div className="space-y-0.5">
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Type</p>
+                                      <p className="text-sm font-black text-slate-900">{s.student.feeBreakdown.paymentType}</p>
+                                   </div>
+                                </div>
+                                <div className="text-right">
+                                   <p className="text-[10px] font-black uppercase tracking-widest text-primary italic">Selection Total</p>
+                                   <p className="text-2xl font-black text-slate-900">
+                                      {formatCurrency(s.selectedTerms.reduce((sum, t) => {
+                                        const detail = s.student.feeBreakdown[t] || s.student.feeBreakdown.ancillary?.[t];
+                                        return sum + (detail?.amount || 0);
+                                      }, 0))}
+                                   </p>
+                                </div>
+                             </div>
                           </div>
-                        )}
-                      </div>
-                  )}
-                </div>
-
-                <div className="space-y-8">
-                  <div className="p-10 [background:var(--sidebar-bg)] rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden group border border-white/5">
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2 group-hover:scale-150 transition-transform duration-1000" />
-                     <div className="absolute bottom-0 left-0 w-32 h-32 bg-accent/10 blur-3xl rounded-full -translate-x-1/2 translate-y-1/2" />
-                     
-                     <div className="relative z-10 space-y-5">
-                        <div className="flex items-center justify-between opacity-40 text-[10px] font-black uppercase tracking-[0.3em]">
-                           <span>Aggregate Settle Sum</span>
-                           <span className="font-mono">REC: {settlements.length}</span>
-                        </div>
-                        <div className="pt-6 border-t border-white/10 flex flex-col items-end gap-1">
-                           <div className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-1 italic">Identification Confirmed</div>
-                           <div className="text-6xl font-black italic tracking-tighter flex items-baseline gap-2 tabular-nums leading-none">
-                              <span className="text-2xl font-normal not-italic opacity-30">₹</span>
-                              {grandTotal.toLocaleString()}
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      if (paymentMode === "Razorpay") {
-                        generateRazorpayLink();
-                      } else if (paymentMode === "Cash") {
-                        setStep("denomination");
-                      } else {
-                        processPayment();
-                      }
-                    }}
-                    disabled={collectionLoading || paymentDetails.linkLoading || grandTotal === 0}
-                    className={cn(
-                      "w-full p-8 rounded-[2.5rem] font-black text-xl transition-all disabled:opacity-50 flex items-center justify-center gap-5 shadow-2xl hover:scale-[1.02] active:scale-95 group relative overflow-hidden",
-                      "bg-accent text-white shadow-accent/20"
-                    )}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                    {collectionLoading || paymentDetails.linkLoading ? (
-                      <Loader2 className="w-8 h-8 animate-spin" />
-                    ) : (
-                      <span className="relative z-10 italic uppercase tracking-[0.1em]">{paymentMode === "Razorpay" ? "IDENTIFY DIGITAL INVOICE" : "EXECUTE SETTLEMENT"}</span>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-
+                       </div>
+                    </motion.div>
+                  ))}
+               </div>
               {/* Global Footer Aggregation */}
               <div className="mt-12 pt-12 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                 <div className="space-y-6">
@@ -707,19 +736,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     </div>
                   </div>
 
-                  {paymentMode !== "Cash" && (
+                  {paymentMode === "Razorpay" && (
                       <div className="grid grid-cols-1 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        {paymentMode === "Cheque" ? (
-                          <div className="grid grid-cols-2 gap-3">
-                            <input placeholder="Cheque No" value={paymentDetails.chequeNo} onChange={(e) => setPaymentDetails({...paymentDetails, chequeNo: e.target.value})} className="bg-white border-slate-200 border rounded-lg p-2 text-[10px] font-bold" />
-                            <input placeholder="Bank" value={paymentDetails.bankName} onChange={(e) => setPaymentDetails({...paymentDetails, bankName: e.target.value})} className="bg-white border-slate-200 border rounded-lg p-2 text-[10px] font-bold" />
-                          </div>
-                        ) : paymentMode === "UPI" ? (
-                          <div className="flex gap-3">
-                            <input placeholder="TXN Reference" value={paymentDetails.transactionId} onChange={(e) => setPaymentDetails({...paymentDetails, transactionId: e.target.value})} className="bg-white border-slate-200 border rounded-lg p-3 text-[10px] font-bold flex-1" />
-                            <button onClick={() => setShowQR(true)} className="px-4 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase">Show QR</button>
-                          </div>
-                        ) : (
                           <div className="space-y-3">
                              {paymentDetails.paymentLink ? (
                                <div className="flex flex-col gap-2">
@@ -741,7 +759,6 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                                <p className="text-[10px] font-medium text-slate-400 italic">Click 'Generate Link' to create a unique Razorpay invoice for this batch.</p>
                              )}
                           </div>
-                        )}
                       </div>
                   )}
                 </div>
@@ -749,7 +766,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                 <div className="space-y-6">
                   <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white shadow-2xl space-y-4">
                      <div className="flex items-center justify-between opacity-50 text-[10px] font-black uppercase tracking-widest">
-                        <span>Net Consolidated Amount</span>
+                        <span>Net Account Balance</span>
                         <span>{formatCurrency(grandTotal)}</span>
                      </div>
                      <div className="pt-4 border-t border-white/10 flex items-center justify-between">
@@ -955,7 +972,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     name: "Virtue Academy",
                     amount: grandTotal,
                     reference: settlements[0]?.student.id || "student-payment",
-                    note: `Consolidated Fees Settlement`
+                    note: `Fees Settlement`
                   })}
                </div>
 

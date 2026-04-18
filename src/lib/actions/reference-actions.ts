@@ -2,16 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "../auth/backbone";
+import { serializeDecimal } from "../utils/serialization";
 
 export async function getAdmissionReferenceData() {
     try {
     const identity = await getSovereignIdentity();
-    console.log("[DEBUG] getAdmissionReferenceData Identity:", {
-        found: !!identity,
-        staffId: identity?.staffId,
-        schoolId: identity?.schoolId,
-        role: identity?.role
-    });
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
         
@@ -30,11 +25,28 @@ export async function getAdmissionReferenceData() {
                 select: { id: true, name: true, isCurrent: true }
             }),
             prisma.class.findMany({
+                where: { schoolId: context.schoolId },
                 select: { id: true, name: true }
             }),
             prisma.feeStructure.findMany({
-                where: { schoolId: context.schoolId },
-                select: { id: true, name: true }
+                where: { schoolId: context.schoolId, isActive: true },
+                select: { 
+                    id: true, 
+                    name: true, 
+                    classId: true, 
+                    totalAmount: true,
+                    components: {
+                        select: {
+                            amount: true,
+                            masterComponent: {
+                                select: {
+                                    name: true,
+                                    type: true
+                                }
+                            }
+                        }
+                    }
+                }
             }),
             prisma.school.findUnique({
                 where: { id: context.schoolId },
@@ -60,13 +72,13 @@ export async function getAdmissionReferenceData() {
 
         return {
             success: true,
-            data: {
+            data: serializeDecimal({
                 branches,
                 academicYears,
                 classes,
                 feeSchedules,
                 schoolName: school?.name || "PaVa-EDUX Academy"
-            }
+            })
         };
     } catch (e: any) {
         console.error("[REF-DATA ERROR]", e);
@@ -76,11 +88,23 @@ export async function getAdmissionReferenceData() {
 
 export async function getSectionsByClass(classId: string) {
     try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+        const context = identity;
+
         const sections = await prisma.section.findMany({
-            where: { classId },
+            where: { 
+                classId,
+                schoolId: context.schoolId,
+                branchId: context.branchId
+            },
             select: { id: true, name: true }
         });
-        return { success: true, data: sections };
+
+        // 💎 Sovereign De-duplication: Ensure no phantom duplicates leak to the UI
+        const uniqueSections = Array.from(new Map(sections.map(s => [s.name, s])).values());
+        
+        return { success: true, data: uniqueSections };
     } catch (e: any) {
         return { success: false, error: e.message };
     }

@@ -1,9 +1,11 @@
 "use server";
+import crypto from "crypto";
 
 import prisma from "@/lib/prisma";
 import { studentAdmissionSchema } from "@/types/student";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
+import { serializeDecimal } from "../utils/serialization";
 import { getTenancyFilters } from "../utils/tenancy";
 import { CounterService } from "../services/counter-service";
 import { SovereignEventHub } from "../events/event-hub";
@@ -321,13 +323,11 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
       });
 
       // 6. NEW: Accrual Accounting Injection (Income Recognition)
-      // Debit: Accounts Receivable (1200) | Credit: Income Accounts (3000s)
       const coaAR = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
-      const coaTuition = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3001" } });
-      const coaAdmission = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3002" } });
-      const coaTransport = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3003" } });
-      const coaLibrary = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3004" } });
-      const coaLab = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3005" } });
+      const coaTuition = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } }) 
+        || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3001" } });
+      const coaAdmission = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4200" } })
+        || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3002" } });
 
       if (coaAR && coaTuition) {
         await tx.journalEntry.create({
@@ -335,17 +335,14 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
             schoolId: context.schoolId,
             financialYearId: currentAYId,
             entryType: "ADMISSION_ACCRUAL",
-            totalDebit: annualFee + (validatedData.transportFee || 0),
-            totalCredit: annualFee + (validatedData.transportFee || 0),
+            totalDebit: annualFee,
+            totalCredit: annualFee,
             description: `Initial Fee Accrual for Student: ${admissionNumber} (${validatedData.firstName})`,
             lines: {
               create: [
-                { accountId: coaAR.id, debit: annualFee + (validatedData.transportFee || 0), credit: 0 }, // Dr. Receivable
-                { accountId: coaTuition.id, debit: 0, credit: validatedData.tuitionFee || 0 }, // Cr. Tuition Income
+                { accountId: coaAR.id, debit: annualFee, credit: 0 },
+                { accountId: coaTuition.id, debit: 0, credit: validatedData.tuitionFee || 0 },
                 ...(coaAdmission && validatedData.admissionFee ? [{ accountId: coaAdmission.id, debit: 0, credit: validatedData.admissionFee }] : []),
-                ...(coaTransport && validatedData.transportFee ? [{ accountId: coaTransport.id, debit: 0, credit: validatedData.transportFee }] : []),
-                ...(coaLibrary && validatedData.libraryFee ? [{ accountId: coaLibrary.id, debit: 0, credit: validatedData.libraryFee }] : []),
-                ...(coaLab && validatedData.labFee ? [{ accountId: coaLab.id, debit: 0, credit: validatedData.labFee }] : [])
               ]
             }
           }
@@ -354,7 +351,7 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
         // Update balance on Receivable account
         await tx.chartOfAccount.update({ 
           where: { id: coaAR.id }, 
-          data: { currentBalance: { increment: annualFee + (validatedData.transportFee || 0) } } 
+          data: { currentBalance: { increment: annualFee } } 
         });
       }
 
@@ -376,6 +373,261 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
       success: false, 
       error: error.message || "Failed to process admission. Please try again." 
     };
+  }
+}
+
+/**
+ * SOVEREIGN ARCHITECT VERSION (v7.0)
+ * Processes a new student admission with Ledger-First Atomic Integrity.
+ */
+export async function submitStandardizedAdmissionAction(formData: any, isProvisional: boolean = false) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const cleanedData = formDataCleaner(formData);
+    const validatedData = studentAdmissionSchema.parse(cleanedData);
+    const branchId = validatedData.branchId || context.branchId;
+
+    // 1. FETCH AUTHORITATIVE FEE STRUCTURE (Architect Audit)
+    const feeStructure = await prisma.feeStructure.findUnique({
+      where: { id: validatedData.feeScheduleId as string, schoolId: context.schoolId },
+      include: { components: { include: { masterComponent: true } } }
+    });
+
+    if (!feeStructure) throw new Error("CRITICAL_CONFIG_ERROR: No valid fee structure associated with this admission.");
+
+    const year = new Date().getFullYear().toString();
+    const [school, branch, activeAY] = await Promise.all([
+      prisma.school.findUnique({ where: { id: context.schoolId }, select: { code: true } }),
+      prisma.branch.findUnique({ where: { id: branchId }, select: { code: true } }),
+      prisma.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+    ]);
+
+    if (!activeAY) throw new Error("No active academic year found for enrollment.");
+
+    const admissionNumber = !isProvisional ? await CounterService.generateAdmissionNumber({
+      schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code, year: activeAY.name
+    }) : null;
+
+    const studentCode = !isProvisional ? await CounterService.generateStudentCode({
+      schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code, year: activeAY.name
+    }) : null;
+
+    const registrationId = isProvisional 
+      ? await CounterService.generateProvisionalId({ schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code })
+      : await CounterService.generateRegistrationId({ schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code });
+
+    // 2. ATOMIC TRANSACTION (Sovereign Shield)
+    const result = await prisma.$transaction(async (tx: any) => {
+      // Create Student Profile
+      const student = await tx.student.create({
+        data: {
+          registrationId, admissionNumber, studentCode, schoolId: context.schoolId, branchId,
+          status: isProvisional ? "Provisional" : "Active",
+          firstName: validatedData.firstName, lastName: validatedData.lastName,
+          middleName: validatedData.middleName,
+          dob: validatedData.dateOfBirth ? new Date(validatedData.dateOfBirth) : null,
+          gender: validatedData.gender, aadhaarNumber: validatedData.aadhaarNumber,
+          
+          academic: {
+            create: {
+              schoolId: context.schoolId, branchId, academicYear: activeAY.id,
+              classId: validatedData.classId, sectionId: validatedData.sectionId,
+              admissionDate: new Date(),
+              penNumber: validatedData.penNumber,
+              apaarId: validatedData.apaarId,
+              stsId: validatedData.stsId,
+              samagraId: validatedData.samagraId,
+              biometricId: validatedData.biometricId
+            }
+          },
+
+          // 3. CREATE FINANCIAL SNAPSHOT (Immutable Agreement)
+          financial: {
+            create: {
+              schoolId: context.schoolId, branchId,
+              feeStructureId: feeStructure.id,
+              paymentType: validatedData.paymentType || "Term",
+              tuitionFee: feeStructure.totalAmount, // Snapshot of current total
+              totalDiscount: 0,
+            }
+          },
+
+          history: {
+            create: {
+              id: crypto.randomUUID(),
+              schoolId: context.schoolId,
+              branchId,
+              academicYearId: activeAY.id,
+              classId: validatedData.classId,
+              sectionId: validatedData.sectionId,
+              admissionNumber,
+              studentCode,
+              admissionDate: new Date(),
+              promotionStatus: "NEW_ADMISSION",
+              isGenesis: true
+            }
+          },
+
+          family: { 
+            create: {
+               schoolId: context.schoolId,
+               branchId,
+               fatherName: validatedData.fatherName,
+               fatherPhone: validatedData.fatherPhone,
+               fatherAltPhone: validatedData.fatherAlternatePhone,
+               fatherEmail: validatedData.fatherEmail,
+               fatherOccupation: validatedData.fatherOccupation,
+               fatherQualification: validatedData.fatherQualification,
+               fatherAadhaar: validatedData.fatherAadhaar,
+               motherName: validatedData.motherName,
+               motherPhone: validatedData.motherPhone,
+               motherAltPhone: validatedData.motherAlternatePhone,
+               motherEmail: validatedData.motherEmail,
+               motherOccupation: validatedData.motherOccupation,
+               motherQualification: validatedData.motherQualification,
+               motherAadhaar: validatedData.motherAadhaar,
+               whatsappNumber: validatedData.whatsappNumber,
+               emergencyName: validatedData.emergencyContactName,
+               emergencyPhone: validatedData.emergencyContactPhone,
+               emergencyRelation: validatedData.emergencyContactRelation,
+            } 
+          },
+          address: { 
+            create: {
+               schoolId: context.schoolId,
+               branchId,
+               currentAddress: validatedData.currentAddress,
+               permanentAddress: validatedData.permanentAddress,
+               city: validatedData.city,
+               state: validatedData.state,
+               country: validatedData.country,
+               pincode: validatedData.pinCode
+            } 
+          }
+        }
+      });
+
+      // 4. CREATE LEDGER ENTRIES (The Single Source of Truth)
+      const ledgerCharges = feeStructure.components.map((comp: any) => ({
+        studentId: student.id,
+        schoolId: context.schoolId,
+        branchId: branchId,
+        academicYearId: activeAY.id,
+        type: "CHARGE",
+        amount: comp.amount,
+        reason: `${comp.masterComponent.name} (${feeStructure.name})`,
+        createdBy: context.staffId || "SYSTEM_ENROLLMENT"
+      }));
+
+      await tx.ledgerEntry.createMany({ data: ledgerCharges });
+
+      const [receivableAccount, incomeAccount, activeFY] = await Promise.all([
+        tx.chartOfAccount.findFirst({ where: { accountCode: "1200", schoolId: context.schoolId } }),
+        tx.chartOfAccount.findFirst({ 
+          where: { 
+            OR: [{ accountCode: "4100" }, { accountCode: "3001" }], 
+            schoolId: context.schoolId 
+          } 
+        }),
+        tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+      ]);
+
+      if (!receivableAccount || !incomeAccount || !activeFY) {
+        throw new Error(`CRITICAL_ACCOUNTING_ERROR: Mandatory financial configuration (Receivables/Income/FinancialYear) is missing for school: ${context.schoolId}`);
+      }
+
+      await tx.journalEntry.create({
+        data: {
+          schoolId: context.schoolId,
+          branchId: branchId,
+          financialYearId: activeFY.id, // Now using verified FinancialYear ID
+          entryType: "ADMISSION_ACCRUAL",
+          totalDebit: feeStructure.totalAmount,
+          totalCredit: feeStructure.totalAmount,
+          description: `Initial Charge Accrual for Student: ${admissionNumber || registrationId}`,
+          lines: {
+            create: [
+              { accountId: receivableAccount.id, debit: feeStructure.totalAmount, credit: 0 },
+              { accountId: incomeAccount.id, debit: 0, credit: feeStructure.totalAmount }
+            ]
+          }
+        }
+      });
+
+      return student;
+    }, { timeout: 30000 });
+
+    revalidatePath("/admin/students");
+    return { success: true, data: serializeDecimal(result) };
+
+  } catch (error: any) {
+    console.error("Architect Admission Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * confirmStudentAdmission
+ * 
+ * Promotes a Provisional student to Active status. 
+ * Generates the formal Admission Number and Student Code.
+ */
+export async function confirmStudentAdmission(studentId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId, schoolId: context.schoolId },
+      include: { academic: true }
+    });
+
+    if (!student) throw new Error("Student not found.");
+    if (student.status !== "Provisional") throw new Error("Admission already confirmed or student not in provisional state.");
+
+    const [school, branch, activeAY] = await Promise.all([
+      prisma.school.findUnique({ where: { id: context.schoolId }, select: { code: true } }),
+      prisma.branch.findUnique({ where: { id: student.branchId! }, select: { code: true } }),
+      prisma.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+    ]);
+
+    if (!activeAY) throw new Error("Active academic year not found.");
+
+    // Generate Formal IDs
+    const admissionNumber = await CounterService.generateAdmissionNumber({
+      schoolId: context.schoolId, schoolCode: school!.code, 
+      branchId: student.branchId!, branchCode: branch!.code, year: activeAY.name
+    });
+
+    const studentCode = await CounterService.generateStudentCode({
+      schoolId: context.schoolId, schoolCode: school!.code, 
+      branchId: student.branchId!, branchCode: branch!.code, year: activeAY.name
+    });
+
+    const result = await prisma.student.update({
+      where: { id: studentId },
+      data: {
+        status: "Active",
+        admissionNumber,
+        studentCode,
+        academic: {
+          updateMany: {
+            where: { studentId },
+            data: { admissionDate: new Date() }
+          }
+        }
+      }
+    });
+
+    revalidatePath("/admin/students");
+    return { success: true, data: serializeDecimal(result) };
+
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -745,20 +997,23 @@ export async function getStudentHubStats() {
     const [totalStudents, newAdmissions, genderCounts, attendanceTodayRatio] = await Promise.all([
       prisma.student.count({
         where: { 
-          ...tenancy,
+          schoolId: context.schoolId,
+          ...(context.branchId && context.branchId !== 'GLOBAL' ? { branchId: context.branchId } : {}),
           status: "Active"
         }
       }),
       prisma.student.count({
         where: { 
-          ...tenancy,
+          schoolId: context.schoolId,
+          ...(context.branchId && context.branchId !== 'GLOBAL' ? { branchId: context.branchId } : {}),
           createdAt: { gte: startOfMonth }
         }
       }),
       prisma.student.groupBy({
         by: ['gender'],
         where: { 
-          ...tenancy,
+          schoolId: context.schoolId,
+          ...(context.branchId && context.branchId !== 'GLOBAL' ? { branchId: context.branchId } : {}),
           status: "Active"
         },
         _count: true

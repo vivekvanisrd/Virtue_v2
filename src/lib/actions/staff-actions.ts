@@ -270,7 +270,10 @@ export async function getStaffDirectoryAction() {
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
         const staff = await prisma.staff.findMany({
-            where: { schoolId: identity.schoolId },
+            where: { 
+                schoolId: identity.schoolId,
+                ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
+            },
             include: {
                 professional: true,
                 statutory: true,
@@ -338,7 +341,11 @@ export async function getSalaryHubStats() {
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
         
         const count = await prisma.staff.count({ 
-            where: { schoolId: identity.schoolId, status: "ACTIVE" } 
+            where: { 
+                schoolId: identity.schoolId, 
+                status: "ACTIVE",
+                ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
+            } 
         });
         
         return { success: true, data: { staffCount: count, totalBudget: "₹-" } };
@@ -351,7 +358,10 @@ export async function getStaffHubStats() {
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
         
         const count = await prisma.staff.count({ 
-            where: { schoolId: identity.schoolId } 
+            where: { 
+                schoolId: identity.schoolId,
+                ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
+            } 
         });
         
         return { success: true, data: { totalStaff: count, activeStaff: count, newJoinees: 0 } };

@@ -144,7 +144,8 @@ export async function getStaffPulseAction() {
 
     const staff = await prisma.staff.findMany({
       where: { 
-        schoolId: identity.schoolId
+        schoolId: identity.schoolId,
+        ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
       },
       select: {
         id: true,

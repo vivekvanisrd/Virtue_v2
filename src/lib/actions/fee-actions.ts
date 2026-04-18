@@ -4,20 +4,8 @@ import prisma from "../prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
 import { calculateTermBreakdown } from "../utils/fee-utils";
-import { Decimal } from "@prisma/client/runtime/library";
+import { serializeDecimal } from "../utils/serialization";
 
-/**
- * serialize
- * 
- * Safely converts Prisma-specific types (like Decimal) into plain JSON-serializable numbers
- */
-const serialize = <T>(data: T): T => {
-  return JSON.parse(JSON.stringify(data, (key, value) => 
-    (value instanceof Decimal || (value && typeof value === 'object' && value.constructor?.name === 'Decimal')) 
-      ? Number(value) 
-      : value
-  ));
-};
 
 /**
  * TENANCY SAFE: Fetches all fee structures for the current school instance
@@ -40,7 +28,7 @@ export async function getFeeStructures() {
             orderBy: { academicYear: { name: 'desc' } }
         });
 
-        return { success: true, data: serialize(structures) };
+        return { success: true, data: serializeDecimal(structures) };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -58,7 +46,7 @@ export async function getFeeComponentMaster() {
           where: { schoolId: context.schoolId },
           orderBy: { name: "asc" }
       });
-      return { success: true, data: serialize(components) };
+      return { success: true, data: serializeDecimal(components) };
   } catch (error: any) {
       return { success: false, error: error.message };
   }
@@ -100,7 +88,7 @@ export async function upsertFeeComponentMaster(data: {
               accountCode: data.accountCode
           }
       });
-      return { success: true, data: serialize(component) };
+      return { success: true, data: serializeDecimal(component) };
   } catch (error: any) {
       return { success: false, error: error.message };
   }
@@ -164,7 +152,7 @@ export async function upsertFeeStructure(data: {
         });
 
         revalidatePath("/admin/fees");
-        return { success: true, data: serialize(structure) };
+        return { success: true, data: serializeDecimal(structure) };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -349,7 +337,7 @@ export async function applyComponentWaiver(data: {
         });
 
         revalidatePath("/admin/fees");
-        return { success: true, data: serialize(component) };
+        return { success: true, data: serializeDecimal(component) };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -367,7 +355,7 @@ export async function getAcademicYears() {
           where: { schoolId: context.schoolId },
           orderBy: { startDate: 'desc' }
       });
-      return { success: true, data: serialize(years) };
+      return { success: true, data: serializeDecimal(years) };
   } catch (error: any) {
       return { success: false, error: error.message };
   }
@@ -378,11 +366,84 @@ export async function getAcademicYears() {
  */
 export async function getAvailableClasses() {
   try {
+      const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+    const context = identity;
       const classes = await prisma.class.findMany({
+          where: { 
+            schoolId: context.schoolId,
+            branchId: context.branchId 
+          },
           orderBy: { level: 'asc' }
       });
-      return { success: true, data: serialize(classes) };
+      return { success: true, data: serializeDecimal(classes) };
   } catch (error: any) {
       return { success: false, error: error.message };
   }
+}
+
+/**
+ * TENANCY SAFE: Toggles the active/inactive status of a fee structure
+ */
+export async function toggleFeeStructureActiveAction(id: string) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+        const context = identity;
+
+        const structure = await prisma.feeStructure.findUnique({
+            where: { id, schoolId: context.schoolId }
+        });
+
+        if (!structure) throw new Error("Structure not found.");
+
+        const updated = await prisma.feeStructure.update({
+            where: { id },
+            data: { isActive: !structure.isActive }
+        });
+
+        revalidatePath("/admin/fees");
+        return { success: true, isActive: updated.isActive };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * TENANCY SAFE: Deletes or archives a fee structure based on institutional history
+ */
+export async function deleteFeeStructureAction(id: string) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+        const context = identity;
+
+        // 1. Check for audit history (assigned students)
+        const assignmentCount = await prisma.financialRecord.count({
+            where: { feeStructureId: id, schoolId: context.schoolId }
+        });
+
+        if (assignmentCount > 0) {
+            // Recommendation: Archive instead of Delete to protect audit trail
+            await prisma.feeStructure.update({
+                where: { id },
+                data: { isActive: false }
+            });
+            return { 
+                success: true, 
+                message: `Structure has ${assignmentCount} history records. It has been ARCHIVED to protect the audit trail.` 
+            };
+        }
+
+        // 2. Perform Hard Delete for sample/unused structures
+        await prisma.$transaction(async (tx: any) => {
+            await tx.feeTemplateComponent.deleteMany({ where: { templateId: id, schoolId: context.schoolId } });
+            await tx.feeStructure.delete({ where: { id, schoolId: context.schoolId } });
+        }, { timeout: 30000 });
+
+        revalidatePath("/admin/fees");
+        return { success: true, message: "Structure permanently removed from registry." };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
 }
