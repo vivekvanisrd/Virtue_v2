@@ -258,7 +258,7 @@ export function StudentDirectory() {
                          <h4 
                            onClick={() => openTab({ 
                               id: `student-profile-${student.id}`, 
-                              title: `${student.firstName} Profile`, 
+                              title: "Student Profile", 
                               component: "Students", 
                               params: { studentId: student.id } 
                            })}
@@ -298,7 +298,7 @@ export function StudentDirectory() {
                       <button 
                          onClick={() => openTab({ 
                             id: `student-profile-${student.id}`, 
-                            title: `${student.firstName}'s Profile`, 
+                            title: "Student Profile", 
                             component: "Students", 
                             params: { studentId: student.id } 
                          })}
@@ -310,10 +310,10 @@ export function StudentDirectory() {
                       </button>
                       <button 
                         onClick={() => openTab({ 
-                          id: `fee-collection-${student.id}`, 
-                          title: `Fees: ${student.firstName}`, 
+                          id: "fee-collection", 
+                          title: "Fee Collection", 
                           icon: Wallet, 
-                          component: "Financials",
+                          component: "Finance",
                           params: { studentId: student.id } 
                         })}
                         className="w-14 h-14 bg-white border border-slate-200 rounded-[22px] flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all active:scale-90"

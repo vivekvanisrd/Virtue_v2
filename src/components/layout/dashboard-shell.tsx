@@ -27,6 +27,7 @@ import { InstitutionalSetupHub } from "../dashboard/InstitutionalSetupHub";
 import AcademicArchitectHub from "../academics/AcademicArchitectHub";
 import VelocityAttendanceRunner from "../attendance/VelocityAttendanceRunner";
 import GenesisLab from "../../app/dashboard/setup/genesis/page";
+import { FeeMasterHub } from "../finance/FeeMasterHub";
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -49,12 +50,13 @@ function WorkspaceRenderer() {
           {tab.id.startsWith("student-profile-") && (
             <StudentsContent tabId="student-profile" params={{ studentId: tab.id.replace("student-profile-", "") }} />
           )}
-          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll|razorpay/i.test(tab.id)) && (
+          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll|razorpay/i.test(tab.id)) && tab.id !== "fee-master-registry" && (
             <FinanceContent 
-               tabId={tab.id.startsWith("fee-collection") ? "fee-collection" : tab.id} 
+               tabId={tab.id} 
                params={tab.params || {}} 
             />
           )}
+          {tab.id === "fee-master-registry" && <FeeMasterHub />}
 
           {/* Staff Module */}
           {tab.id === "staff" && <StaffHub />}
@@ -96,7 +98,7 @@ function WorkspaceRenderer() {
           )}
 
           {/* Fallback for truly unknown tabs */}
-          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay/i.test(tab.id)) && (
+          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings", "student", "fee"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay/i.test(tab.id)) && (
             <div className="flex flex-col items-center justify-center h-full text-foreground opacity-30 py-40">
               <h2 className="text-2xl font-bold italic text-rose-500">Module Implementation Pending (HARD_OVERRIDE_V7)</h2>
               <p>The {tab.title} section (ID: {tab.id}) is coming soon.</p>

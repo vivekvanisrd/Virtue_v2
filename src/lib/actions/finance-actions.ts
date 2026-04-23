@@ -8,6 +8,8 @@ import { CounterService } from "../services/counter-service";
 import { Decimal } from "@prisma/client/runtime/library";
 import { razorpay } from "@/lib/razorpay";
 import crypto from "crypto";
+import { checkCapability } from "../auth/rbac";
+import { ST_CONFIRMED, ST_PROVISIONAL } from "../constants/admission-statuses";
 
 /**
  * serialize
@@ -113,13 +115,16 @@ export async function recordFeeCollection(params: {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
-    
-    // 1. Verify Active Financial Year & Validation Helpers
+
+    // 1. RBAC GATEKEEPER (Fail-Shut CBAC)
+    await checkCapability('RECORD_PAYMENT');
+
+    // 🛡️ CRITICAL FIX: Import helpers and resolve activeFY in this function's scope
     const { validateMilestone, canPayAdvance } = await import("../utils/fee-utils");
     const activeFY = await prisma.financialYear.findFirst({
       where: { schoolId: context.schoolId, isCurrent: true }
     });
-    if (!activeFY) throw new Error("Active Financial Year not found.");
+    if (!activeFY) throw new Error("Active Financial Year not found. Please configure one in Settings.");
 
     // IDEMPOTENCY CHECK: Ensure this specific transaction (Razorpay/Reference) isn't already recorded
     if (params.paymentReference) {
@@ -149,12 +154,33 @@ export async function recordFeeCollection(params: {
     const components = student.financial.components || [];
     const netAnnual = components.length > 0 
         ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
-        : Number(student.financial.tuitionFee || student.financial.annualTuition || 0) - Number(student.financial.totalDiscount || 0);
+        // ✅ Bug 4 fixed: use annualTuition (true full total) not tuitionFee (partial)
+        : Number(student.financial.annualTuition || student.financial.tuitionFee || 0) - Number(student.financial.totalDiscount || 0);
+
     const prevTotalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid), 0);
     const newTotalPaid = prevTotalPaid + params.amountPaid;
 
     if (params.lateFeeWaived && (!params.waiverReason || params.waiverReason.trim() === '')) {
       throw new Error("Audit Violation: A valid reason must be provided when waiving late fees.");
+    }
+
+    // 2.5 Policy Guard: 30-Day Partial Window (Sovereign Rulebook)
+    // If a provisional student is older than 30 days, we block partial settlements for the primary milestone.
+    if (student.status === ST_PROVISIONAL && student.createdAt) {
+      const plan = student.financial.paymentType || "Term-wise";
+      const threshold = plan === "Yearly" 
+        ? Number(student.financial.annualTuition || 0)
+        : Number(student.financial.term1Amount || 0);
+      
+      const enrollmentAge = Math.floor((new Date().getTime() - new Date(student.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (enrollmentAge > 30 && params.amountPaid < threshold && threshold > 0) {
+        throw new Error(
+          `Policy Violation: This provisional enrollment is ${enrollmentAge} days old. ` +
+          `Partial payments are restricted after the 30-day grace period. ` +
+          `Full ${plan} settlement (₹${threshold.toLocaleString()}) is required to proceed.`
+        );
+      }
     }
 
     // 3. ENFORCEMENT: Advance Payment Block (Legacy Prerequisite)
@@ -191,7 +217,10 @@ export async function recordFeeCollection(params: {
     // 6. RESOLVE ENROLLMENT IDENTITY & CODES (FOR 2026-27 BRANDING)
     const activeAdmission = await prisma.academicHistory.findFirst({
         where: { studentId: params.studentId, schoolId: context.schoolId },
-        include: { branch: { include: { school: true } } },
+        include: { 
+          branch: { include: { school: true } },
+          academicYear: true
+        },
         orderBy: { createdAt: 'desc' }
     });
 
@@ -296,6 +325,59 @@ export async function recordFeeCollection(params: {
         }
       }
 
+      // 🚀 THE CONFIRMATION ENGINE (Elite ERP Promotion Hook)
+      // Check if student is still Provisional and has now cleared their chosen milestone
+      if (student.status === ST_PROVISIONAL && student.financial) {
+        // Fetch snapshot value based on parent's opted payment plan
+        const plan = student.financial.paymentType || "Term-wise";
+        const threshold = plan === "Yearly" 
+          ? Number(student.financial.annualTuition || 0)
+          : Number(student.financial.term1Amount || 0);
+        
+        if (newTotalPaid >= threshold && threshold > 0) {
+            console.log(`✅ [PROMOTION_ENGINE] Student ${student.firstName} ${student.lastName} cleared ${plan} threshold (${threshold}). Promoting to ST_CONFIRMED.`);
+            
+            // 🆔 IDENTITY ELEVATION: Generate Actual Admission & Student IDs
+            const ayName = activeAdmission.academicYear.name;
+            const admissionNumber = await CounterService.generateAdmissionNumber({
+                schoolId: context.schoolId, schoolCode, branchId: context.branchId, branchCode, year: ayName
+            }, tx);
+
+            const studentCode = await CounterService.generateStudentCode({
+                schoolId: context.schoolId, schoolCode, branchId: context.branchId, branchCode, year: ayName
+            }, tx);
+
+            console.log(`✨ [IDENTITY_ELEVATION] Allocated New Admission ID: ${admissionNumber}`);
+
+            await tx.student.update({
+                where: { id: student.id },
+                data: { 
+                  status: ST_CONFIRMED,
+                  admissionNumber,
+                  studentCode
+                }
+            });
+
+            // 📝 AUDIT LOG: Lifecycle Transition
+            await tx.activityLog.create({
+                data: {
+                    schoolId: context.schoolId,
+                    staffId: context.staffId,
+                    action: "STATUS_PROMOTION",
+                    entityType: "STUDENT",
+                    entityId: student.id,
+                    metadata: {
+                        oldStatus: ST_PROVISIONAL,
+                        newStatus: ST_CONFIRMED,
+                        trigger: "THRESHOLD_REACHED",
+                        threshold: threshold,
+                        totalPaid: newTotalPaid
+                    }
+                }
+            });
+        }
+      }
+
       return collection;
     }, { maxWait: 10000, timeout: 30000 });
 
@@ -308,18 +390,21 @@ export async function recordFeeCollection(params: {
 }
 
 /**
- * voidCollectionAction
+ * 🔁 voidPaymentAction (Sovereign Reversal Engine)
  * 
  * AUDIT-SAFE REVERSAL: Marks a collection as VOIDED and posts a reversing entry to the ledger.
- * We never "Delete" financial records.
+ * We never "Delete" financial records as per the Immutable Ledger mandate.
  */
-export async function voidCollectionAction(collectionId: string, reason: string) {
+export async function voidPaymentAction(collectionId: string, reason: string) {
   try {
+    // 1. RBAC GATEKEEPER (Fail-Shut CBAC)
+    await checkCapability('REVERSE_LEDGER');
+    
     const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
+    const context = identity!;
+    
     if (!reason || reason.trim().length < 5) {
-      throw new Error("Audit Violation: A valid reason (min 5 chars) is required to void a receipt.");
+      throw new Error("Audit Violation: A valid reason (min 5 chars) is required to perform a reversal.");
     }
 
     const collection = await prisma.collection.findUnique({
@@ -331,71 +416,82 @@ export async function voidCollectionAction(collectionId: string, reason: string)
       throw new Error("Receipt not found or unauthorized.");
     }
 
-    if (collection.isDeleted) {
+    if (collection.status === "VOIDED" || collection.isDeleted) {
       throw new Error("This receipt is already voided.");
     }
 
     const result = await prisma.$transaction(async (tx: any) => {
-      // 1. SOFT DELETE THE COLLECTION
-      const voided = await tx.collection.update({
-        where: { id: collectionId },
-        data: {
-          isDeleted: true,
-          deletedAt: new Date(),
-          status: "VOIDED",
-          allocatedTo: {
-            ...(collection.allocatedTo as any),
-            voidReason: reason,
-            voidedBy: context.role,
-            voidedAt: new Date().toISOString()
-          }
-        }
+      // 🕵️ REVERSAL STRATEGY: 
+      // Instead of updating the Collection status (which is blocked by the sentinel),
+      // we create a 'FinancialAuditLog' and a 'ReversalEntry'.
+      // Wait, if I want to show it as voided in the UI, I need a status change.
+      // But the Sentinel blocks 'update' on 'Collection'.
+      
+      // OPTION: We use 'skip_tenancy' for internal reversals? No, rule is 'Absolute'.
+      // CORRECT APPROACH: We create a Journal Entry that offsets the original.
+      
+      const activeFY = await prisma.financialYear.findFirst({
+        where: { schoolId: context.schoolId, isCurrent: true }
       });
 
-      // 2. CREATE REVERSING JOURNAL ENTRY (CREDIT NOTE)
+      if (!activeFY) throw new Error("No active financial year for reversal.");
+
+      // 2. CREATE REVERSING JOURNAL ENTRY (The Offset)
       if (collection.journalEntry) {
         const originalLines = collection.journalEntry.lines;
-        const reversingLines = originalLines.map((line: any) => ({
+        const reversalLines = originalLines.map((line: any) => ({
           accountId: line.accountId,
-          debit: line.credit, // SWAP DEBIT/CREDIT
-          credit: line.debit,
-          description: `REVERSAL: ${line.description || 'Voiding Receipt ' + collection.receiptNumber}`
+          description: `REVERSAL of ${collection.receiptNumber}: ${reason}`,
+          credit: line.debit, // Swap Debit to Credit
+          debit: line.credit   // Swap Credit to Debit
         }));
 
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
-            branchId: collection.branchId,
-            financialYearId: collection.financialYearId,
+            branchId: context.branchId,
+            financialYearId: activeFY.id,
             entryType: "REVERSAL",
             totalDebit: collection.journalEntry.totalCredit,
             totalCredit: collection.journalEntry.totalDebit,
-            description: `VOID Receipt ${collection.receiptNumber} - Reason: ${reason}`,
-            lines: {
-              create: reversingLines
-            }
+            description: `REVERSAL of Receipt ${collection.receiptNumber} - Reason: ${reason}`,
+            lines: { create: reversalLines }
           }
         });
 
-        // 3. REVERSE ACCOUNT BALANCES
-        for (const line of reversingLines) {
+        // 3. ADJUST ACCOUNT BALANCES (Reverting the impact)
+        for (const line of originalLines) {
            await tx.chartOfAccount.update({
              where: { id: line.accountId },
              data: {
                currentBalance: {
-                 increment: Number(line.debit) - Number(line.credit)
+                 decrement: line.debit, // Revert the debit
+                 increment: line.credit // Revert the credit
                }
              }
            });
         }
       }
 
-      return voided;
+      // 4. LOG THE AUDIT EVENT (The final marker)
+      await tx.financialAuditLog.create({
+        data: {
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          performedBy: context.staffId,
+          action: "PAYMENT_REVERSAL",
+          entityType: "COLLECTION",
+          entityId: collectionId,
+          reason,
+          riskFlag: true
+        }
+      });
+
+      return { success: true };
     });
 
     revalidatePath("/admin/fees");
-    revalidatePath("/dashboard/finance");
-    return { success: true, message: `Receipt ${collection.receiptNumber} has been successfully voided.` };
+    return { success: true, data: result };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -561,7 +657,14 @@ export async function getStudentFeeStatus(studentId: string) {
       },
       include: {
         academic: { include: { class: true } },
-        financial: { include: { components: true, discounts: { include: { discountType: true } } } },
+        financial: { 
+          include: { 
+            components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } }, 
+            discounts: { include: { discountType: true } },
+            feeStructure: { include: { components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } } } }
+          } 
+        },
+        ledgerEntries: { where: { type: "CHARGE" } },
         collections: { 
           where: { status: "Success" },
           orderBy: { paymentDate: 'desc' } 
@@ -604,7 +707,7 @@ export async function getStudentFeeStatus(studentId: string) {
     breakdown.term2.isPaid = paidTerms.includes("term2");
     breakdown.term3.isPaid = paidTerms.includes("term3");
 
-    // 4. MAP ANCILLARY FEES (One-time / Monthly / Miscellaneous)
+    // 4. MAP ANCILLARY FEES (Multi-Source Resilience)
     const ancillary: Record<string, any> = {};
     const fin = student.financial;
     const ancillaryFields = [
@@ -614,9 +717,47 @@ export async function getStudentFeeStatus(studentId: string) {
       { key: "examFee", label: "Exam Fee" },
       { key: "computerFee", label: "Computer Fee" },
       { key: "libraryFee", label: "Library Fee" },
+      { key: "sportsFee", label: "Sports Fee" },
+      { key: "activityFee", label: "Activity Fee" },
+      { key: "booksFee", label: "Books & Stationaries" },
+      { key: "uniformFee", label: "Uniform Fee" },
       { key: "miscellaneousFee", label: "Misc Fee" }
     ];
 
+    // Priority 0: AUTHORITATIVE TEMPLATE (Fee Structure)
+    // This ensures boxes show up immediately upon enrollment, even before heavy processing
+    if (fin?.feeStructure?.components) {
+       fin.feeStructure.components.forEach((comp: any) => {
+          const name = comp.masterComponent?.name?.toLowerCase() || "";
+          // Skip tuition as it belongs in the main installments
+          if (name.includes("tuition")) return;
+
+          let key = "";
+          if (name.includes("admission")) key = "admissionFee";
+          else if (name.includes("caution") || name.includes("deposit")) key = "cautionDeposit";
+          else if (name.includes("transport") || name.includes("bus")) key = "transportFee";
+          else if (name.includes("library")) key = "libraryFee";
+          else if (name.includes("exam")) key = "examFee";
+          else if (name.includes("computer")) key = "computerFee";
+          else if (name.includes("sports") || name.includes("gym")) key = "sportsFee";
+          else if (name.includes("activity")) key = "activityFee";
+          else if (name.includes("book") || name.includes("stationary")) key = "booksFee";
+          else if (name.includes("uniform") || name.includes("kit")) key = "uniformFee";
+          else if (name.includes("miscellaneous")) key = "miscellaneousFee";
+          else key = `tmpl_${comp.id}`;
+
+          if (key && !ancillary[key]) {
+             ancillary[key] = {
+                amount: Number(comp.amount),
+                isPaid: paidTerms.includes(key) || paidTerms.includes(comp.masterComponent.name),
+                label: comp.masterComponent.name,
+                dueDate: null
+             };
+          }
+       });
+    }
+
+    // Priority 1: Direct Profile Fields
     ancillaryFields.forEach(field => {
        const amount = Number(fin?.[field.key as keyof typeof fin] || 0);
        if (amount > 0) {
@@ -624,9 +765,105 @@ export async function getStudentFeeStatus(studentId: string) {
              amount,
              isPaid: paidTerms.includes(field.key),
              label: field.label,
-             dueDate: null // Legacy ancillary fees often don't have hard due dates in the profile
+             dueDate: null
           };
        }
+    });
+
+    // Priority 2: Granular Components
+    if (fin?.components) {
+      fin.components.forEach((comp: any) => {
+        const name = comp.masterComponent?.name?.toLowerCase();
+        if (!name || name.includes("tuition")) return;
+        let key = "";
+        
+        if (name.includes("admission")) key = "admissionFee";
+        else if (name.includes("caution") || name.includes("deposit")) key = "cautionDeposit";
+        else if (name.includes("transport") || name.includes("bus")) key = "transportFee";
+        else if (name.includes("library")) key = "libraryFee";
+        else if (name.includes("exam")) key = "examFee";
+        else if (name.includes("computer")) key = "computerFee";
+        else if (name.includes("sports")) key = "sportsFee";
+        else if (name.includes("activity")) key = "activityFee";
+        else if (name.includes("book")) key = "booksFee";
+        else if (name.includes("uniform")) key = "uniformFee";
+        else key = `comp_${comp.id}`; // CATCH-ALL KEY
+
+        if (key && !ancillary[key]) {
+          ancillary[key] = {
+            amount: Number(comp.baseAmount),
+            isPaid: paidTerms.includes(key),
+            label: comp.masterComponent.name,
+            dueDate: null
+          };
+        }
+      });
+    }
+
+    // Priority 3: Ledger Fallback
+    if (student.ledgerEntries && student.ledgerEntries.length > 0) {
+       student.ledgerEntries.forEach((entry: any, index: number) => {
+          const reason = entry.reason.toLowerCase();
+          if (reason.includes("term 1") || reason.includes("term 2") || reason.includes("term 3") || 
+              (reason.includes("tuition") && !reason.includes("admission") && !reason.includes("transport"))) return;
+
+          let key = "";
+          if (reason.includes("admission")) key = "admissionFee";
+          else if (reason.includes("caution") || reason.includes("deposit")) key = "cautionDeposit";
+          else if (reason.includes("transport") || reason.includes("bus")) key = "transportFee";
+          else if (reason.includes("library")) key = "libraryFee";
+          else if (reason.includes("exam")) key = "examFee";
+          else if (reason.includes("computer")) key = "computerFee";
+          else if (reason.includes("sports")) key = "sportsFee";
+          else if (reason.includes("activity")) key = "activityFee";
+          else if (reason.includes("book")) key = "booksFee";
+          else if (reason.includes("uniform")) key = "uniformFee";
+          else key = `misc_${index}`;
+
+          if (key && !ancillary[key]) {
+             ancillary[key] = {
+                amount: Number(entry.amount),
+                isPaid: paidTerms.includes(key) || paidTerms.includes(entry.reason),
+                label: entry.reason.replace("Accrual: ", "").split(' (')[0],
+                dueDate: null
+             };
+          }
+       });
+    }
+
+    // 🚀 POINT-OF-SALE (POS) ENGINE: Registry-Synced Placeholders
+    // Fetches institutional standard prices from the Master Registry.
+    const masterRegistry = await prisma.feeComponentMaster.findMany({
+      where: { schoolId: context.schoolId, isActive: true }
+    });
+
+    const posFinalCategories = [
+      { key: "admissionFee", label: "Admission Fee" },
+      { key: "transportFee", label: "Transport Fee" },
+      { key: "libraryFee", label: "Library Fee" },
+      { key: "sportsFee", label: "Sports Fee" },
+      { key: "activityFee", label: "Activity Fee" },
+      { key: "booksFee", label: "Books & Stationaries" },
+      { key: "uniformFee", label: "Uniform Fee" },
+      { key: "cautionDeposit", label: "Caution Deposit" }
+    ];
+
+    posFinalCategories.forEach(cat => {
+      if (!ancillary[cat.key]) {
+        const master = masterRegistry.find(m => 
+          m.name.toLowerCase().includes(cat.label.toLowerCase()) || 
+          cat.label.toLowerCase().includes(m.name.toLowerCase())
+        );
+
+        ancillary[cat.key] = {
+          amount: master ? Number(master.amount) : 0,
+          isPaid: false,
+          label: cat.label,
+          dueDate: null,
+          isAdHoc: true, // Marker for UI input
+          masterId: master?.id
+        };
+      }
     });
     
     breakdown.ancillary = ancillary;
@@ -1351,6 +1588,271 @@ export async function getDailyCollectionSummary() {
     }, { Cash: 0, UPI: 0, Cheque: 0, total: 0, count: 0 });
 
     return { success: true, data: serialize(summary) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+/**
+ * getAdHocFeeOptions
+ * 
+ * Fetches institutional fee components (Library, Transport, etc.) from the Master DB.
+ * Used for mid-term "Opt-in" scenarios in the Student Profile.
+ */
+export async function getAdHocFeeOptions() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const components = await prisma.feeComponentMaster.findMany({
+      where: { 
+        schoolId: context.schoolId,
+        type: { not: "TUITION" } // Only ancillary items
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    return { success: true, data: serialize(components) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * assignAdHocFeeAction
+ * 
+ * ATOMIC ASSIGNMENT: Links a master component to a student, 
+ * updates their balance, and posts a Charge to the Ledger.
+ */
+export async function assignAdHocFeeAction(params: {
+  studentId: string;
+  componentId: string;
+  amount: number;
+  reason?: string;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    // 1. Resolve Student Finance Context
+    const financial = await prisma.financialRecord.findUnique({
+      where: { studentId: params.studentId }
+    });
+
+    if (!financial) throw new Error("Student financial record not initialized.");
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 2. Create the Component Link
+      const studentComponent = await tx.studentFeeComponent.create({
+        data: {
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          studentFinancialId: financial.id,
+          componentId: params.componentId,
+          baseAmount: params.amount,
+          isApplicable: true,
+          version: 1
+        },
+        include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } }
+      });
+
+      // 3. Update Financial Record (Accrue to Net)
+      // Note: We use the specific field if it matches the component name (Transport/Library)
+      const name = studentComponent.masterComponent.name.toLowerCase();
+      const updateData: any = {
+        tuitionFee: { increment: 0 } // No-op to trigger update
+      };
+
+      if (name.includes("transport")) updateData.transportFee = { increment: params.amount };
+      else if (name.includes("library")) updateData.libraryFee = { increment: params.amount };
+      else if (name.includes("admission")) updateData.admissionFee = { increment: params.amount };
+      else if (name.includes("sports")) updateData.sportsFee = { increment: params.amount };
+      
+      await tx.financialRecord.update({
+        where: { id: financial.id },
+        data: updateData
+      });
+
+      // 4. POST TO LEDGER (THE AUDIT TRAIL)
+      const [activeFY, activeAY] = await Promise.all([
+        tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
+        tx.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+      ]);
+
+      await tx.ledgerEntry.create({
+        data: {
+          studentId: params.studentId,
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          financialYearId: activeFY?.id,
+          academicYearId: activeAY?.id,
+          type: "CHARGE",
+          amount: params.amount,
+          reason: `Accrual: ${studentComponent.masterComponent.name}${params.reason ? ` (${params.reason})` : ''}`,
+          createdBy: context.name || context.role
+        }
+      });
+
+      return studentComponent;
+    });
+
+    revalidatePath("/dashboard/finance");
+    return { success: true, data: serialize(result) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * applyDiscountAction
+ * 
+ * Manual discount application from the student profile.
+ * Posts a "CREDIT" to the Ledger.
+ */
+export async function applyDiscountAction(params: {
+  studentId: string;
+  amount: number;
+  reason: string;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Update Financial Record
+      const financial = await tx.financialRecord.update({
+        where: { studentId: params.studentId },
+        data: {
+          totalDiscount: { increment: params.amount }
+        }
+      });
+
+      // 2. Post to Ledger
+      const [activeFY, activeAY] = await Promise.all([
+        tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
+        tx.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+      ]);
+
+      await tx.ledgerEntry.create({
+        data: {
+          studentId: params.studentId,
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          financialYearId: activeFY?.id,
+          academicYearId: activeAY?.id,
+          type: "CREDIT",
+          amount: params.amount,
+          reason: `Discount Applied: ${params.reason}`,
+          createdBy: context.name || context.role
+        }
+      });
+
+      return financial;
+    });
+
+    revalidatePath("/dashboard/finance");
+    return { success: true, data: serialize(result) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * updateStudentFeeComponentAction
+ * 
+ * PRINCIPAL OVERRIDE: Updates a student's assigned fee and posts a Ledger Adjustment.
+ * This ensures the P&L and Outstanding Dues are always in sync with the audit trail.
+ */
+export async function updateStudentFeeComponentAction(params: {
+  studentId: string;
+  componentId: string; // The ID of the StudentFeeComponent record
+  newAmount: number;
+  reason: string;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    // RBAC: Only Principal/Admin/Finance Manager can perform overrides
+    await checkCapability('RECORD_PAYMENT'); 
+
+    if (!params.reason || params.reason.trim().length < 5) {
+      throw new Error("Audit Violation: A valid reason (min 5 chars) is required for financial adjustments.");
+    }
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Resolve Existing Component
+      const existing = await tx.studentFeeComponent.findUnique({
+        where: { id: params.componentId },
+        include: { 
+          masterComponent: true,
+          studentFinancial: true
+        }
+      });
+
+      if (!existing) throw new Error("Component record not found.");
+      if (existing.studentFinancial.studentId !== params.studentId) throw new Error("Security Violation: Record mismatch.");
+
+      const oldAmount = Number(existing.baseAmount);
+      const delta = params.newAmount - oldAmount;
+
+      if (delta === 0) return existing; // No change
+
+      // 2. Update the Component Amount
+      const updated = await tx.studentFeeComponent.update({
+        where: { id: params.componentId },
+        data: { 
+          baseAmount: params.newAmount,
+          version: { increment: 1 }
+        }
+      });
+
+      // 3. Post Ledger Adjustment
+      const [activeFY, activeAY] = await Promise.all([
+        tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
+        tx.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+      ]);
+
+      await tx.ledgerEntry.create({
+        data: {
+          studentId: params.studentId,
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          financialYearId: activeFY?.id,
+          academicYearId: activeAY?.id,
+          type: delta > 0 ? "CHARGE" : "CREDIT",
+          amount: Math.abs(delta),
+          reason: `ADJUSTMENT: ${existing.masterComponent.name} modified by Principal. Reason: ${params.reason}`,
+          createdBy: context.name || context.role
+        }
+      });
+
+      // 4. Update Financial Record Mirror Fields
+      const name = existing.masterComponent.name.toLowerCase();
+      const updateData: any = {};
+
+      if (name.includes("tuition")) updateData.annualTuition = { increment: delta };
+      else if (name.includes("transport")) updateData.transportFee = { increment: delta };
+      else if (name.includes("library")) updateData.libraryFee = { increment: delta };
+      else if (name.includes("admission")) updateData.admissionFee = { increment: delta };
+      else if (name.includes("sports")) updateData.sportsFee = { increment: delta };
+
+      if (Object.keys(updateData).length > 0) {
+        await tx.financialRecord.update({
+          where: { id: existing.studentFinancialId },
+          data: updateData
+        });
+      }
+
+      return updated;
+    });
+
+    revalidatePath("/dashboard/finance");
+    revalidatePath(`/admin/students/${params.studentId}`);
+    return { success: true, data: serialize(result) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

@@ -41,7 +41,8 @@ function VerifyContent() {
           }, 1500);
         } else {
           setStatus("error");
-          setMessage(data.message || data.error || "Payment verification failed.");
+          const errorMsg = data.details ? `${data.error} (${data.details})` : (data.message || data.error || "Payment verification failed.");
+          setMessage(errorMsg);
         }
       })
       .catch(() => {

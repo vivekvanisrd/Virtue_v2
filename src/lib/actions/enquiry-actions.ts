@@ -322,61 +322,124 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
 
         // 4. Atomic "Promotion" Transaction
         const student = await prisma.$transaction(async (tx: any) => {
-            // Find class ID from name (Note: Class is a global model in this system)
-            const classRef = await tx.class.findFirst({
-                where: { name: enquiry.requestedClass }
-            });
+            // Find class & accounts for 2026-27 config
+            const [classRef, activeFY, receivableAccount, incomeAccount, feeStructure] = await Promise.all([
+                  tx.class.findFirst({ where: { name: enquiry.requestedClass } }),
+                  tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
+                  tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } }),
+                  tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } }),
+                  tx.feeStructure.findFirst({ 
+                      where: { schoolId: context.schoolId, class: { name: enquiry.requestedClass } },
+                      include: { components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } } }
+                  })
+            ]);
 
-            // Create Student Profile
+            if (!activeFY || !receivableAccount || !incomeAccount || !feeStructure) {
+                throw new Error("FINANCIAL_CONFIG_ERROR: Required accounts or fee structures missing for conversion.");
+            }
+
+            // A. Create Massive Student Graph
             const newStu = await tx.student.create({
                 data: {
                     registrationId,
                     schoolId: context.schoolId,
                     branchId: enquiry.branchId,
-                    status: "Provisional", // Still provisional until fee is fully reconciled
+                    status: "Provisional",
                     firstName: enquiry.studentFirstName,
                     lastName: enquiry.studentLastName,
+                    middleName: enquiry.studentLastName ? "" : undefined, // Safety
                     phone: enquiry.parentPhone,
                     email: enquiry.parentEmail,
+                    
                     family: {
                       create: {
+                        schoolId: context.schoolId,
+                        branchId: enquiry.branchId,
                         fatherName: enquiry.parentName,
                         fatherPhone: enquiry.parentPhone,
                         fatherEmail: enquiry.parentEmail,
+                        whatsappNumber: enquiry.parentPhone
                       }
                     },
+                    
                     academic: {
                       create: {
-                        school: { connect: { id: context.schoolId } },
-                        branch: { connect: { id: enquiry.branchId || "MAIN" } },
+                        schoolId: context.schoolId,
+                        branchId: enquiry.branchId || "MAIN",
                         academicYear: activeAY.name,
-                        classId: classRef?.id || undefined,
+                        classId: classRef?.id,
                         admissionDate: new Date(),
                         admissionType: "New",
                         boardingType: "Day Scholar"
                       }
                     },
+                    
                     history: {
                         create: {
-                            school: { connect: { id: context.schoolId } },
-                            branch: { connect: { id: enquiry.branchId || "MAIN" } },
-                            academicYear: { connect: { id: activeAY.id } },
-                            class: { connect: { id: classRef?.id || "" } },
+                            id: crypto.randomUUID(),
+                            schoolId: context.schoolId,
+                            branchId: enquiry.branchId || "MAIN",
+                            academicYearId: activeAY.id,
+                            classId: classRef?.id || "",
+                            admissionNumber: null, // Still provisional
+                            studentCode: null,
                             promotionStatus: "New Admission",
-                            admissionDate: new Date()
+                            admissionDate: new Date(),
+                            isGenesis: true
+                        }
+                    },
+
+                    financial: {
+                        create: {
+                            schoolId: context.schoolId,
+                            branchId: enquiry.branchId,
+                            feeStructureId: feeStructure.id,
+                            paymentType: "Term-wise",
+                            tuitionFee: feeStructure.totalAmount,
+                            totalDiscount: Number(enquiry.scholarshipAmount || 0)
                         }
                     }
                 }
             });
 
-            // Update Enquiry Status
+            // B. Migrate Lead Payments to Student Profile
+            await tx.collection.updateMany({
+                where: { studentId: enquiryId, schoolId: context.schoolId },
+                data: { 
+                    studentId: newStu.id, 
+                    admissionId: null // Clear lead reference
+                }
+            });
+
+            // C. Create Ledger Accrual (Journal Entry)
+            const netAnnual = Number(feeStructure.totalAmount) - Number(enquiry.scholarshipAmount || 0);
+
+            await tx.journalEntry.create({
+                data: {
+                    schoolId: context.schoolId,
+                    branchId: enquiry.branchId,
+                    financialYearId: activeFY.id,
+                    entryType: "ADMISSION_ACCRUAL",
+                    totalDebit: netAnnual,
+                    totalCredit: netAnnual,
+                    description: `Conversion Accrual: Lead ${enquiryId} -> Student ${newStu.id}`,
+                    lines: {
+                        create: [
+                            { accountId: receivableAccount.id, debit: netAnnual, credit: 0 },
+                            { accountId: incomeAccount.id, debit: 0, credit: netAnnual }
+                        ]
+                    }
+                }
+            });
+
+            // D. Update Enquiry Status
             await tx.enquiry.update({
                 where: { id: enquiryId },
                 data: { status: "Converted" }
             });
 
             return newStu;
-        });
+        }, { maxWait: 10000, timeout: 30000 });
 
         revalidatePath("/dashboard?tab=students-enquiries");
         revalidatePath("/dashboard?tab=students-all");

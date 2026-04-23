@@ -62,13 +62,19 @@ export async function getAdmissionReferenceData() {
             schoolFound: !!school
         });
 
-        console.log("[DEBUG] Ref Data Success:", {
-            branches: branches.length,
-            academicYears: academicYears.length,
-            classes: classes.length,
-            feeSchedules: feeSchedules.length,
-            schoolFound: !!school
-        });
+        // 🛡️ Raw SQL Fallback: Fetch feeMasters directly to bypass Prisma client schema drift
+        // This ensures that isActive, amount, description etc. are always returned correctly
+        let feeMasters: any[] = [];
+        try {
+            feeMasters = await prisma.$queryRawUnsafe(`
+                SELECT id, name, type, amount, description, "isOneTime", "isRefundable", "accountCode", "isActive"
+                FROM "FeeComponentMaster"
+                WHERE "schoolId" = $1
+                ORDER BY name ASC
+            `, context.schoolId);
+        } catch (e) {
+            console.warn("[REF-DATA] feeMasters raw query failed, using empty array:", e);
+        }
 
         return {
             success: true,
@@ -77,6 +83,7 @@ export async function getAdmissionReferenceData() {
                 academicYears,
                 classes,
                 feeSchedules,
+                feeMasters,
                 schoolName: school?.name || "PaVa-EDUX Academy"
             })
         };
@@ -96,8 +103,9 @@ export async function getSectionsByClass(classId: string) {
             where: { 
                 classId,
                 schoolId: context.schoolId,
-                branchId: context.branchId
+                ...(context.branchId ? { branchId: context.branchId } : {})
             },
+            orderBy: { name: 'asc' }, // Ensure Section A is always [0]
             select: { id: true, name: true }
         });
 

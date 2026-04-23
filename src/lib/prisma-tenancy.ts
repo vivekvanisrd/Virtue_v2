@@ -103,10 +103,14 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                     
                     // 🛡️ LOCK: Fail-Shut Policy (Universal Coverage)
                     if (!rawTenant) {
-                        // 🏛️ RECOVERY HOOK: Check if we are in a trusted transition
-                        if ((args as any)?.where?.id || (args as any)?.where?.schoolId) {
-                            // Silent Warning
+                        // 🏛️ RECOVERY HOOK: Allow session-free access if schoolId is explicitly provided (e.g. Razorpay Callback)
+                        const a = args as any;
+                        const explicitSchoolId = a.where?.schoolId || a.data?.schoolId || (Array.isArray(a.data) ? a.data[0]?.schoolId : null);
+                        
+                        if (explicitSchoolId) {
+                            return query(args); 
                         }
+
                         throw new Error(`SECURITY_VIOLATION: Initialized Fail-Shut. Protected model '${model}' accessed without session.`);
                     }
 
@@ -226,9 +230,15 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                         }
                     }
 
-                    // 🔒 LOCKDOWN: Audit Immutability
-                    if (['ActivityLog', 'FinancialAuditLog'].includes(model)) {
+                    // 🔒 LOCKDOWN: Audit & Financial Immutability
+                    if (['ActivityLog', 'FinancialAuditLog', 'JournalEntry', 'Collection', 'JournalLine'].includes(model)) {
                         if (['update', 'delete', 'updateMany', 'deleteMany', 'upsert'].includes(operation)) {
+                            // Immutability is Absolute for Financial Records
+                            if (['JournalEntry', 'Collection', 'JournalLine'].includes(model)) {
+                                throw new Error(`SECURITY_VIOLATION: NON_EDITABLE_RECORD. Financial transactions are immutable and cannot be modified or removed. Use Reversals for corrections.`);
+                            }
+                            
+                            // Audit logs are read-only for standard institutional roles
                             if (tenant?.role !== 'PLATFORM_ADMIN' && tenant?.role !== 'DEVELOPER') {
                                 throw new Error(`SECURITY_VIOLATION: Forensic audit logs are read-only for ${tenant?.role}.`);
                             }

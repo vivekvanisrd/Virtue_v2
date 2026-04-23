@@ -3,11 +3,13 @@
 import React, { useRef } from "react";
 import { 
   CheckCircle2, Printer, PlusCircle, ArrowLeft, 
-  User, School, Users, MapPin, CreditCard, Shield, Download
+  User, School, Users, MapPin, CreditCard, Shield, Download, ArrowRight, Wallet
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
 import { toPng } from "html-to-image";
+import { useTabs } from "@/context/tab-context";
 
 interface SummaryProps {
   studentData: any;
@@ -16,10 +18,29 @@ interface SummaryProps {
   onReset?: () => void;
   isReviewMode?: boolean;
   onEditStep?: (stepId: number) => void;
+  dbStudentId?: string; // The Actual DB ID for redirection
 }
 
-export function StudentAdmissionSummary({ studentData, admissionId, schoolName, onReset, isReviewMode, onEditStep }: SummaryProps) {
+export function StudentAdmissionSummary({ studentData, admissionId, schoolName, onReset, isReviewMode, onEditStep, dbStudentId }: SummaryProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const { openTab } = useTabs();
+  const router = useRouter();
+
+  const handleProceedToPayment = () => {
+    console.log("[ADMISSION_SUMMARY] Proceeding to Payment Hub. StudentID:", dbStudentId);
+    if (dbStudentId) {
+      openTab({ 
+        id: "fee-collection", 
+        title: "Fee Collection", 
+        icon: Wallet, 
+        component: "Finance", 
+        params: { studentId: dbStudentId } 
+      });
+    } else {
+      console.error("[ADMISSION_SUMMARY] Redirection blocked: dbStudentId is missing.");
+      alert("System Error: Student identity context lost. Please return to the directory.");
+    }
+  };
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -174,24 +195,26 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-foreground leading-none">Admission Successful</h2>
-              <p className="text-xs text-foreground opacity-60 mt-1 uppercase font-bold tracking-tight">Record stored in secure cloud repository</p>
+              <h2 className="text-xl font-black text-foreground leading-none">Provisional Admission Successful</h2>
+              <p className="text-xs text-foreground opacity-60 mt-1 uppercase font-bold tracking-tight">Student saved as provisional • Redirect to Payment Hub to confirm</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+               onClick={handleProceedToPayment}
+               disabled={!dbStudentId}
+               className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 group"
+            >
+               <Wallet className="w-4 h-4" />
+               Proceed to Payment Hub
+               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
             <button
               onClick={handlePrint}
               className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 text-foreground opacity-70 text-xs font-bold rounded-xl transition-all border border-border"
             >
               <Printer className="w-3.5 h-3.5" />
               Print
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-lg hover:shadow-primary/10"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download PDF
             </button>
             <button
               onClick={onReset}
@@ -223,9 +246,9 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
           </div>
           <div className="text-right">
             <span className="block text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">
-              {isReviewMode ? "PRE-ADMISSION SCOPE" : "Registration ID"}
+              {(admissionId?.includes("PROV") || !studentData.admissionNumber) ? "Provisional Tracking ID" : "Official Admission No"}
             </span>
-            <span className="block text-2xl font-black text-primary font-mono">{admissionId || "DRAFT_SCOPE"}</span>
+            <span className="block text-2xl font-black text-emerald-600 font-mono">{admissionId || "DRAFT_SCOPE"}</span>
           </div>
         </div>
 

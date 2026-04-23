@@ -8,6 +8,7 @@ import { Decimal } from "@prisma/client/runtime/library";
  * Server Components and Client Components.
  */
 export function serializeDecimal<T>(data: T): T {
+  if (data === undefined || data === null) return data;
   return JSON.parse(JSON.stringify(data, (key, value) => {
     // Check if the value is a Decimal instance or looks like one
     if (value instanceof Decimal || (value && typeof value === 'object' && value.constructor?.name === 'Decimal')) {

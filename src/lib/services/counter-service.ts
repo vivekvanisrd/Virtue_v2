@@ -45,6 +45,20 @@ export const CounterService = {
   },
 
   /**
+   * sanitizeBranchCode (Rulebook Compliance)
+   * Ensures {SCHOOL}-{BRANCH} format by stripping school prefix if present.
+   * Example: VIVES + VIVESRCB -> RCB -> VIVES-RCB
+   */
+  sanitizeBranchCode(schoolCode: string, branchCode: string): string {
+    const s = schoolCode.toUpperCase();
+    const b = branchCode.toUpperCase();
+    if (b.startsWith(s)) {
+        return b.substring(s.length);
+    }
+    return b;
+  },
+
+  /**
    * generateRegistrationId (Rule 2.1 Golden DNA)
    * Format: {SCH}-{BCODE}-STU-{SEQ_7}
    */
@@ -60,7 +74,8 @@ export const CounterService = {
       type: "REGISTRATION",
       year: "GLOBAL"
     }, tx);
-    return `${params.schoolCode}-${params.branchCode}-STU-${seq.toString().padStart(7, '0')}`;
+    const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
+    return `${params.schoolCode}-${shortBranch}-STU-${seq.toString().padStart(7, '0')}`;
   },
 
   /**
@@ -80,7 +95,8 @@ export const CounterService = {
       type: "STUDENT_ADMISSION",
       year: params.year
     }, tx);
-    return `${params.schoolCode}-${params.branchCode}-${params.year}-STU-${seq.toString().padStart(5, '0')}`;
+    const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
+    return `${params.schoolCode}-${shortBranch}-${params.year}-STU-${seq.toString().padStart(5, '0')}`;
   },
 
   /**
@@ -100,7 +116,8 @@ export const CounterService = {
       type: "RECEIPT",
       year: params.year
     }, tx);
-    return `${params.schoolCode}-${params.branchCode}-${params.year}-REC-${seq.toString().padStart(5, '0')}`;
+    const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
+    return `${params.schoolCode}-${shortBranch}-${params.year}-REC-${seq.toString().padStart(5, '0')}`;
   },
 
   /**
@@ -131,7 +148,8 @@ export const CounterService = {
       year: "GLOBAL" 
     }, tx);
 
-    return `${params.schoolCode}-${params.branchCode}-${shortRole}-${seq.toString().padStart(4, '0')}`;
+    const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
+    return `${params.schoolCode}-${shortBranch}-${shortRole}-${seq.toString().padStart(4, '0')}`;
   },
 
   /**
@@ -159,18 +177,20 @@ export const CounterService = {
       type: "STUDENT_CODE",
       year: params.year
     }, tx);
-    return `${params.schoolCode}-${params.branchCode}-${params.year}-SID-${seq.toString().padStart(6, '0')}`;
+    const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
+    return `${params.schoolCode}-${shortBranch}-${params.year}-SID-${seq.toString().padStart(6, '0')}`;
   },
 
   /**
    * generateProvisionalId (Rule 2.1 Golden DNA)
-   * Format: {SCH}-{BCODE}-PRV-{SEQ_6}
+   * Format: {SCH}-{BCODE}-{YEAR}-PROV-{SEQ_6}
    */
   async generateProvisionalId(params: {
     schoolId: string;
     schoolCode: string;
     branchId: string;
     branchCode: string;
+    year?: string;
   }, tx?: any): Promise<string> {
     const seq = await this.getNextSequence({
       schoolId: params.schoolId,
@@ -178,6 +198,8 @@ export const CounterService = {
       type: "PROVISIONAL_ID",
       year: "GLOBAL"
     }, tx);
-    return `${params.schoolCode}-${params.branchCode}-PRV-${seq.toString().padStart(6, '0')}`;
+    const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
+    const yearPart = params.year ? `-${params.year}` : "";
+    return `${params.schoolCode}-${shortBranch}${yearPart}-PROV-${seq.toString().padStart(5, '0')}`;
   }
 };

@@ -85,6 +85,7 @@ const menuItems: MenuItem[] = [
     subItems: [
       { id: "fee-collection", name: "Fee Collection", component: "Finance" },
       { id: "fee-manager", name: "Fee Management", component: "Finance" },
+      { id: "fee-master-registry", name: "Institutional Fee Registry", component: "Finance", requiredRole: ROLES.PRINCIPAL },
       { id: "finance-oversight", name: "Financial Oversight", component: "Finance" },
       { id: "finance-discounts", name: "Discount Vault", component: "Finance" },
       { id: "payment-requests", name: "Payment Requests", component: "Finance" },

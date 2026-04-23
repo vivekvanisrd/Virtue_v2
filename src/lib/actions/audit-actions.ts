@@ -3,6 +3,8 @@
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "../auth/backbone";
 import { revalidatePath } from "next/cache";
+import { checkCapability } from "../auth/rbac";
+import { ST_CANCELLED } from "../constants/admission-statuses";
 
 /**
  * logFinancialAction
@@ -96,5 +98,73 @@ export async function getRecentActivity(limit: number = 100) {
     return { success: true, data: logs };
   } catch (error: any) {
     return { success: false, error: "Activity Feed Failure: " + error.message };
+  }
+}
+
+/**
+ * 📦 archiveStudentAction
+ * 
+ * Capability Restricted: ARCHIVE_STUDENT
+ * Performs a 'Soft Delete' on a student record, moving them to the Audit Bin.
+ */
+export async function archiveStudentAction(studentId: string, reason: string) {
+  try {
+    await checkCapability('ARCHIVE_STUDENT');
+    const identity = await getSovereignIdentity();
+    
+    const result = await prisma.student.update({
+      where: { id: studentId, schoolId: identity!.schoolId },
+      data: {
+        isDeleted: true,
+        status: ST_CANCELLED, // Record cancellation as the archive reason
+        updatedAt: new Date()
+      }
+    });
+
+    // 📝 AUDIT LOG: Archival Event
+    await prisma.activityLog.create({
+      data: {
+        schoolId: identity!.schoolId,
+        staffId: identity!.staffId,
+        action: "STUDENT_ARCHIVED",
+        entityType: "STUDENT",
+        entityId: studentId,
+        metadata: { reason, timestamp: new Date().toISOString() }
+      }
+    });
+
+    revalidatePath("/admin/students");
+    return { success: true, data: result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 🕵️ getArchivedRegistryAction
+ * 
+ * Capability Restricted: VIEW_AUDIT_BIN
+ * Returns the hidden 'Soft-Deleted' student list from the registry for audit.
+ */
+export async function getArchivedRegistryAction() {
+  try {
+    await checkCapability('VIEW_AUDIT_BIN');
+    const identity = await getSovereignIdentity();
+
+    const archived = await prisma.student.findMany({
+      where: {
+        schoolId: identity!.schoolId,
+        isDeleted: true
+      },
+      include: {
+        academic: { include: { class: true } },
+        family: true
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    return { success: true, data: archived };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }

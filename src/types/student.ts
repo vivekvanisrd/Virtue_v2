@@ -34,6 +34,8 @@ export const studentAdmissionSchema = z.object({
   bplStatus: z.boolean().default(false),
   disabilityType: z.string().nullable().optional().transform(toTitleCase),
   email: globalEmailSchema.nullable().optional().or(z.literal("")).transform(toLowerCase),
+  // Student's own contact (used for SMS alerts, parent lookup)
+  phone: globalPhoneSchema.nullable().optional().or(z.literal("")).transform(trim),
 
   // Academic
   admissionNumber: z.string().nullable().optional().transform(toUpperCase),
@@ -49,6 +51,7 @@ export const studentAdmissionSchema = z.object({
   apaarId: z.string().nullable().optional().transform(toUpperCase),
   samagraId: z.string().nullable().optional().transform(toUpperCase),
   stsId: z.string().nullable().optional().transform(toUpperCase),
+  tcNumber: z.string().nullable().optional().transform(toUpperCase),
   admissionType: z.string().default("New").transform(toTitleCase),
   boardingType: z.string().default("Day Scholar").transform(toTitleCase),
   group: z.string().nullable().optional().transform(toUpperCase),
@@ -68,7 +71,11 @@ export const studentAdmissionSchema = z.object({
   motherEmail: globalEmailSchema.nullable().optional().or(z.literal("")).transform(toLowerCase),
   motherOccupation: z.string().nullable().optional().transform(toTitleCase),
   motherQualification: z.string().nullable().optional().transform(toTitleCase),
-  motherAadhaar: globalAadhaarSchema.nullable().optional().or(z.literal("")).transform(trim),
+  // Mother's Aadhaar is MANDATORY per institution policy
+  motherAadhaar: z.string()
+    .trim()
+    .min(1, "Mother's Aadhaar is required")
+    .regex(/^\d{12}$/, "Mother's Aadhaar must be exactly 12 digits"),
   whatsappNumber: globalPhoneSchema.nullable().optional().or(z.literal("")).transform(trim),
   emergencyContactName: z.string().nullable().optional().transform(toTitleCase),
   emergencyContactPhone: globalPhoneSchema.nullable().optional().or(z.literal("")).transform(trim),
@@ -92,6 +99,9 @@ export const studentAdmissionSchema = z.object({
   discountReason1: z.string().nullable().optional().transform(toTitleCase),
   discountId2: z.string().nullable().optional(),
   discountReason2: z.string().nullable().optional().transform(toTitleCase),
+
+  // 💎 Dynamic Mastery Mapping (Zod v4: record requires key + value schema)
+  auxiliaryFields: z.record(z.string(), z.coerce.number()).optional(),
 
   // Transport
   transportRequired: z.boolean().default(false),

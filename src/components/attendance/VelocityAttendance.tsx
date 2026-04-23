@@ -434,13 +434,13 @@ function SwipeCard({ student, onMark, openTab }: { student: Student, onMark: (s:
           <h3 
             onClick={() => openTab({
                id: `student-profile-${student.id}`,
-               title: `${student.firstName} Profile`,
+               title: `${student.firstName} [${student.studentCode}] Profile`,
                component: "Students",
                params: { studentId: student.id }
             })}
             className="text-3xl font-black tracking-tighter mb-2 underline decoration-blue-500/20 underline-offset-8 decoration-4 cursor-pointer hover:text-blue-500 transition-all"
           >
-            {student.firstName} {student.lastName}
+            {student.firstName} {student.lastName} <span className="text-blue-500/40">[{student.studentCode}]</span>
           </h3>
           <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em]">{student.studentCode}</p>
        </div>
@@ -490,7 +490,7 @@ function GridCell({ student, status, onClick, openTab }: { student: Student, sta
                e.stopPropagation();
                openTab({
                   id: `student-profile-${student.id}`,
-                  title: `${student.firstName} Profile`,
+                  title: `${student.firstName} [${student.studentCode}] Profile`,
                   component: "Students",
                   params: { studentId: student.id }
                });

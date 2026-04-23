@@ -56,10 +56,12 @@ export async function createPaymentLinkAction(details: {
         email: details.email || undefined,
         contact: details.contact || undefined
       },
+      reference_id: details.studentId,
       notify: {
         sms: true,
         email: true
       },
+
       reminder_enable: true,
       notes: {
         studentId: details.studentId,

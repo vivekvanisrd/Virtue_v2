@@ -135,7 +135,7 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                              <p 
                                 onClick={() => openTab({ 
                                     id: `staff-profile-${employee.id}`, 
-                                    title: `${employee.firstName} Profile`, 
+                                    title: `${employee.firstName} [${employee.staffCode}]`, 
                                     component: "Staff", 
                                     params: { staffId: employee.id, forceEdit: true } 
                                 })}
@@ -155,7 +155,7 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                                     e.stopPropagation();
                                     openTab({
                                        id: `staff-financials-${employee.id}`,
-                                       title: `${employee.firstName} Ledger`,
+                                       title: `${employee.firstName} [${employee.staffCode}] Ledger`,
                                        component: "Staff",
                                        params: { staffId: employee.id, view: "financials" }
                                     });

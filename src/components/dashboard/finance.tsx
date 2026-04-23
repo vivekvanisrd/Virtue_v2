@@ -57,7 +57,7 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
 
   const handleOpenProfile = (studentId: string, name: string) => {
     openTab({
-       id: `student-profile-${studentId}`,
+       id: "student-profile",
        title: name,
        icon: User,
        component: "Students",
@@ -66,11 +66,16 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
   };
 
   // Detect if we should FORCE the Fee Collection form (DeepLink Mode)
-  const isDirectCollection = tabId === "fee-collection" || params?.studentId;
+  const isDirectCollection = tabId === "fee-collection" || tabId === "fee-collection-v2" || params?.studentId;
 
   if (isDirectCollection) {
     const activeStudentId = params?.studentId;
-    return <FeeCollectionForm key={activeStudentId || "fee-search"} params={params} />;
+    
+    return (
+      <div className="space-y-4">
+        <FeeCollectionForm key={activeStudentId || "fee-search"} params={params} />
+      </div>
+    );
   }
 
   if (tabId === "fee-manager") {

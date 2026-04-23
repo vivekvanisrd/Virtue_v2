@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
 import { calculateTermBreakdown } from "../utils/fee-utils";
 import { serializeDecimal } from "../utils/serialization";
+import { randomUUID } from "crypto";
 
 
 /**
@@ -22,7 +23,7 @@ export async function getFeeStructures() {
                 academicYear: true,
                 components: {
                    where: { schoolId: context.schoolId }, // TENANCY CHECK
-                   include: { masterComponent: true }
+                   include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } }
                 }
             },
             orderBy: { academicYear: { name: 'desc' } }
@@ -40,14 +41,49 @@ export async function getFeeStructures() {
 export async function getFeeComponentMaster() {
   try {
       const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
-      const components = await prisma.feeComponentMaster.findMany({
-          where: { schoolId: context.schoolId },
-          orderBy: { name: "asc" }
-      });
+      if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+      const context = identity;
+
+      // 🛡️ Sovereign Hub v2.5: Robust Select with Raw Fallback
+      // This allows the registry to function even if the Prisma client is out of sync with the DB columns.
+      let components;
+      try {
+          components = await prisma.feeComponentMaster.findMany({
+              where: { 
+                  schoolId: context.schoolId,
+                  NOT: {
+                    OR: [
+                      { name: { contains: "Tuition", mode: "insensitive" } },
+                      { type: "CORE" } // Usually Tuition is the only CORE fee in some schemas
+                    ]
+                  }
+              },
+              orderBy: { name: "asc" },
+              select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  amount: true,
+                  description: true,
+                  isOneTime: true,
+                  isRefundable: true,
+                  accountCode: true,
+                  isActive: true
+              }
+          });
+      } catch (prismaError: any) {
+          console.error("[REGISTRY FALLBACK] Schema drift detected, switching to Raw Pulse:", prismaError.message);
+          components = await prisma.$queryRawUnsafe(`
+            SELECT id, name, type, amount, description, "isOneTime", "isRefundable", "accountCode", "isActive"
+            FROM "FeeComponentMaster"
+            WHERE "schoolId" = $1
+            ORDER BY name ASC
+          `, context.schoolId);
+      }
+
       return { success: true, data: serializeDecimal(components) };
   } catch (error: any) {
+      console.error("[REGISTRY FATAL]", error);
       return { success: false, error: error.message };
   }
 }
@@ -59,39 +95,142 @@ export async function upsertFeeComponentMaster(data: {
   id?: string;
   name: string;
   type: "CORE" | "ANCILLARY" | "DEPOSIT" | "PENALTY";
+  amount?: number;
+  description?: string;
   isOneTime: boolean;
   isRefundable: boolean;
   accountCode?: string;
+  isActive?: boolean;
 }) {
   try {
       const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
-      const component = await prisma.feeComponentMaster.upsert({
-          where: { 
-            id: data.id || "new-component",
-            schoolId: context.schoolId // TENANCY LOCK
-          },
-          update: {
-              name: data.name,
-              type: data.type,
-              isOneTime: data.isOneTime,
-              isRefundable: data.isRefundable,
-              accountCode: data.accountCode
-          },
-          create: {
-              schoolId: context.schoolId,
-              name: data.name,
-              type: data.type,
-              isOneTime: data.isOneTime,
-              isRefundable: data.isRefundable,
-              accountCode: data.accountCode
-          }
-      });
-      return { success: true, data: serializeDecimal(component) };
+
+    const { isPrincipalOrHigher } = await import("@/lib/utils/rbac");
+    if (!isPrincipalOrHigher(context.role)) throw new Error("UNAUTHORIZED: Principal access required for registry updates.");
+
+    // 🛡️ HARDENED BLOCK: Prevent Tuition Fee from entering the Institutional Registry
+    if (data.name.toLowerCase().includes("tuition")) {
+        throw new Error("POLICY_VIOLATION: Tuition Fees must be managed via the 'Class Fee Structure' module to ensure grade-wise pricing accuracy. This registry is for ancillary fees only.");
+    }
+
+    // 🛡️ Sovereign Raw Persistence: Bypassing Prisma Client Sync Issues
+    const targetId = data.id && data.id !== "new-component" ? data.id : randomUUID();
+    
+    try {
+        const rawResult = await prisma.$queryRawUnsafe(`
+            INSERT INTO "FeeComponentMaster" (
+                id, "schoolId", "name", "type", "amount", "description", 
+                "isOneTime", "isRefundable", "accountCode", "isActive", 
+                "dnaVersion", "isGenesis"
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'v1', false
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                "name" = EXCLUDED."name",
+                "type" = EXCLUDED."type",
+                "amount" = EXCLUDED."amount",
+                "description" = EXCLUDED."description",
+                "isOneTime" = EXCLUDED."isOneTime",
+                "isRefundable" = EXCLUDED."isRefundable",
+                "accountCode" = EXCLUDED."accountCode",
+                "isActive" = EXCLUDED."isActive"
+            RETURNING id, name, type, amount, description, "isOneTime", "isRefundable", "accountCode", "isActive", "schoolId"
+        `, 
+            targetId, 
+            context.schoolId, 
+            data.name, 
+            data.type, 
+            data.amount || 0, 
+            data.description || "", 
+            data.isOneTime, 
+            data.isRefundable, 
+            data.accountCode || "", 
+            data.isActive ?? true
+        );
+
+        const component = (rawResult as any)[0];
+        revalidatePath("/dashboard/finance/fees");
+        return { success: true, data: serializeDecimal(component) };
+    } catch (sqlError: any) {
+        console.error("[UPSERT RAW FATAL]", sqlError);
+        return { success: false, error: "Database Persistence Failed: " + sqlError.message };
+    }
   } catch (error: any) {
       return { success: false, error: error.message };
   }
+}
+
+/**
+ * deleteFeeComponentMasterAction
+ * SAFE DELETE: Prevents deletion if the component is already linked to students or templates.
+ */
+export async function deleteFeeComponentMasterAction(id: string) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+        const context = identity;
+
+        // 🛡️ ROLE GATE: Principal or Owner only
+        const { isPrincipalOrHigher } = await import("@/lib/utils/rbac");
+        if (!isPrincipalOrHigher(context.role)) throw new Error("UNAUTHORIZED: Principal access required.");
+
+        // Check for student assignments
+        const usageCount = await prisma.studentFeeComponent.count({
+            where: { componentId: id, schoolId: context.schoolId }
+        });
+
+        if (usageCount > 0) {
+            throw new Error(`Component in use: ${usageCount} student records linked. Deletion blocked.`);
+        }
+
+        // Check for template assignments
+        const templateUsage = await prisma.feeTemplateComponent.count({
+            where: { componentId: id, schoolId: context.schoolId }
+        });
+
+        if (templateUsage > 0) {
+            throw new Error(`Component in use: ${templateUsage} fee structures linked. Deletion blocked.`);
+        }
+
+        await prisma.feeComponentMaster.delete({
+            where: { id, schoolId: context.schoolId }
+        });
+
+        revalidatePath("/dashboard/finance/fees");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * toggleFeeComponentStatusAction
+ * Toggles isActive status of a fee component master (Show/Hide from Admission Form).
+ */
+export async function toggleFeeComponentStatusAction(id: string, newStatus: boolean) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+        const context = identity;
+
+        const { isPrincipalOrHigher } = await import("@/lib/utils/rbac");
+        if (!isPrincipalOrHigher(context.role)) throw new Error("UNAUTHORIZED: Principal access required.");
+
+        // Use raw SQL to bypass Prisma client sync issues
+        await prisma.$executeRawUnsafe(
+            `UPDATE "FeeComponentMaster" SET "isActive" = $1 WHERE id = $2 AND "schoolId" = $3`,
+            newStatus,
+            id,
+            context.schoolId
+        );
+
+        revalidatePath("/dashboard/finance/fees");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
 }
 
 /**

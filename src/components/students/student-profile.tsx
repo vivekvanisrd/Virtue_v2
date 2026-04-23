@@ -5,10 +5,9 @@ import {
   User, School, Users, MapPin, CreditCard, Info, 
   Heart, Building, ShieldCheck, ShieldAlert,
   ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download,
-  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit
+  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit, Zap, Plus
 } from "lucide-react";
-import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit, confirmStudentAdmission } from "@/lib/actions/student-actions";
-import { requestReceiptVoid } from "@/lib/actions/finance-actions";
+import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit, promoteStudentAction } from "@/lib/actions/student-actions";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
 import { TCTemplate } from "./tc-template";
@@ -127,6 +126,21 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     );
   }
 
+  // ─── Sovereign Analytics (Real-time Audit) ───
+  const totalAnnualFee = Number(student?.financial?.annualTuition || 0);
+  const totalPaid = (student?.collections || []).reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0);
+  const totalDue = Math.max(0, totalAnnualFee - totalPaid);
+  const paidPercent = totalAnnualFee > 0 ? (totalPaid / totalAnnualFee) * 100 : 0;
+
+  const linkedIds = [
+    student.aadhaarNumber,
+    student.academic?.penNumber,
+    student.academic?.stsId,
+    student.academic?.apaarId,
+    student.academic?.samagraId
+  ].filter(id => !!id).length;
+  const totalPossibleIds = 5;
+
   const tabs = [
     { id: "overview", label: "Overview", icon: User },
     { id: "academics", label: "Academics", icon: School },
@@ -137,11 +151,14 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     { id: "health", label: "Health", icon: Heart },
     { id: "transport", label: "Transport", icon: TramFront },
     { id: "documents", label: "Documents", icon: FileText },
+    { id: "lifecycle", label: "Lifecycle", icon: Clock },
     { id: "exit", label: "TC/Exit", icon: ExternalLink },
   ];
-
-  // ─── Mandatory Data Guard (Lockdown Mode) ───
-  const isDataIncomplete = student.status === "Active" && (
+  const status = student.status?.toUpperCase() || "";
+  const isActive = status === "ACTIVE" || status === "CONFIRMED";
+  const isProvisional = status === "PROVISIONAL";
+  
+  const isDataIncomplete = (isActive || isProvisional) && (
     !student.aadhaarNumber || 
     !student.academic?.apaarId || 
     !student.family?.fatherPhone
@@ -160,15 +177,17 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
           </button>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-primary flex items-center justify-center text-foreground text-xl font-black shadow-lg shadow-primary/20">
-              {student.firstName[0]}{student.lastName?.[0]}
+              {student.firstName?.[0] || 'S'}{student.lastName?.[0] || ''}
             </div>
             <div>
               <h2 className="text-xl font-black text-foreground tracking-tight leading-none mb-1.5 flex items-center gap-2">
                 {student.firstName} {student.lastName}
-                {student.status === "Active" ? (
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest">Admitted</span>
+                {status === "CONFIRMED" || status === "ACTIVE" ? (
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest border border-emerald-200">Confirmed</span>
+                ) : isProvisional ? (
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest border border-amber-200 animate-pulse">Provisional</span>
                 ) : (
-                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-black uppercase tracking-widest animate-pulse">Provisional</span>
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-black uppercase tracking-widest border border-slate-200">{student.status}</span>
                 )}
                 {student.collections?.length > 0 ? (
                   <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
@@ -181,26 +200,51 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 )}
               </h2>
               <p className="text-xs font-bold text-foreground opacity-60 tracking-wide uppercase">
-                {student.status === "Active" ? "Admission ID" : "Provisional ID"}: <span className="text-primary font-black">{student.admissionNumber || student.registrationId}</span>
+                {isActive ? "Admission ID" : "Provisional ID"}: <span className="text-primary font-black">{student.admissionNumber || student.registrationId}</span>
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {student.status === "Provisional" && (
+          {isProvisional && (
             <button 
               onClick={async () => {
-                if (!confirm(`Are you sure you want to officially CONFIRM the admission for ${student.firstName}? This will generate a formal Admission Number and update the Ledger.`)) return;
-                setIsUpdating(true);
-                const res = await confirmStudentAdmission(student.id);
-                if (res.success) {
-                  alert("Admission Confirmed Successfully! ID Upgraded.");
-                  window.location.reload();
-                } else {
-                  alert("Confirmation Failed: " + res.error);
+                const totalAnnual = Number(student?.financial?.annualTuition || 0);
+                const totalPaid = (student?.collections || []).reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0);
+                const term1Req = Math.min(
+                  Number(student?.financial?.term1Amount || (totalAnnual * 0.5)),
+                  (totalAnnual * 0.5)
+                ) || (totalAnnual * 0.5);
+                const isFinanced = totalPaid >= term1Req;
+                const missingDocs = [];
+                if (!student.aadhaarNumber) missingDocs.push("Aadhaar Number");
+                if (!student.dob) missingDocs.push("Date of Birth");
+                
+                let message = `Are you sure you want to officially CONFIRM the admission for ${student.firstName}?\n\n`;
+                if (!isFinanced) message += `⚠️ FINANCIAL WARNING: Term-1 not fully cleared (Paid: ₹${totalPaid.toLocaleString()} / Req: ₹${term1Req.toLocaleString()}).\n`;
+                if (missingDocs.length > 0) message += `⚠️ COMPLIANCE WARNING: Missing ${missingDocs.join(", ")}.\n`;
+                
+                if (!isFinanced || missingDocs.length > 0) {
+                  message += `\nThis will require a FORCE confirmation. Continue?`;
                 }
-                setIsUpdating(false);
+
+                if (!confirm(message)) return;
+                
+                setIsUpdating(true);
+                try {
+                  const res = await promoteStudentAction(student.id, !isFinanced || missingDocs.length > 0);
+                  if (res.success) {
+                    alert("Admission Confirmed Successfully! Identity Elevated to Official Status.");
+                    window.location.reload();
+                  } else {
+                    alert("Confirmation Blocked: " + res.error);
+                  }
+                } catch (err: any) {
+                  alert("Critical System Error: " + err.message);
+                } finally {
+                  setIsUpdating(false);
+                }
               }}
               disabled={isUpdating}
               className="flex items-center gap-1.5 px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-50"
@@ -211,8 +255,8 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
           )}
           <button 
             onClick={() => openTab({ 
-              id: `fee-collection-${student.id}`, 
-              title: `Fees: ${student.firstName}`, 
+              id: "fee-collection", 
+              title: "Fee Collection", 
               icon: Wallet, 
               component: "Finance", 
               params: { studentId: student.id } 
@@ -268,7 +312,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
       </div>
 
       {/* ─── Content Area ─── */}
-      <div className="grid grid-cols-12 gap-4 h-[500px] relative">
+      <div className="grid grid-cols-12 gap-4 h-[650px] relative">
         
         {/* LOCKDOWN OVERLAY */}
         {isDataIncomplete && !isEditing && (
@@ -308,7 +352,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             <span className="text-[10px] font-bold text-foreground opacity-50 uppercase tracking-tighter italic">Official Records • Last updated today</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="flex-1 p-4 overflow-y-auto no-scrollbar">
             {activeTab === "overview" && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -319,8 +363,12 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   </div>
                   <div className="bg-muted/50 p-3 rounded-xl border border-border">
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Attendance</p>
-                    <p className="text-xl font-black text-emerald-600">92.4%</p>
-                    <p className="text-[10px] font-bold text-emerald-600/70 mt-1 uppercase">Above Avg</p>
+                    <p className={cn("text-xl font-black", student.attendance?.length > 0 ? "text-emerald-600" : "text-slate-400")}>
+                        {student.attendance?.length > 0 ? "92.4%" : "No History"}
+                    </p>
+                    <p className="text-[10px] font-bold text-foreground/40 mt-1 uppercase">
+                        {student.attendance?.length > 0 ? "Above Avg" : "Registry Empty"}
+                    </p>
                   </div>
                   <button 
                     onClick={() => openTab({ 
@@ -334,15 +382,21 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   >
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Fee Status</p>
                     <div className="flex items-center justify-between">
-                      <p className="text-xl font-black text-orange-600">Pending</p>
+                      <p className={cn("text-xl font-black", totalDue > 0 ? "text-orange-600" : "text-emerald-600")}>
+                          {totalDue > 0 ? "Pending" : "Cleared"}
+                      </p>
                       <Wallet className="w-4 h-4 text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <p className="text-[10px] font-bold text-orange-600/70 mt-1 uppercase">Direct Collect</p>
+                    <p className="text-[10px] font-bold text-foreground/40 mt-1 uppercase">
+                        {totalDue > 0 ? `₹${totalDue.toLocaleString()} Due` : "No Outstanding"}
+                    </p>
                   </button>
                   <div className="bg-muted/50 p-3 rounded-xl border border-border">
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Govt IDs</p>
-                    <p className="text-xl font-black text-indigo-600">4/4</p>
-                    <p className="text-[10px] font-bold text-indigo-600/70 mt-1 uppercase">Linked</p>
+                    <p className="text-xl font-black text-indigo-600">{linkedIds}/{totalPossibleIds}</p>
+                    <p className="text-[10px] font-bold text-indigo-600/70 mt-1 uppercase">
+                        {linkedIds === totalPossibleIds ? "Fully Linked" : "Incomplete"}
+                    </p>
                   </div>
                 </div>
 
@@ -709,7 +763,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             )}
 
             {activeTab === "financial" && (
-              <div className="animate-in fade-in zoom-in-95 duration-500 h-full overflow-y-auto custom-scrollbar">
+              <div className="animate-in fade-in zoom-in-95 duration-500">
                 <StudentFinancialHub studentId={studentId} />
               </div>
             )}
@@ -901,6 +955,42 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 </div>
               </div>
             )}
+            
+            {activeTab === "lifecycle" && (
+              <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-foreground opacity-40 uppercase tracking-[0.2em]">Sovereign Lifecycle Audit</h4>
+                    <span className="text-[10px] font-bold text-primary underline underline-offset-4">Auto-Generated by Ledger Sentinel</span>
+                </div>
+
+                <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+                  {(student.activityLogs || []).length > 0 ? (
+                    student.activityLogs.map((log: any, idx: number) => (
+                      <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-100 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                          <Clock className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
+                          <div className="flex items-center justify-between space-x-2 mb-1">
+                            <div className="font-black text-slate-900 uppercase text-[10px] tracking-widest">{log.action.replace(/_/g, ' ')}</div>
+                            <time className="font-medium text-slate-500 text-[10px] italic">{new Date(log.createdAt).toLocaleDateString()}</time>
+                          </div>
+                          <div className="text-slate-500 text-[11px] leading-relaxed">
+                            {log.metadata?.trigger === "THRESHOLD_REACHED" ? (
+                                <span>Promoted to <b>{log.metadata.newStatus}</b> after clearing milestone of ₹{log.metadata.threshold}.</span>
+                            ) : (
+                                <span>Institutional event recorded by <b>{log.metadata?.performedBy || "System System"}</b>.</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 opacity-30 italic text-sm">No lifecycle events recorded yet.</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -920,6 +1010,16 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   <span className="text-[10px] font-black text-foreground opacity-70 uppercase tracking-tighter text-left leading-none">{action.label}</span>
                 </button>
               ))}
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('v2-open-opt-in', { detail: { studentId } }))}
+                className="col-span-2 p-4 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-700 transition-all flex items-center justify-between group shadow-lg shadow-slate-900/10"
+              >
+                <div className="flex items-center gap-3">
+                   <Zap className="w-5 h-5 text-amber-400 animate-pulse" />
+                   <span className="text-[10px] font-black text-white uppercase tracking-widest">Assign Master Fees</span>
+                </div>
+                <Plus className="w-4 h-4 text-white/40 group-hover:rotate-90 transition-transform" />
+              </button>
             </div>
           </div>
 
@@ -928,17 +1028,19 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             <div className="relative z-10">
               <h4 className="text-[10px] font-black text-foreground/40 uppercase tracking-widest mb-6">Financial Snapshot</h4>
               <div className="space-y-4">
-                 <div className="flex justify-between items-end">
+                  <div className="flex justify-between items-end">
                     <p className="text-[10px] font-black text-foreground/60 uppercase tracking-widest">Annual Fee</p>
-                    <p className="text-lg font-black text-foreground">₹{student.financial?.totalAnnualFee || "45,000"}</p>
-                 </div>
-                 <div className="w-full h-1.5 bg-background/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary w-2/3" />
-                 </div>
-                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-foreground/40">Paid: ₹30,000</span>
-                    <span className="text-orange-400">Due: ₹15,000</span>
-                 </div>
+                    <p className="text-lg font-black text-foreground">₹{totalAnnualFee.toLocaleString()}</p>
+                  </div>
+                  <div className="w-full h-1.5 bg-background/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${paidPercent}%` }} />
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-foreground/40">Paid: ₹{totalPaid.toLocaleString()}</span>
+                    <span className={cn(totalDue > 0 ? "text-orange-400" : "text-emerald-500")}>
+                        {totalDue > 0 ? `Due: ₹${totalDue.toLocaleString()}` : "Fully Cleared"}
+                    </span>
+                  </div>
 
                  <div className="pt-4 border-t border-white/10 mt-4 space-y-2">
                     <p className="text-[10px] font-bold text-foreground/30 uppercase tracking-widest italic leading-relaxed">

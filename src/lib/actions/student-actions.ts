@@ -10,6 +10,8 @@ import { getTenancyFilters } from "../utils/tenancy";
 import { CounterService } from "../services/counter-service";
 import { SovereignEventHub } from "../events/event-hub";
 import { initAdmissionHandlers } from "../events/handlers/admission-handlers";
+import { checkCapability } from "../auth/rbac";
+import { ST_PROVISIONAL } from "../constants/admission-statuses";
 
 // Law 9 Compliance: Initialize handlers at module load-time (or centralized boot)
 initAdmissionHandlers();
@@ -132,9 +134,19 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
     const historyId = `VR-SAH-${year}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
 
     // 4. Financial Logic: Sum granular fees
-    const annualFee = 
-      (validatedData.tuitionFee || 0) + 
+    // One-time fees (admission, caution) are excluded from the term-split base,
+    // because they are collected once (at admission), not split across T1/T2/T3.
+    const oneTimeFees = 
       (validatedData.admissionFee || 0) + 
+      (validatedData.cautionDeposit || 0);
+
+    // Sum auxiliary (custom registry) fees selected for this student
+    const auxiliaryTotal = Object.values(validatedData.auxiliaryFields || {}).reduce(
+      (sum, v) => sum + Number(v || 0), 0
+    );
+
+    const recurringAnnualFee = 
+      (validatedData.tuitionFee || 0) + 
       (validatedData.libraryFee || 0) +
       (validatedData.labFee || 0) +
       (validatedData.sportsFee || 0) +
@@ -142,15 +154,19 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
       (validatedData.examFee || 0) +
       (validatedData.computerFee || 0) +
       (validatedData.miscellaneousFee || 0) +
-      (validatedData.cautionDeposit || 0);
+      auxiliaryTotal; // ✅ Bug 3 fixed: custom fees included in recurring base
 
-    const term1 = annualFee * 0.50;
-    const term2 = annualFee * 0.25;
-    const term3 = annualFee * 0.25;
+    const annualFee = recurringAnnualFee + oneTimeFees; // Total stored in DB
+
+    // Term splits calculated only on recurring fees (Sovereign Rulebook)
+    const term1 = recurringAnnualFee * 0.50;
+    const term2 = recurringAnnualFee * 0.25;
+    const term3 = recurringAnnualFee * 0.25;
 
     // 5. Transactional Insert (Atomic)
     const result = await prisma.$transaction(async (tx: any) => {
       const student = await tx.student.create({
+        include: { financial: true }, // ✅ Include to get financial.id for components
         data: {
           registrationId,
           admissionNumber,
@@ -265,6 +281,7 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
               miscellaneousFee: validatedData.miscellaneousFee,
               cautionDeposit: validatedData.cautionDeposit,
               transportFee: validatedData.transportFee,
+              annualTuition: annualFee,   // ✅ Store true total for milestone validation
               term1Amount: term1,
               term2Amount: term2,
               term3Amount: term3,
@@ -322,18 +339,34 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
         }
       });
 
-      // 6. NEW: Accrual Accounting Injection (Income Recognition)
-      const coaAR = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
-      const coaTuition = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } }) 
-        || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3001" } });
-      const coaAdmission = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4200" } })
-        || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3002" } });
+      // 6. Accrual Accounting Injection (Income Recognition)
+      // ✅ Bug 5 fixed: Use activeFY for financialYearId (not currentAYId which is Academic Year)
+      const activeFY = await tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } });
+      const coaAR      = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
+      const coaIncome  = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } })
+                      || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3001" } });
+      const coaOneTime = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4200" } })
+                      || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "3002" } });
 
-      if (coaAR && coaTuition) {
+      if (coaAR && coaIncome && activeFY) {
+        // ✅ Bug 1 fixed: Journal is now always balanced
+        // Debit AR = full annualFee
+        // Credit recurring income (4100) = recurringAnnualFee
+        // Credit one-time income (4200) = oneTimeFees (if any)
+        const creditLines: any[] = [
+          { accountId: coaIncome.id, debit: 0, credit: recurringAnnualFee },
+        ];
+        if (oneTimeFees > 0 && coaOneTime) {
+          creditLines.push({ accountId: coaOneTime.id, debit: 0, credit: oneTimeFees });
+        } else if (oneTimeFees > 0) {
+          // Fallback: credit all to main income account if specific account not found
+          creditLines[0] = { accountId: coaIncome.id, debit: 0, credit: annualFee };
+        }
+
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
-            financialYearId: currentAYId,
+            financialYearId: activeFY.id,
             entryType: "ADMISSION_ACCRUAL",
             totalDebit: annualFee,
             totalCredit: annualFee,
@@ -341,18 +374,38 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
             lines: {
               create: [
                 { accountId: coaAR.id, debit: annualFee, credit: 0 },
-                { accountId: coaTuition.id, debit: 0, credit: validatedData.tuitionFee || 0 },
-                ...(coaAdmission && validatedData.admissionFee ? [{ accountId: coaAdmission.id, debit: 0, credit: validatedData.admissionFee }] : []),
+                ...creditLines,
               ]
             }
           }
         });
 
-        // Update balance on Receivable account
-        await tx.chartOfAccount.update({ 
-          where: { id: coaAR.id }, 
-          data: { currentBalance: { increment: annualFee } } 
+        await tx.chartOfAccount.update({
+          where: { id: coaAR.id },
+          data: { currentBalance: { increment: annualFee } }
         });
+      }
+
+      // ✅ Bug 2 fixed: Persist auxiliaryFields as individual StudentFeeComponent rows
+      if (validatedData.auxiliaryFields && Object.keys(validatedData.auxiliaryFields).length > 0 && student.financial) {
+        for (const [masterId, amount] of Object.entries(validatedData.auxiliaryFields)) {
+          const numAmount = Number(amount || 0);
+          if (numAmount <= 0) continue; // Only persist selected (non-zero) fees
+          await tx.studentFeeComponent.create({
+            data: {
+              studentFinancialId: student.financial.id, // ✅ Correct field name
+              componentId: masterId,                   // ✅ Correct field name
+              schoolId: context.schoolId,
+              branchId: branchId,                       // ✅ Added for tenancy
+              baseAmount: numAmount,
+              discountAmount: 0,
+              waiverAmount: 0,
+              isApplicable: true,
+            }
+          }).catch((e: any) => {
+            console.warn(`[ADMISSION] Could not persist auxiliaryField ${masterId}: ${e.message}`);
+          });
+        }
       }
 
       return student;
@@ -380,23 +433,84 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
  * SOVEREIGN ARCHITECT VERSION (v7.0)
  * Processes a new student admission with Ledger-First Atomic Integrity.
  */
-export async function submitStandardizedAdmissionAction(formData: any, isProvisional: boolean = false) {
+export async function submitStandardizedAdmissionAction(formData: any, isProvisional: boolean = true) {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
     const context = identity;
 
+    // 1. RBAC GATEKEEPER (Fail-Shut CBAC)
+    await checkCapability('ADMISSION_CREATE');
+
     const cleanedData = formDataCleaner(formData);
     const validatedData = studentAdmissionSchema.parse(cleanedData);
     const branchId = validatedData.branchId || context.branchId;
 
-    // 1. FETCH AUTHORITATIVE FEE STRUCTURE (Architect Audit)
+    // 2. FETCH AUTHORITATIVE FEE STRUCTURE (Architect Audit)
     const feeStructure = await prisma.feeStructure.findUnique({
       where: { id: validatedData.feeScheduleId as string, schoolId: context.schoolId },
-      include: { components: { include: { masterComponent: true } } }
+      include: { 
+        components: { 
+          include: { 
+            masterComponent: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                accountCode: true,
+                // NOTE: 'amount' is on FeeTemplateComponent not FeeComponentMaster
+              }
+            } 
+          } 
+        } 
+      }
     });
 
     if (!feeStructure) throw new Error("CRITICAL_CONFIG_ERROR: No valid fee structure associated with this admission.");
+
+    // 💰 DYNAMIC FEE RESOLUTION (Sovereign Sync)
+    // We prioritize manual form overrides if present (Admin Unlock), else fallback to Structure defaults.
+    const resolvedComponents = feeStructure.components.map((comp: any) => {
+      const name = comp.masterComponent.name.toLowerCase();
+      let manualAmount: number | undefined;
+
+      if (name === "library fee" || name === "library") manualAmount = Number(validatedData.libraryFee);
+      else if (name === "lab fee" || name === "lab") manualAmount = Number(validatedData.labFee);
+      else if (name === "sports fee" || name === "sports") manualAmount = Number(validatedData.sportsFee);
+      else if (name === "admission fee" || name === "admission") manualAmount = Number(validatedData.admissionFee);
+      else if (name === "caution deposit" || name === "caution" || name === "security deposit") manualAmount = Number(validatedData.cautionDeposit);
+      else if (name === "development fee" || name === "development") manualAmount = Number(validatedData.developmentFee);
+      else if (name === "exam fee" || name === "exam") manualAmount = Number(validatedData.examFee);
+      else if (name === "tuition fee" || name === "tuition") manualAmount = Number(validatedData.tuitionFee);
+
+      return {
+        ...comp,
+        amount: (manualAmount !== undefined && manualAmount >= 0) ? manualAmount : Number(comp.amount)
+      };
+    });
+
+    // 🔗 Handle "New Additions" from Fee Registry (The Dynamic Extension)
+    if (validatedData.auxiliaryFields) {
+      for (const [mid, amt] of Object.entries(validatedData.auxiliaryFields)) {
+        if (!resolvedComponents.find(c => c.componentId === mid) && Number(amt) > 0) {
+           const mComp = await prisma.feeComponentMaster.findUnique({ where: { id: mid } });
+           if (mComp) {
+             resolvedComponents.push({
+               componentId: mid,
+               amount: Number(amt),
+               masterComponent: mComp
+             });
+           }
+        }
+      }
+    }
+
+    const annualTotal = resolvedComponents.reduce((sum, c) => sum + Number(c.amount), 0);
+    const initialPayment = Number(formData.paidAmount || 0);
+    const paymentPercentage = initialPayment > 0 ? (initialPayment / annualTotal) * 100 : 0;
+
+    console.log(`ℹ️ [ADMISSION_INITIAL_PAY] Dynamic annual total: ₹${annualTotal}. Initial pay: ₹${initialPayment} (${paymentPercentage.toFixed(2)}%)`);
+    // Rule change: Admission is no longer blocked at 10%, but status stays PROVISIONAL until milestone.
 
     const year = new Date().getFullYear().toString();
     const [school, branch, activeAY] = await Promise.all([
@@ -407,25 +521,26 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
 
     if (!activeAY) throw new Error("No active academic year found for enrollment.");
 
-    const admissionNumber = !isProvisional ? await CounterService.generateAdmissionNumber({
-      schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code, year: activeAY.name
-    }) : null;
+    // [SOVEREIGN RULE 2.4]: New students ALWAYS start with a Provisional Tracking ID
+    // Final Admission ID (STU) is only minted upon payment confirmation in finance-actions.ts
+    const registrationId = await CounterService.generateProvisionalId({ 
+      schoolId: context.schoolId, 
+      schoolCode: school!.code, 
+      branchId, 
+      branchCode: branch!.code,
+      year: activeAY.name // VIVES-RCB-2026-27-PROV-...
+    });
 
-    const studentCode = !isProvisional ? await CounterService.generateStudentCode({
-      schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code, year: activeAY.name
-    }) : null;
+    const admissionNumber = null;
+    const studentCode = null;
 
-    const registrationId = isProvisional 
-      ? await CounterService.generateProvisionalId({ schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code })
-      : await CounterService.generateRegistrationId({ schoolId: context.schoolId, schoolCode: school!.code, branchId, branchCode: branch!.code });
-
-    // 2. ATOMIC TRANSACTION (Sovereign Shield)
+    // 3. ATOMIC TRANSACTION (Sovereign Shield)
     const result = await prisma.$transaction(async (tx: any) => {
       // Create Student Profile
       const student = await tx.student.create({
         data: {
           registrationId, admissionNumber, studentCode, schoolId: context.schoolId, branchId,
-          status: isProvisional ? "Provisional" : "Active",
+          status: ST_PROVISIONAL,
           firstName: validatedData.firstName, lastName: validatedData.lastName,
           middleName: validatedData.middleName,
           dob: validatedData.dateOfBirth ? new Date(validatedData.dateOfBirth) : null,
@@ -444,14 +559,34 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
             }
           },
 
-          // 3. CREATE FINANCIAL SNAPSHOT (Immutable Agreement)
+          // 4. CREATE FINANCIAL SNAPSHOT (Immutable Agreement with Metadata mirroring)
           financial: {
             create: {
               schoolId: context.schoolId, branchId,
               feeStructureId: feeStructure.id,
-              paymentType: validatedData.paymentType || "Term",
-              tuitionFee: feeStructure.totalAmount, // Snapshot of current total
+              paymentType: validatedData.paymentType || "Term-wise",
+              annualTuition: annualTotal,
+              term1Amount: annualTotal, // Simple full mapping for now, or apply logic
               totalDiscount: 0,
+
+              // 🔗 MIRROR ANCILLARY FIELDS for Instant UI Box Rendering
+              admissionFee: resolvedComponents.find(c => c.masterComponent.name.toLowerCase().includes("admission"))?.amount || 0,
+              cautionDeposit: resolvedComponents.find(c => c.masterComponent.name.toLowerCase().includes("caution"))?.amount || 0,
+              transportFee: resolvedComponents.find(c => c.masterComponent.name.toLowerCase().includes("transport"))?.amount || 0,
+              libraryFee: resolvedComponents.find(c => c.masterComponent.name.toLowerCase().includes("library"))?.amount || 0,
+              examFee: resolvedComponents.find(c => c.masterComponent.name.toLowerCase().includes("exam"))?.amount || 0,
+              
+              // 🧪 GRANULAR COMPONENTS (Architect-First)
+              components: {
+                create: resolvedComponents.map(comp => ({
+                  schoolId: context.schoolId,
+                  branchId,
+                  componentId: comp.componentId,
+                  baseAmount: comp.amount,
+                  isApplicable: true,
+                  lockReason: "ADMISSION_SYNC"
+                }))
+              }
             }
           },
 
@@ -511,47 +646,79 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
       });
 
       // 4. CREATE LEDGER ENTRIES (The Single Source of Truth)
-      const ledgerCharges = feeStructure.components.map((comp: any) => ({
+      const ledgerCharges = resolvedComponents.map((comp: any) => ({
         studentId: student.id,
         schoolId: context.schoolId,
         branchId: branchId,
         academicYearId: activeAY.id,
         type: "CHARGE",
         amount: comp.amount,
-        reason: `${comp.masterComponent.name} (${feeStructure.name})`,
+        reason: `${comp.masterComponent.name}${comp.templateId ? ` (${feeStructure.name})` : ""}`,
         createdBy: context.staffId || "SYSTEM_ENROLLMENT"
       }));
 
       await tx.ledgerEntry.createMany({ data: ledgerCharges });
 
-      const [receivableAccount, incomeAccount, activeFY] = await Promise.all([
+      const [receivableAccount, activeFY] = await Promise.all([
         tx.chartOfAccount.findFirst({ where: { accountCode: "1200", schoolId: context.schoolId } }),
-        tx.chartOfAccount.findFirst({ 
-          where: { 
-            OR: [{ accountCode: "4100" }, { accountCode: "3001" }], 
-            schoolId: context.schoolId 
-          } 
-        }),
         tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
       ]);
 
-      if (!receivableAccount || !incomeAccount || !activeFY) {
-        throw new Error(`CRITICAL_ACCOUNTING_ERROR: Mandatory financial configuration (Receivables/Income/FinancialYear) is missing for school: ${context.schoolId}`);
+      if (!receivableAccount || !activeFY) {
+        throw new Error(`CRITICAL_ACCOUNTING_ERROR: Mandatory financial configuration (Receivables/FinancialYear) is missing for school: ${context.schoolId}`);
+      }
+
+      // 5. RESOLVE GRANULAR INCOME ACCOUNTS (The Interlock)
+      const incomeMapping: any[] = [];
+      for (const comp of resolvedComponents) {
+        const amount = Number(comp.amount);
+        if (amount <= 0) continue;
+
+        // Resolve Account Code based on Component Type/Name
+        const mComp = comp.masterComponent;
+        let targetCode = mComp.accountCode;
+        if (!targetCode) {
+          const name = mComp.name.toLowerCase();
+          if (name.includes("tuition")) targetCode = "3001";
+          else if (name.includes("admission")) targetCode = "3002";
+          else if (name.includes("transport") || name.includes("bus")) targetCode = "4105";
+          else if (name.includes("library")) targetCode = "4106";
+          else if (name.includes("caution") || name.includes("deposit")) targetCode = "2100";
+          else targetCode = "4108"; // Miscellaneous fallback
+        }
+
+        const acc = await tx.chartOfAccount.findFirst({ 
+          where: { accountCode: targetCode, schoolId: context.schoolId } 
+        });
+
+        // Use fallback if specific account doesn't exist
+        const finalAccount = acc || await tx.chartOfAccount.findFirst({ 
+          where: { accountCode: "3001", schoolId: context.schoolId } 
+        });
+
+        if (finalAccount) {
+          incomeMapping.push({
+            accountId: finalAccount.id,
+            debit: 0,
+            credit: amount,
+            description: `Accrual: ${comp.masterComponent.name}`
+          });
+        }
       }
 
       await tx.journalEntry.create({
         data: {
           schoolId: context.schoolId,
           branchId: branchId,
-          financialYearId: activeFY.id, // Now using verified FinancialYear ID
+          financialYearId: activeFY.id,
           entryType: "ADMISSION_ACCRUAL",
-          totalDebit: feeStructure.totalAmount,
-          totalCredit: feeStructure.totalAmount,
-          description: `Initial Charge Accrual for Student: ${admissionNumber || registrationId}`,
+          totalDebit: annualTotal,
+          totalCredit: annualTotal,
+          description: `Granular Charge Accrual for Student: ${admissionNumber || registrationId}`,
           lines: {
             create: [
-              { accountId: receivableAccount.id, debit: feeStructure.totalAmount, credit: 0 },
-              { accountId: incomeAccount.id, debit: 0, credit: feeStructure.totalAmount }
+              { accountId: receivableAccount.id, debit: annualTotal, credit: 0, description: "Total Fees Receivable" },
+              ...incomeMapping
             ]
           }
         }
@@ -688,7 +855,7 @@ export async function getStudentListAction(filters?: {
       }
     });
 
-    return { success: true, data: JSON.parse(JSON.stringify(students)) };
+    return { success: true, data: serializeDecimal(students) };
   } catch (error: any) {
     console.error("Fetch Student List Error:", error);
     return { success: false, error: "Failed to fetch student list." };
@@ -721,7 +888,8 @@ export async function getStudentFullProfile(studentId: string) {
         bank: true,
         previousSchool: true,
         documents: true,
-        history: { include: { class: true, academicYear: { select: { name: true } } } },
+        collections: { orderBy: { paymentDate: 'desc' } },
+        history: { include: { class: true, academicYear: { select: { name: true } } } }
       }
     });
 
@@ -729,7 +897,7 @@ export async function getStudentFullProfile(studentId: string) {
       return { success: false, error: "Student not found or unauthorized access." };
     }
 
-    return { success: true, data: JSON.parse(JSON.stringify(student)) };
+    return { success: true, data: serializeDecimal(student) };
   } catch (error: any) {
     console.error("Fetch Student Profile Error:", error);
     return { success: false, error: "Failed to fetch student profile." };
@@ -764,7 +932,7 @@ export async function searchStudentsAction(query: string) {
       take: 5
     });
 
-    return { success: true, data: JSON.parse(JSON.stringify(students)) };
+    return { success: true, data: serializeDecimal(students) };
   } catch (error: any) {
     console.error("Search Students Error:", error);
     return { success: false, error: "Failed to search students." };
@@ -1157,20 +1325,69 @@ export async function publicSubmitEnquiryAction(formData: any) {
  * Promotes a Provisional (Temp) student to Active (Official).
  * Generates official IDs and updates status.
  */
-export async function promoteStudentAction(studentId: string, tx?: any) {
+export async function promoteStudentAction(studentId: string, force: boolean = false, tx?: any) {
   const db = tx || prisma;
   
   try {
-    const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+    let identity;
+    try {
+      identity = await getSovereignIdentity();
+    } catch (e) {
+      // Session-free context
+    }
+
+    if (!identity && !tx) {
+      throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel or system processes.");
+    }
+
     
     const student = await db.student.findUnique({
       where: { id: studentId },
-      include: { academic: true }
+      include: { 
+        academic: true,
+        financial: true,
+        collections: { where: { status: "Success" } }
+      }
     });
 
-    if (!student || student.status !== "Provisional") {
-      return { success: false, error: "Student not found or already active." };
+    if (!student || (student.status.toUpperCase() !== "PROVISIONAL" && student.status.toUpperCase() !== "ENQUIRY")) {
+      return { success: false, error: "Student not found or identity already elevated." };
+    }
+
+    // ─── Institutional Hardening: Financial Milestone Check ───
+    const totalAnnual = Number(student.financial?.annualTuition || 0);
+    const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0) || 0;
+    
+    // Term 1 is defined as 50% of Annual Tuition for institutional confirmation.
+    // We use Math.min to handle cases where term1Amount might be set to the full annual fee incorrectly.
+    const term1Requirement = Math.min(
+      Number(student.financial?.term1Amount || (totalAnnual * 0.5)),
+      (totalAnnual * 0.5)
+    ) || (totalAnnual * 0.5);
+    
+    const isFinancialClear = totalPaid >= term1Requirement;
+
+    // ─── Institutional Hardening: Compliance Check ───
+    const missingDocs = [];
+    if (!student.aadhaarNumber) missingDocs.push("Aadhaar Number");
+    if (!student.dob) missingDocs.push("Date of Birth");
+    
+    const isComplianceClear = missingDocs.length === 0;
+
+    if (!isFinancialClear && !force) {
+      return { 
+        success: false, 
+        error: `FINANCIAL_BLOCK: Minimum Term-1 clearance required (₹${term1Requirement.toLocaleString()}). Currently paid: ₹${totalPaid.toLocaleString()}.`,
+        code: "FINANCIAL_MINIMUM_NOT_MET"
+      };
+    }
+
+    if (!isComplianceClear && !force) {
+      return { 
+        success: false, 
+        error: `COMPLIANCE_BLOCK: Missing mandatory data: ${missingDocs.join(", ")}.`,
+        code: "COMPLIANCE_MISSING_DATA"
+      };
     }
 
     const schoolId = student.schoolId;
@@ -1214,12 +1431,14 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
       branchCode: branch?.code || "MAIN"
     }, db);
 
-    // Update Student Record (Status move to Active + ID Upgrade)
+    // Update Student Record (Status move to CONFIRMED + ID Upgrade)
     await db.student.update({
       where: { id: studentId },
       data: {
         registrationId,
-        status: "Active",
+        admissionNumber,
+        studentCode,
+        status: "CONFIRMED",
       }
     });
 

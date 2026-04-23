@@ -36,10 +36,9 @@ export async function decrypt(token: string) {
 }
 
 export async function encrypt(payload: any) {
-    const secret = getSecret();
     return new SignJWT(payload)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("2h")
-        .sign(secret);
+        .sign(JWT_SECRET);
 }

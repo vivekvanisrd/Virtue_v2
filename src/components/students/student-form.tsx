@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Users, CreditCard, CheckCircle2, ArrowRight, ArrowLeft,
-  MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert, AlertCircle
+  MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert, AlertCircle, Sparkles, Wand2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/context/tab-context";
@@ -53,18 +53,21 @@ export function StudentForm() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [duplicateAadhaar, setDuplicateAadhaar] = useState<string | null>(null);
-  const [isAdminOverride, setIsAdminOverride] = useState(false);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<Set<string>>(new Set());
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [refData, setRefData] = useState<{
     branches: any[],
     academicYears: any[],
     classes: any[],
     feeSchedules: any[],
+    feeMasters: any[],
     schoolName: string
   }>({
     branches: [],
     academicYears: [],
     classes: [],
     feeSchedules: [],
+    feeMasters: [],
     schoolName: ""
   });
   const [sections, setSections] = useState<any[]>([]);
@@ -105,15 +108,18 @@ export function StudentForm() {
     },
   });
 
-  // Track Dirty State and Apply Context Defaults
+  // 🏢 Identity Auto-Pulse + Dirty Tracker (ORIGINAL — restored from Vercel commit 7ebe29c)
+  // KEY: isDirty in deps guarantees this re-fires after refData populates the form,
+  // ensuring Branch and Academic Year are ALWAYS pre-selected on load.
   useEffect(() => {
     setTabDirty("students-add", isDirty);
-    
-    // 🏢 Identity Auto-Pulse: Pre-select Branch and Current AY
+
+    // 🏢 Pre-select Branch from session context
     if (context?.branchId) {
       setValue("branchId", context.branchId, { shouldValidate: true });
     }
-    
+
+    // 📅 Pre-select current Academic Year
     if (refData.academicYears.length > 0) {
       const currentAY = refData.academicYears.find(y => y.isCurrent);
       if (currentAY) setValue("academicYearId", currentAY.id, { shouldValidate: true });
@@ -145,6 +151,7 @@ export function StudentForm() {
         
         setSubmittedData({
           ...data,
+          id: result.data.id, // Pass DB ID for summary/redirection
           className,
           sectionName,
           branchName
@@ -231,13 +238,108 @@ export function StudentForm() {
       if (!isValid) return;
     }
     
+    setReviewConfirmed(false);
     setCurrentStep(Math.min(currentStep + 1, steps.length));
   };
 
-  const prevStep = () => setCurrentStep(Math.max(currentStep - 1, 1));
+  const prevStep = () => {
+    setReviewConfirmed(false);
+    setCurrentStep(Math.max(currentStep - 1, 1));
+  };
   const transportRequired = watch("transportRequired");
   const firstName = watch("firstName");
   const aadhaarNumber = watch("aadhaarNumber");
+  const feeScheduleId = watch("feeScheduleId");
+
+  // 💰 Phase 1: Sovereign Registry Auto-Population
+  // Loads values directly from the Institutional Fee Registry (feeMasters.amount)
+  // when the registry data first arrives. This is the DEFAULT state before any template is selected.
+  useEffect(() => {
+    if (refData.feeMasters.length === 0) return;
+
+    // ⚠️ STRICT matching: only exact standard names map to hardcoded form fields.
+    // Custom names (e.g. "Activity & Lab Fee") go to auxiliaryFields with their exact label.
+    const EXACT_NAMED: { names: string[], field: keyof StudentAdmissionData }[] = [
+      { names: ["admission fee", "admission"],             field: "admissionFee" },
+      { names: ["caution deposit", "security deposit", "caution"], field: "cautionDeposit" },
+      { names: ["library fee", "library"],                field: "libraryFee" },
+      { names: ["lab fee", "laboratory fee", "lab"],       field: "labFee" },
+      { names: ["sports fee", "sports"],                  field: "sportsFee" },
+      { names: ["development fee", "development"],        field: "developmentFee" },
+      { names: ["exam fee", "examination fee", "exam"],   field: "examFee" },
+    ];
+
+    // Track which masters were claimed by a named slot
+    const claimedIds = new Set<string>();
+
+    EXACT_NAMED.forEach(({ names, field }) => {
+      const master = refData.feeMasters.find(
+        m => names.includes(m.name.toLowerCase().trim()) && m.isActive !== false
+      );
+      if (master) {
+        claimedIds.add(master.id);
+        setValue(field, Number(master.amount || 0));
+      }
+    });
+
+    // All unclaimed, active, non-tuition masters → auxiliaryFields with exact name
+    const auxiliary: Record<string, number> = {};
+    const tuitionNames = ["tuition fee", "tuition", "standard tuition fee"];
+    refData.feeMasters.forEach(m => {
+      if (claimedIds.has(m.id)) return;
+      if (tuitionNames.includes(m.name.toLowerCase().trim())) return;
+      if (m.isActive === false) return;
+      auxiliary[m.id] = Number(m.amount || 0);
+    });
+    setValue("auxiliaryFields", auxiliary);
+
+    // Auto-select all active fees with amount > 0
+    const autoSelected = new Set<string>();
+    refData.feeMasters.forEach(m => {
+      if (m.isActive !== false && Number(m.amount || 0) > 0) {
+        autoSelected.add(m.id);
+      }
+    });
+    setSelectedFeeIds(autoSelected);
+
+  }, [refData.feeMasters, setValue]);
+
+
+  // 💰 Phase 2: Fee Structure Template Override
+  // When a specific Fee Structure Template is selected (Academic step),
+  // its amounts override the registry defaults for this student.
+  useEffect(() => {
+    if (!feeScheduleId || refData.feeSchedules.length === 0) return;
+
+    const selectedStructure = refData.feeSchedules.find(s => s.id === feeScheduleId);
+    if (!selectedStructure) return;
+
+    setValue("tuitionFee", Number(selectedStructure.totalAmount || 0));
+    
+    const comps = selectedStructure.components || [];
+    const findAmount = (keywords: string[]) => {
+      const match = comps.find(c => keywords.some(k => c.masterComponent.name.toLowerCase().includes(k.toLowerCase())));
+      return Number(match?.amount || 0);
+    };
+
+    setValue("admissionFee", findAmount(["admission"]));
+    setValue("cautionDeposit", findAmount(["caution", "security"]));
+    setValue("libraryFee", findAmount(["library"]));
+    setValue("labFee", findAmount(["lab"]));
+    setValue("sportsFee", findAmount(["sports"]));
+    setValue("developmentFee", findAmount(["development"]));
+    setValue("examFee", findAmount(["exam"]));
+
+    if (refData.feeMasters.length > 0) {
+      const auxiliary: Record<string, number> = {};
+      refData.feeMasters.forEach(master => {
+        const match = comps.find(c => c.masterComponent.name === master.name);
+        if (match) auxiliary[master.id] = Number(match.amount);
+      });
+      setValue("auxiliaryFields", auxiliary);
+    }
+
+  }, [feeScheduleId, refData.feeSchedules, refData.feeMasters, setValue]);
 
   const performSearch = useCallback(async (q: string) => {
     if (!q || q.length < 3) {
@@ -302,11 +404,121 @@ export function StudentForm() {
     }
   }, [selectedFeeId, refData.feeSchedules, setValue]);
 
+  const handleDevAutofill = () => {
+    const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const randomString = (length: number) => Math.random().toString(36).substring(2, 2 + length).toUpperCase();
+    const randomName = () => ["Arjun", "Sneha", "Vikram", "Priya", "Rahul", "Anjali", "Kiran"][randomInt(0, 6)] + "_" + Math.random().toString(36).slice(-3);
+    const randomSurname = () => ["Sharma", "Verma", "Reddy", "Patel", "Goud", "Khan", "Nair"][randomInt(0, 6)];
+
+    // ─── STEP 1: PERSONAL ───
+    if (currentStep === 1) {
+      setValue("firstName", randomName());
+      setValue("lastName", randomSurname());
+      setValue("middleName", "Kumar");
+      setValue("gender", randomInt(0, 1) ? "Male" : "Female");
+      setValue("dateOfBirth", `2015-05-${randomInt(10, 25)}`);
+      setValue("bloodGroup", ["A+", "B+", "O+", "AB+"][randomInt(0, 3)]);
+      setValue("category", ["General", "OBC", "SC", "ST"][randomInt(0, 3)]);
+      setValue("aadhaarNumber", "5" + Math.random().toString().slice(2, 13));
+      setValue("motherTongue", "Telugu");
+      setValue("placeOfBirth", "Hyderabad");
+      setValue("birthCertNo", "BC-" + randomString(8));
+      setValue("usnSrnNumber", "USN-" + randomString(6));
+      setValue("email", `test_student_${Date.now()}@pava-edux.com`);
+      setValue("phone", "98480" + randomInt(11111, 99999));
+    } 
+    // ─── STEP 2: ACADEMIC ───
+    else if (currentStep === 2) {
+      if (refData.branches.length > 0) setValue("branchId", refData.branches[0].id);
+      if (refData.academicYears.length > 0) setValue("academicYearId", refData.academicYears[0].id);
+      if (refData.classes.length > 0) setValue("classId", refData.classes[0].id);
+      if (sections.length > 0) setValue("sectionId", sections[0].id);
+      
+      setValue("admissionDate", new Date().toISOString().split("T")[0]);
+      setValue("admissionNumber", "ADM-" + randomString(5));
+      setValue("rollNumber", randomInt(1, 60).toString());
+      setValue("penNumber", "PEN" + randomString(8));
+      setValue("apaarId", "AP-" + randomString(10));
+      setValue("samagraId", "SAM-" + randomString(10));
+      setValue("stsId", "STS-" + randomString(10));
+      setValue("biometricId", "BIO-" + randomString(6));
+      setValue("tcNumber", "TC-" + randomString(6));
+    } 
+    // ─── STEP 3: FAMILY ───
+    else if (currentStep === 3) {
+      setValue("fatherName", "Senior " + randomName() + " " + randomSurname());
+      setValue("fatherPhone", "99" + randomInt(11111111, 99999999));
+      setValue("fatherAlternatePhone", "88" + randomInt(11111111, 99999999));
+      setValue("fatherEmail", `father_${Date.now()}@gmail.com`);
+      setValue("fatherOccupation", "Engineer");
+      setValue("fatherQualification", "M.Tech");
+      setValue("fatherAadhaar", "4" + Math.random().toString().slice(2, 13));
+      
+      setValue("motherName", "Mrs. " + randomName());
+      setValue("motherPhone", "77" + randomInt(11111111, 99999999));
+      setValue("motherEmail", `mother_${Date.now()}@gmail.com`);
+      setValue("motherOccupation", "Homemaker");
+      setValue("motherQualification", "B.Sc");
+      
+      setValue("whatsappNumber", "9848" + randomInt(111111, 999999));
+      setValue("emergencyContactName", "Uncle Joe");
+      setValue("emergencyContactPhone", "9110" + randomInt(111111, 999999));
+      setValue("emergencyContactRelation", "Uncle");
+    } 
+    // ─── STEP 4: ADDRESS / TRANSPORT / PREV SCHOOL ───
+    else if (currentStep === 4) {
+      const addr = randomInt(10, 999) + ", Cyber Towers Loop, Phase " + randomInt(1, 5);
+      setValue("currentAddress", addr);
+      setValue("permanentAddress", addr);
+      setValue("city", "Hyderabad");
+      setValue("state", "Telangana");
+      setValue("pinCode", "5000" + randomInt(10, 99));
+      setValue("country", "India");
+      
+      setValue("transportRequired", true);
+      setValue("pickupStop", "Main Gate");
+      setValue("dropStop", "Main Gate");
+      setValue("transportMonthlyFee", 2500);
+      
+      setValue("previousSchool", "Sparkle International School");
+      setValue("previousClass", "Grade " + randomInt(1, 5));
+      setValue("previousTcNumber", "PREV-TC-" + randomString(4));
+    } 
+    // ─── STEP 5: FINANCIAL ───
+    else if (currentStep === 5) {
+      setValue("paymentType", "Term-wise");
+      if (refData.feeSchedules.length > 0) {
+          setValue("feeScheduleId", refData.feeSchedules[0].id);
+          // Force values for testing
+          setValue("tuitionFee", 45000);
+          setValue("admissionFee", 5000);
+          setValue("cautionDeposit", 2000);
+          setValue("libraryFee", 500);
+          setValue("labFee", 1000);
+          setValue("sportsFee", 500);
+          setValue("developmentFee", 1000);
+          setValue("examFee", 1500);
+      }
+    } 
+    // ─── STEP 6: MORE INFO ───
+    else if (currentStep === 6) {
+      setValue("admissionType", "New");
+      setValue("boardingType", "Day Scholar");
+      setValue("medicalConditions", "None");
+      setValue("allergies", "Dust");
+      setValue("bankAccountName", randomName() + " " + randomSurname());
+      setValue("bankAccountNumber", "99" + randomInt(111111111, 999999999));
+      setValue("bankIfscCode", "SBIN000" + randomInt(1000, 9999));
+      setValue("reference", "Referral-Program-2026");
+    }
+  };
+
   if (submitted && submittedData && admissionId) {
     return (
       <StudentAdmissionSummary 
         studentData={submittedData} 
         admissionId={admissionId} 
+        dbStudentId={submittedData.id} // Actual Student ID from DB
         schoolName={refData.schoolName}
         onReset={handleReset} 
       />
@@ -323,7 +535,10 @@ export function StudentForm() {
             <button
               key={step.id}
               type="button"
-              onClick={() => setCurrentStep(step.id)}
+              onClick={() => {
+                setReviewConfirmed(false);
+                setCurrentStep(step.id);
+              }}
               className={cn(
                 "px-6 py-3 rounded-[20px] text-[10px] font-black uppercase tracking-widest transition-all duration-500 relative overflow-hidden",
                 isActive 
@@ -836,85 +1051,202 @@ export function StudentForm() {
 
             {/* ─── STEP 5: Financial ─── */}
             {currentStep === 5 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 mb-8">
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <CreditCard className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-slate-900 tracking-tight">Financial & Fee Breakdown</h3>
-                    <p className="text-slate-500 text-sm font-medium">Fee schedule and discount configurations</p>
+                    <p className="text-slate-500 text-sm font-medium">Select applicable fees from the Institutional Registry</p>
                   </div>
-                </div>
-                <div className="flex items-center justify-between mb-4 mt-2">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em]">Institutional Configuration</p>
-                    <p className="text-[11px] text-slate-400 font-medium italic">Fees are locked to template values. Adjustment requires override.</p>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setIsAdminOverride(!isAdminOverride)}
-                    className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-[18px] transition-all duration-300 text-[10px] font-black uppercase tracking-tight shadow-sm border",
-                        isAdminOverride 
-                            ? "bg-rose-500/10 text-rose-500 border-rose-500/30 ring-4 ring-rose-500/5 px-6" 
-                            : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
-                    )}
-                  >
-                    {isAdminOverride ? <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" /> : <Building className="w-4 h-4" />}
-                    {isAdminOverride ? "Financial Override Active" : "Request Admin Unlock"}
-                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <Field label="Payment Type *" error={errors.paymentType?.message} className="lg:col-span-2">
+                {/* Payment Type */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <Field label="Payment Type *" error={errors.paymentType?.message} className="sm:col-span-2">
                     <select {...register("paymentType")} className={selectCls}>
                       <option value="Term-wise">Term-wise (50/25/25)</option>
                       <option value="One-time">One-time (Annual)</option>
                     </select>
                   </Field>
-                  <Field label="Tuition Fee *" error={errors.tuitionFee?.message}>
-                    <input {...register("tuitionFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                  <Field label="Admission Fee" error={errors.admissionFee?.message}>
-                    <input {...register("admissionFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                  <Field label="Caution Deposit" error={errors.cautionDeposit?.message}>
-                    <input {...register("cautionDeposit", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
                 </div>
-                
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Auxiliary Components</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-                  <Field label="Library" error={errors.libraryFee?.message}>
-                    <input {...register("libraryFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                  <Field label="Lab" error={errors.labFee?.message}>
-                    <input {...register("labFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                  <Field label="Sports" error={errors.sportsFee?.message}>
-                    <input {...register("sportsFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                  <Field label="Development" error={errors.developmentFee?.message}>
-                    <input {...register("developmentFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                  <Field label="Exam" error={errors.examFee?.message}>
-                    <input {...register("examFee", { valueAsNumber: true })} type="number" readOnly={!isAdminOverride} placeholder="0" className={cn(inputCls, !isAdminOverride && "bg-slate-100/50 cursor-not-allowed text-slate-500 opacity-80")} />
-                  </Field>
-                </div>
-                <p className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider mt-2">Discounts</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <Field label="Discount 1" error={errors.discountId1?.message}>
-                    <select {...register("discountId1")} className={selectCls}>
-                      <option value="">No Discount</option>
-                      <option value="d_scholar">Merit Scholar 25%</option>
-                      <option value="d_staff">Staff Ward 50%</option>
-                      <option value="d_sibling">Sibling Discount 10%</option>
-                    </select>
-                  </Field>
-                  <Field label="Reason" error={errors.discountReason1?.message} className="sm:col-span-2">
-                    <input {...register("discountReason1")} placeholder="Reason" className={inputCls} />
-                  </Field>
+
+                {/* Fee Selection Grid */}
+                {(() => {
+                  const EXACT_NAMED: { names: string[], field: keyof StudentAdmissionData }[] = [
+                    { names: ["admission fee", "admission"],                         field: "admissionFee" },
+                    { names: ["caution deposit", "security deposit", "caution"],     field: "cautionDeposit" },
+                    { names: ["library fee", "library"],                             field: "libraryFee" },
+                    { names: ["lab fee", "laboratory fee", "lab"],                   field: "labFee" },
+                    { names: ["sports fee", "sports"],                               field: "sportsFee" },
+                    { names: ["development fee", "development"],                     field: "developmentFee" },
+                    { names: ["exam fee", "examination fee", "exam"],               field: "examFee" },
+                  ];
+                  const tuitionNames = ["tuition fee", "tuition", "standard tuition fee"];
+
+                  const tuitionMaster = refData.feeMasters.find(m => tuitionNames.includes(m.name.toLowerCase().trim()));
+                  const claimedIds = new Set<string>();
+                  if (tuitionMaster) claimedIds.add(tuitionMaster.id);
+
+                  // Build the list of toggleable fee cards
+                  const feeCards = refData.feeMasters
+                    .filter(m => !tuitionNames.includes(m.name.toLowerCase().trim()) && m.isActive !== false)
+                    .map(m => {
+                      const namedSlot = EXACT_NAMED.find(s => s.names.includes(m.name.toLowerCase().trim()));
+                      claimedIds.add(m.id);
+                      return { master: m, formField: namedSlot?.field ?? null };
+                    });
+
+                  const toggleFee = (id: string, formField: keyof StudentAdmissionData | null, amount: number) => {
+                    setSelectedFeeIds(prev => {
+                      const next = new Set(prev);
+                      const nowSelected = next.has(id);
+                      if (nowSelected) {
+                        next.delete(id);
+                        if (formField) setValue(formField, 0 as any);
+                        else {
+                          const cur: any = watch("auxiliaryFields") || {};
+                          setValue("auxiliaryFields", { ...cur, [id]: 0 });
+                        }
+                      } else {
+                        next.add(id);
+                        if (formField) setValue(formField, amount as any);
+                        else {
+                          const cur: any = watch("auxiliaryFields") || {};
+                          setValue("auxiliaryFields", { ...cur, [id]: amount });
+                        }
+                      }
+                      return next;
+                    });
+                  };
+
+                  const totalSelected = feeCards
+                    .filter(({ master }) => selectedFeeIds.has(master.id))
+                    .reduce((sum, { master }) => sum + Number(master.amount || 0), 0)
+                    + Number(watch("tuitionFee") || 0);
+
+                  const typeColor: Record<string, string> = {
+                    CORE: "bg-blue-100 text-blue-600",
+                    ANCILLARY: "bg-violet-100 text-violet-600",
+                    DEPOSIT: "bg-amber-100 text-amber-600",
+                    PENALTY: "bg-rose-100 text-rose-600",
+                  };
+
+                  if (refData.feeMasters.length === 0) {
+                    return (
+                      <div className="py-8 rounded-2xl border-2 border-dashed border-slate-200 text-center">
+                        <p className="text-sm text-slate-400 font-medium">No fees found in the Institutional Registry.</p>
+                        <p className="text-xs text-slate-300 mt-1">Configure fees in the Fee Registry to see them here.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Tuition — always selected, non-toggleable */}
+                      {/* Tuition — always selected, non-toggleable */}
+                      {tuitionMaster && (
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Core Tuition</p>
+                          <div className="p-5 rounded-2xl border-2 border-primary bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-bold text-slate-800">{tuitionMaster.name}</p>
+                              <span className={cn("text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wide mt-1 inline-block", typeColor[tuitionMaster.type] || "bg-slate-100 text-slate-500")}>{tuitionMaster.type}</span>
+                              
+                              {/* Term-wise Logic Bridge */}
+                              {watch("paymentType") === "Term-wise" && (
+                                <div className="mt-3 flex items-center gap-3">
+                                  <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Term 1 (50%)</p>
+                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{(Number(watch("tuitionFee") || 0) * 0.5).toLocaleString()}</p>
+                                  </div>
+                                  <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Term 2 (25%)</p>
+                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{(Number(watch("tuitionFee") || 0) * 0.25).toLocaleString()}</p>
+                                  </div>
+                                  <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Term 3 (25%)</p>
+                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{(Number(watch("tuitionFee") || 0) * 0.25).toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-3xl font-black text-slate-900 tracking-tighter">₹{Number(watch("tuitionFee") || 0).toLocaleString()}</p>
+                              <p className="text-[10px] text-primary font-black uppercase tracking-widest italic">✓ {watch("paymentType") === "Term-wise" ? "Sovereign Term Split" : "Lump Sum Payment"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Toggleable fee cards */}
+                      {feeCards.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Additional Fees — click to select</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {feeCards.map(({ master, formField }) => {
+                              const isSelected = selectedFeeIds.has(master.id);
+                              const amount = Number(master.amount || 0);
+                              return (
+                                <button
+                                  key={master.id}
+                                  type="button"
+                                  onClick={() => toggleFee(master.id, formField, amount)}
+                                  className={cn(
+                                    "relative p-4 rounded-2xl border-2 text-left transition-all duration-200 w-full",
+                                    isSelected
+                                      ? "border-primary bg-primary/5 shadow-sm"
+                                      : "border-dashed border-slate-200 bg-white hover:border-slate-300 opacity-60 hover:opacity-80"
+                                  )}
+                                >
+                                  {isSelected && (
+                                    <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                      <CheckCircle2 className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
+                                  <p className="text-[13px] font-bold text-slate-800 leading-tight pr-6">{master.name}</p>
+                                  <div className="flex items-center gap-1.5 mt-1.5">
+                                    <span className={cn("text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wide", typeColor[master.type] || "bg-slate-100 text-slate-500")}>{master.type}</span>
+                                    {master.isOneTime && <span className="text-[9px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full font-black uppercase">1×</span>}
+                                    {master.isRefundable && <span className="text-[9px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-black uppercase">Refund</span>}
+                                  </div>
+                                  <p className={cn("text-xl font-black mt-2", isSelected ? "text-primary" : "text-slate-400")}>₹{amount.toLocaleString()}</p>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Running Total */}
+                      <div className="mt-4 p-4 rounded-2xl bg-slate-900 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected Total</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">{selectedFeeIds.size + (tuitionMaster ? 1 : 0)} fee{selectedFeeIds.size !== 0 ? 's' : ''} selected</p>
+                        </div>
+                        <p className="text-3xl font-black text-white">₹{totalSelected.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Discounts */}
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider mb-2">Discounts</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <Field label="Discount 1" error={errors.discountId1?.message}>
+                      <select {...register("discountId1")} className={selectCls}>
+                        <option value="">No Discount</option>
+                        <option value="d_scholar">Merit Scholar 25%</option>
+                        <option value="d_staff">Staff Ward 50%</option>
+                        <option value="d_sibling">Sibling Discount 10%</option>
+                      </select>
+                    </Field>
+                    <Field label="Reason" error={errors.discountReason1?.message} className="sm:col-span-2">
+                      <input {...register("discountReason1")} placeholder="Reason" className={inputCls} />
+                    </Field>
+                  </div>
                 </div>
               </div>
             )}
@@ -992,6 +1324,25 @@ export function StudentForm() {
                   onEditStep={(stepId) => setCurrentStep(stepId)}
                 />
 
+                {/* 🔒 Institutional Safety Lock */}
+                <div className="p-6 rounded-3xl border-2 border-primary/20 bg-primary/5 flex items-start gap-4">
+                  <div className="pt-1">
+                    <input 
+                      type="checkbox" 
+                      id="confirm-review"
+                      checked={reviewConfirmed}
+                      onChange={(e) => setReviewConfirmed(e.target.checked)}
+                      className="w-5 h-5 rounded-lg border-2 border-primary/30 text-primary focus:ring-primary/20 transition-all cursor-pointer"
+                    />
+                  </div>
+                  <label htmlFor="confirm-review" className="cursor-pointer">
+                    <p className="text-sm font-black text-slate-800 tracking-tight">I have verified all student information</p>
+                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1">
+                      By checking this, I confirm that the Aadhaar details, Academic Year, and Financial Ledger have been cross-verified with official documents.
+                    </p>
+                  </label>
+                </div>
+
                 <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-4">
                   <p className="text-xs text-violet-700 font-bold">
                     ✓ By submitting, a Student ID (VR-[BRANCH]-STU-XXXXX) and Ledger will be created.
@@ -1038,13 +1389,27 @@ export function StudentForm() {
             ) : (
               <button
                 type="submit"
-                disabled={isSubmitting || !!duplicateAadhaar}
-                className="flex items-center gap-2 px-10 py-3 text-sm font-bold rounded-2xl bg-primary text-white shadow-lg shadow-primary/25 hover:scale-105 transition-all disabled:opacity-50"
+                disabled={isSubmitting || !!duplicateAadhaar || !reviewConfirmed}
+                className="flex items-center gap-2 px-10 py-3 text-sm font-bold rounded-2xl bg-primary text-white shadow-lg shadow-primary/25 hover:scale-105 transition-all disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Processing..." : "Finish & Admission"} <ArrowRight className="w-4 h-4" />
               </button>
             )}
           </div>
+
+          {/* 🪄 PRO MAGIC: Autofill (Dev Only) */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-8">
+               <button
+                 type="button"
+                 onClick={handleDevAutofill}
+                 className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:scale-110 active:scale-95 transition-all border border-white/20 whitespace-nowrap"
+               >
+                 <Sparkles className="w-3 h-3" />
+                 Magic Autofill
+               </button>
+            </div>
+          )}
         </div>
       </form>
 

@@ -120,7 +120,7 @@ export function ManagementDashboard() {
                                     <Users className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-black text-slate-900">{flag.staff}</p>
+                                    <p className="text-sm font-black text-slate-900">{flag.staff} <span className="text-slate-400 font-bold text-[10px]">[{flag.id || "ID"}]</span></p>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">{flag.reason}</p>
                                 </div>
                             </div>
