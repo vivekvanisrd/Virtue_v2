@@ -7,27 +7,58 @@ import { Header } from "./header";
 import { TabProvider, useTabs } from "@/context/tab-context";
 import { TabList } from "./tab-list";
 import { GenericModule } from "../dashboard/generic-module";
-import { OverviewContent } from "../dashboard/overview";
-import { StudentsContent } from "../dashboard/students";
-import { FinanceContent } from "../dashboard/finance";
-import RazorpaySimulationLab from "../developer/RazorpaySimulationLab";
-import { RazorpayCallbackHandler } from "../finance/RazorpayCallbackHandler";
-
-import { StaffRolesManager } from "../dashboard/staff-roles";
-import { StaffImportManager } from "../dashboard/staff-import";
-import { ActivityLogViewer } from "../dashboard/activity-log";
-import { StaffContent } from "../dashboard/staff";
-import { StudentHub } from "../students/StudentHub";
-import { StaffHub } from "../dashboard/staff-hub";
-import { SalariesContent } from "../dashboard/salaries";
-import { BankSettings } from "../dashboard/bank-settings";
-import { VelocityAttendance } from "../attendance/VelocityAttendance";
 import { TenantProvider, useTenant } from "@/context/tenant-context";
-import { InstitutionalSetupHub } from "../dashboard/InstitutionalSetupHub";
-import AcademicArchitectHub from "../academics/AcademicArchitectHub";
-import VelocityAttendanceRunner from "../attendance/VelocityAttendanceRunner";
-import GenesisLab from "../../app/dashboard/setup/genesis/page";
-import { FeeMasterHub } from "../finance/FeeMasterHub";
+import { RazorpayCallbackHandler } from "../finance/RazorpayCallbackHandler";
+import dynamic from "next/dynamic";
+
+const OverviewContent = dynamic(() => import("../dashboard/overview").then(mod => mod.OverviewContent), { 
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" /> 
+});
+const StudentsContent = dynamic(() => import("../dashboard/students").then(mod => mod.StudentsContent), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const FinanceContent = dynamic(() => import("../dashboard/finance").then(mod => mod.FinanceContent), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const RazorpaySimulationLab = dynamic(() => import("../developer/RazorpaySimulationLab"), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const ActivityLogViewer = dynamic(() => import("../dashboard/activity-log").then(mod => mod.ActivityLogViewer), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const StaffContent = dynamic(() => import("../dashboard/staff").then(mod => mod.StaffContent), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const StudentHub = dynamic(() => import("../students/StudentHub").then(mod => mod.StudentHub), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const StaffHub = dynamic(() => import("../dashboard/staff-hub").then(mod => mod.StaffHub), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const SalariesContent = dynamic(() => import("../dashboard/salaries").then(mod => mod.SalariesContent), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const BankSettings = dynamic(() => import("../dashboard/bank-settings").then(mod => mod.BankSettings), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const VelocityAttendance = dynamic(() => import("../attendance/VelocityAttendance").then(mod => mod.VelocityAttendance), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const InstitutionalSetupHub = dynamic(() => import("../dashboard/InstitutionalSetupHub").then(mod => mod.InstitutionalSetupHub), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const AcademicArchitectHub = dynamic(() => import("../academics/AcademicArchitectHub"), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const VelocityAttendanceRunner = dynamic(() => import("../attendance/VelocityAttendanceRunner"), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const GenesisLab = dynamic(() => import("../../app/dashboard/setup/genesis/page"), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const FeeMasterHub = dynamic(() => import("../finance/FeeMasterHub").then(mod => mod.FeeMasterHub), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
