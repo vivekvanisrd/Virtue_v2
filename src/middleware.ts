@@ -70,13 +70,24 @@ export async function middleware(request: NextRequest) {
   }
 
   // 🛡️ LOCK: INSTITUTIONAL GENESIS GATING
-  if (isProtectedRoute && !hasAdminRole && !user?.schoolId) {
+  // If user has no schoolId, they must be directed to setup (if OWNER) or blocked (if STAFF)
+  const isSetupPath = pathname.startsWith('/dashboard/setup');
+  
+  if (isProtectedRoute && !hasAdminRole && !user?.schoolId && !isSetupPath) {
+    if (user?.role === 'OWNER') {
+        console.log(`🛡️ [SENTINEL] REDIRECT: OWNER '${user?.email}' to Setup Genesis.`);
+        return NextResponse.redirect(new URL('/dashboard/setup', request.url));
+    }
     console.error(`🛡️ [SENTINEL] REDIRECT: Sovereign Identity Violation for ${user?.email}. (hasAdminRole: ${hasAdminRole}, schoolId: ${user?.schoolId})`);
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Redirect to dashboard if logged in and trying to access login
   if (pathname === '/login' && user) {
+    // If OWNER has no school yet, send to setup
+    if (user.role === 'OWNER' && !user.schoolId) {
+        return NextResponse.redirect(new URL('/dashboard/setup', request.url));
+    }
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

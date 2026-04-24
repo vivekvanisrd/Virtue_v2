@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #f8fafc;
+  --accent: #f97316;
+  --muted: #f1f5f9;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --sidebar-bg: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-muted: #f1f5f9;
+  --header-bg: #ffffff;
+  --header-foreground: #0f172a;
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-background: var(--background);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-header-bg: var(--header-bg);
+  --color-header-foreground: var(--header-foreground);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Utilities for Premium Look */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.premium-shadow {
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.08);
+}
+
+.card-shadow {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+}
+
+.gradient-bright {
+  background: linear-gradient(135deg, #4DA8DA 0%, #1E5F8A 100%);
+}
+
+/* 🌀 Premium Ghost Scrollbar Utility */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.custom-scrollbar:hover {
+  scrollbar-color: var(--primary) transparent;
+}
+
+/* Webkit (Chrome, Safari, Edge) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+  transition: background 0.3s ease;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(79, 70, 229, 0.4); /* Primary Indigo with opacity */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary);
+}
+
+/* Hide scrollbar by default for truly 'seamless' feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -80,6 +80,7 @@ model School {
   TransportDetail       TransportDetail[]
   TransportStop         TransportStop[]
   unlockRequests        UnlockRequest[]
+  attendancePolicies    AttendancePolicy[]
 
   // 🛡️ Shadow Relation for Enterprise V4
   backboneInvoices FeeInvoice[]
@@ -1595,6 +1596,7 @@ enum OwnerScope {
 
 model AttendancePolicy {
   id             String  @id @default(uuid())
+  schoolId       String
   branchId       String
   name           String  @default("Default")
   startMinutes   Int // 8:30 = 510
@@ -1604,16 +1606,18 @@ model AttendancePolicy {
   weeklyOffs     Int[]   @default([0]) // 0 = Sunday
   autoHoliday    Boolean @default(true)
   branch         Branch  @relation(fields: [branchId], references: [id])
+  school         School  @relation(fields: [schoolId], references: [id])
   staff          Staff[]
 }
 
 model AttendanceException {
-  id      String   @id @default(uuid())
-  staffId String
-  date    DateTime
-  type    String // Late-In, Early-Out, Missing-Checkout
-  meta    Json
-  staff   Staff    @relation(fields: [staffId], references: [id])
+  id        String   @id @default(uuid())
+  staffId   String
+  date      DateTime
+  type      String // Late-In, Early-Out, Missing-Checkout
+  meta      Json
+  createdAt DateTime @default(now())
+  staff     Staff    @relation(fields: [staffId], references: [id])
 }
 
 model StaffFaceProfile {

@@ -25,11 +25,13 @@ import {
 } from "@/lib/actions/attendance-v2-actions";
 import { MonthlyRegister } from "./MonthlyRegister";
 import { ShiftManager } from "./ShiftManager";
+import { PersonnelAssignment } from "./PersonnelAssignment";
+import { ExceptionDashboard } from "./ExceptionDashboard";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 export function AttendanceCommandCenter() {
-  const [activeTab, setActiveTab] = useState<"PULSE" | "REGISTER" | "SHIFTS" | "LEDGER">("PULSE");
+  const [activeTab, setActiveTab] = useState<"PULSE" | "REGISTER" | "SHIFTS" | "LEDGER" | "PERSONNEL" | "AUDIT">("PULSE");
   const [stats, setStats] = useState<any>(null);
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -174,6 +176,24 @@ export function AttendanceCommandCenter() {
                )}
             >
                <Settings2 className="w-4 h-4" /> Manager
+            </button>
+            <button 
+               onClick={() => setActiveTab("PERSONNEL")}
+               className={cn(
+                  "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3",
+                  activeTab === "PERSONNEL" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+               )}
+            >
+               <UserCheck className="w-4 h-4" /> Personnel
+            </button>
+            <button 
+               onClick={() => setActiveTab("AUDIT")}
+               className={cn(
+                  "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3",
+                  activeTab === "AUDIT" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+               )}
+            >
+               <AlertTriangle className="w-4 h-4" /> Audit
             </button>
          </div>
 
@@ -393,6 +413,8 @@ export function AttendanceCommandCenter() {
 
       {activeTab === "REGISTER" && <MonthlyRegister />}
       {activeTab === "SHIFTS" && <ShiftManager />}
+      {activeTab === "PERSONNEL" && <PersonnelAssignment />}
+      {activeTab === "AUDIT" && <ExceptionDashboard />}
 
       {isFaceMode && (
          <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-3xl flex items-center justify-center p-6">

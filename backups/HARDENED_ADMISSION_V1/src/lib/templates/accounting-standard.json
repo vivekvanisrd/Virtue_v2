@@ -1,0 +1,19 @@
+{
+  "name": "Standard Indian School Accounting",
+  "version": "1.0",
+  "description": "Standard chart of accounts for educational institutions in India.",
+  "category": "FINANCE",
+  "entities": [
+    { "accountCode": "1001", "accountName": "Cash in Hand", "accountType": "ASSET" },
+    { "accountCode": "1002", "accountName": "Bank Account (Main)", "accountType": "ASSET" },
+    { "accountCode": "1003", "accountName": "Petty Cash", "accountType": "ASSET" },
+    { "accountCode": "2001", "accountName": "Accounts Payable", "accountType": "LIABILITY" },
+    { "accountCode": "2002", "accountName": "Security Deposits (Payable)", "accountType": "LIABILITY" },
+    { "accountCode": "3001", "accountName": "Tuition Fee Revenue", "accountType": "INCOME" },
+    { "accountCode": "3002", "accountName": "Admission Fee Revenue", "accountType": "INCOME" },
+    { "accountCode": "3003", "accountName": "Transport Fee Revenue", "accountType": "INCOME" },
+    { "accountCode": "4001", "accountName": "Standard Staff Salaries", "accountType": "EXPENSE" },
+    { "accountCode": "4002", "accountName": "Electricity & Utilities", "accountType": "EXPENSE" },
+    { "accountCode": "4003", "accountName": "General Maintenance", "accountType": "EXPENSE" }
+  ]
+}

@@ -1,0 +1,32 @@
+"Debit Account Number
+(Mandatory)","Transaction Amount
+(Mandatory)","Transaction Currency
+(Non-Mandatory)","Beneficiary Name
+(Mandatory)","Beneficiary Account Number
+(Mandatory)","Beneficiary IFSC Code
+(Mandatory)","Transaction Date
+(Mandatory)","Payment Mode
+(Mandatory)",Customer Reference Number(Mandatory),"Beneficiary Nickname/Code
+(Mandatory)","Bank Account Type
+(Non-Mandatory)","Debit Narration
+(Non-Mandatory)","Credit Narration
+(Non-Mandatory)","Beneficiary Address 1
+(Non-Mandatory)","Beneficiary Address 2
+(Non-Mandatory)","Beneficiary Address 3
+(Non-Mandatory)","Beneficiary City
+(Non-Mandatory)","Beneficiary State
+(Non-Mandatory)","Beneficiary Pin Code
+(Non-Mandatory)","Beneficiary Bank Name
+(Non-Mandatory)","Beneficiary Email address 1
+(Non-Mandatory)","Beneficiary Email address 2
+(Non-Mandatory)","Beneficiary Mobile Number
+(Non-Mandatory)","Add Info1
+(Non-Mandatory)","Add Info2
+(Non-Mandatory)","Add Info3
+(Non-Mandatory)","Add Info4
+(Non-Mandatory)","Add Info5
+(Non-Mandatory)","Add Info6
+(Non-Mandatory)"
+915010023357136,13000,,Somavathi Vadepalley,566210110002623,BKID0005649,16/04/2026,IMPS,VA012026001,SomavathiVadepa,,,,,,,,,,,,,,,,,,,
+915010023357136,14000,,Dappu Ravi Kumar,81000100007618,BARB0VJMALK,16/04/2026,IMPS,VA012026002,DappuRaviKumar,,,,,,,,,,,,,,,,,,,
+915010023357136,5130,,Nallolla Yadaiah,62092716537,SBIN0020097,16/04/2026,IMPS,VA012026003,NallollaYadaiah,,,,,,,,,,,,,,,,,,,

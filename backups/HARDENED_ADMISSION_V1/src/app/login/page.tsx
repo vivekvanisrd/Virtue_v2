@@ -1,0 +1,226 @@
+"use client";
+/** SYNC_V2_ENTERPRISE_B01 **/
+
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { 
+  Lock, 
+  User, 
+  Eye, 
+  EyeOff, 
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+  Loader2
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { signInAction } from "@/lib/actions/auth-native";
+
+// Form Validation Schema
+const loginSchema = z.object({
+  identifier: z.string().min(3, "Please enter your username or email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+const formatIdentifier = (id: string) => {
+  return id.includes("@") ? id : `${id}@pava-edux.com`;
+};
+
+export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: "onBlur",
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setIsLoading(true);
+    setErrorText(null);
+
+    const res = await signInAction({
+        identifier: data.identifier,
+        password: data.password
+    });
+
+    if (!res.success) {
+      setErrorText(res.error || "Invalid credentials.");
+      setIsLoading(false);
+      return;
+    }
+
+    // 🔐 Forced first-login password change for provisioned owners
+    if ((res as any).mustChangePassword) {
+      router.push("/change-password");
+    } else {
+      router.push("/dashboard");
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <main className="min-h-screen flex items-center justify-center gradient-bg p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/30 rounded-full blur-[120px]" />
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-[1100px] grid grid-cols-1 lg:grid-cols-2 bg-background/5 backdrop-blur-2xl rounded-[40px] border border-white/10 overflow-hidden shadow-2xl premium-shadow"
+      >
+        {/* Left Side: Illustration & Branding */}
+        <div className="relative hidden lg:flex flex-col justify-center p-16 text-white overflow-hidden bg-background/5 border-r border-white/5">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <div className="w-16 h-16 bg-background/10 rounded-2xl flex items-center justify-center mb-6">
+                <Zap className="w-8 h-8 text-white fill-white" />
+            </div>
+            <h1 className="text-5xl font-bold mb-4 tracking-tight leading-tight">
+              PaVa-EDUX <br />
+              <span className="text-accent underline decoration-white/20 underline-offset-8">Enterprise</span>
+            </h1>
+            <p className="text-lg text-white/60 leading-relaxed font-light">
+              Experience the evolution of campus management. 
+              Lightning fast. Secure by design. Built for excellence.
+            </p>
+          </motion.div>
+
+          {/* Social Proof/Features */}
+          <div className="mt-12 space-y-6">
+            {[
+              { icon: ShieldCheck, text: "Enterprise-grade Data Encryption" },
+              { icon: Zap, text: "Strict Multi-tenant Isolation" },
+              { icon: User, text: "Authorized Access Control" }
+            ].map((feature, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + (i * 0.1) }}
+                className="flex items-center gap-4 text-white/50"
+              >
+                <div className="p-2 bg-background/5 rounded-lg">
+                  <feature.icon className="w-5 h-5" />
+                </div>
+                <span className="font-medium text-sm">{feature.text}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Side: Login Form */}
+        <div className="p-8 lg:p-16 flex flex-col justify-center bg-background">
+          <div className="mb-10 text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-foreground mb-2">Internal Portal</h2>
+            <p className="text-foreground opacity-60 font-medium">Authorized credentials required</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {errorText && (
+               <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl animate-shake">
+                  {errorText}
+               </div>
+            )}
+
+            {/* Identifier Field */}
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-foreground ml-1">Username or Email</label>
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground opacity-50 group-focus-within:text-primary transition-colors">
+                  <User className="w-5 h-5" />
+                </div>
+                <input
+                  {...register("identifier")}
+                  type="text"
+                  placeholder="your.email@school.com"
+                  className={cn(
+                    "w-full pl-12 pr-4 py-4 bg-muted/50 border-2 border-border rounded-2xl outline-none focus:border-primary focus:bg-background transition-all text-foreground font-medium",
+                    errors.identifier && "border-red-500 focus:border-red-500"
+                  )}
+                />
+              </div>
+              {errors.identifier && (
+                <p className="text-xs text-red-500 font-bold ml-1 italic">{errors.identifier.message}</p>
+              )}
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center ml-1">
+                <label className="text-sm font-bold text-foreground">Password</label>
+              </div>
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground opacity-50 group-focus-within:text-primary transition-colors">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <input
+                  {...register("password")}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className={cn(
+                    "w-full pl-12 pr-12 py-4 bg-muted/50 border-2 border-border rounded-2xl outline-none focus:border-primary focus:bg-background transition-all text-foreground font-medium",
+                    errors.password && "border-red-500 focus:border-red-500"
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground opacity-50 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-xs text-red-500 font-bold ml-1 italic">{errors.password.message}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 pt-2">
+              <button
+                disabled={isLoading}
+                type="submit"
+                className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <>
+                    Experience Reality
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Footer help */}
+          <div className="mt-10 pt-8 border-t border-border text-center">
+             <p className="text-foreground opacity-50 text-sm font-medium">
+               Authorized Personnel Only. Contact system administrator for access help.
+             </p>
+          </div>
+        </div>
+      </motion.div>
+    </main>
+  );
+}

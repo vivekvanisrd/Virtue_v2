@@ -1,0 +1,41 @@
+"Debit Account Number
+(Mandatory)","Transaction Amount
+(Mandatory)","Transaction Currency
+(Non-Mandatory)","Beneficiary Name
+(Mandatory)","Beneficiary Account Number
+(Mandatory)","Beneficiary IFSC Code
+(Mandatory)","Transaction Date
+(Mandatory)","Payment Mode
+(Mandatory)",Customer Reference Number(Mandatory),"Beneficiary Nickname/Code
+(Mandatory)","Bank Account Type
+(Non-Mandatory)","Debit Narration
+(Non-Mandatory)","Credit Narration
+(Non-Mandatory)","Beneficiary Address 1
+(Non-Mandatory)","Beneficiary Address 2
+(Non-Mandatory)","Beneficiary Address 3
+(Non-Mandatory)","Beneficiary City
+(Non-Mandatory)","Beneficiary State
+(Non-Mandatory)","Beneficiary Pin Code
+(Non-Mandatory)","Beneficiary Bank Name
+(Non-Mandatory)","Beneficiary Email address 1
+(Non-Mandatory)","Beneficiary Email address 2
+(Non-Mandatory)","Beneficiary Mobile Number
+(Non-Mandatory)","Add Info1
+(Non-Mandatory)","Add Info2
+(Non-Mandatory)","Add Info3
+(Non-Mandatory)","Add Info4
+(Non-Mandatory)","Add Info5
+(Non-Mandatory)","Add Info6
+(Non-Mandatory)"
+915010023357136,16800,,Somavathi Vadepalley,566210110002623,BKID0005649,16/04/2026,IMPS,VA122025001,SomavathiVadepa,,,,,,,,,,,,,,,,,,,
+915010023357136,7500,,Peddagolla Padma,73027818435,TGRB0008165,16/04/2026,IMPS,VA122025002,PeddagollaPadma,,,,,,,,,,,,,,,,,,,
+915010023357136,14000,,Dappu Ravi Kumar,81000100007618,BARB0VJMALK,16/04/2026,IMPS,VA122025003,DappuRaviKumar,,,,,,,,,,,,,,,,,,,
+915010023357136,9500,,Nama Sony,72222495869,SBIN0021891,16/04/2026,IMPS,VA122025004,NamaSony,,,,,,,,,,,,,,,,,,,
+915010023357136,28000,,Chaitanya .,73129908753,TGRB0008165,16/04/2026,IMPS,VA122025005,Chaitanya,,,,,,,,,,,,,,,,,,,
+915010023357136,7000,,Bhavani .,7092203821,IDIB000S265,16/04/2026,IMPS,VA122025006,Bhavani,,,,,,,,,,,,,,,,,,,
+915010023357136,12500,,Aliveni .,31420100011151,BARB0SANGAR,16/04/2026,IMPS,VA122025007,Aliveni,,,,,,,,,,,,,,,,,,,
+915010023357136,11000,,Kota Sravanthi,31420100022115,BARB0SANGAR,16/04/2026,IMPS,VA122025008,KotaSravanthi,,,,,,,,,,,,,,,,,,,
+915010023357136,24500,,Swetha .,7655882566,IDIB000S564,16/04/2026,IMPS,VA122025009,Swetha,,,,,,,,,,,,,,,,,,,
+915010023357136,18000,,Venkata Laxmi,31420100011149,BARB0SANGAR,16/04/2026,IMPS,VA122025010,VenkataLaxmi,,,,,,,,,,,,,,,,,,,
+915010023357136,7000,,Laxshmi .,1081269164,TGRB0008101,16/04/2026,IMPS,VA122025011,Laxshmi,,,,,,,,,,,,,,,,,,,
+915010023357136,9700,,Anjali .,5334580100,CBIN0284566,16/04/2026,IMPS,VA122025012,Anjali,,,,,,,,,,,,,,,,,,,
