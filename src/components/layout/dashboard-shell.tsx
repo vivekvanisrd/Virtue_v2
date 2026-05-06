@@ -153,6 +153,7 @@ export default function DashboardShell({
   schoolName,
   activeBranchName,
   isOperationalReady = true,
+  capabilities = {},
 }: {
   children: React.ReactNode;
   userEmail?: string;
@@ -165,6 +166,7 @@ export default function DashboardShell({
   schoolId?: string;
   schoolName?: string;
   isOperationalReady?: boolean;
+  capabilities?: Record<string, boolean>;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
@@ -177,7 +179,8 @@ export default function DashboardShell({
         userRole: userRole || "", 
         userName: userName || "",
         academicYear: academicYear || "",
-        isOperationalReady
+        isOperationalReady,
+        capabilities: capabilities || {}
       }}>
         <div className="flex min-h-screen bg-background selection:bg-primary/10 selection:text-primary relative">
           <Sidebar 

@@ -335,3 +335,43 @@ export async function getAttendanceExceptionsAction() {
     return { success: false, error: error.message };
   }
 }
+export async function submitFingerprintAttendanceAction(pidBlock: string, machineCode?: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("UNAUTHORIZED");
+
+    // 🔍 SOVEREIGN IDENTITY LOOKUP
+    // We look for a staff member whose biometricId matches the Machine Code or a metadata tag in the PID
+    // For now, we use machineCode as the primary identifier if provided.
+    
+    let identifier = machineCode;
+    
+    if (!identifier) {
+        // Fallback: Try to extract MC from PID XML using regex (Server-side)
+        const mcMatch = pidBlock.match(/mc="([^"]+)"/);
+        identifier = mcMatch ? mcMatch[1] : null;
+    }
+
+    if (!identifier) throw new Error("Could not extract unique biometric identifier from device.");
+
+    const staff = await prisma.staff.findFirst({
+      where: { 
+        schoolId: identity.schoolId,
+        biometricId: identifier 
+      }
+    });
+
+    if (!staff) {
+        // 🛡️ SECURITY AUDIT: Log the attempt with the identifier for later registration
+        console.warn(`[Biometric] Unregistered scan attempt: ${identifier}`);
+        throw new Error("Biometric ID not found in staff registry. Please register this finger.");
+    }
+
+    const markResult = await AttendanceServiceV21.markAttendance(staff.id, new Date(), "BIOMETRIC");
+    
+    revalidatePath("/dashboard");
+    return { success: true, data: markResult };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

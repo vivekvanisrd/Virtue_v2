@@ -19,7 +19,9 @@ import {
   CalendarDays,
   Zap,
   ExternalLink,
-  School
+  School,
+  X,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,13 +31,15 @@ import { supabase } from "@/lib/supabase/client";
 import { 
   getAdHocFeeOptions,
   assignAdHocFeeAction,
-  applyDiscountAction,
   updateStudentFeeComponentAction,
   getStudentFeeStatus,
   findPotentialSiblings,
   generatePaymentLinkAction,
   createRazorpayOrderAction,
-  verifyRazorpayPaymentAction
+  verifyRazorpayPaymentAction,
+  getDiscountTypesAction,
+  applyDiscountAction,
+  removeAdHocFeeAction
 } from "@/lib/actions/finance-actions";
 import { QRCodeSVG } from "qrcode.react";
 import RazorpayPaymentReport from "./RazorpayPaymentReport";
@@ -63,21 +67,31 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   const [payTarget, setPayTarget] = useState<{termId: string, amount: number} | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [adHocOptions, setAdHocOptions] = useState<any[]>([]);
+  const [discountOptions, setDiscountOptions] = useState<any[]>([]);
   const [assigningLoading, setAssigningLoading] = useState(false);
+  const [assigningFeeId, setAssigningFeeId] = useState<string | null>(null);
+  
+  const [discountSelection, setDiscountSelection] = useState({
+    id: "",
+    reason: ""
+  });
   const [adjustmentTarget, setAdjustmentTarget] = useState<any>(null); // { id, name, amount }
   const [adjustmentLoading, setAdjustmentLoading] = useState(false);
 
   const loadData = async () => {
     if (view === 'audit') return; // Skip student data in audit view
     setLoading(true);
-    const [res, sibs] = await Promise.all([
+    const [res, sibs, adHocRes] = await Promise.all([
       getStudentFeeStatus(studentId),
-      findPotentialSiblings(studentId)
+      findPotentialSiblings(studentId),
+      getAdHocFeeOptions()
     ]);
     
     if (res.success) setStudentData(res.data);
     if (sibs.success) setSiblings(sibs.data);
+    if (adHocRes.success) setAdHocOptions(adHocRes.data);
     setLoading(false);
   };
 
@@ -211,39 +225,57 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   };
 
   const handleAssignFee = async (componentId: string, amount: number) => {
-    setAssigningLoading(true);
+    setAssigningFeeId(componentId);
     const res = await assignAdHocFeeAction({
       studentId: studentData.id,
       componentId,
       amount
     });
-    setAssigningLoading(false);
+    setAssigningFeeId(null);
     if (res.success) {
-      setIsAssignModalOpen(false);
       loadData();
     } else {
       alert(res.error);
     }
   };
 
-  const handleApplyDiscount = async () => {
-    const amountStr = prompt("Enter Discount Amount (in ₹):");
-    if (!amountStr) return;
-    const amount = Number(amountStr);
-    if (isNaN(amount) || amount <= 0) return alert("Invalid amount");
+  const handleRemoveFee = async (componentId: string) => {
+    if (!confirm("Are you sure you want to remove this fee from the student's ledger?")) return;
+    setAssigningFeeId(componentId);
+    const res = await removeAdHocFeeAction({
+      studentId: studentData.id,
+      componentId,
+      reason: "Requested via Profile UI"
+    });
+    setAssigningFeeId(null);
+    if (res.success) {
+      loadData();
+    } else {
+      alert(res.error);
+    }
+  };
 
-    const reason = prompt("Enter Reason for Discount:");
-    if (!reason) return alert("Reason is required");
+  const handleOpenDiscountModal = async () => {
+    setIsDiscountModalOpen(true);
+    const res = await getDiscountTypesAction();
+    if (res.success) setDiscountOptions(res.data);
+  };
+
+  const handleApplyDiscount = async () => {
+    if (!discountSelection.id) return alert("Select a discount policy");
+    if (!discountSelection.reason || discountSelection.reason.length < 5) return alert("Reason is required (min 5 chars)");
 
     setAssigningLoading(true);
     const res = await applyDiscountAction({
       studentId,
-      amount,
-      reason
+      discountTypeId: discountSelection.id,
+      reason: discountSelection.reason
     });
     setAssigningLoading(false);
 
     if (res.success) {
+      setIsDiscountModalOpen(false);
+      setDiscountSelection({ id: "", reason: "" });
       loadData();
     } else {
       alert(res.error);
@@ -325,7 +357,7 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
+    <div className="space-y-8 w-full max-w-[1400px] mx-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
       {/* ─── ENHANCED SUMMARY VITAL SIGNS ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-2 [background:var(--sidebar-bg)] text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group border border-white/5 flex flex-col justify-between min-h-[340px]">
@@ -402,13 +434,14 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
             </div>
 
             <button 
-              onClick={handleApplyDiscount}
+              onClick={handleOpenDiscountModal}
               className="w-full py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all"
             >
               Modify Policy Discounts
             </button>
         </div>
 
+        {/* 🏛️ SOVEREIGN SIBLING LINKS */}
         <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col justify-between group overflow-hidden relative min-h-[300px]">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -mr-16 -mt-16" />
             
@@ -422,28 +455,30 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
 
             <div className="relative z-10 pt-4 border-t border-white/10">
                <p className="text-[10px] font-medium text-white/60 leading-relaxed italic">
-                 Automatic multi-child fee concessions are active based on the Sovereign Rulebook.
+                 "Discount is applied on total fee but adjusted in the final installment."
                </p>
             </div>
         </div>
       </div>
 
-      {/* ─── DETAILED FEE INVENTORY (POINT-OF-SALE VIEW) ─── */}
-      <div className="bg-white rounded-[3rem] border border-slate-100 overflow-hidden shadow-sm">
-         <div className="px-10 py-8 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-            <div>
-               <h4 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                  Comprehensive Fee Inventory
-               </h4>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Surgical Breakdown of All Financial Components</p>
-            </div>
-            <div className="flex items-center gap-3">
-               <div className="px-4 py-2 bg-white rounded-xl border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  Academic Year: {studentData.financial?.feeStructure?.academicYear?.name || "2024-25"}
-               </div>
-            </div>
-         </div>
+
+      {/* ─── DETAILED FEE INVENTORY & QUICK ADD MENU ─── */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="xl:col-span-3 bg-white rounded-[3rem] border border-slate-100 overflow-hidden shadow-sm flex flex-col">
+          <div className="px-10 py-8 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+             <div>
+                <h4 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
+                   <CreditCard className="w-5 h-5 text-primary" />
+                   Comprehensive Fee Inventory
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Surgical Breakdown of All Financial Components</p>
+             </div>
+             <div className="flex items-center gap-3">
+                <div className="px-4 py-2 bg-white rounded-xl border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">
+                   AY: {studentData.financial?.feeStructure?.academicYear?.name || "2024-25"}
+                </div>
+             </div>
+          </div>
 
          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -485,14 +520,14 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                         </div>
                      </td>
                      <td className="px-10 py-6 text-right">
-                        <button className="p-3 bg-white hover:bg-slate-100 rounded-xl border border-slate-200 transition-all text-slate-400 hover:text-slate-900">
-                           <Search className="w-4 h-4" />
-                        </button>
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Locked</span>
                      </td>
                   </tr>
 
                   {/* Ancillary Components */}
-                  {Object.entries(studentData.feeBreakdown?.ancillary || {}).map(([key, comp]: [string, any]) => (
+                  {Object.entries(studentData.feeBreakdown?.ancillary || {})
+                     .filter(([_, comp]: [string, any]) => comp.amount > 0 || comp.isPaid)
+                     .map(([key, comp]: [string, any]) => (
                      <tr key={key} className="group hover:bg-slate-50/50 transition-colors">
                         <td className="px-10 py-6">
                            <div className="flex items-center gap-4">
@@ -529,17 +564,57 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                            </div>
                         </td>
                         <td className="px-10 py-6 text-right">
-                           {!comp.isPaid && (
-                              <button 
-                                onClick={() => {
-                                  if (comp.isAdHoc) handleOpenAssignModal();
-                                  else handlePayInitiate(key, comp.amount);
-                                }}
-                                className="px-5 py-2.5 bg-slate-900 hover:bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
-                              >
-                                {comp.amount > 0 ? "Settle Now" : "Assign Fee"}
-                              </button>
-                           )}
+                           <div className="flex items-center justify-end gap-2">
+                             {(() => {
+                               const rawComp = studentData.financial?.components?.find((c: any) => c.masterComponent?.name === comp.label);
+                               if (rawComp) {
+                                 return (
+                                   <button 
+                                     onClick={() => setAdjustmentTarget({ id: rawComp.id, name: rawComp.masterComponent.name, amount: Number(rawComp.baseAmount) })}
+                                     className="p-2.5 bg-white text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl border border-slate-200 transition-all shadow-sm"
+                                     title="Refine Base Amount"
+                                   >
+                                     <Zap className="w-4 h-4" />
+                                   </button>
+                                 );
+                               }
+                               return null;
+                             })()}
+                             {!comp.isPaid && (
+                                <div className="flex gap-2">
+                                  <button 
+                                    onClick={() => {
+                                      if (comp.amount > 0) {
+                                        handlePayInitiate(key, comp.amount);
+                                      } else {
+                                        const masterComp = adHocOptions.find((o: any) => o.name === comp.label);
+                                        if (masterComp) handleAssignFee(masterComp.id, Number(masterComp.amount || 1000));
+                                      }
+                                    }}
+                                    disabled={assigningFeeId !== null}
+                                    className="px-5 py-2.5 bg-slate-900 hover:bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                  >
+                                    {comp.amount > 0 ? "Settle Now" : (assigningFeeId === (adHocOptions.find((o: any) => o.name === comp.label)?.id) ? "Syncing..." : "Assign Fee")}
+                                  </button>
+                                  {comp.amount > 0 && (() => {
+                                    const rawComp = studentData.financial?.components?.find((c: any) => c.masterComponent?.name === comp.label);
+                                    if (rawComp && !rawComp.isGenesis) {
+                                      return (
+                                        <button 
+                                          onClick={() => handleRemoveFee(rawComp.id)}
+                                          disabled={assigningFeeId !== null}
+                                          className="p-2.5 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl border border-rose-100 transition-all shadow-sm"
+                                          title="Remove Fee"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                             )}
+                           </div>
                         </td>
                      </tr>
                   ))}
@@ -563,6 +638,110 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">Final Net Payable</p>
                <p className="text-4xl font-black italic tracking-tighter text-accent">{formatCurrency(outstanding)}</p>
             </div>
+          </div>
+        </div>
+
+        {/* ─── QUICK ADD MENU (POS Sidebar) ─── */}
+        <div className="xl:col-span-1 bg-white rounded-[3rem] border border-slate-100 shadow-sm flex flex-col overflow-hidden max-h-[800px]">
+          <div className="p-8 bg-slate-900 text-white border-b border-slate-800">
+             <h4 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-white">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                Quick Add Menu
+             </h4>
+             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2 leading-relaxed">Toggle components from the Institutional Registry</p>
+          </div>
+          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-3">
+             {adHocOptions.length > 0 ? adHocOptions.map((opt: any) => {
+                const isAlreadyAssigned = studentData.financial?.components?.some(
+                   (c: any) => c.componentId === opt.id
+                );
+                
+                if (isAlreadyAssigned) return null;
+
+                return (
+                  <div key={opt.id} className="p-5 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-3 group hover:border-primary/30 transition-all">
+                    <div>
+                      <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{opt.name}</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{opt.type}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                       <p className="text-sm font-black italic text-slate-900">{formatCurrency(Number(opt.amount || 1000))}</p>
+                       <button 
+                         onClick={() => handleAssignFee(opt.id, Number(opt.amount || 1000))}
+                         disabled={assigningFeeId !== null}
+                         className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-30"
+                       >
+                         {assigningFeeId === opt.id ? "Syncing..." : "Add"}
+                       </button>
+                    </div>
+                  </div>
+                );
+             }) : (
+                <div className="text-center py-10 flex flex-col items-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-300 mb-3" />
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Loading DB...</span>
+                </div>
+             )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── CHRONOLOGICAL ACCOUNT STATEMENT (THE SOVEREIGN LEDGER) ─── */}
+      <div className="bg-white rounded-[3rem] border border-slate-100 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-700">
+         <div className="px-10 py-8 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+            <div>
+               <h4 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
+                  <Clock size={18} className="text-indigo-500" />
+                  Account Statement & Audit Trail
+               </h4>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Verifiable Ledger Entries (Law 5.1 Parity)</p>
+            </div>
+            <div className="flex items-center gap-2">
+               <span className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-slate-500 uppercase">Audit Safe</span>
+            </div>
+         </div>
+         <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+               <thead>
+                  <tr className="bg-slate-50/30">
+                     <th className="px-10 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                     <th className="px-10 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                     <th className="px-10 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                     <th className="px-10 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Debit (Charge)</th>
+                     <th className="px-10 py-5 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Credit (Paid/Disc)</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-50">
+                  {studentData.ledgerEntries?.map((entry: any) => (
+                     <tr key={entry.id} className="group hover:bg-slate-50/50 transition-colors">
+                        <td className="px-10 py-5 text-[11px] font-medium text-slate-500">
+                           {new Date(entry.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-10 py-5">
+                           <span className={cn(
+                              "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-tight border",
+                              entry.type === "CHARGE" ? "bg-rose-50 text-rose-600 border-rose-100" :
+                              entry.type === "DISCOUNT" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                              entry.type === "PAYMENT" ? "bg-blue-50 text-blue-600 border-blue-100" :
+                              "bg-slate-50 text-slate-600 border-slate-100"
+                           )}>
+                              {entry.type}
+                           </span>
+                        </td>
+                        <td className="px-10 py-5 text-[11px] font-bold text-slate-700">
+                           {entry.reason}
+                           <p className="text-[9px] font-medium text-slate-400 mt-0.5">By: {entry.createdBy}</p>
+                        </td>
+                        <td className="px-10 py-5 text-right font-black italic text-slate-900">
+                           {entry.type === "CHARGE" ? formatCurrency(entry.amount) : "—"}
+                        </td>
+                        <td className="px-10 py-5 text-right font-black italic text-emerald-600">
+                           {(entry.type === "DISCOUNT" || entry.type === "PAYMENT" || entry.type === "CREDIT") ? formatCurrency(entry.amount) : "—"}
+                        </td>
+                     </tr>
+                  ))}
+               </tbody>
+            </table>
          </div>
       </div>
 
@@ -598,13 +777,27 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                 </div>
 
                 <div className="space-y-1">
-                   <h4 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">
-                     {term.replace("term", "Sovereign Term ")}
-                   </h4>
-                   <p className="text-3xl font-black tabular-nums tracking-tighter italic text-slate-400">
-                     <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
-                   </p>
-                </div>
+                    <h4 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">
+                      {term.replace("term", "Sovereign Term ")}
+                    </h4>
+                    {term === "term3" && studentData.financial?.totalDiscount > 0 ? (
+                       <div className="space-y-0.5">
+                          <p className="text-sm font-black text-slate-300 line-through tracking-tighter italic">
+                             ₹{(amount + Number(studentData.financial?.totalDiscount)).toLocaleString()}
+                          </p>
+                          <p className="text-3xl font-black tabular-nums tracking-tighter italic text-emerald-600">
+                             <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
+                          </p>
+                          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">
+                             -₹{Number(studentData.financial?.totalDiscount).toLocaleString()} Discount Applied
+                          </p>
+                       </div>
+                    ) : (
+                       <p className="text-3xl font-black tabular-nums tracking-tighter italic text-slate-900">
+                         <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
+                       </p>
+                    )}
+                 </div>
                 
                 {!isPaid && (
                   <div className="space-y-3 mt-8">
@@ -697,125 +890,6 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
         )}
       </AnimatePresence>
 
-      {/* ─── INSTITUTIONAL ASSIGNMENT MODAL ─── */}
-      <AnimatePresence>
-        {isAssignModalOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAssignModalOpen(false)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white"
-            >
-              <div className="p-10 space-y-8">
-                <div>
-                   <h3 className="text-3xl font-black italic tracking-tighter text-slate-900 uppercase">Institutional Opt-In</h3>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                      Assigning DB-Sourced Fees • Authorized Personnel Only
-                   </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                  {adHocOptions.length > 0 ? adHocOptions.map((opt: any) => {
-                    const alreadyHas = studentData.feeBreakdown?.ancillary?.[opt.name.toLowerCase()] || 
-                                     studentData.feeBreakdown?.ancillary?.[Object.keys(studentData.feeBreakdown.ancillary).find(k => k.toLowerCase().includes(opt.name.toLowerCase())) || ""];
-                    
-                    return (
-                      <div key={opt.id} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex items-center justify-between group hover:border-primary/30 transition-all">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-sm border border-slate-100">
-                              <Zap className="w-6 h-6" />
-                           </div>
-                           <div>
-                             <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{opt.name}</p>
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{opt.type}</p>
-                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                           <p className="text-lg font-black italic text-slate-900">{formatCurrency(Number(opt.amount || 1000))}</p>
-                           <button 
-                             onClick={() => handleAssignFee(opt.id, Number(opt.amount || 1000))}
-                             disabled={assigningLoading || (alreadyHas && alreadyHas.amount > 0)}
-                             className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-30"
-                           >
-                             {alreadyHas && alreadyHas.amount > 0 ? "Already Assigned" : (assigningLoading ? "Syncing..." : "Assign Fee")}
-                           </button>
-                        </div>
-                      </div>
-                    );
-                  }) : (
-                    <div className="text-center py-10">
-                      <Loader2 className="w-8 h-8 animate-spin text-slate-200 mx-auto" />
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-4">Loading Master Repository...</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-slate-100">
-                   <button 
-                     onClick={() => setIsAssignModalOpen(false)}
-                     className="w-full py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors"
-                   >
-                     Close Registry
-                   </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ─── INSTITUTIONAL FEE MANAGEMENT (PRINCIPAL OVERRIDE) ─── */}
-      <div className="bg-white rounded-[3rem] border border-slate-100 p-10 mt-10 shadow-sm relative overflow-hidden group">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32" />
-         
-         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
-            <div>
-               <h4 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900 mb-1">
-                  <ShieldCheck className="w-5 h-5 text-primary" />
-                  Institutional Fee Recognition
-               </h4>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authorized Adjustments & Registry Sync</p>
-            </div>
-            
-            <button 
-              onClick={handleOpenAssignModal}
-              className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2 shadow-xl shadow-slate-200 active:scale-95"
-            >
-               <Plus className="w-4 h-4" /> Add Master Fee
-            </button>
-         </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {studentData.financial?.components?.map((comp: any) => (
-               <div key={comp.id} className="p-6 bg-slate-50/50 border border-slate-100 rounded-[2rem] hover:border-primary/20 transition-all group/item">
-                  <div className="flex justify-between items-start mb-4">
-                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{comp.masterComponent?.name}</p>
-                        <p className="text-xl font-black text-slate-900 italic tracking-tighter">{formatCurrency(Number(comp.baseAmount))}</p>
-                     </div>
-                     <button 
-                       onClick={() => setAdjustmentTarget({ id: comp.id, name: comp.masterComponent.name, amount: Number(comp.baseAmount) })}
-                       className="p-3 bg-white text-slate-300 hover:text-primary hover:bg-primary/5 rounded-xl border border-slate-100 transition-all opacity-0 group-item-hover:opacity-100"
-                     >
-                        <Zap className="w-4 h-4" />
-                     </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className="px-3 py-1 bg-white border border-slate-100 rounded-lg text-[8px] font-black text-slate-400 uppercase tracking-tight">V.{comp.version || 1}</span>
-                     {comp.lockReason && <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[8px] font-black uppercase tracking-tight border border-amber-100/50">{comp.lockReason}</span>}
-                  </div>
-               </div>
-            ))}
-         </div>
-      </div>
 
       {/* ─── ADJUSTMENT OVERLAY MODAL ─── */}
       <AnimatePresence>
@@ -870,41 +944,67 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
         )}
       </AnimatePresence>
 
-      {/* ─── TRANSACTION TIMELINE ─── */}
-      <div className="bg-[var(--card)] rounded-[3rem] border border-[var(--border)] premium-shadow p-8 mt-10">
-         <h4 className="text-sm font-black uppercase tracking-[0.2em] mb-8 flex items-center gap-3 text-[var(--foreground)]/60">
-            <Clock className="w-4 h-4 text-[#0047ab]" />
-            Recent Collections
-         </h4>
 
-         <div className="space-y-4">
-            {studentData.collections?.length > 0 ? (
-               studentData.collections.map((col: any) => (
-                  <div key={col.id} className="group p-6 bg-slate-50/50 border border-slate-100/50 rounded-[2rem] flex items-center justify-between hover:border-[#0047ab]/30 transition-all">
-                     <div className="flex items-center gap-5">
-                        <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#0047ab] shadow-sm">
-                           <CreditCard className="w-6 h-6" />
-                        </div>
-                        <div>
-                           <p className="text-xs font-black text-slate-900 uppercase tracking-tighter">{col.receiptNumber}</p>
-                           <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase italic">{col.paymentMode} • {new Date(col.paymentDate).toLocaleDateString()}</p>
-                        </div>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-lg font-black text-emerald-500">+{formatCurrency(Number(col.totalPaid))}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Settled: {col.allocatedTo?.terms?.join(', ') || 'MISC'}</p>
-                     </div>
-                  </div>
-               ))
-            ) : (
-               <div className="text-center py-16 bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
-                  <AlertCircle className="w-8 h-8 text-slate-200 mx-auto mb-3" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">No Historical Records Found</p>
-               </div>
-            )}
-         </div>
-      </div>
       
+
+      {/* 🏷️ DISCOUNT SELECTION MODAL (Registry Powered) */}
+      {isDiscountModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4">
+          <div className="bg-white rounded-[3.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20"><Zap className="w-6 h-6" /></div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">Apply Policy Discount</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Predefined Institutional Registry</p>
+                </div>
+              </div>
+              <button onClick={() => setIsDiscountModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Authorized Policy</label>
+                <select 
+                  value={discountSelection.id} 
+                  onChange={e => setDiscountSelection({ ...discountSelection, id: e.target.value })}
+                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-6 py-4 text-sm font-black outline-none focus:border-emerald-500 transition-all"
+                >
+                  <option value="">Select an active policy...</option>
+                  {discountOptions.map(dt => (
+                    <option key={dt.id} value={dt.id}>{dt.name} — {dt.percentage ? `${dt.percentage}%` : formatCurrency(dt.amount)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Justification</label>
+                <textarea 
+                  value={discountSelection.reason} 
+                  onChange={e => setDiscountSelection({ ...discountSelection, reason: e.target.value })}
+                  placeholder="Audit reason for this concession..."
+                  className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-6 py-4 text-sm font-black outline-none focus:border-emerald-500 transition-all min-h-[100px]" 
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-100 p-6 rounded-3xl flex items-start gap-4">
+                <div className="w-8 h-8 bg-amber-500 text-white rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-amber-500/20"><AlertCircle className="w-5 h-5" /></div>
+                <p className="text-[10px] font-bold text-amber-800 leading-relaxed uppercase tracking-wider">
+                  "By applying this, you confirm that the student meets the eligibility criteria for {discountOptions.find(d => d.id === discountSelection.id)?.name || 'the selected policy'}."
+                </p>
+              </div>
+
+              <button 
+                onClick={handleApplyDiscount}
+                disabled={assigningLoading || !discountSelection.id || !discountSelection.reason}
+                className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50 mt-4"
+              >
+                {assigningLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Authorize Discount"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

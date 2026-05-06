@@ -58,23 +58,29 @@ export async function upsertDiscountType(data: {
             throw new Error("Validation Failed: Discount values cannot be negative.");
         }
 
-        const type = await prisma.discountType.upsert({
-            where: { id: data.id || 'new-type' },
-            create: {
-                schoolId: context.schoolId,
-                name: data.name,
-                description: data.description,
-                percentage: data.percentage,
-                amount: data.amount,
-                isActive: true
-            },
-            update: {
-                name: data.name,
-                description: data.description,
-                percentage: data.percentage,
-                amount: data.amount
-            }
-        });
+        let type;
+        if (data.id) {
+            type = await prisma.discountType.update({
+                where: { id: data.id, schoolId: context.schoolId },
+                data: {
+                    name: data.name,
+                    description: data.description,
+                    percentage: data.percentage,
+                    amount: data.amount
+                }
+            });
+        } else {
+            type = await prisma.discountType.create({
+                data: {
+                    schoolId: context.schoolId,
+                    name: data.name,
+                    description: data.description,
+                    percentage: data.percentage,
+                    amount: data.amount,
+                    isActive: true
+                }
+            });
+        }
 
         revalidatePath("/admin/discounts");
         return { success: true, data: type };

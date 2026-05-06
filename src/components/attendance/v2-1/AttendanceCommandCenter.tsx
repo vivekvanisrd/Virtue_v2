@@ -27,6 +27,7 @@ import { MonthlyRegister } from "./MonthlyRegister";
 import { ShiftManager } from "./ShiftManager";
 import { PersonnelAssignment } from "./PersonnelAssignment";
 import { ExceptionDashboard } from "./ExceptionDashboard";
+import { FingerprintModal } from "./FingerprintModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -37,8 +38,9 @@ export function AttendanceCommandCenter() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   
-  // Face Modal State
+  // Biometric State
   const [isFaceMode, setIsFaceMode] = useState(false);
+  const [isFingerMode, setIsFingerMode] = useState(false);
   const [scanStatus, setScanStatus] = useState<"IDLE" | "SCANNING" | "SUCCESS" | "FAIL">("IDLE");
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -235,14 +237,22 @@ export function AttendanceCommandCenter() {
                 </div>
             </div>
 
-            <div className="p-2 border border-slate-200 rounded-[2.5rem] bg-slate-50 flex items-center justify-center group">
+            <div className="p-2 border border-slate-200 rounded-[2.5rem] bg-slate-50 flex flex-col gap-2 group">
                 <button 
                    onClick={startFaceScan}
                    disabled={loading}
-                   className="w-full h-full bg-blue-600 text-white rounded-[2.2rem] flex flex-col items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 group hover:scale-[0.98] active:scale-90"
+                   className="w-full h-1/2 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 group hover:scale-[0.98] active:scale-90"
                 >
-                   <Camera className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                   <span className="text-xs font-black uppercase tracking-[0.2em]">Launch AI Scan</span>
+                   <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                   <span className="text-[10px] font-black uppercase tracking-widest">Face Scan</span>
+                </button>
+                <button 
+                   onClick={() => setIsFingerMode(true)}
+                   disabled={loading}
+                   className="w-full h-1/2 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl group hover:scale-[0.98] active:scale-90"
+                >
+                   <Fingerprint className="w-6 h-6 group-hover:scale-110 transition-transform text-emerald-500" />
+                   <span className="text-[10px] font-black uppercase tracking-widest">Finger Scan</span>
                 </button>
             </div>
           </div>
@@ -491,6 +501,15 @@ export function AttendanceCommandCenter() {
                </div>
             </div>
          </div>
+      )}
+      {isFingerMode && (
+         <FingerprintModal 
+            onClose={() => setIsFingerMode(false)} 
+            onSuccess={() => {
+                fetchStats();
+                fetchStaff();
+            }} 
+         />
       )}
     </div>
   );

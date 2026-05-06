@@ -6,9 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User, Users, CreditCard, CheckCircle2, ArrowRight, ArrowLeft,
-  MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert, AlertCircle, Sparkles, Wand2
+  MapPin, Bus, School, Heart, Building, Info, ChevronDown, Search, ShieldAlert, AlertCircle, Sparkles, Wand2, Zap, ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calculateTermBreakdown } from "@/lib/utils/fee-utils";
 import { useTabs } from "@/context/tab-context";
 import { studentAdmissionSchema, type StudentAdmissionData } from "@/types/student";
 import { submitStandardizedAdmissionAction, searchStudentsAction } from "@/lib/actions/student-actions";
@@ -61,6 +62,7 @@ export function StudentForm() {
     classes: any[],
     feeSchedules: any[],
     feeMasters: any[],
+    discountTypes: any[],
     schoolName: string
   }>({
     branches: [],
@@ -68,6 +70,7 @@ export function StudentForm() {
     classes: [],
     feeSchedules: [],
     feeMasters: [],
+    discountTypes: [],
     schoolName: ""
   });
   const [sections, setSections] = useState<any[]>([]);
@@ -250,6 +253,21 @@ export function StudentForm() {
   const firstName = watch("firstName");
   const aadhaarNumber = watch("aadhaarNumber");
   const feeScheduleId = watch("feeScheduleId");
+  const tuitionFee = Number(watch("tuitionFee") || 0);
+  const selectedDiscountId = watch("discountId1");
+  const paymentType = watch("paymentType") || "Term-wise";
+
+  // 💰 Real-time Financial Preview Logic (Law 5.1 Sync)
+  const activeDiscount = refData.discountTypes.find(d => d.id === selectedDiscountId);
+  let previewDiscountAmount = 0;
+  if (activeDiscount) {
+    if (activeDiscount.percentage) {
+      previewDiscountAmount = (tuitionFee * Number(activeDiscount.percentage)) / 100;
+    } else {
+      previewDiscountAmount = Number(activeDiscount.amount || 0);
+    }
+  }
+  const termBreakdown = calculateTermBreakdown(tuitionFee, previewDiscountAmount, paymentType);
 
   // 💰 Phase 1: Sovereign Registry Auto-Population
   // Loads values directly from the Institutional Fee Registry (feeMasters.amount)
@@ -1154,20 +1172,22 @@ export function StudentForm() {
                               <p className="text-sm font-bold text-slate-800">{tuitionMaster.name}</p>
                               <span className={cn("text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wide mt-1 inline-block", typeColor[tuitionMaster.type] || "bg-slate-100 text-slate-500")}>{tuitionMaster.type}</span>
                               
-                              {/* Term-wise Logic Bridge */}
-                              {watch("paymentType") === "Term-wise" && (
+                              {/* Term-wise Logic Bridge (Rule 5.1: Discount Deducted from Term 3) */}
+                              {paymentType === "Term-wise" && (
                                 <div className="mt-3 flex items-center gap-3">
                                   <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
                                     <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Term 1 (50%)</p>
-                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{(Number(watch("tuitionFee") || 0) * 0.5).toLocaleString()}</p>
+                                    <p className="text-[11px] font-bold text-primary mt-0.5">{termBreakdown.term1.amount.toLocaleString()}</p>
                                   </div>
                                   <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
                                     <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Term 2 (25%)</p>
-                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{(Number(watch("tuitionFee") || 0) * 0.25).toLocaleString()}</p>
+                                    <p className="text-[11px] font-bold text-primary mt-0.5">{termBreakdown.term2.amount.toLocaleString()}</p>
                                   </div>
-                                  <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
+                                  <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10 shadow-sm shadow-emerald-500/10">
                                     <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Term 3 (25%)</p>
-                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{(Number(watch("tuitionFee") || 0) * 0.25).toLocaleString()}</p>
+                                    <p className={cn("text-[11px] font-bold mt-0.5", previewDiscountAmount > 0 ? "text-emerald-500" : "text-primary")}>
+                                      ₹{termBreakdown.term3.amount.toLocaleString()}
+                                    </p>
                                   </div>
                                 </div>
                               )}
@@ -1231,21 +1251,45 @@ export function StudentForm() {
                   );
                 })()}
 
-                {/* Discounts */}
-                <div>
-                  <p className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider mb-2">Discounts</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Field label="Discount 1" error={errors.discountId1?.message}>
-                      <select {...register("discountId1")} className={selectCls}>
-                        <option value="">No Discount</option>
-                        <option value="d_scholar">Merit Scholar 25%</option>
-                        <option value="d_staff">Staff Ward 50%</option>
-                        <option value="d_sibling">Sibling Discount 10%</option>
+                {/* 🏷️ SOVEREIGN DISCOUNT REGISTRY (Rule 5.1) */}
+                <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100">
+                  <div className="flex items-center gap-2 mb-4">
+                     <Zap className="w-4 h-4 text-emerald-500" />
+                     <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Institutional Discount Mapping</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Field label="Policy Selection" error={errors.discountId1?.message}>
+                      <select 
+                        {...register("discountId1")} 
+                        className={selectCls}
+                        onChange={(e) => {
+                           const id = e.target.value;
+                           setValue("discountId1", id);
+                           // Auto-calculate the effect (UI only, backend will re-validate)
+                           const dt = refData.discountTypes.find(d => d.id === id);
+                           if (dt) {
+                              // If it's a percentage, the reason should probably note that.
+                              // But we'll leave reason manual as per user request
+                           }
+                        }}
+                      >
+                        <option value="">No Discount Active</option>
+                        {refData.discountTypes.map((dt) => (
+                          <option key={dt.id} value={dt.id}>
+                            {dt.name} ({dt.percentage ? `${dt.percentage}%` : `₹${Number(dt.amount).toLocaleString()}`})
+                          </option>
+                        ))}
                       </select>
                     </Field>
-                    <Field label="Reason" error={errors.discountReason1?.message} className="sm:col-span-2">
-                      <input {...register("discountReason1")} placeholder="Reason" className={inputCls} />
+                    <Field label="Authorized Reason" error={errors.discountReason1?.message} className="sm:col-span-2">
+                      <input {...register("discountReason1")} placeholder="e.g. Merit-based approval from Principal" className={inputCls} />
                     </Field>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-emerald-100 flex items-center gap-2">
+                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                     <p className="text-[9px] font-bold text-emerald-600/70 italic uppercase tracking-wider">
+                        "Discount is applied on total fee but adjusted in the final installment."
+                     </p>
                   </div>
                 </div>
               </div>

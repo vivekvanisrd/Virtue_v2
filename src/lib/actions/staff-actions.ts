@@ -335,23 +335,6 @@ export async function disburseStaffAdvanceAction(staffId: string, amount: number
     }
 }
 
-export async function getSalaryHubStats() {
-    try {
-        const identity = await getSovereignIdentity();
-        if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
-        
-        const count = await prisma.staff.count({ 
-            where: { 
-                schoolId: identity.schoolId, 
-                status: "ACTIVE",
-                ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
-            } 
-        });
-        
-        return { success: true, data: { staffCount: count, totalBudget: "₹-" } };
-    } catch(e: any) { return { success: false, error: e.message }; }
-}
-
 export async function getStaffHubStats() {
     try {
         const identity = await getSovereignIdentity();
@@ -360,11 +343,21 @@ export async function getStaffHubStats() {
         const count = await prisma.staff.count({ 
             where: { 
                 schoolId: identity.schoolId,
+                status: "ACTIVE",
                 ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
             } 
         });
         
-        return { success: true, data: { totalStaff: count, activeStaff: count, newJoinees: 0 } };
+        return { 
+            success: true, 
+            data: { 
+                totalStaff: count, 
+                activeStaff: count, 
+                staffCount: count, // Added for salary hub backwards compatibility
+                newJoinees: 0,
+                totalBudget: "₹-"
+            } 
+        };
     } catch(e: any) { return { success: false, error: e.message }; }
 }
 

@@ -3,7 +3,8 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
-import { ROLES, Role, canManageRole } from "@/lib/utils/rbac";
+// Define Role locally for types if needed, or import from types. For now we use string
+type Role = string;
 import { logActivity } from "@/lib/utils/audit-logger";
 
 /**
@@ -57,21 +58,19 @@ export async function updateStaffRole(targetStaffId: string, newRole: Role) {
       return { success: false, error: "Staff member not found" };
     }
 
-    // 2. Validate hierarchy using RBAC utils
-    // The acting user must have permission to manage the target's current role AND
-    // the acting user must have permission to grant the new role.
-    const canManageCurrent = canManageRole(actingUserRole, targetStaff.role);
-    const canAssignNew = canManageRole(actingUserRole, newRole);
-
-    if (!canManageCurrent || !canAssignNew) {
+    const { checkCapability } = await import("@/lib/auth/rbac");
+    await checkCapability('STAFF_MANAGE');
+    
+    // 🛡️ PREVENT DOWNGRADE OF OWNERS: Only another OWNER/DEVELOPER can modify an OWNER
+    if (targetStaff.role === 'OWNER' && identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
       return { 
         success: false, 
-        error: "Permission Denied: You do not have sufficient privileges to assign or modify this role." 
+        error: "Permission Denied: Only a System Owner can modify another Owner's role." 
       };
     }
 
     // 3. Handle Static vs Custom Role Update
-    const isStatic = Object.values(ROLES).includes(newRole as any);
+    const isStatic = false; // We treat all roles as dynamic now, but the schema allows strings
     
     let dbUpdateData: any = { role: newRole };
     

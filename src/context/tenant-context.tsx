@@ -10,6 +10,7 @@ interface TenantContextType {
   userName: string;
   academicYear: string;
   isOperationalReady: boolean;
+  capabilities: Record<string, boolean>;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -34,6 +35,16 @@ export function useTenant() {
     throw new Error("useTenant must be used within a TenantProvider");
   }
   return context;
+}
+
+export function useCapability(capability: string): boolean {
+  const context = useContext(TenantContext);
+  if (!context) return false;
+  
+  // System Admins/Owners inherently have all permissions
+  if (context.userRole === 'OWNER' || context.userRole === 'DEVELOPER') return true;
+  
+  return !!context.capabilities[capability];
 }
 
 /**

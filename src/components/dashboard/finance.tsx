@@ -7,6 +7,7 @@ import { FeeStructureManager } from "../finance/FeeStructureManager";
 import { DailyCollectionSummary } from "../finance/DailyCollectionSummary";
 import { PayrollManager } from "../finance/PayrollManager";
 import RazorpayPaymentReport from "../finance/RazorpayPaymentReport";
+import { DiscountRegistry } from "../finance/DiscountRegistry";
 import { useTabs } from "@/context/tab-context";
 import { 
   getRevenueLeakageReport, 
@@ -88,6 +89,10 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
 
   if (tabId === "razorpay-audit") {
     return <RazorpayPaymentReport onBack={() => openTab({ id: "finance", title: "Finance Hub", component: "Finance" })} />;
+  }
+
+  if (tabId === "finance-discounts") {
+    return <DiscountRegistry />;
   }
 
   return (

@@ -247,6 +247,32 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
           </div>
         </div>
       </div>
+      {/* 📊 SOVEREIGN AUDIT SUMMARY (Rule 5.1 Compliance) */}
+      {Number(student.financial?.totalDiscount) > 0 && (
+        <div className="mb-10 bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex items-center justify-between shadow-inner">
+           <div className="space-y-4">
+              <div>
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Original Annual Fee</p>
+                 <p className="text-xl font-black text-slate-400 line-through tracking-tighter italic leading-none">{formatCurrency((Number(student.feeBreakdown?.annualNet) || 0) + (Number(student.financial?.totalDiscount) || 0))}</p>
+              </div>
+              <div className="pt-2 border-t border-slate-200">
+                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest italic">
+                    "Discount is applied on total fee but adjusted in the final installment."
+                 </p>
+              </div>
+           </div>
+           <div className="flex gap-10">
+              <div className="text-right">
+                 <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1">Policy Savings</p>
+                 <p className="text-xl font-black text-emerald-600 tracking-tighter italic">-{formatCurrency(student.financial?.totalDiscount)}</p>
+              </div>
+              <div className="text-right border-l border-slate-200 pl-10">
+                 <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Final Payable</p>
+                 <p className="text-2xl font-black text-slate-900 tracking-tighter italic">{formatCurrency(student.feeBreakdown?.annualNet)}</p>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Ledger Table */}
       <div className="mb-12">

@@ -1,4 +1,4 @@
-import axios from "axios";
+
 import prisma from "@/lib/prisma";
 
 const AZURE_KEY = process.env.AZURE_FACE_KEY;

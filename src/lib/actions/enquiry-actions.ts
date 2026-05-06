@@ -411,26 +411,87 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
                 }
             });
 
-            // C. Create Ledger Accrual (Journal Entry)
-            const netAnnual = Number(feeStructure.totalAmount) - Number(enquiry.scholarshipAmount || 0);
+            // C. Create Student Ledger Entries (Audit Safe)
+            const grossTuition = Number(feeStructure.totalAmount);
+            const scholarship = Number(enquiry.scholarshipAmount || 0);
 
+            const ledgerEntries = [
+                {
+                    studentId: newStu.id,
+                    schoolId: context.schoolId,
+                    branchId: enquiry.branchId,
+                    academicYearId: activeAY.id,
+                    type: "CHARGE",
+                    amount: grossTuition,
+                    reason: `Tuition Fee (${feeStructure.name}) - Migrated from Lead`,
+                    createdBy: "SYSTEM_CONVERSION"
+                }
+            ];
+
+            if (scholarship > 0) {
+                ledgerEntries.push({
+                    studentId: newStu.id,
+                    schoolId: context.schoolId,
+                    branchId: enquiry.branchId,
+                    academicYearId: activeAY.id,
+                    type: "DISCOUNT",
+                    amount: scholarship,
+                    reason: `Scholarship Concession - Migrated from Lead`,
+                    createdBy: "SYSTEM_CONVERSION"
+                });
+            }
+
+            await tx.ledgerEntry.createMany({ data: ledgerEntries });
+
+            // D. Create Journal Accruals (Gross + Discount Offset)
             await tx.journalEntry.create({
                 data: {
                     schoolId: context.schoolId,
                     branchId: enquiry.branchId,
                     financialYearId: activeFY.id,
                     entryType: "ADMISSION_ACCRUAL",
-                    totalDebit: netAnnual,
-                    totalCredit: netAnnual,
-                    description: `Conversion Accrual: Lead ${enquiryId} -> Student ${newStu.id}`,
+                    totalDebit: grossTuition,
+                    totalCredit: grossTuition,
+                    description: `Gross Accrual: Lead ${enquiryId} -> Student ${newStu.id}`,
                     lines: {
                         create: [
-                            { accountId: receivableAccount.id, debit: netAnnual, credit: 0 },
-                            { accountId: incomeAccount.id, debit: 0, credit: netAnnual }
+                            { accountId: receivableAccount.id, debit: grossTuition, credit: 0 },
+                            { accountId: incomeAccount.id, debit: 0, credit: grossTuition }
                         ]
                     }
                 }
             });
+
+            if (scholarship > 0) {
+                const discountAccount = await tx.chartOfAccount.findFirst({ 
+                    where: { 
+                        schoolId: context.schoolId, 
+                        OR: [
+                            { accountCode: "4400" },
+                            { accountName: { contains: "Discount", mode: "insensitive" } },
+                            { accountName: { contains: "Scholarship", mode: "insensitive" } }
+                        ] 
+                    } 
+                }) || incomeAccount;
+
+                await tx.journalEntry.create({
+                    data: {
+                        schoolId: context.schoolId,
+                        branchId: enquiry.branchId,
+                        financialYearId: activeFY.id,
+                        entryType: "ADMISSION_DISCOUNT",
+                        totalDebit: scholarship,
+                        totalCredit: scholarship,
+                        description: `Lead Scholarship Offset: ${newStu.id}`,
+                        lines: {
+                            create: [
+                                { accountId: discountAccount.id, debit: scholarship, credit: 0 },
+                                { accountId: receivableAccount.id, debit: 0, credit: scholarship }
+                            ]
+                        }
+                    }
+                });
+            }
 
             // D. Update Enquiry Status
             await tx.enquiry.update({

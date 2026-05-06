@@ -199,6 +199,10 @@ export async function submitStaffAttendanceAction(records: {
   checkOut?: string;
 }[]) {
   try {
+    // 🛡️ SOVEREIGN GATE: Identity required for tenancy injection
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+
     const result = await prisma.$transaction(
       records.map((r) => {
         const attendanceDate = new Date(r.date);
@@ -226,6 +230,8 @@ export async function submitStaffAttendanceAction(records: {
           create: {
             id: `STAFF-${r.staffId}-${r.date}`,
             staffId: r.staffId,
+            schoolId: identity.schoolId,   // 🔒 Tenancy injection
+            branchId: identity.branchId,   // 🔒 Tenancy injection
             date: attendanceDate,
             status: r.status,
             checkIn: parseTime(r.checkIn),

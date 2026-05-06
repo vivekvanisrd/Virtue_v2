@@ -15,22 +15,15 @@ export async function signInAction(data: { identifier: string; password: string 
         const identifier = data.identifier.trim();
         
         // 1. PRIMARY: PLATFORM_ADMIN LOOKUP (Sovereign Segregation)
-        const platformDev = await (async () => {
-            const originalSkip = process.env.SKIP_TENANCY;
-            process.env.SKIP_TENANCY = 'true';
-            try {
-                return await prisma.platformAdmin.findFirst({
-                    where: {
-                        OR: [
-                            { email: identifier },
-                            { username: identifier }
-                        ]
-                    }
-                });
-            } finally {
-                process.env.SKIP_TENANCY = originalSkip;
+        // PlatformAdmin is in SYSTEM_MODELS, so it natively bypasses the Tenancy Interceptor
+        const platformDev = await prisma.platformAdmin.findFirst({
+            where: {
+                OR: [
+                    { email: identifier },
+                    { username: identifier }
+                ]
             }
-        })();
+        });
 
         if (platformDev) {
             const isValid = await bcrypt.compare(data.password, platformDev.passwordHash);
@@ -62,23 +55,15 @@ export async function signInAction(data: { identifier: string; password: string 
         }
 
         // 2. FALLBACK: STAFF LOOKUP (Institutional Tenancy)
-        const staff = await (async () => {
-            const originalSkip = process.env.SKIP_TENANCY;
-            process.env.SKIP_TENANCY = 'true';
-            try {
-                return await prisma.staff.findFirst({
-                    where: {
-                        OR: [
-                            { email: identifier },
-                            { username: identifier }
-                        ],
-                        status: "ACTIVE"
-                    } as any
-                });
-            } finally {
-                process.env.SKIP_TENANCY = originalSkip;
-            }
-        })();
+        // Using $queryRaw directly to bypass the Tenancy Interceptor safely without
+        // mutating the global process.env.SKIP_TENANCY which causes race conditions.
+        const staffRecords = await prisma.$queryRaw<any[]>`
+            SELECT * FROM "Staff" 
+            WHERE ("email" = ${identifier} OR "username" = ${identifier}) 
+            AND "status" = 'ACTIVE' 
+            LIMIT 1
+        `;
+        const staff = staffRecords[0];
 
         if (!staff || !(staff as any).passwordHash) {
             return { success: false, error: "Invalid credentials." };

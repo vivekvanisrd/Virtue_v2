@@ -249,11 +249,16 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                     // Optimized to bypass transaction for read operations
                     const isWrite = ['create', 'createMany', 'update', 'updateMany', 'delete', 'deleteMany', 'upsert'].includes(operation);
                     
+                    // 🕵️ SOVEREIGN SANITIZATION: Apply PII scrubbing to ALL results
+                    // Previously, the sanitizer was dead code (after an early return). Fixed in V8.2.
+                    const shouldSanitize = process.env.SKIP_TENANCY !== 'true';
+
                     if (!isWrite) {
-                        return query(args);
+                        const readResult = await query(args);
+                        return shouldSanitize ? recursiveSanitize(readResult, tenant?.role) : readResult;
                     }
 
-                    return await (client as any).$transaction(async (tx: any) => {
+                    const writeResult = await (client as any).$transaction(async (tx: any) => {
                         await tx.$executeRawUnsafe(`SET LOCAL app.current_school_id = '${tenant.schoolId}';`);
                         if (tenant.branchId) {
                             await tx.$executeRawUnsafe(`SET LOCAL app.current_branch_id = '${tenant.branchId}';`);
@@ -264,13 +269,7 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                         timeout: 10000 
                     });
 
-                    // 🕵️ RECURSIVE SANITIZATION (V8.1 Deep Seal)
-                    // If SKIP_TENANCY is explicitly enabled (internal routines), we skip sanitization
-                    if (process.env.SKIP_TENANCY === 'true') {
-                        return result;
-                    }
-
-                    return recursiveSanitize(result, tenant?.role);
+                    return shouldSanitize ? recursiveSanitize(writeResult, tenant?.role) : writeResult;
                 },
             },
         },

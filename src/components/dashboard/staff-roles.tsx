@@ -12,13 +12,14 @@ import {
 } from "lucide-react";
 import { getStaffMembers, updateStaffRole } from "@/lib/actions/role-actions";
 import { getCustomRoles } from "@/lib/actions/role-definition-actions";
-import { ROLES, Role, canManageRole } from "@/lib/utils/rbac";
+import { STANDARD_ROLES } from "@/types/auth";
 import { cn } from "@/lib/utils";
 
-import { useTenant } from "@/context/tenant-context";
+import { useTenant, useCapability } from "@/context/tenant-context";
 
 export function StaffRolesManager() {
   const { schoolId, userRole: actingUserRole } = useTenant();
+  const hasStaffManageCapability = useCapability("STAFF_MANAGE");
   const [staffList, setStaffList] = useState<any[]>([]);
   const [customRoles, setCustomRoles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,7 +149,8 @@ export function StaffRolesManager() {
               <tbody className="divide-y divide-slate-100">
                 {filteredStaff.map((staff) => {
                   const isActingUser = false; // Add logic if needed
-                  const canManage = canManageRole(actingUserRole as Role, staff.role) && !isActingUser;
+                  const isTargetOwner = staff.role === "OWNER";
+                  const canManage = hasStaffManageCapability && !isActingUser && !(isTargetOwner && actingUserRole !== "OWNER" && actingUserRole !== "DEVELOPER");
 
                   return (
                     <tr key={staff.id} className="hover:bg-muted/50/50 transition-colors group">
@@ -197,9 +199,10 @@ export function StaffRolesManager() {
                                 </option>
                             ))}
                             <option disabled>──────────</option>
-                            {Object.values(ROLES).map(role => {
-                              const canAssign = canManageRole(actingUserRole as Role, role);
-                              if (!canAssign && staff.role !== role && staff.sovereignRole?.name !== role) return null; 
+                            {Object.keys(STANDARD_ROLES).map(role => {
+                              // Standard Owner role can only be assigned by Developer or Owner
+                              const isOwnerRole = role === "OWNER";
+                              const canAssign = canManage && !(isOwnerRole && actingUserRole !== "OWNER" && actingUserRole !== "DEVELOPER");
                               
                               return (
                                 <option key={role} value={role} disabled={!canAssign}>

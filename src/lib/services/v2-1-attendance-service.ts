@@ -1,6 +1,4 @@
 import prisma from "@/lib/prisma";
-import { getSovereignIdentity } from "@/lib/auth/backbone";
-import { revalidatePath } from "next/cache";
 
 /**
  * Attendance Service v2.1 (Sovereign Intelligence)

@@ -233,7 +233,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 
                 setIsUpdating(true);
                 try {
-                  const res = await promoteStudentAction(student.id, !isFinanced || missingDocs.length > 0);
+                  const res = await promoteStudentAction(student.id);
                   if (res.success) {
                     alert("Admission Confirmed Successfully! Identity Elevated to Official Status.");
                     window.location.reload();
@@ -312,7 +312,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
       </div>
 
       {/* ─── Content Area ─── */}
-      <div className="grid grid-cols-12 gap-4 h-[650px] relative">
+      <div className={cn("grid grid-cols-12 gap-4 relative", activeTab === "financial" ? "" : "h-[650px]")}>
         
         {/* LOCKDOWN OVERLAY */}
         {isDataIncomplete && !isEditing && (
@@ -344,7 +344,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
         )}
 
         {/* Left Column (Main Info) */}
-        <div className="col-span-12 lg:col-span-8 bg-background rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
+        <div className={cn("bg-background rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col", activeTab === "financial" ? "hidden" : "col-span-12 lg:col-span-8")}>
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-2">
               {tabs.find(t => t.id === activeTab)?.label} Repository
@@ -762,11 +762,9 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               </div>
             )}
 
-            {activeTab === "financial" && (
-              <div className="animate-in fade-in zoom-in-95 duration-500">
-                <StudentFinancialHub studentId={studentId} />
-              </div>
-            )}
+
+
+
 
             {activeTab === "address" && (
               <div className="space-y-6">
@@ -995,7 +993,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
         </div>
 
         {/* Right Column (Side Actions & Snapshot) */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
+        <div className={cn("flex flex-col gap-4", activeTab === "financial" ? "hidden" : "col-span-12 lg:col-span-4")}>
           <div className="bg-background rounded-2xl border border-border shadow-sm p-4 h-fit">
             <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-4">Quick Actions</h4>
             <div className="grid grid-cols-2 gap-2">
@@ -1051,6 +1049,13 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             </div>
           </div>
         </div>
+
+        {/* Full-Width Financial Tab (No Container Constraint) */}
+        {activeTab === "financial" && (
+          <div className="col-span-12 animate-in fade-in zoom-in-95 duration-500 pb-20">
+            <StudentFinancialHub studentId={studentId} />
+          </div>
+        )}
       </div>
     </div>
   );

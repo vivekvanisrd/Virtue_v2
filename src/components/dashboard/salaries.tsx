@@ -5,6 +5,7 @@ import { SalaryCommandCenter } from "../salaries/v2-1/SalaryCommandCenter";
 import { SalaryRegistry } from "../salaries/SalaryRegistry";
 import { StaffAdvanceManager } from "../salaries/StaffAdvanceManager";
 import { PrincipalQuickPay } from "../salaries/PrincipalQuickPay";
+import { BulkPayoutAudit } from "../salaries/BulkPayoutAudit";
 import { useTenant } from "@/context/tenant-context";
 
 interface SalariesContentProps {
@@ -28,6 +29,10 @@ export function SalariesContent({ tabId }: SalariesContentProps) {
 
   if (tabId === "salary-payments") {
     return <SalaryRegistry />;
+  }
+
+  if (tabId === "salary-payout-lab") {
+    return <BulkPayoutAudit />;
   }
 
   if (tabId === "salary-advances") {

@@ -110,6 +110,10 @@ export default function FeeConfigPage() {
                         <ArrowLeft className="w-4 h-4" />
                         Back to Billing
                     </Link>
+                    <Link href="/admin/fees/config/discounts" className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition-all active:scale-95 border border-emerald-100 shadow-sm">
+                        <Zap className="w-4 h-4 fill-current" />
+                        Discount Registry
+                    </Link>
                     <button 
                         onClick={() => setShowForm(!showForm)}
                         className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95"

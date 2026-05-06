@@ -75,7 +75,7 @@ export async function generatePayrollDraftAction(month: number, year: number, to
     }
 
     const tenancy = getTenancyFilters(context);
-    const targetBranch = branchId && branchId !== "GLOBAL" ? branchId : branchId;
+    const targetBranch = branchId && branchId !== "GLOBAL" ? branchId : context.branchId;
 
     // 2. Fetch Attendance Summary for current branch
     const attendanceResult = await getMonthlyStaffAttendanceSummary(month, year, targetBranch);
@@ -159,7 +159,7 @@ export async function generatePayrollDraftAction(month: number, year: number, to
           staffId: staff.id,
           totalWorkingDays: totalWorkingDays, 
           attendedDays: staffAtt.present,
-          paidLeaves: staffAtt.present - (dynamicWorkingDays - staffAtt.lwp), // Simplified
+          paidLeaves: Math.max(0, Math.max(0, totalWorkingDays - staffAtt.lwp) - staffAtt.present),
           lwpDays: staffAtt.lwp,
           payableDays: Math.max(0, totalWorkingDays - staffAtt.lwp),
           baseAmount: breakdown.basic,
@@ -372,6 +372,28 @@ export async function finalizePayrollAction(payrollRunId: string) {
             hash: hash 
           }
         });
+
+        // 1.5 Process Advance Recoveries
+        const deductions: any = slip.deductions || {};
+        const advanceRecovery = Number(deductions.advanceRecovery) || 0;
+        
+        if (advanceRecovery > 0) {
+           const activeAdv = await tx.staffAdvance.findFirst({
+              where: { staffId: slip.staffId, status: "Active" },
+              orderBy: { disbursedDate: 'asc' }
+           });
+           
+           if (activeAdv) {
+              const newBalance = Math.max(0, Number(activeAdv.balance) - advanceRecovery);
+              await tx.staffAdvance.update({
+                 where: { id: activeAdv.id },
+                 data: { 
+                   balance: newBalance,
+                   status: newBalance <= 0 ? "Paid" : "Active"
+                 }
+              });
+           }
+        }
       }
       
       // Update the main run to APPROVED/PAID

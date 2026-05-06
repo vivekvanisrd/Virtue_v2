@@ -13,7 +13,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   }
   
   // 🏛️ SOVEREIGN IDENTITY: Parallel fetch for institutional vitals
-  const [school, activeYear, branches] = await Promise.all([
+  const [school, activeYear, branches, sovereignRole] = await Promise.all([
     prisma.school.findUnique({
       where: { id: identity.schoolId },
       select: { name: true }
@@ -28,6 +28,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
     prisma.branch.findMany({ 
       where: { schoolId: identity.schoolId }, 
       select: { id: true, name: true, code: true } 
+    }),
+    // 🛡️ RBAC CBAC: Fetch dynamic capabilities
+    prisma.sovereignRole.findFirst({
+      where: {
+        schoolId: identity.schoolId,
+        name: identity.role
+      },
+      select: { capabilities: true }
     })
   ]);
 
@@ -38,6 +46,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   // 🛡️ OPERATIONAL GUARD: A school is considered "Ready" only if it has a non-HQ operational branch
   const isOperationalReady = branches.some((b: any) => !b.id.includes("-HQ"));
+
+  const capabilities = sovereignRole?.capabilities as Record<string, boolean> || {};
 
   return (
     <DashboardShell 
@@ -51,6 +61,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       activeBranchId={identity.branchId}
       activeBranchName={currentBranch?.name || "Global HQ"}
       isOperationalReady={isOperationalReady}
+      capabilities={capabilities}
     >
       {children}
     </DashboardShell>

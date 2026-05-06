@@ -185,7 +185,20 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       return `${fee?.label || t}`;
     }).join(", ");
     
-    return `Hi Parent,\n\nGreetings from ${schoolName}.\nThe school fee for ${s.firstName} regarding ${selectedLabels} is due.\n\nTotal Amount: ${formatCurrency(grandTotal)}\n\nPlease pay securely using the link below:\n${paymentDetails.paymentLink}\n\nThank you.`;
+    let message = `Hi Parent,\n\nGreetings from ${schoolName}.\nThe school fee for ${s.firstName} regarding ${selectedLabels} is due.\n\n`;
+    
+    // 📊 SHOW TOTAL VS FINAL (Sovereign Rule 5.1)
+    if (fb.totalDiscount > 0) {
+       message += `Original Fee: ${formatCurrency(Number(fb.annualNet) + Number(fb.totalDiscount))}\n`;
+       message += `Discount Applied: ${formatCurrency(fb.totalDiscount)}\n`;
+       message += `Final Payable: ${formatCurrency(fb.annualNet)}\n\n`;
+       message += `Note: Discount is applied on total fee but adjusted in the final installment.\n\n`;
+    }
+    
+    message += `Total Amount Due Now: ${formatCurrency(grandTotal)}\n\n`;
+    message += `Please pay securely using the link below:\n${paymentDetails.paymentLink}\n\nThank you.`;
+    
+    return message;
   };
 
   const processPayment = async () => {
@@ -280,22 +293,30 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   const isSelected = settlements[0].selectedTerms.includes(key);
                   const canSelect = i === 1 || (fb[`term${i-1}`]?.isPaid || settlements[0].selectedTerms.includes(`term${i-1}`));
                   return (
-                    <button key={key} disabled={term.isPaid || !canSelect} onClick={() => toggleTermForStudent(student.id, key)} className={cn("p-4 rounded-3xl border-2 text-left relative h-28 flex flex-col justify-center transition-all", term.isPaid ? "bg-white border-slate-50 opacity-40" : isSelected ? "bg-white border-primary shadow-lg ring-4 ring-primary/5 scale-[1.02]" : !canSelect ? "bg-slate-50 border-slate-50 opacity-40" : "bg-white border-slate-50 hover:border-slate-100")}>
-                      {isSelected && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-primary animate-in zoom-in" />}
-                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{term.label || `Term ${i}`}</p>
-                      <p className="text-xl font-black text-slate-900 tracking-tighter">₹{term.amount.toLocaleString()}</p>
-                      <p className="text-[7px] font-black uppercase text-slate-300 mt-1">10/06/2026</p>
-                    </button>
-                  );
+                      <button key={key} disabled={term.isPaid || !canSelect} onClick={() => toggleTermForStudent(student.id, key)} className={cn("p-4 rounded-3xl border-2 text-left relative h-28 flex flex-col justify-center transition-all", term.isPaid ? "bg-white border-slate-50 opacity-40" : isSelected ? "bg-white border-primary shadow-lg ring-4 ring-primary/5 scale-[1.02]" : !canSelect ? "bg-slate-50 border-slate-50 opacity-40" : "bg-white border-slate-50 hover:border-slate-100")}>
+                        {isSelected && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-primary animate-in zoom-in" />}
+                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{term.label || `Term ${i}`}</p>
+                        
+                        {key === "term3" && fb.totalDiscount > 0 ? (
+                           <div className="space-y-0.5">
+                              <p className="text-[10px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{( (term.amount || 0) + (fb.totalDiscount || 0) ).toLocaleString()}</p>
+                              <p className="text-xl font-black text-emerald-600 tracking-tighter leading-none">₹{(term.amount || 0).toLocaleString()}</p>
+                           </div>
+                        ) : (
+                           <p className="text-xl font-black text-slate-900 tracking-tighter">₹{(term.amount || 0).toLocaleString()}</p>
+                        )}
+                        <p className="text-[7px] font-black uppercase text-slate-300 mt-1">10/06/2026</p>
+                      </button>
+                    );
                 })}
               </div>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-50">
-            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Total Discount</p><p className="text-sm font-black text-slate-900 italic">₹{fb.totalDiscount.toLocaleString()}</p></div>
-            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Annual Net</p><p className="text-lg font-black text-primary tracking-tight italic">₹{fb.annualNet.toLocaleString()}</p></div>
+            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Total Discount</p><p className="text-sm font-black text-slate-900 italic">₹{(fb.totalDiscount || 0).toLocaleString()}</p></div>
+            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Annual Net</p><p className="text-lg font-black text-primary tracking-tight italic">₹{(fb.annualNet || 0).toLocaleString()}</p></div>
             <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Payment Type</p><p className="text-sm font-black text-slate-900 italic">{fb.paymentType}</p></div>
-            <div className="text-right"><p className="text-[8px] font-black uppercase text-primary mb-0.5">Selection Total</p><p className="text-2xl font-black text-slate-900 tracking-tighter italic">₹{grandTotal.toLocaleString()}</p></div>
+            <div className="text-right"><p className="text-[8px] font-black uppercase text-primary mb-0.5">Selection Total</p><p className="text-2xl font-black text-slate-900 tracking-tighter italic">₹{(grandTotal || 0).toLocaleString()}</p></div>
           </div>
         </div>
 
@@ -309,7 +330,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                return (
                   <div key={key} onClick={() => !fee.isPaid && toggleTermForStudent(student.id, key)} className={cn("p-4 rounded-3xl border-2 transition-all cursor-pointer relative flex items-center gap-4", fee.isPaid ? "bg-white border-slate-50 opacity-40 grayscale" : isSelected ? "bg-white border-primary shadow-xl ring-4 ring-primary/5 -translate-y-1" : "bg-white border-slate-50 hover:border-slate-100 hover:shadow-md")}>
                     <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-all", isSelected ? "bg-primary text-white" : "bg-slate-50 text-slate-300")}><Icon className="w-6 h-6" /></div>
-                    <div className="flex-1"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.5">{fee.label}</p><p className="text-lg font-black text-slate-900 tracking-tighter">₹{fee.amount.toLocaleString()}</p></div>
+                    <div className="flex-1"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.5">{fee.label}</p><p className="text-lg font-black text-slate-900 tracking-tighter">₹{(fee.amount || 0).toLocaleString()}</p></div>
                   </div>
                );
             })}
@@ -345,8 +366,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
           <div className="col-span-6 space-y-4">
             <div className="bg-[#101420] rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 blur-3xl rounded-full -mr-24 -mt-24 group-hover:scale-125 transition-transform duration-1000" />
-              <div className="flex items-center justify-between mb-8 opacity-40"><p className="text-[8px] font-black uppercase tracking-widest">Net Account Balance</p><p className="text-[9px] font-black">₹{grandTotal.toLocaleString()}</p></div>
-              <div className="flex items-end justify-between relative z-10"><p className="text-[8px] font-black uppercase tracking-widest text-primary italic">Student Settlement Total</p><p className="text-5xl font-black tracking-tighter">₹{grandTotal.toLocaleString()}</p></div>
+              <div className="flex items-center justify-between mb-8 opacity-40"><p className="text-[8px] font-black uppercase tracking-widest">Net Account Balance</p><p className="text-[9px] font-black">₹{(grandTotal || 0).toLocaleString()}</p></div>
+              <div className="flex items-end justify-between relative z-10"><p className="text-[8px] font-black uppercase tracking-widest text-primary italic">Student Settlement Total</p><p className="text-5xl font-black tracking-tighter">₹{(grandTotal || 0).toLocaleString()}</p></div>
             </div>
             <button 
               onClick={async () => {
@@ -444,8 +465,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     ))}
                  </div>
                  <div className="grid grid-cols-2 gap-6 mb-8">
-                    <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100"><p className="text-[8px] font-black uppercase text-slate-400 mb-1">Fee Due</p><p className="text-3xl font-black text-slate-900 tracking-tighter">₹{grandTotal.toLocaleString()}</p></div>
-                    <div className={cn("p-6 rounded-[2rem] border-2 transition-all flex flex-col justify-center", isTallyValid ? "bg-emerald-50 border-emerald-500/20" : "bg-rose-50 border-rose-500/20")}><p className="text-[8px] font-black uppercase opacity-40 mb-1">Tally</p><p className={cn("text-3xl font-black tracking-tighter", isTallyValid ? "text-emerald-500" : "text-rose-500")}>₹{tallyTotal.toLocaleString()}</p></div>
+                    <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100"><p className="text-[8px] font-black uppercase text-slate-400 mb-1">Fee Due</p><p className="text-3xl font-black text-slate-900 tracking-tighter">₹{(grandTotal || 0).toLocaleString()}</p></div>
+                    <div className={cn("p-6 rounded-[2rem] border-2 transition-all flex flex-col justify-center", isTallyValid ? "bg-emerald-50 border-emerald-500/20" : "bg-rose-50 border-rose-500/20")}><p className="text-[8px] font-black uppercase opacity-40 mb-1">Tally</p><p className={cn("text-3xl font-black tracking-tighter", isTallyValid ? "text-emerald-500" : "text-rose-500")}>₹{(tallyTotal || 0).toLocaleString()}</p></div>
                  </div>
                  <button disabled={!isTallyValid || collectionLoading} onClick={processPayment} className="w-full py-8 bg-slate-900 text-white rounded-[2.5rem] font-black text-2xl uppercase tracking-widest shadow-2xl disabled:opacity-50 transition-all active:scale-95">{collectionLoading ? <Loader2 className="w-8 h-8 animate-spin mx-auto" /> : "Confirm & Receive"}</button>
               </motion.div>

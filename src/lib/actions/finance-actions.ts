@@ -280,6 +280,23 @@ export async function recordFeeCollection(params: {
       });
 
       // AUDIT-SAFE LEDGER POSTING
+      // 1. Student Ledger (Account Statement)
+      await tx.ledgerEntry.create({
+        data: {
+          studentId: params.studentId,
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          financialYearId: activeFY.id,
+          academicYearId: activeAdmission.academicYearId,
+          type: "PAYMENT",
+          amount: params.amountPaid,
+          reason: `Fee Payment (${params.selectedTerms.join(', ')}) - Ref: ${receiptNumber}`,
+          createdBy: context.name || context.role,
+          journalEntryId: null // Optional link if needed
+        }
+      });
+
+      // 2. Double-Entry Journal
       // Debit: Bank (1110) | Credit 1: AR (1200) | Credit 2: Service Charge (4200) | Credit 3: Admission Income (4100)
       const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1110" } });
       const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
@@ -302,7 +319,7 @@ export async function recordFeeCollection(params: {
           lines.push({ accountId: serviceAcc.id, debit: 0, credit: gatewayFee }); // Service Income (2%)
         }
 
-        await tx.journalEntry.create({
+        const createdJe = await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
             branchId: context.branchId,
@@ -315,6 +332,12 @@ export async function recordFeeCollection(params: {
               create: lines
             }
           }
+        });
+
+        // Link the Journal Entry back to the Collection for reversal parity
+        await tx.collection.update({
+          where: { id: collection.id },
+          data: { journalEntryId: createdJe.id }
         });
 
         // Update Account Balances
@@ -421,15 +444,12 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
     }
 
     const result = await prisma.$transaction(async (tx: any) => {
-      // 🕵️ REVERSAL STRATEGY: 
-      // Instead of updating the Collection status (which is blocked by the sentinel),
-      // we create a 'FinancialAuditLog' and a 'ReversalEntry'.
-      // Wait, if I want to show it as voided in the UI, I need a status change.
-      // But the Sentinel blocks 'update' on 'Collection'.
-      
-      // OPTION: We use 'skip_tenancy' for internal reversals? No, rule is 'Absolute'.
-      // CORRECT APPROACH: We create a Journal Entry that offsets the original.
-      
+      // 1. MARK COLLECTION AS VOIDED (Sentinel allows updates with schoolId in where clause)
+      await tx.collection.update({
+        where: { id: collectionId, schoolId: context.schoolId },
+        data: { status: "VOIDED", isDeleted: true }
+      });
+
       const activeFY = await prisma.financialYear.findFirst({
         where: { schoolId: context.schoolId, isCurrent: true }
       });
@@ -553,6 +573,17 @@ export async function recordBulkFeeCollection(params: {
       }
     }
 
+    // 1B. RESOLVE SCHOOL & BRANCH CODES (Required for correct receipt number format)
+    const schoolRecord = await prisma.school.findUnique({
+      where: { id: context.schoolId },
+      select: { code: true }
+    });
+    const branchRecord = context.branchId && context.branchId !== 'GLOBAL'
+      ? await prisma.branch.findUnique({ where: { id: context.branchId }, select: { code: true } })
+      : null;
+    const resolvedSchoolCode = schoolRecord?.code || context.schoolId;
+    const resolvedBranchCode = branchRecord?.code || "MAIN";
+
     // 2. ATOMIC TRANSACTION
     const result = await prisma.$transaction(async (tx: any) => {
       const batchResults = [];
@@ -568,9 +599,9 @@ export async function recordBulkFeeCollection(params: {
 
         const receiptNumber = await CounterService.generateReceiptNumber({
           schoolId: context.schoolId,
-          schoolCode: context.schoolId,
+          schoolCode: resolvedSchoolCode,
           branchId: context.branchId,
-          branchCode: context.branchId.split('-').pop() || "MNB01",
+          branchCode: resolvedBranchCode,
           year: new Date().getFullYear().toString()
         }, tx);
 
@@ -664,7 +695,9 @@ export async function getStudentFeeStatus(studentId: string) {
             feeStructure: { include: { components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } } } }
           } 
         },
-        ledgerEntries: { where: { type: "CHARGE" } },
+        ledgerEntries: { 
+          orderBy: { createdAt: 'desc' }
+        },
         collections: { 
           where: { status: "Success" },
           orderBy: { paymentDate: 'desc' } 
@@ -757,18 +790,7 @@ export async function getStudentFeeStatus(studentId: string) {
        });
     }
 
-    // Priority 1: Direct Profile Fields
-    ancillaryFields.forEach(field => {
-       const amount = Number(fin?.[field.key as keyof typeof fin] || 0);
-       if (amount > 0) {
-          ancillary[field.key] = {
-             amount,
-             isPaid: paidTerms.includes(field.key),
-             label: field.label,
-             dueDate: null
-          };
-       }
-    });
+
 
     // Priority 2: Granular Components
     if (fin?.components) {
@@ -1426,7 +1448,8 @@ export async function approveReceiptVoid(collectionId: string) {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     const collection = await prisma.collection.findUnique({
-      where: { id: collectionId, schoolId: context.schoolId }
+      where: { id: collectionId, schoolId: context.schoolId },
+      include: { journalEntry: { include: { lines: true } } }
     });
 
     if (!collection || collection.status !== "VoidRequested") throw new Error("Invalid request.");
@@ -1438,29 +1461,81 @@ export async function approveReceiptVoid(collectionId: string) {
         data: { status: "Voided" }
       });
 
-      // 2. Reverse Ledger Posting
-      const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1110" } });
-      const total = Number(collection.totalPaid);
+      // 2. Reverse Ledger Posting (Double-Entry Parity)
+      if (collection.journalEntry) {
+        const originalLines = collection.journalEntry.lines;
+        const reversalLines = originalLines.map((line: any) => ({
+          accountId: line.accountId,
+          description: `REVERSAL of ${collection.receiptNumber}: Audit Correction`,
+          credit: line.debit, // Swap Debit to Credit
+          debit: line.credit   // Swap Credit to Debit
+        }));
 
-      if (cashAcc) {
         await tx.journalEntry.create({
           data: {
             schoolId: context.schoolId,
+            branchId: collection.branchId,
             financialYearId: collection.financialYearId,
             entryType: "REVERSAL",
-            totalDebit: total,
-            totalCredit: total,
-            description: `REVERSAL of Receipt ${collection.receiptNumber} - Reason: Audit Correction`,
-            lines: {
-              create: [
-                { accountId: cashAcc.id, debit: 0, credit: total } // Reverse Cash
-              ]
-            }
+            totalDebit: collection.journalEntry.totalCredit,
+            totalCredit: collection.journalEntry.totalDebit,
+            description: `REVERSAL of Receipt ${collection.receiptNumber}`,
+            lines: { create: reversalLines }
           }
         });
 
-        await tx.chartOfAccount.update({ where: { id: cashAcc.id }, data: { currentBalance: { decrement: total } } });
+        // Update Account Balances
+        for (const line of originalLines) {
+           await tx.chartOfAccount.update({
+             where: { id: line.accountId },
+             data: {
+               currentBalance: {
+                 decrement: line.debit, // Revert the debit
+                 increment: line.credit // Revert the credit
+               }
+             }
+           });
+        }
+      } else {
+        // Fallback for old collections without journal links
+        const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1110" } });
+        const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
+        const total = Number(collection.totalPaid);
+        if (cashAcc && arAcc) {
+           await tx.journalEntry.create({
+             data: {
+               schoolId: context.schoolId,
+               branchId: collection.branchId,
+               financialYearId: collection.financialYearId,
+               entryType: "REVERSAL",
+               totalDebit: total,
+               totalCredit: total,
+               description: `REVERSAL of Receipt ${collection.receiptNumber} (Fallback)`,
+               lines: {
+                 create: [
+                   { accountId: cashAcc.id, debit: 0, credit: total }, // Reverse Cash
+                   { accountId: arAcc.id, debit: total, credit: 0 }    // Reverse AR
+                 ]
+               }
+             }
+           });
+           await tx.chartOfAccount.update({ where: { id: cashAcc.id }, data: { currentBalance: { decrement: total } } });
+           await tx.chartOfAccount.update({ where: { id: arAcc.id }, data: { currentBalance: { increment: total } } });
+        }
       }
+
+      // 3. Post REVERSAL to Student Ledger
+      await tx.ledgerEntry.create({
+        data: {
+          studentId: collection.studentId,
+          schoolId: context.schoolId,
+          branchId: collection.branchId,
+          type: "ADJUSTMENT",
+          amount: -Number(collection.totalPaid), // Negative to indicate subtraction from paid balance (or just reverse logic depending on display)
+          reason: `Receipt Voided: ${collection.receiptNumber}`,
+          createdBy: context.name || context.role
+        }
+      });
     });
 
     revalidatePath("/admin/fees");
@@ -1607,7 +1682,7 @@ export async function getAdHocFeeOptions() {
     const components = await prisma.feeComponentMaster.findMany({
       where: { 
         schoolId: context.schoolId,
-        type: { not: "TUITION" } // Only ancillary items
+        type: "ANCILLARY" // Strictly ancillary items, excluding CORE tuition/admission
       },
       orderBy: { name: 'asc' }
     });
@@ -1643,6 +1718,12 @@ export async function assignAdHocFeeAction(params: {
     if (!financial) throw new Error("Student financial record not initialized.");
 
     const result = await prisma.$transaction(async (tx: any) => {
+      // 1.5 Duplicate Check
+      const existingAssignment = await tx.studentFeeComponent.findFirst({
+        where: { studentFinancialId: financial.id, componentId: params.componentId }
+      });
+      if (existingAssignment) throw new Error("Duplicate Assignment: This fee is already assigned.");
+
       // 2. Create the Component Link
       const studentComponent = await tx.studentFeeComponent.create({
         data: {
@@ -1657,22 +1738,7 @@ export async function assignAdHocFeeAction(params: {
         include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } }
       });
 
-      // 3. Update Financial Record (Accrue to Net)
-      // Note: We use the specific field if it matches the component name (Transport/Library)
-      const name = studentComponent.masterComponent.name.toLowerCase();
-      const updateData: any = {
-        tuitionFee: { increment: 0 } // No-op to trigger update
-      };
-
-      if (name.includes("transport")) updateData.transportFee = { increment: params.amount };
-      else if (name.includes("library")) updateData.libraryFee = { increment: params.amount };
-      else if (name.includes("admission")) updateData.admissionFee = { increment: params.amount };
-      else if (name.includes("sports")) updateData.sportsFee = { increment: params.amount };
-      
-      await tx.financialRecord.update({
-        where: { id: financial.id },
-        data: updateData
-      });
+      // 3. Hardcoded Field Updates Removed (Sovereign V2 single source of truth)
 
       // 4. POST TO LEDGER (THE AUDIT TRAIL)
       const [activeFY, activeAY] = await Promise.all([
@@ -1694,8 +1760,34 @@ export async function assignAdHocFeeAction(params: {
         }
       });
 
+      // 5. Double-Entry Journal for Accrual
+      const accountCode = studentComponent.masterComponent.accountCode || "4100"; // Fallback to general fee income
+      const incomeAccount = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode } })
+                         || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } });
+      const receivableAccount = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
+
+      if (incomeAccount && receivableAccount && activeFY) {
+        await tx.journalEntry.create({
+          data: {
+            schoolId: context.schoolId,
+            branchId: context.branchId,
+            financialYearId: activeFY.id,
+            entryType: "CHARGE",
+            totalDebit: params.amount,
+            totalCredit: params.amount,
+            description: `Ad-Hoc Fee Accrual: ${studentComponent.masterComponent.name} for Student ${params.studentId}`,
+            lines: {
+              create: [
+                { accountId: receivableAccount.id, debit: params.amount, credit: 0, description: "Receivable Accrual" },
+                { accountId: incomeAccount.id, debit: 0, credit: params.amount, description: "Fee Income Accrual" }
+              ]
+            }
+          }
+        });
+      }
+
       return studentComponent;
-    });
+    }, { maxWait: 5000, timeout: 15000 });
 
     revalidatePath("/dashboard/finance");
     return { success: true, data: serialize(result) };
@@ -1707,12 +1799,12 @@ export async function assignAdHocFeeAction(params: {
 /**
  * applyDiscountAction
  * 
- * Manual discount application from the student profile.
- * Posts a "CREDIT" to the Ledger.
+ * REGISTRY-DRIVEN: Applies a predefined discount from the institutional registry.
+ * Posts a "CREDIT" to the Ledger and links the audit record.
  */
 export async function applyDiscountAction(params: {
   studentId: string;
-  amount: number;
+  discountTypeId: string;
   reason: string;
 }) {
   try {
@@ -1720,16 +1812,49 @@ export async function applyDiscountAction(params: {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
     const context = identity;
 
+    const discountType = await prisma.discountType.findUnique({
+      where: { id: params.discountTypeId, schoolId: context.schoolId }
+    });
+
+    if (!discountType) throw new Error("CRITICAL_ERROR: Discount Policy not found in Registry.");
+
     const result = await prisma.$transaction(async (tx: any) => {
-      // 1. Update Financial Record
-      const financial = await tx.financialRecord.update({
-        where: { studentId: params.studentId },
+      // 1. Fetch Student Financial Record
+      const financial = await tx.financialRecord.findUnique({
+        where: { studentId: params.studentId }
+      });
+      if (!financial) throw new Error("Financial record not found.");
+
+      // 2. Calculate Amount
+      let discountAmount = 0;
+      if (discountType.percentage) {
+        discountAmount = (Number(financial.annualTuition) * Number(discountType.percentage)) / 100;
+      } else {
+        discountAmount = Number(discountType.amount || 0);
+      }
+
+      // 3. Create Audit Record
+      await tx.discount.create({
         data: {
-          totalDiscount: { increment: params.amount }
+          schoolId: context.schoolId,
+          studentFinancialId: financial.id,
+          discountTypeId: discountType.id,
+          amount: discountAmount,
+          reason: params.reason,
+          status: "Approved",
+          branchId: context.branchId
         }
       });
 
-      // 2. Post to Ledger
+      // 4. Update Financial Record
+      const updatedFinancial = await tx.financialRecord.update({
+        where: { studentId: params.studentId },
+        data: {
+          totalDiscount: { increment: discountAmount }
+        }
+      });
+
+      // 5. Post to Ledger
       const [activeFY, activeAY] = await Promise.all([
         tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
         tx.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
@@ -1742,15 +1867,48 @@ export async function applyDiscountAction(params: {
           branchId: context.branchId,
           financialYearId: activeFY?.id,
           academicYearId: activeAY?.id,
-          type: "CREDIT",
-          amount: params.amount,
-          reason: `Discount Applied: ${params.reason}`,
+          type: "DISCOUNT",
+          amount: discountAmount,
+          reason: `Policy Applied: ${discountType.name}. Reason: ${params.reason}`,
           createdBy: context.name || context.role
         }
       });
 
-      return financial;
-    });
+      // 6. Double-Entry Journal for Discount
+      const discountAccount = await tx.chartOfAccount.findFirst({ 
+        where: { 
+          schoolId: context.schoolId, 
+          OR: [
+            { accountCode: "4400" },
+            { accountName: { contains: "Discount", mode: "insensitive" } },
+            { accountName: { contains: "Scholarship", mode: "insensitive" } }
+          ] 
+        } 
+      }) || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } });
+      const receivableAccount = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
+
+      if (discountAccount && receivableAccount && activeFY) {
+        await tx.journalEntry.create({
+          data: {
+            schoolId: context.schoolId,
+            branchId: context.branchId,
+            financialYearId: activeFY.id,
+            entryType: "ADMISSION_DISCOUNT", // Using existing type for discounts
+            totalDebit: discountAmount,
+            totalCredit: discountAmount,
+            description: `Discount Applied: ${discountType.name} for Student ${params.studentId}`,
+            lines: {
+              create: [
+                { accountId: discountAccount.id, debit: discountAmount, credit: 0, description: "Discount/Scholarship Expense" },
+                { accountId: receivableAccount.id, debit: 0, credit: discountAmount, description: "Receivable Offset" }
+              ]
+            }
+          }
+        });
+      }
+
+      return updatedFinancial;
+    }, { maxWait: 5000, timeout: 15000 });
 
     revalidatePath("/dashboard/finance");
     return { success: true, data: serialize(result) };
@@ -1830,28 +1988,183 @@ export async function updateStudentFeeComponentAction(params: {
         }
       });
 
-      // 4. Update Financial Record Mirror Fields
-      const name = existing.masterComponent.name.toLowerCase();
-      const updateData: any = {};
-
-      if (name.includes("tuition")) updateData.annualTuition = { increment: delta };
-      else if (name.includes("transport")) updateData.transportFee = { increment: delta };
-      else if (name.includes("library")) updateData.libraryFee = { increment: delta };
-      else if (name.includes("admission")) updateData.admissionFee = { increment: delta };
-      else if (name.includes("sports")) updateData.sportsFee = { increment: delta };
-
-      if (Object.keys(updateData).length > 0) {
-        await tx.financialRecord.update({
-          where: { id: existing.studentFinancialId },
-          data: updateData
-        });
-      }
+      // 4. Hardcoded Field Updates Removed (Sovereign V2 single source of truth)
 
       return updated;
     });
 
     revalidatePath("/dashboard/finance");
-    revalidatePath(`/admin/students/${params.studentId}`);
+ revalidatePath("/admin/students/${params.studentId}");
+    return { success: true, data: serialize(result) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * getDiscountTypesAction
+ * 
+ * Fetches the institutional discount registry.
+ * Used for populating dropdowns in admission and profile hubs.
+ */
+export async function getDiscountTypesAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const discountTypes = await prisma.discountType.findMany({
+      where: { 
+        schoolId: context.schoolId,
+        isActive: true 
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    return { success: true, data: serialize(discountTypes) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * upsertDiscountTypeAction
+ * 
+ * Create or Update a predefined discount.
+ * Ensures that amounts or percentages are locked in for staff selection.
+ */
+export async function upsertDiscountTypeAction(params: {
+  id?: string;
+  name: string;
+  amount?: number;
+  percentage?: number;
+  description?: string;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const data = {
+      name: params.name,
+      amount: params.amount || null,
+      percentage: params.percentage || null,
+      description: params.description,
+      schoolId: context.schoolId,
+      branchId: context.branchId,
+      isActive: true
+    };
+
+    const result = params.id 
+      ? await prisma.discountType.update({ where: { id: params.id }, data })
+      : await prisma.discountType.create({ data });
+
+    revalidatePath("/dashboard/finance/settings");
+    return { success: true, data: serialize(result) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * deleteDiscountTypeAction
+ * 
+ * Soft-deactivates a discount type to prevent its use in new admissions.
+ */
+export async function toggleDiscountTypeStatusAction(id: string, status: boolean) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    
+    await prisma.discountType.update({
+      where: { id },
+      data: { isActive: status }
+    });
+
+    revalidatePath("/dashboard/finance/settings");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * removeAdHocFeeAction
+ * 
+ * Removes an assigned ad-hoc fee and reverses the ledger entry.
+ */
+export async function removeAdHocFeeAction(params: {
+  studentId: string;
+  componentId: string; // The ID of the StudentFeeComponent record
+  reason: string;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const context = identity;
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Find existing component
+      const existing = await tx.studentFeeComponent.findUnique({
+        where: { id: params.componentId },
+        include: { masterComponent: true, financialRecord: true }
+      });
+      if (!existing) throw new Error("Component not found.");
+      if (existing.financialRecord.studentId !== params.studentId) throw new Error("Security Violation: Record mismatch.");
+
+      // 2. Delete it
+      await tx.studentFeeComponent.delete({ where: { id: params.componentId } });
+
+      // 3. Reverse Ledger
+      const [activeFY, activeAY] = await Promise.all([
+        tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
+        tx.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
+      ]);
+
+      await tx.ledgerEntry.create({
+        data: {
+          studentId: params.studentId,
+          schoolId: context.schoolId,
+          branchId: context.branchId,
+          financialYearId: activeFY?.id,
+          academicYearId: activeAY?.id,
+          type: "CREDIT",
+          amount: Number(existing.baseAmount),
+          reason: `Reversal: Removed AdHoc Fee (${existing.masterComponent.name}). Reason: ${params.reason}`,
+          createdBy: context.name || context.role
+        }
+      });
+
+      // 4. Reverse Journal Entry
+      const accountCode = existing.masterComponent.accountCode || "4100";
+      const incomeAccount = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode } })
+                         || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } });
+      const receivableAccount = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
+
+      if (incomeAccount && receivableAccount && activeFY) {
+        await tx.journalEntry.create({
+          data: {
+            schoolId: context.schoolId,
+            branchId: context.branchId,
+            financialYearId: activeFY.id,
+            entryType: "CREDIT",
+            totalDebit: Number(existing.baseAmount),
+            totalCredit: Number(existing.baseAmount),
+            description: `Ad-Hoc Fee Reversal: ${existing.masterComponent.name} removed for Student ${params.studentId}`,
+            lines: {
+              create: [
+                { accountId: incomeAccount.id, debit: Number(existing.baseAmount), credit: 0, description: "Reversing Fee Income Accrual" },
+                { accountId: receivableAccount.id, debit: 0, credit: Number(existing.baseAmount), description: "Reversing Receivable Accrual" }
+              ]
+            }
+          }
+        });
+      }
+
+      return true;
+    }, { maxWait: 5000, timeout: 15000 });
+
+    revalidatePath("/dashboard/finance");
     return { success: true, data: serialize(result) };
   } catch (error: any) {
     return { success: false, error: error.message };

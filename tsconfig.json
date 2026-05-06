@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
@@ -12,7 +16,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
     "plugins": [
       {
@@ -20,7 +24,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [
@@ -32,14 +38,14 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules", 
+    "node_modules",
     "src/app/admin",
     "backups",
     "src/scripts",
-    "scripts", 
-    "tmp", 
-    "verify-finance.ts", 
-    "verify-tenancy.ts", 
+    "scripts",
+    "tmp",
+    "verify-finance.ts",
+    "verify-tenancy.ts",
     "prisma/seed.ts",
     "test-*.ts",
     "verify-*.ts",

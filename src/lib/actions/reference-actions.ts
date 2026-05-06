@@ -51,6 +51,10 @@ export async function getAdmissionReferenceData() {
             prisma.school.findUnique({
                 where: { id: context.schoolId },
                 select: { name: true }
+            }),
+            prisma.discountType.findMany({
+                where: { schoolId: context.schoolId, isActive: true },
+                select: { id: true, name: true, amount: true, percentage: true }
             })
         ]);
 
@@ -59,6 +63,7 @@ export async function getAdmissionReferenceData() {
             academicYears: academicYears.length,
             classes: classes.length,
             feeSchedules: feeSchedules.length,
+            discountTypes: discountTypes.length,
             schoolFound: !!school
         });
 
@@ -84,6 +89,7 @@ export async function getAdmissionReferenceData() {
                 classes,
                 feeSchedules,
                 feeMasters,
+                discountTypes,
                 schoolName: school?.name || "PaVa-EDUX Academy"
             })
         };

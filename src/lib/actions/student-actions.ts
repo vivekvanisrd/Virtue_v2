@@ -534,6 +534,21 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
     const admissionNumber = null;
     const studentCode = null;
 
+    // 🏷️ CALCULATE AUTHORIZED DISCOUNTS (Law 5.1 Alignment)
+    let totalDiscountAmount = 0;
+    if (validatedData.discountId1) {
+      const selectedDiscountType = await prisma.discountType.findUnique({
+        where: { id: validatedData.discountId1 }
+      });
+      if (selectedDiscountType) {
+        if (selectedDiscountType.percentage) {
+          totalDiscountAmount = (annualTotal * Number(selectedDiscountType.percentage)) / 100;
+        } else {
+          totalDiscountAmount = Number(selectedDiscountType.amount || 0);
+        }
+      }
+    }
+
     // 3. ATOMIC TRANSACTION (Sovereign Shield)
     const result = await prisma.$transaction(async (tx: any) => {
       // Create Student Profile
@@ -566,8 +581,20 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
               feeStructureId: feeStructure.id,
               paymentType: validatedData.paymentType || "Term-wise",
               annualTuition: annualTotal,
-              term1Amount: annualTotal, // Simple full mapping for now, or apply logic
-              totalDiscount: 0,
+              term1Amount: Math.floor(annualTotal * 0.50),
+              totalDiscount: totalDiscountAmount,
+
+              // 🏷️ LINK AUTHORIZED DISCOUNT (Registry Audit)
+              discounts: validatedData.discountId1 ? {
+                create: {
+                  schoolId: context.schoolId,
+                  discountTypeId: validatedData.discountId1,
+                  amount: totalDiscountAmount,
+                  reason: validatedData.discountReason1 || "Applied at Admission",
+                  status: "Approved",
+                  branchId
+                }
+              } : undefined,
 
               // 🔗 MIRROR ANCILLARY FIELDS for Instant UI Box Rendering
               admissionFee: resolvedComponents.find(c => c.masterComponent.name.toLowerCase().includes("admission"))?.amount || 0,
@@ -646,7 +673,7 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
       });
 
       // 4. CREATE LEDGER ENTRIES (The Single Source of Truth)
-      const ledgerCharges = resolvedComponents.map((comp: any) => ({
+      const ledgerEntries: any[] = resolvedComponents.map((comp: any) => ({
         studentId: student.id,
         schoolId: context.schoolId,
         branchId: branchId,
@@ -657,7 +684,21 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
         createdBy: context.staffId || "SYSTEM_ENROLLMENT"
       }));
 
-      await tx.ledgerEntry.createMany({ data: ledgerCharges });
+      // 🏷️ Post Discount to Ledger if applicable (Law 5.1 Parity)
+      if (totalDiscountAmount > 0) {
+        ledgerEntries.push({
+          studentId: student.id,
+          schoolId: context.schoolId,
+          branchId: branchId,
+          academicYearId: activeAY.id,
+          type: "DISCOUNT",
+          amount: totalDiscountAmount,
+          reason: `Policy Applied: ${validatedData.discountId1 || "Admission"}. Reason: ${validatedData.discountReason1 || "Admission Concession"}`,
+          createdBy: context.staffId || "SYSTEM_ENROLLMENT"
+        });
+      }
+
+      await tx.ledgerEntry.createMany({ data: ledgerEntries });
 
       const [receivableAccount, activeFY] = await Promise.all([
         tx.chartOfAccount.findFirst({ where: { accountCode: "1200", schoolId: context.schoolId } }),
@@ -706,6 +747,7 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
         }
       }
 
+      // 6. CREATE ADMISSION ACCRUAL (Gross Basis)
       await tx.journalEntry.create({
         data: {
           schoolId: context.schoolId,
@@ -714,7 +756,7 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
           entryType: "ADMISSION_ACCRUAL",
           totalDebit: annualTotal,
           totalCredit: annualTotal,
-          description: `Granular Charge Accrual for Student: ${admissionNumber || registrationId}`,
+          description: `Gross Charge Accrual for Student: ${admissionNumber || registrationId}`,
           lines: {
             create: [
               { accountId: receivableAccount.id, debit: annualTotal, credit: 0, description: "Total Fees Receivable" },
@@ -723,6 +765,40 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
           }
         }
       });
+
+      // 🏷️ 7. CREATE DISCOUNT JOURNAL ENTRY (The Offset)
+      if (totalDiscountAmount > 0) {
+        const discountAccount = await tx.chartOfAccount.findFirst({ 
+          where: { 
+            schoolId: context.schoolId, 
+            OR: [
+              { accountCode: "4400" },
+              { accountName: { contains: "Discount", mode: "insensitive" } },
+              { accountName: { contains: "Scholarship", mode: "insensitive" } }
+            ] 
+          } 
+        }) || await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } });
+
+        if (discountAccount) {
+          await tx.journalEntry.create({
+            data: {
+              schoolId: context.schoolId,
+              branchId: branchId,
+              financialYearId: activeFY.id,
+              entryType: "ADMISSION_DISCOUNT",
+              totalDebit: totalDiscountAmount,
+              totalCredit: totalDiscountAmount,
+              description: `Admission Discount Offset: ${admissionNumber || registrationId}`,
+              lines: {
+                create: [
+                  { accountId: discountAccount.id, debit: totalDiscountAmount, credit: 0, description: "Discount/Scholarship Expense" },
+                  { accountId: receivableAccount.id, debit: 0, credit: totalDiscountAmount, description: "Receivable Offset" }
+                ]
+              }
+            }
+          });
+        }
+      }
 
       return student;
     }, { timeout: 30000 });
@@ -750,11 +826,47 @@ export async function confirmStudentAdmission(studentId: string) {
 
     const student = await prisma.student.findUnique({
       where: { id: studentId, schoolId: context.schoolId },
-      include: { academic: true }
+      include: { 
+        academic: true,
+        financial: true,
+        collections: { where: { status: "Success" } }
+      }
     });
 
     if (!student) throw new Error("Student not found.");
     if (student.status !== "Provisional") throw new Error("Admission already confirmed or student not in provisional state.");
+
+    // ─── Institutional Hardening: Strict Financial Milestone Check ───
+    const totalAnnual = Number(student.financial?.annualTuition || 0);
+    const totalDiscount = Number(student.financial?.totalDiscount || 0);
+    const netTuition = Number(student.financial?.netTuition || (totalAnnual - totalDiscount));
+    const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0) || 0;
+    
+    // Check for absolute 100% institutional discount
+    const isFullyDiscounted = netTuition <= 0 || totalDiscount >= totalAnnual;
+
+    // Term 1 is defined as 50% of Annual Tuition for institutional confirmation.
+    const term1Requirement = Math.min(
+      Number(student.financial?.term1Amount || (totalAnnual * 0.5)),
+      (totalAnnual * 0.5)
+    ) || (totalAnnual * 0.5);
+    
+    const isFinancialClear = isFullyDiscounted || (totalPaid >= term1Requirement);
+
+    // ─── Institutional Hardening: Compliance Check ───
+    const missingDocs = [];
+    if (!student.aadhaarNumber) missingDocs.push("Aadhaar Number");
+    if (!student.dob) missingDocs.push("Date of Birth");
+    
+    const isComplianceClear = missingDocs.length === 0;
+
+    if (!isFinancialClear) {
+      throw new Error(`FINANCIAL_BLOCK: Minimum Term-1 clearance required (₹${term1Requirement.toLocaleString()}). Currently paid: ₹${totalPaid.toLocaleString()}. No overrides allowed.`);
+    }
+
+    if (!isComplianceClear) {
+      throw new Error(`COMPLIANCE_BLOCK: Missing mandatory data: ${missingDocs.join(", ")}.`);
+    }
 
     const [school, branch, activeAY] = await Promise.all([
       prisma.school.findUnique({ where: { id: context.schoolId }, select: { code: true } }),
@@ -1325,7 +1437,7 @@ export async function publicSubmitEnquiryAction(formData: any) {
  * Promotes a Provisional (Temp) student to Active (Official).
  * Generates official IDs and updates status.
  */
-export async function promoteStudentAction(studentId: string, force: boolean = false, tx?: any) {
+export async function promoteStudentAction(studentId: string, tx?: any) {
   const db = tx || prisma;
   
   try {
@@ -1354,18 +1466,22 @@ export async function promoteStudentAction(studentId: string, force: boolean = f
       return { success: false, error: "Student not found or identity already elevated." };
     }
 
-    // ─── Institutional Hardening: Financial Milestone Check ───
+    // ─── Institutional Hardening: Strict Financial Milestone Check ───
     const totalAnnual = Number(student.financial?.annualTuition || 0);
+    const totalDiscount = Number(student.financial?.totalDiscount || 0);
+    const netTuition = Number(student.financial?.netTuition || (totalAnnual - totalDiscount));
     const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0) || 0;
     
+    // Check for absolute 100% institutional discount
+    const isFullyDiscounted = netTuition <= 0 || totalDiscount >= totalAnnual;
+
     // Term 1 is defined as 50% of Annual Tuition for institutional confirmation.
-    // We use Math.min to handle cases where term1Amount might be set to the full annual fee incorrectly.
     const term1Requirement = Math.min(
       Number(student.financial?.term1Amount || (totalAnnual * 0.5)),
       (totalAnnual * 0.5)
     ) || (totalAnnual * 0.5);
     
-    const isFinancialClear = totalPaid >= term1Requirement;
+    const isFinancialClear = isFullyDiscounted || (totalPaid >= term1Requirement);
 
     // ─── Institutional Hardening: Compliance Check ───
     const missingDocs = [];
@@ -1374,15 +1490,15 @@ export async function promoteStudentAction(studentId: string, force: boolean = f
     
     const isComplianceClear = missingDocs.length === 0;
 
-    if (!isFinancialClear && !force) {
+    if (!isFinancialClear) {
       return { 
         success: false, 
-        error: `FINANCIAL_BLOCK: Minimum Term-1 clearance required (₹${term1Requirement.toLocaleString()}). Currently paid: ₹${totalPaid.toLocaleString()}.`,
+        error: `FINANCIAL_BLOCK: Minimum Term-1 clearance required (₹${term1Requirement.toLocaleString()}). Currently paid: ₹${totalPaid.toLocaleString()}. No overrides allowed.`,
         code: "FINANCIAL_MINIMUM_NOT_MET"
       };
     }
 
-    if (!isComplianceClear && !force) {
+    if (!isComplianceClear) {
       return { 
         success: false, 
         error: `COMPLIANCE_BLOCK: Missing mandatory data: ${missingDocs.join(", ")}.`,

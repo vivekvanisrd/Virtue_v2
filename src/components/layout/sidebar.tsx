@@ -30,19 +30,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTabs, Tab } from "@/context/tab-context";
+import { useTenant } from "@/context/tenant-context";
 import { createClient } from "@/lib/supabase/client";
-
-// Redundant: Role-based access is now handled via the native userRole prop
-
-import { hasAccess, ROLES, Role, isOwnerOrHigher } from "@/lib/utils/rbac";
 
 type MenuItem = {
   id: string;
   name: string;
   icon: any;
   component?: string;
-  requiredRole?: Role;
-  subItems?: Array<{ id: string; name: string; component: string }>;
+  requiredCapability?: string;
+  subItems?: Array<{ id: string; name: string; component: string; requiredCapability?: string }>;
 };
 
 const menuItems: MenuItem[] = [
@@ -66,13 +63,13 @@ const menuItems: MenuItem[] = [
     name: "Salaries", 
     icon: Briefcase,
     component: "Salaries",
-    requiredRole: ROLES.ACCOUNTANT,
     subItems: [
       { id: "salary-quick-view", name: "Principal Quick-Pay", component: "Salaries" },
       { id: "salary-simple", name: "Staff Payroll Entry", component: "Salaries" },
       { id: "salary-dashboard", name: "Salary Hub", component: "Salaries" },
       { id: "salary-manager", name: "Unified Payroll Manager", component: "Salaries" },
       { id: "salary-batches", name: "Payroll Batches", component: "Salaries" },
+      { id: "salary-payout-lab", name: "Bulk Payout Audit", component: "Salaries" },
       { id: "salary-payments", name: "Manage Salary Registry", component: "Salaries" },
     ]
   },
@@ -81,25 +78,25 @@ const menuItems: MenuItem[] = [
     name: "Finance", 
     icon: Wallet,
     component: "Finance",
-    requiredRole: ROLES.ACCOUNTANT,
+    requiredCapability: "VIEW_FINANCIALS",
     subItems: [
       { id: "fee-collection", name: "Fee Collection", component: "Finance" },
       { id: "fee-manager", name: "Fee Management", component: "Finance" },
-      { id: "fee-master-registry", name: "Institutional Fee Registry", component: "Finance", requiredRole: ROLES.PRINCIPAL },
+      { id: "fee-master-registry", name: "Institutional Fee Registry", component: "Finance", requiredCapability: "ACADEMIC_CONFIG" },
       { id: "finance-oversight", name: "Financial Oversight", component: "Finance" },
       { id: "finance-discounts", name: "Discount Vault", component: "Finance" },
       { id: "payment-requests", name: "Payment Requests", component: "Finance" },
       { id: "razorpay-audit", name: "Razorpay Audit", component: "Finance" },
     ]
   },
-  { id: "accounting", name: "Accounting", icon: Calculator, component: "Accounting", requiredRole: ROLES.ACCOUNTANT },
-  { id: "teachers", name: "Teachers", icon: Users, component: "Teachers", requiredRole: ROLES.PRINCIPAL },
+  { id: "accounting", name: "Accounting", icon: Calculator, component: "Accounting", requiredCapability: "VIEW_FINANCIALS" },
+  { id: "teachers", name: "Teachers", icon: Users, component: "Teachers", requiredCapability: "STAFF_MANAGE" },
   { 
     id: "staff", 
     name: "Staff", 
     icon: Users,
     component: "Staff",
-    requiredRole: ROLES.PRINCIPAL,
+    requiredCapability: "STAFF_MANAGE",
     subItems: [
       { id: "staff-directory", name: "Directory", component: "Staff" },
       { id: "staff-attendance", name: "Attendance Ledger", component: "Staff" },
@@ -112,8 +109,8 @@ const menuItems: MenuItem[] = [
     name: "Academics", 
     icon: BookOpen,
     subItems: [
-      { id: "acad-config", name: "Configuration", component: "Academics" },
-      { id: "acad-genesis", name: "Institutional Genesis", component: "Academics" },
+      { id: "acad-config", name: "Configuration", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "acad-genesis", name: "Institutional Genesis", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
       { id: "acad-timetable", name: "Timetables", component: "Academics" },
       { id: "acad-exams", name: "Examinations", component: "Academics" },
     ]
@@ -124,7 +121,7 @@ const menuItems: MenuItem[] = [
     icon: CalendarCheck, 
     subItems: [
       { id: "attendance-student", name: "Velocity Run (Students)", component: "Attendance" },
-      { id: "attendance-staff", name: "Payroll Ledger (Staff)", component: "Attendance" },
+      { id: "attendance-staff", name: "Payroll Ledger (Staff)", component: "Attendance", requiredCapability: "HR_PAYROLL" },
     ]
   },
   { 
@@ -141,7 +138,7 @@ const menuItems: MenuItem[] = [
     id: "developer", 
     name: "PaVa-EDUX", 
     icon: Terminal, 
-    requiredRole: ROLES.DEVELOPER,
+    // Developer is a special system role, handled manually below
     component: "Developer Dashboard",
     subItems: [
       { id: "dev-dashboard", name: "Overview", component: "Developer Dashboard" },
@@ -153,7 +150,7 @@ const menuItems: MenuItem[] = [
 interface SidebarProps {
   isMobileOpen: boolean;
   setIsMobileOpen: (open: boolean) => void;
-  userRole?: Role;
+  userRole?: string;
   schoolName?: string;
   isOperationalReady?: boolean;
 }
@@ -161,12 +158,13 @@ interface SidebarProps {
 export function Sidebar({ 
   isMobileOpen, 
   setIsMobileOpen, 
-  userRole = ROLES.STAFF,
+  userRole = "STAFF",
   schoolName,
   isOperationalReady = true
 }: SidebarProps) {
   const pathname = usePathname();
   const { openTab, activeTabId } = useTabs();
+  const { capabilities } = useTenant();
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [width, setWidth] = React.useState(320);
   const [isResizing, setIsResizing] = React.useState(false);
@@ -176,10 +174,12 @@ export function Sidebar({
 
   const visibleMenuItems = React.useMemo(() => {
     return menuItems.filter(item => {
-      if (!item.requiredRole) return true;
-      return hasAccess(userRole, item.requiredRole);
+      if (item.id === "developer") return userRole === "DEVELOPER";
+      if (!item.requiredCapability) return true;
+      if (userRole === "OWNER" || userRole === "DEVELOPER") return true;
+      return !!capabilities[item.requiredCapability];
     });
-  }, [userRole]);
+  }, [userRole, capabilities]);
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -303,7 +303,7 @@ export function Sidebar({
         </div>
 
         {/* 🛡️ INSTITUTIONAL HEALTH: Setup Progress (Only for Fresh Schools) */}
-        {!isOperationalReady && !isCollapsed && userRole !== ROLES.DEVELOPER && (
+        {!isOperationalReady && !isCollapsed && userRole !== "DEVELOPER" && (
           <div className="mx-6 mb-8 p-5 rounded-[24px] bg-white border border-slate-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:rotate-12 transition-transform">
                <ShieldCheck className="w-12 h-12" />
@@ -325,7 +325,7 @@ export function Sidebar({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 relative z-10 px-4 overflow-y-auto custom-scrollbar overflow-x-hidden pb-10">
-          {userRole === ROLES.DEVELOPER && (
+          {userRole === "DEVELOPER" && (
             <div className="mb-6 space-y-1">
               <p className={cn(
                 "px-6 text-[10px] font-black text-sidebar-muted opacity-60 uppercase tracking-[2px] mb-2 truncate",
@@ -400,7 +400,13 @@ export function Sidebar({
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden pl-11 space-y-1 pointer-events-auto"
                     >
-                      {item.subItems!.map((sub) => (
+                      {item.subItems!
+                        .filter(sub => {
+                          if (!sub.requiredCapability) return true;
+                          if (userRole === "OWNER" || userRole === "DEVELOPER") return true;
+                          return !!capabilities[sub.requiredCapability];
+                        })
+                        .map((sub) => (
                         <button
                           key={sub.id}
                           onClick={() => handleOpenTab(sub)}

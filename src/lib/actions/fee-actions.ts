@@ -107,8 +107,8 @@ export async function upsertFeeComponentMaster(data: {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
 
-    const { isPrincipalOrHigher } = await import("@/lib/utils/rbac");
-    if (!isPrincipalOrHigher(context.role)) throw new Error("UNAUTHORIZED: Principal access required for registry updates.");
+    const { checkCapability } = await import("@/lib/auth/rbac");
+    await checkCapability('ACADEMIC_CONFIG');
 
     // 🛡️ HARDENED BLOCK: Prevent Tuition Fee from entering the Institutional Registry
     if (data.name.toLowerCase().includes("tuition")) {
@@ -173,8 +173,8 @@ export async function deleteFeeComponentMasterAction(id: string) {
         const context = identity;
 
         // 🛡️ ROLE GATE: Principal or Owner only
-        const { isPrincipalOrHigher } = await import("@/lib/utils/rbac");
-        if (!isPrincipalOrHigher(context.role)) throw new Error("UNAUTHORIZED: Principal access required.");
+        const { checkCapability } = await import("@/lib/auth/rbac");
+        await checkCapability('ACADEMIC_CONFIG');
 
         // Check for student assignments
         const usageCount = await prisma.studentFeeComponent.count({
@@ -215,8 +215,8 @@ export async function toggleFeeComponentStatusAction(id: string, newStatus: bool
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
         const context = identity;
 
-        const { isPrincipalOrHigher } = await import("@/lib/utils/rbac");
-        if (!isPrincipalOrHigher(context.role)) throw new Error("UNAUTHORIZED: Principal access required.");
+        const { checkCapability } = await import("@/lib/auth/rbac");
+        await checkCapability('ACADEMIC_CONFIG');
 
         // Use raw SQL to bypass Prisma client sync issues
         await prisma.$executeRawUnsafe(
@@ -254,23 +254,29 @@ export async function upsertFeeStructure(data: {
         const totalAmount = data.components.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
 
         const structure = await prisma.$transaction(async (tx: any) => {
-            const header = await tx.feeStructure.upsert({
-                where: { id: data.id || 'new-structure', schoolId: context.schoolId },
-                update: {
-                    name: data.name,
-                    classId: data.classId,
-                    academicYearId: data.academicYearId,
-                    totalAmount: totalAmount
-                },
-                create: {
-                    schoolId: context.schoolId,
-                    branchId: context.branchId,
-                    classId: data.classId,
-                    name: data.name,
-                    academicYearId: data.academicYearId,
-                    totalAmount: totalAmount
-                }
-            });
+            let header;
+            if (data.id) {
+                header = await tx.feeStructure.update({
+                    where: { id: data.id, schoolId: context.schoolId },
+                    data: {
+                        name: data.name,
+                        classId: data.classId,
+                        academicYearId: data.academicYearId,
+                        totalAmount: totalAmount
+                    }
+                });
+            } else {
+                header = await tx.feeStructure.create({
+                    data: {
+                        schoolId: context.schoolId,
+                        branchId: context.branchId,
+                        classId: data.classId,
+                        name: data.name,
+                        academicYearId: data.academicYearId,
+                        totalAmount: totalAmount
+                    }
+                });
+            }
 
             // 🏛️ TENANCY HARDENED: Junctions must also carry schoolId
             await tx.feeTemplateComponent.deleteMany({ 
