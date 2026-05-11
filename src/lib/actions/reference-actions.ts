@@ -14,7 +14,7 @@ export async function getAdmissionReferenceData() {
             ? { schoolId: context.schoolId } 
             : { schoolId: context.schoolId, id: context.branchId };
 
-        const [branches, academicYears, classes, feeSchedules, school] = await Promise.all([
+        const [branches, academicYears, classes, feeSchedules, school, discountTypes] = await Promise.all([
             prisma.branch.findMany({
                 where: branchCondition,
                 select: { id: true, name: true }

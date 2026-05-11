@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prismaBypass } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Validate Staff Exists
-    const staff = await prisma.staff.findFirst({
+    const staff = await prismaBypass.staff.findFirst({
       where: { id: staffId }
     });
 
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const existingRecord = await prisma.staffAttendance.findFirst({
+    const existingRecord = await prismaBypass.staffAttendance.findFirst({
       where: {
         staffId: staffId,
         date: {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create new Punch In record
-    await prisma.staffAttendance.create({
+    await prismaBypass.staffAttendance.create({
       data: {
         staffId: staffId,
         date: today,

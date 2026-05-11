@@ -19,14 +19,19 @@ const prismaClientSingleton = () => {
     },
   });
 
-  return client.$extends(tenancyExtension);
+  return client;
 };
 
-declare global {
-  var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
-}
+const baseClient = globalThis.prismaBypass ?? prismaClientSingleton();
+if (process.env.NODE_ENV !== "production") globalThis.prismaBypass = baseClient;
 
-const prisma = globalThis.prisma ?? prismaClientSingleton();
+export const prismaBypass = baseClient;
+const prisma = baseClient.$extends(tenancyExtension);
+
+declare global {
+  var prisma: undefined | typeof prisma;
+  var prismaBypass: undefined | typeof baseClient;
+}
 
 export default prisma;
 
