@@ -44,6 +44,9 @@ const BankSettings = dynamic(() => import("../dashboard/bank-settings").then(mod
 const VelocityAttendance = dynamic(() => import("../attendance/VelocityAttendance").then(mod => mod.VelocityAttendance), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
+const AttendanceKiosk = dynamic(() => import("../attendance/v2-1/AttendanceKiosk").then(mod => mod.AttendanceKiosk), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
 const InstitutionalSetupHub = dynamic(() => import("../dashboard/InstitutionalSetupHub").then(mod => mod.InstitutionalSetupHub), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
@@ -81,7 +84,7 @@ function WorkspaceRenderer() {
           {tab.id.startsWith("student-profile-") && (
             <StudentsContent tabId="student-profile" params={{ studentId: tab.id.replace("student-profile-", "") }} />
           )}
-          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll|razorpay/i.test(tab.id)) && tab.id !== "fee-master-registry" && (
+          {(tab.id === "finance" || tab.id.startsWith("fee-") || tab.id.startsWith("collection-") || /fee|finance|payroll|razorpay|bank/i.test(tab.id)) && tab.id !== "fee-master-registry" && (
             <FinanceContent 
                tabId={tab.id} 
                params={tab.params || {}} 
@@ -110,6 +113,9 @@ function WorkspaceRenderer() {
           {tab.id === "attendance-staff" && (
             <StaffContent tabId="staff-attendance" />
           )}
+          {tab.id === "attendance-kiosk" && (
+            <AttendanceKiosk />
+          )}
 
           {tab.id === "razorpay-lab" && (
             <RazorpaySimulationLab />
@@ -117,7 +123,6 @@ function WorkspaceRenderer() {
 
           {/* 🎓 Sovereign Academic & Attendance Expansion */}
           {tab.id === "acad-config" && <AcademicArchitectHub />}
-          {tab.id === "attendance-student" && <VelocityAttendanceRunner />}
           {tab.id === "acad-genesis" && <GenesisLab />}
 
           {/* Generic mappings for other cataloged modules */}
@@ -129,7 +134,7 @@ function WorkspaceRenderer() {
           )}
 
           {/* Fallback for truly unknown tabs */}
-          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings", "student", "fee"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay/i.test(tab.id)) && (
+          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings", "student", "fee"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay|bank/i.test(tab.id)) && (
             <div className="flex flex-col items-center justify-center h-full text-foreground opacity-30 py-40">
               <h2 className="text-2xl font-bold italic text-rose-500">Module Implementation Pending (HARD_OVERRIDE_V7)</h2>
               <p>The {tab.title} section (ID: {tab.id}) is coming soon.</p>

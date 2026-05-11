@@ -736,3 +736,29 @@ export async function syncPayrollProfessionalAction(runId: string) {
   }
 }
 
+/**
+ * ─────────────────────────────────────────────────────────
+ * MARK SALARY SLIP AS PAID (Manual Override)
+ * ─────────────────────────────────────────────────────────
+ */
+export async function markSlipAsPaidAction(slipId: string, paymentMode: string, paymentRef: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+
+    await prisma.salarySlip.update({
+      where: { id: slipId }, 
+      data: {
+        paidAt: new Date(),
+        paymentMode,
+        paymentRef,
+        status: "Paid"
+      }
+    });
+
+    revalidatePath("/dashboard/salaries");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

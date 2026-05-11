@@ -122,6 +122,7 @@ const menuItems: MenuItem[] = [
     subItems: [
       { id: "attendance-student", name: "Velocity Run (Students)", component: "Attendance" },
       { id: "attendance-staff", name: "Payroll Ledger (Staff)", component: "Attendance", requiredCapability: "HR_PAYROLL" },
+      { id: "attendance-kiosk", name: "Dynamic QR Kiosk", component: "Attendance" },
     ]
   },
   { 

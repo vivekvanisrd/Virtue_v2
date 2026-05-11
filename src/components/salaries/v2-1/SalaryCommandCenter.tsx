@@ -31,9 +31,10 @@ import {
   savePayrollDraftAction,
   getHistoricalPayrollRunsAction,
   deletePayrollRunAction,
-  syncPayrollProfessionalAction
+  syncPayrollProfessionalAction,
+  markSlipAsPaidAction
 } from "@/lib/actions/payroll-actions";
-import { Trash2, RefreshCcw } from "lucide-react";
+import { Trash2, RefreshCcw, HandCoins } from "lucide-react";
 
 type ViewMode = "ACTIVE" | "HISTORY";
 
@@ -146,6 +147,17 @@ export function SalaryCommandCenter() {
     } else {
       setToast({ type: "error", message: res.error || "Sync failed." });
     }
+  };
+
+  const handleMarkPaid = async (slipId: string) => {
+     setToast({ type: "loading", message: "Marking as Paid..." });
+     const res = await markSlipAsPaidAction(slipId, "Cash/Manual", "MANUAL_ENTRY");
+     if (res.success) {
+        setToast({ type: "success", message: "Slip marked as paid." });
+        loadActiveRun();
+     } else {
+        setToast({ type: "error", message: res.error || "Failed to mark paid." });
+     }
   };
 
   const filteredSlips = useMemo(() => {
@@ -384,10 +396,21 @@ export function SalaryCommandCenter() {
                                   <div>
                                      <p className="text-sm font-black text-slate-900">₹{Math.round(slip.netSalary || 0).toLocaleString()}</p>
                                      <div className="flex items-center justify-end gap-1">
-                                        <div className={cn("w-1 h-1 rounded-full", slip.status === "Approved" ? "bg-emerald-500" : "bg-amber-500")} />
+                                        <div className={cn("w-1 h-1 rounded-full", slip.status === "Approved" ? "bg-emerald-500" : slip.status === "Paid" ? "bg-blue-500" : "bg-amber-500")} />
                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{slip.status}</p>
                                      </div>
                                   </div>
+                                  
+                                  {slip.status === "Approved" && (
+                                    <button 
+                                      onClick={() => handleMarkPaid(slip.id)}
+                                      className="p-2 hover:bg-emerald-50 rounded-xl text-slate-300 hover:text-emerald-600 transition-all border border-transparent hover:border-emerald-200 shadow-sm"
+                                      title="Mark as Paid"
+                                    >
+                                      <HandCoins className="w-4 h-4" />
+                                    </button>
+                                  )}
+
                                   <button 
                                      onClick={() => openTab({ 
                                         id: `staff-financials-${slip.staff?.id}`, 
@@ -396,6 +419,7 @@ export function SalaryCommandCenter() {
                                         params: { staffId: slip.staff?.id, view: "financials" } 
                                      })}
                                      className="p-2 hover:bg-white rounded-xl text-slate-300 hover:text-indigo-600 transition-all border border-transparent hover:border-slate-200 shadow-sm"
+                                     title="View Financials"
                                   >
                                      <ChevronRight className="w-4 h-4" />
                                   </button>

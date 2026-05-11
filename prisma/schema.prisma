@@ -84,6 +84,10 @@ model School {
 
   // 🛡️ Shadow Relation for Enterprise V4
   backboneInvoices FeeInvoice[]
+
+  // 🏦 Bank Reconciliation Engine
+  bankStatements         BankStatement[]
+  bankStatementEntries   BankStatementEntry[]
 }
 
 model PlatformAdmin {
@@ -1659,4 +1663,63 @@ model BulkPayoutAuditRecord {
   
   @@index([schoolId, month, year])
   @@index([staffName])
+}
+
+// ─────────────────────────────────────────────────────────
+// 🏦 BANK RECONCILIATION ENGINE
+// ─────────────────────────────────────────────────────────
+
+model BankStatement {
+  id           String               @id @default(uuid())
+  schoolId     String
+  branchId     String?
+  bankName     String               // AXIS | HDFC | BOB
+  accountCode  String               // e.g. "1111" for Axis, "1112" for HDFC
+  accountNo    String?              // Raw account number from statement
+  month        Int
+  year         Int
+  periodFrom   DateTime?
+  periodTo     DateTime?
+  fileName     String
+  uploadedBy   String
+  status       String               @default("PENDING") // PENDING | IN_PROGRESS | RECONCILED
+  openingBal   Decimal?             @db.Decimal(15, 2)
+  closingBal   Decimal?             @db.Decimal(15, 2)
+  totalCredits Decimal?             @db.Decimal(15, 2)
+  totalDebits  Decimal?             @db.Decimal(15, 2)
+  uploadedAt   DateTime             @default(now())
+  entries      BankStatementEntry[]
+  school       School               @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId, month, year])
+  @@index([schoolId, bankName])
+}
+
+model BankStatementEntry {
+  id            String         @id @default(uuid())
+  statementId   String
+  schoolId      String         @db.VarChar(36)
+  branchId      String?        @db.VarChar(36)
+  txnDate       DateTime
+  valueDate     DateTime?
+  description   String         @db.Text
+  reference     String?
+  debit         Decimal?       @db.Decimal(12, 2)
+  credit        Decimal?       @db.Decimal(12, 2)
+  balance       Decimal?       @db.Decimal(15, 2)
+  txnType       String         @default("UNKNOWN") // CREDIT | DEBIT | UNKNOWN
+  category      String         @default("UNCLASSIFIED") // FEE_COLLECTION | SALARY | EXPENSE | INTERNAL_TRANSFER | UNCLASSIFIED
+  matchStatus   String         @default("UNMATCHED") // UNMATCHED | AUTO_MATCHED | MANUALLY_MATCHED | CONFIRMED | IGNORED
+  matchedTo     String?        // collectionId or salarySlipId or expenseId
+  matchedType   String?        // COLLECTION | SALARY | EXPENSE
+  confidence    Int            @default(0) // 0-100 auto-match confidence
+  notes         String?        // User's manual notes
+  confirmedAt   DateTime?
+  confirmedBy   String?
+  statement     BankStatement  @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  school        School         @relation(fields: [schoolId], references: [id])
+
+  @@index([statementId])
+  @@index([txnDate])
+  @@index([schoolId])
 }

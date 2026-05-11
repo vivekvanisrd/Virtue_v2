@@ -60,6 +60,31 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
   const [summary, setSummary] = useState<{ present: number; absent: number; late: number; absentees: any[] } | null>(null);
   const [lockTimeLeft, setLockTimeLeft] = useState<number | null>(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [submissionTime, setSubmissionTime] = useState<Date | null>(null);
+
+  // 10-Minute Lock Timer Effect
+  useEffect(() => {
+    if (!submissionTime) return;
+
+    const checkLock = () => {
+      const now = new Date().getTime();
+      const submitted = submissionTime.getTime();
+      const diffMins = (now - submitted) / (1000 * 60);
+      
+      if (diffMins >= 999999) { // Disabled for testing
+        setIsLocked(true);
+      } else {
+        setIsLocked(false);
+      }
+    };
+
+    // Initial check
+    checkLock();
+
+    // Check every minute
+    const interval = setInterval(checkLock, 60000);
+    return () => clearInterval(interval);
+  }, [submissionTime]);
 
   useEffect(() => {
     async function loadClasses() {
@@ -93,14 +118,17 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
 
   const currentStudent = students[currentIndex];
   const progress = students.length > 0 ? (currentIndex / students.length) * 100 : 0;
-  const stats = useMemo(() => {
+  const { stats, isDirty } = useMemo(() => {
     const values = Object.values(marked);
     return {
-       present: values.filter(v => v === "Present").length,
-       absent: values.filter(v => v === "Absent").length,
-       late: values.filter(v => v === "Late").length
+       stats: {
+         present: values.filter(v => v === "Present").length,
+         absent: values.filter(v => v === "Absent").length,
+         late: values.filter(v => v === "Late").length
+       },
+       isDirty: values.length > 0 && !submissionTime
     };
-  }, [marked]);
+  }, [marked, submissionTime]);
 
   const handleMark = (status: "Present" | "Absent" | "Late") => {
     if (currentIndex >= students.length) return;
@@ -121,6 +149,7 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
     
     const result = await submitStudentAttendanceAction(records);
     if (result.success) {
+       setSubmissionTime(new Date());
        // CALCULATE SUMMARY DATA
        const presentCount = records.filter(r => r.status === "Present").length;
        const absentCount = records.filter(r => r.status === "Absent").length;
@@ -161,6 +190,28 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
          </div>
          
          <div className="flex bg-slate-800 p-1 rounded-2xl border border-slate-700">
+            {/* Status Badge */}
+            {isLocked ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded-xl border border-slate-700 mr-2">
+                   <Lock className="w-3.5 h-3.5 text-rose-400" />
+                   <p className="text-[10px] font-black uppercase tracking-widest text-white">Registry Sealed</p>
+                </div>
+            ) : submissionTime ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100 mr-2">
+                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                   <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Saved — Grace Period Active</p>
+                </div>
+            ) : isDirty ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-xl border border-amber-100 mr-2">
+                   <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                   <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Unsaved Changes</p>
+                </div>
+            ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-xl mr-2">
+                   <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ready</p>
+                </div>
+            )}
             <button 
                onClick={() => setViewMode("Swipe")}
                className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all tracking-widest", viewMode === "Swipe" ? "bg-blue-600 text-white" : "text-white/40")}

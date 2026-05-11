@@ -8,6 +8,7 @@ import { DailyCollectionSummary } from "../finance/DailyCollectionSummary";
 import { PayrollManager } from "../finance/PayrollManager";
 import RazorpayPaymentReport from "../finance/RazorpayPaymentReport";
 import { DiscountRegistry } from "../finance/DiscountRegistry";
+import { BankReconciliation } from "../finance/BankReconciliation";
 import { useTabs } from "@/context/tab-context";
 import { 
   getRevenueLeakageReport, 
@@ -95,6 +96,10 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
     return <DiscountRegistry />;
   }
 
+  if (tabId === "bank-reconciliation") {
+    return <BankReconciliation />;
+  }
+
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex justify-between items-end">
@@ -148,6 +153,12 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
                         className="px-10 py-5 bg-indigo-500/20 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest backdrop-blur-sm border border-indigo-500/30 hover:bg-indigo-500/40 transition-all flex items-center gap-3"
                       >
                         <ReceiptText className="w-4 h-4" /> Payroll Engine
+                      </button>
+                      <button 
+                        onClick={() => openTab({ id: "bank-reconciliation", title: "Bank Reconciliation", icon: Wallet, component: "Finance" })}
+                        className="px-10 py-5 bg-emerald-500/20 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest backdrop-blur-sm border border-emerald-500/30 hover:bg-emerald-500/40 transition-all flex items-center gap-3"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> Bank Recon
                       </button>
                   </div>
            </div>

@@ -375,6 +375,8 @@ export function BulkPayoutAudit() {
       return;
     }
 
+    const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+    
     // Standard Bank Template for Bulk Payout
     const exportData = filtered.map(r => ({
       "Beneficiary Name": r.name,
@@ -385,14 +387,13 @@ export function BulkPayoutAudit() {
       "Branch": r.branchName || "N/A",
       "Segment": r.segment || "GENERAL",
       "Payment Mode": bankType === "AXIS" ? "TFR" : "NEFT",
-      "Remarks": `${r.segment || "Salary"} April 2026`
+      "Remarks": `${r.segment || "Salary"} ${monthName} ${year}`
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Payouts");
-    XLSX.writeFile(wb, `Virtue_Payroll_${bankType}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `Payroll_Export_${monthName}_${year}.xlsx`);
     
     // Mark as exported
     const ids = filtered.map(r => r.index);

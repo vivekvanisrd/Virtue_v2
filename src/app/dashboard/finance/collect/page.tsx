@@ -1,4 +1,4 @@
-import FeeCollectionForm from "@/components/finance/FeeCollectionForm";
+import { FeeCollectionForm } from "@/components/finance/FeeCollectionForm";
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
 import { checkCapability } from "@/lib/auth/rbac";
