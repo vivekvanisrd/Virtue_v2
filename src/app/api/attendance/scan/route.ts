@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Staff not found in this institution." }, { status: 404 });
     }
 
-    if (staff.status !== "Active") {
+    if (staff.status?.toUpperCase() !== "ACTIVE") {
       return NextResponse.json({ success: false, error: "Staff account is inactive." }, { status: 403 });
     }
 

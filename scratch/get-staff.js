@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 async function main() {
   const staff = await prisma.staff.findMany({
     take: 10,
-    select: { id: true, firstName: true, schoolId: true }
+    select: { id: true, firstName: true, schoolId: true, status: true }
   });
   console.log(JSON.stringify(staff, null, 2));
 }
