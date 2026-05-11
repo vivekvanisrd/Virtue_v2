@@ -26,9 +26,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "QR Code Expired. Please scan again." }, { status: 403 });
     }
 
-    // 2. Validate Staff Exists
+    // 2. Validate Staff Exists (Check by ID or StaffCode)
     const staff = await prismaBypass.staff.findFirst({
-      where: { id: staffId }
+      where: {
+        OR: [
+          { id: staffId },
+          { staffCode: staffId } // Handle cases where staffCode is passed as staffId
+        ]
+      }
     });
 
     if (!staff || staff.schoolId !== schoolId) {
