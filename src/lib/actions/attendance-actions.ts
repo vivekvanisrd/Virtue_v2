@@ -6,6 +6,41 @@ import { getTenancyFilters } from "@/lib/utils/tenancy";
 import { revalidatePath } from "next/cache";
 
 /**
+ * Sovereign Sentinel: Fetches the most recent staff scans for audit purposes.
+ */
+export async function getStaffAttendanceAuditAction() {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+
+        const scans = await prisma.staffAttendance.findMany({
+            where: {
+                schoolId: identity.schoolId,
+                date: {
+                    gte: new Date(new Date().setHours(0,0,0,0))
+                }
+            },
+            include: {
+                staff: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        staffCode: true
+                    }
+                }
+            },
+            orderBy: { checkIn: 'desc' },
+            take: 20
+        });
+
+        return { success: true, data: JSON.parse(JSON.stringify(scans)) };
+    } catch (error: any) {
+        console.error("Audit Fetch Error:", error);
+        return { success: false, error: "Failed to retrieve scan logs." };
+    }
+}
+
+/**
  * Institutional Pulse: Fetches all students in a section with their 
  * parent's WhatsApp details and today's attendance status.
  */
@@ -269,35 +304,41 @@ export async function getMonthlyStaffAttendanceSummary(month: number, year: numb
       }
     });
 
-    const summary: Record<string, { present: number; absent: number; lwp: number; lateCount: number }> = {};
+    const summary: Record<string, any> = {};
 
     records.forEach(r => {
-      if (!summary[r.staffId]) {
-        summary[r.staffId] = { present: 0, absent: 0, lwp: 0, lateCount: 0 };
+      const staffId = r.staffId;
+      const dateKey = r.date.toISOString().split('T')[0];
+      
+      if (!summary[staffId]) {
+        summary[staffId] = { 
+          present: 0, absent: 0, lwp: 0, lateCount: 0,
+          days: {} 
+        };
       }
       
-      const status = r.status.toLowerCase();
-      if (status === "present") {
-        summary[r.staffId].present++;
-      } else if (status === "late") {
-        summary[r.staffId].lateCount++;
-        summary[r.staffId].present++;
-      } else if (status === "absent" || status === "lop" || status === "lp") {
-        summary[r.staffId].absent++;
-        summary[r.staffId].lwp++;
-      } else if (status === "half-day") {
-        summary[r.staffId].present += 0.5;
-        summary[r.staffId].lwp += 0.5;
-        summary[r.staffId].absent += 0.5;
-      } else if (status === "leave") {
-        summary[r.staffId].present++; // Already handled as Paid Leave
-      }
-    });
+      const checkInTime = r.checkIn ? new Date(r.checkIn) : null;
+      // Late Threshold: 9:15 AM (555 minutes)
+      const isLate = checkInTime ? (checkInTime.getHours() * 60 + checkInTime.getMinutes()) > 555 : false;
 
-    // 🏛️ SOVEREIGN ALIGNMENT: Strict industry-standard LWP calculation.
-    // Every absent day (not marked as Paid Leave) is accurately recorded.
-    Object.values(summary).forEach(s => {
-      // No grace bonus; accuracy is absolute.
+      summary[staffId].days[dateKey] = {
+        status: r.status,
+        checkIn: r.checkIn,
+        checkOut: r.checkOut,
+        isLate
+      };
+
+      const status = r.status.toLowerCase();
+      if (status === "present" || status === "late") {
+        summary[staffId].present++;
+        if (isLate || status === "late") summary[staffId].lateCount++;
+      } else if (status === "absent" || status === "lop" || status === "lp") {
+        summary[staffId].absent++;
+        summary[staffId].lwp++;
+      } else if (status === "half-day") {
+        summary[staffId].present += 0.5;
+        summary[staffId].lwp += 0.5;
+      }
     });
 
     return { success: true, summary };

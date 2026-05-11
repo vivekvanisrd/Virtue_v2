@@ -15,7 +15,8 @@ import {
   RefreshCcw,
   ShieldCheck,
   CalendarDays,
-  Rows
+  Rows,
+  Fingerprint
 } from "lucide-react";
 import { 
   getAttendanceCommandStatsAction, 

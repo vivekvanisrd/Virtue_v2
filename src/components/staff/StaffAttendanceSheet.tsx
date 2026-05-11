@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getStaffDirectoryAction } from "@/lib/actions/staff-actions";
-import { submitStaffAttendanceAction } from "@/lib/actions/attendance-actions";
+import { submitStaffAttendanceAction, getStaffAttendanceAuditAction } from "@/lib/actions/attendance-actions";
 
 export function StaffAttendanceSheet() {
   const [staff, setStaff] = useState<any[]>([]);
@@ -27,6 +27,8 @@ export function StaffAttendanceSheet() {
   const [submitting, setSubmitting] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [scans, setScans] = useState<any[]>([]);
+  const [showAudit, setShowAudit] = useState(true);
   
   // Attendance State: Record per staffId
   const [attendance, setAttendance] = useState<Record<string, { 
@@ -37,7 +39,29 @@ export function StaffAttendanceSheet() {
 
   useEffect(() => {
     fetchStaff();
+    fetchScans();
   }, []);
+
+  const fetchScans = async () => {
+    const result = await getStaffAttendanceAuditAction();
+    if (result.success) setScans(result.data);
+  };
+
+  const autoFillFromScans = () => {
+    const updated = { ...attendance };
+    scans.forEach(scan => {
+       if (updated[scan.staffId]) {
+          const time = new Date(scan.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          updated[scan.staffId] = { 
+            ...updated[scan.staffId], 
+            status: "Present", 
+            checkIn: time 
+          };
+       }
+    });
+    setAttendance(updated);
+    alert(`Auto-filled ${scans.length} records from mobile scans.`);
+  };
 
   const fetchStaff = async () => {
     setLoading(true);
@@ -97,6 +121,64 @@ export function StaffAttendanceSheet() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 px-1">
+      {/* ─── Mobile Scan Audit Tray ─── */}
+      {showAudit && scans.length > 0 && (
+        <div className="bg-slate-900 rounded-[2.5rem] p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-8 opacity-10">
+              <History className="w-24 h-24 text-blue-400" />
+           </div>
+           
+           <div className="flex items-center justify-between mb-8 relative z-10">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <Zap className="w-6 h-6 text-white animate-pulse" />
+                 </div>
+                 <div>
+                    <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">Live <span className="text-blue-500">Scan Audit</span></h3>
+                    <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest">{scans.length} Successfull Scans Detected Today</p>
+                 </div>
+              </div>
+              <div className="flex items-center gap-3">
+                 <button 
+                    onClick={autoFillFromScans}
+                    className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+                 >
+                    <ArrowRightCircle className="w-4 h-4" /> Auto-Fill Ledger
+                 </button>
+                 <button onClick={() => setShowAudit(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white/40 transition-colors">
+                    <X className="w-4 h-4" />
+                 </button>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
+              {scans.map((scan, i) => (
+                <motion.div 
+                   key={scan.id}
+                   initial={{ opacity: 0, scale: 0.9 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   transition={{ delay: i * 0.1 }}
+                   className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-md"
+                >
+                   <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                         <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div className="min-w-0">
+                         <p className="text-xs font-black text-white truncate">{scan.staff.firstName} {scan.staff.lastName}</p>
+                         <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{new Date(scan.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                   </div>
+                   <div className="bg-white/5 rounded-lg p-2 flex items-center gap-2">
+                      <AlertCircle className="w-3 h-3 text-emerald-400" />
+                      <p className="text-[8px] font-bold text-emerald-400/60 uppercase truncate">{scan.remarks}</p>
+                   </div>
+                </motion.div>
+              ))}
+           </div>
+        </div>
+      )}
+
       {/* ─── Control Bar ─── */}
       <div className="bg-white p-8 rounded-[2.5rem] border border-border shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-6">
