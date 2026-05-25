@@ -28,8 +28,6 @@ export async function createSchoolAction(formData: {
   try {
     await checkSuperAdmin();
 
-    const session = await getSovereignIdentity();
-
     const result = await prisma.$transaction(async (tx: any) => {
       // 1. Create School
       const school = await tx.school.create({
@@ -57,7 +55,13 @@ export async function createSchoolAction(formData: {
       });
 
       // 3. Create Admin Staff (OWNER)
-      const staffCode = await IdGenerator.generateStaffCode(school.id, school.code, "Owner/Partner", tx);
+      const staffCode = await IdGenerator.generateStaffCode({
+        schoolId: school.id,
+        schoolCode: school.code,
+        branchId: branch.id,
+        branchCode: branch.code,
+        role: "Owner/Partner"
+      }, tx);
       const staff = await tx.staff.create({
         data: {
           staffCode: staffCode,

@@ -2,6 +2,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { CounterService } from "../services/counter-service";
 
 const prisma = new PrismaClient();
 
@@ -83,8 +84,30 @@ export async function recordEnterpriseCollectionAction(data: {
       }
 
       // D. Record the Collection (Shadow Registry)
+      const activeFY = await tx.financialYear.findFirst({
+        where: { schoolId: data.schoolId, isCurrent: true }
+      });
+      if (!activeFY) throw new Error("Active Financial Year not configured.");
+
+      const branchRecord = await tx.branch.findUnique({
+        where: { id: data.branchId },
+        select: { code: true, school: { select: { code: true } } }
+      });
+      const schoolCode = branchRecord?.school?.code || data.schoolId;
+      const branchCode = branchRecord?.code || "MAIN";
+
+      const receiptNumber = await CounterService.generateReceiptNumber({
+        schoolId: data.schoolId,
+        schoolCode,
+        branchId: data.branchId,
+        branchCode,
+        year: activeFY.name || new Date().getFullYear().toString()
+      }, tx);
+
       const collection = await tx.collection.create({
         data: {
+          receiptNumber,
+          financialYearId: activeFY.id,
           schoolId: data.schoolId,
           branchId: data.branchId,
           studentId: data.studentId,
@@ -126,7 +149,7 @@ export async function generateMonthlyEnterpriseInvoices(data: {
       // A. Fetch All Active Students with Locked Profiles
       const students = await tx.student.findMany({
         where: { schoolId: data.schoolId, status: "Active" },
-        include: { studentFeeComponents: { where: { isApplicable: true, isLocked: true } } }
+        include: { financial: { include: { components: { where: { isApplicable: true, isLocked: true } } } } }
       });
 
       let invoiceCount = 0;
@@ -150,7 +173,8 @@ export async function generateMonthlyEnterpriseInvoices(data: {
         let totalForInvoice = 0;
 
         // Create Line-Items from the LOCKED components
-        for (const sfc of student.studentFeeComponents) {
+        const components = student.financial?.components || [];
+        for (const sfc of components) {
           const itemAmount = Number(sfc.baseAmount) - Number(sfc.discountAmount);
           
           await tx.feeInvoiceItem.create({
@@ -191,8 +215,14 @@ export async function generateMonthlyEnterpriseInvoices(data: {
  */
 export async function lockStudentFeeProfile(studentId: string, authorId: string) {
   try {
+    const financial = await prisma.financialRecord.findUnique({
+      where: { studentId: studentId },
+      select: { id: true }
+    });
+    if (!financial) throw new Error("Financial record not found for student.");
+
     await prisma.studentFeeComponent.updateMany({
-      where: { studentId: studentId }, // This assumes studentId field in StudentFeeComponent mapping
+      where: { studentFinancialId: financial.id },
       data: {
         isLocked: true,
         lockedAt: new Date(),

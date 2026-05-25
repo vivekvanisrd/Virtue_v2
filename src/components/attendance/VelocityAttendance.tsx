@@ -193,7 +193,7 @@ export function VelocityAttendance({ students: initialStudents = [], classId: in
             {/* Status Badge */}
             {isLocked ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded-xl border border-slate-700 mr-2">
-                   <Lock className="w-3.5 h-3.5 text-rose-400" />
+                   <LucideLock className="w-3.5 h-3.5 text-rose-400" />
                    <p className="text-[10px] font-black uppercase tracking-widest text-white">Registry Sealed</p>
                 </div>
             ) : submissionTime ? (

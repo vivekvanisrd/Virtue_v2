@@ -67,7 +67,7 @@ export async function initializeInstitutionAction() {
       });
     }
 
-    return { success: true, coaFound: coaCount, mastersFound: masterCount };
+    return { success: true, coaFound: coaCount, mastersFound: masterCount, isAlreadyInitialized: coaCount > 0 || masterCount > 0, message: "Institution initialized successfully." };
   } catch (error: any) {
     console.error("GENESIS_FAILED:", error);
     return { success: false, error: error.message };

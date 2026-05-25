@@ -81,6 +81,20 @@ export function SalaryCommandCenter() {
     }
   };
 
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await getHistoricalPayrollRunsAction();
+      if (res.success && res.data) {
+        setHistoryRuns(res.data);
+      }
+    } catch (e) {
+      console.error("❌ [SalaryCommand] History Load Error", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
     if (view === "ACTIVE") {
       loadActiveRun();

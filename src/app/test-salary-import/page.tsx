@@ -35,6 +35,7 @@ interface ParsedRow {
   tier1Pass: boolean;
   tier2Pass: boolean;
   bankName?: string;
+  branchName?: string;
   apiChecked: boolean;
   apiStatus?: "success" | "fail" | "loading";
   issues: string[];

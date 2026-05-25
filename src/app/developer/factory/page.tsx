@@ -85,10 +85,10 @@ export default function InstanceFactory() {
     
     if (res.success) {
         addLog("OK: Databases created.");
-        addLog(`OK: School ${res.schoolId} synchronized.`);
+        addLog(`OK: School ${res.data?.schoolId} synchronized.`);
         addLog("OK: Admin staff record linked.");
         addLog("OK: Tenancy counters initialized.");
-        setResult({ success: true, message: res.message || "Success", schoolId: res.schoolId || '' });
+        setResult({ success: true, message: res.message || "Success", schoolId: res.data?.schoolId || '' });
     } else {
         addLog(`ERROR: ${res.error}`);
         setResult({ success: false, message: res.error || "Provisioning failed." });

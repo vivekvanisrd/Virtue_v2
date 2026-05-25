@@ -23,6 +23,7 @@
     "dotenv": "^17.3.1",
     "framer-motion": "^12.36.0",
     "html-to-image": "^1.11.13",
+    "html5-qrcode": "^2.3.8",
     "ifsc": "^2.0.50",
     "jose": "^6.2.2",
     "jspdf": "^4.2.0",

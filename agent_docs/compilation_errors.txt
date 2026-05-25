@@ -1,0 +1,94 @@
+﻿backup/v2.1_payroll_certified_2026_04_16/prisma/seed.ts(97,14): error TS2353: Object literal may only specify known properties, and 'schoolId_staffCode' does not exist in type 'StaffWhereUniqueInput'.
+backup/v2.1_payroll_certified_2026_04_16/prisma/seed.ts(111,14): error TS2353: Object literal may only specify known properties, and 'schoolId_staffCode' does not exist in type 'StaffWhereUniqueInput'.
+backup/v2.1_payroll_certified_2026_04_16/prisma/seed.ts(151,5): error TS2322: Type '{ id: string; name: string; level: number; }' is not assignable to type '(Without<ClassCreateInput, ClassUncheckedCreateInput> & ClassUncheckedCreateInput) | (Without<...> & ClassCreateInput)'.
+  Type '{ id: string; name: string; level: number; }' is not assignable to type 'Without<ClassUncheckedCreateInput, ClassCreateInput> & ClassCreateInput'.
+    Type '{ id: string; name: string; level: number; }' is missing the following properties from type 'ClassCreateInput': branch, school
+backup/v2.1_payroll_certified_2026_04_16/prisma/seed.ts(157,5): error TS2322: Type '{ id: string; name: string; classId: string; }' is not assignable to type '(Without<SectionCreateInput, SectionUncheckedCreateInput> & SectionUncheckedCreateInput) | (Without<...> & SectionCreateInput)'.
+  Type '{ id: string; name: string; classId: string; }' is not assignable to type 'Without<SectionUncheckedCreateInput, SectionCreateInput> & SectionCreateInput'.
+    Type '{ id: string; name: string; classId: string; }' is not assignable to type 'Without<SectionUncheckedCreateInput, SectionCreateInput>'.
+      Types of property 'classId' are incompatible.
+        Type 'string' is not assignable to type 'never'.
+backup/v2.1_payroll_certified_2026_04_16/prisma/seed.ts(162,14): error TS2353: Object literal may only specify known properties, and 'schoolId_admissionNumber' does not exist in type 'StudentWhereUniqueInput'.
+backup/v2.1_payroll_certified_2026_04_16/src/app/admin/fees/config/page.tsx(76,46): error TS2345: Argument of type '{ name: string; classId: string; academicYearId: string; tuitionAmount: number; admissionAmount: number; libraryLabAmount: number; activityAmount: number; totalAmount: number; }' is not assignable to parameter of type '{ id?: string; name: string; classId: string; academicYearId: string; components: { componentId: string; amount: number; scheduleType: "ONE_TIME" | "MONTHLY" | "TERM"; }[]; }'.
+  Property 'components' is missing in type '{ name: string; classId: string; academicYearId: string; tuitionAmount: number; admissionAmount: number; libraryLabAmount: number; activityAmount: number; totalAmount: number; }' but required in type '{ id?: string; name: string; classId: string; academicYearId: string; components: { componentId: string; amount: number; scheduleType: "ONE_TIME" | "MONTHLY" | "TERM"; }[]; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/app/developer/factory/page.tsx(88,34): error TS2339: Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; } | { success: boolean; error: any; message?: undefined; data?: undefined; }'.
+  Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/app/developer/factory/page.tsx(91,85): error TS2339: Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; } | { success: boolean; error: any; message?: undefined; data?: undefined; }'.
+  Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/app/developer/v2/factory/page.tsx(85,110): error TS2339: Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; } | { success: boolean; error: any; message?: undefined; data?: undefined; }'.
+  Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/archive/SalaryHub.tsx(13,10): error TS2305: Module '"@/lib/actions/staff-actions"' has no exported member 'getSalaryHubStats'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/activity-log.tsx(21,51): error TS2554: Expected 0-1 arguments, but got 2.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/InstitutionalSetupHub.tsx(80,17): error TS2353: Object literal may only specify known properties, and 'schoolId' does not exist in type '{ firstName: string; lastName: string; email: string; branchId: string; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/staff-roles.tsx(15,44): error TS2307: Cannot find module '@/lib/utils/rbac' or its corresponding type declarations.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/staff-roles.tsx(56,7): error TS2554: Expected 2 arguments, but got 3.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/staff-roles.tsx(205,41): error TS2322: Type 'unknown' is not assignable to type 'Key'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/staff-roles.tsx(205,52): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[]'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/dashboard/staff-roles.tsx(206,35): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/layout/dashboard-shell.tsx(132,23): error TS2741: Property 'capabilities' is missing in type '{ schoolId: string; schoolName: string; branchId: string; userRole: string; userName: string; academicYear: string; isOperationalReady: boolean; }' but required in type 'TenantContextType'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/layout/sidebar.tsx(37,57): error TS2307: Cannot find module '@/lib/utils/rbac' or its corresponding type declarations.
+backup/v2.1_payroll_certified_2026_04_16/src/components/salaries/v2-1/SalaryCommandCenter.tsx(87,7): error TS2304: Cannot find name 'loadHistory'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/staff/staff-onboarding-elite.tsx(131,11): error TS2353: Object literal may only specify known properties, and 'departments' does not exist in type 'SetStateAction<{ branches: any[]; categories: any[]; }>'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/staff/staff-onboarding-elite.tsx(448,33): error TS2339: Property 'departments' does not exist on type '{ branches: any[]; categories: any[]; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/components/staff/staff-onboarding-elite.tsx(454,34): error TS2339: Property 'departments' does not exist on type '{ branches: any[]; categories: any[]; }'.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/actions/nomenclature-actions.ts(13,37): error TS2339: Property 'suggestSchoolCodes' does not exist on type 'typeof IdGenerator'.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/actions/role-actions.ts(6,44): error TS2307: Cannot find module '@/lib/utils/rbac' or its corresponding type declarations.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/actions/setup-actions.ts(173,28): error TS2304: Cannot find name 'IdGenerator'.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/actions/staff-actions.ts(400,46): error TS2339: Property 'errors' does not exist on type 'ZodError<{ accountName?: string; accountNumber?: string; ifscCode?: string; bankName?: string; panNumber?: string; pfNumber?: string; uanNumber?: string; esiNumber?: string; aadhaarNumber?: string; role?: string; ... 17 more ...; onboardingStatus?: "JOINED" | ... 1 more ... | "ACCEPTED"; }>'.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/actions/super-admin-actions.ts(31,27): error TS2304: Cannot find name 'getSovereignIdentity'.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/actions/super-admin-actions.ts(60,85): error TS2554: Expected 1-2 arguments, but got 4.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/auth/session.ts(39,20): error TS2552: Cannot find name 'getSecret'. Did you mean 'secret'?
+backup/v2.1_payroll_certified_2026_04_16/src/lib/prisma-tenancy.ts(260,32): error TS2304: Cannot find name 'result'.
+backup/v2.1_payroll_certified_2026_04_16/src/lib/prisma-tenancy.ts(263,46): error TS2304: Cannot find name 'result'.
+backup/v2.1_payroll_certified_2026_04_16/src/scripts/import-students-csv.ts(85,17): error TS2322: Type '{ id: string; name: string; level: number; }' is not assignable to type '(Without<ClassCreateInput, ClassUncheckedCreateInput> & ClassUncheckedCreateInput) | (Without<...> & ClassCreateInput)'.
+  Type '{ id: string; name: string; level: number; }' is not assignable to type 'Without<ClassUncheckedCreateInput, ClassCreateInput> & ClassCreateInput'.
+    Type '{ id: string; name: string; level: number; }' is missing the following properties from type 'ClassCreateInput': branch, school
+backup/v2.1_payroll_certified_2026_04_16/src/scripts/import-students-csv.ts(95,21): error TS2322: Type '{ id: string; name: string; classId: string; }' is not assignable to type '(Without<SectionCreateInput, SectionUncheckedCreateInput> & SectionUncheckedCreateInput) | (Without<...> & SectionCreateInput)'.
+  Type '{ id: string; name: string; classId: string; }' is not assignable to type 'Without<SectionUncheckedCreateInput, SectionCreateInput> & SectionCreateInput'.
+    Type '{ id: string; name: string; classId: string; }' is not assignable to type 'Without<SectionUncheckedCreateInput, SectionCreateInput>'.
+      Types of property 'classId' are incompatible.
+        Type 'string' is not assignable to type 'never'.
+scratch/financial_audit.ts(23,67): error TS2339: Property 'name' does not exist on type '{ id: string; schoolId: string; branchId: string; accountName: string; accountCode: string; accountType: string; currentBalance: Decimal; }'.
+scratch/patch_prov_00005.ts(46,55): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+scratch/test_promotion.ts(1,38): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+src/app/admin/fees/config/page.tsx(76,46): error TS2345: Argument of type '{ name: string; classId: string; academicYearId: string; tuitionAmount: number; admissionAmount: number; libraryLabAmount: number; activityAmount: number; totalAmount: number; }' is not assignable to parameter of type '{ id?: string; name: string; classId: string; academicYearId: string; components: { componentId: string; amount: number; scheduleType: "ONE_TIME" | "MONTHLY" | "TERM"; }[]; }'.
+  Property 'components' is missing in type '{ name: string; classId: string; academicYearId: string; tuitionAmount: number; admissionAmount: number; libraryLabAmount: number; activityAmount: number; totalAmount: number; }' but required in type '{ id?: string; name: string; classId: string; academicYearId: string; components: { componentId: string; amount: number; scheduleType: "ONE_TIME" | "MONTHLY" | "TERM"; }[]; }'.
+src/app/dashboard/finance/collect/page.tsx(53,13): error TS2322: Type '{ branches: any; academicYears: any; }' is not assignable to type 'IntrinsicAttributes & { params?: any; }'.
+  Property 'branches' does not exist on type 'IntrinsicAttributes & { params?: any; }'.
+src/app/dashboard/setup/genesis/fee_import_2026.ts(98,11): error TS2322: Type '"ONE_TIME"' is not assignable to type '"MONTHLY" | "TERM"'.
+src/app/dashboard/setup/genesis/page.tsx(77,27): error TS2339: Property 'message' does not exist on type '{ success: boolean; coaFound: number; mastersFound: number; error?: undefined; } | { success: boolean; error: any; coaFound?: undefined; mastersFound?: undefined; }'.
+  Property 'message' does not exist on type '{ success: boolean; coaFound: number; mastersFound: number; error?: undefined; }'.
+src/app/dashboard/setup/genesis/page.tsx(78,25): error TS2339: Property 'isAlreadyInitialized' does not exist on type '{ success: boolean; coaFound: number; mastersFound: number; error?: undefined; } | { success: boolean; error: any; coaFound?: undefined; mastersFound?: undefined; }'.
+  Property 'isAlreadyInitialized' does not exist on type '{ success: boolean; coaFound: number; mastersFound: number; error?: undefined; }'.
+src/app/developer/factory/page.tsx(88,34): error TS2339: Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; } | { success: boolean; error: any; message?: undefined; data?: undefined; }'.
+  Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; }'.
+src/app/developer/factory/page.tsx(91,85): error TS2339: Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; } | { success: boolean; error: any; message?: undefined; data?: undefined; }'.
+  Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; }'.
+src/app/developer/v2/factory/page.tsx(85,110): error TS2339: Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; } | { success: boolean; error: any; message?: undefined; data?: undefined; }'.
+  Property 'schoolId' does not exist on type '{ success: boolean; message: string; data: any; error?: undefined; }'.
+src/app/test-salary-import/page.tsx(431,38): error TS2551: Property 'branchName' does not exist on type 'ParsedRow'. Did you mean 'bankName'?
+src/app/test-salary-import/page.tsx(434,42): error TS2551: Property 'branchName' does not exist on type 'ParsedRow'. Did you mean 'bankName'?
+src/archive/SalaryHub.tsx(13,10): error TS2305: Module '"@/lib/actions/staff-actions"' has no exported member 'getSalaryHubStats'.
+src/components/attendance/v2-1/AttendanceKiosk.tsx(11,38): error TS2307: Cannot find module '@/lib/actions/identity-actions' or its corresponding type declarations.
+src/components/attendance/VelocityAttendance.tsx(196,20): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/components/attendance/VelocityAttendance.tsx(196,21): error TS2786: 'Lock' cannot be used as a JSX component.
+  Its type '{ new (): Lock; prototype: Lock; }' is not a valid JSX element type.
+    Type '{ new (): Lock; prototype: Lock; }' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+      Type 'Lock' is missing the following properties from type 'Component<any, any, any>': context, setState, forceUpdate, render, and 2 more.
+src/components/dashboard/activity-log.tsx(21,51): error TS2554: Expected 0-1 arguments, but got 2.
+src/components/dashboard/InstitutionalSetupHub.tsx(80,17): error TS2353: Object literal may only specify known properties, and 'schoolId' does not exist in type '{ firstName: string; lastName: string; email: string; branchId: string; }'.
+src/components/dashboard/staff-roles.tsx(55,25): error TS2304: Cannot find name 'Role'.
+src/components/dashboard/staff-roles.tsx(57,7): error TS2554: Expected 2 arguments, but got 3.
+src/components/dashboard/staff-roles.tsx(57,18): error TS2304: Cannot find name 'Role'.
+src/components/finance/deprecated/FeeCollectionHubV2.tsx(25,8): error TS2307: Cannot find module '@/lib/actions/finance-actions-v2' or its corresponding type declarations.
+src/components/salaries/BulkPayoutAudit.tsx(378,32): error TS2304: Cannot find name 'year'.
+src/components/salaries/BulkPayoutAudit.tsx(378,38): error TS2304: Cannot find name 'month'.
+src/components/salaries/BulkPayoutAudit.tsx(390,59): error TS2304: Cannot find name 'year'.
+src/components/salaries/BulkPayoutAudit.tsx(396,55): error TS2304: Cannot find name 'year'.
+src/components/salaries/BulkPayoutAudit.tsx(660,57): error TS2345: Argument of type '"OTHERS"' is not assignable to parameter of type '"OTHER" | "AXIS"'.
+src/components/salaries/v2-1/SalaryCommandCenter.tsx(88,7): error TS2552: Cannot find name 'loadHistory'. Did you mean 'loadingHistory'?
+src/lib/actions/deprecated/finance-actions-v2.ts(4,38): error TS2307: Cannot find module '../auth/backbone' or its corresponding type declarations.
+src/lib/actions/deprecated/finance-actions-v2.ts(9,35): error TS2307: Cannot find module '../utils/fee-utils' or its corresponding type declarations.
+src/lib/actions/deprecated/finance-actions-v2.ts(10,32): error TS2307: Cannot find module '../services/counter-service' or its corresponding type declarations.
+src/lib/actions/deprecated/finance-actions-v2.ts(11,46): error TS2307: Cannot find module '../constants/admission-statuses' or its corresponding type declarations.
+src/lib/actions/deprecated/finance-actions-v2.ts(47,53): error TS2307: Cannot find module '../utils/fee-utils' or its corresponding type declarations.

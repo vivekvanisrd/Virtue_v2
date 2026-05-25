@@ -82,7 +82,7 @@ export default function V2ResourceFactory() {
     
     if (res.success) {
         setLogs(prev => [...prev, "OK: DATABASE REGISTRY CREATED", "OK: SEEDED ACADEMIC HIERARCHY", "OK: OWNER STAFF LINKED"]);
-        setResult({ success: true, message: res.message || "School provisioned successfully.", schoolId: res.schoolId });
+        setResult({ success: true, message: res.message || "School provisioned successfully.", schoolId: res.data?.schoolId });
     } else {
         setLogs(prev => [...prev, `ERROR: ${res.error}`]);
         setResult({ success: false, message: res.error || "Provisioning protocol failed." });

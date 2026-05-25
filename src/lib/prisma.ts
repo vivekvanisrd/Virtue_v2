@@ -29,8 +29,8 @@ export const prismaBypass = baseClient;
 const prisma = baseClient.$extends(tenancyExtension);
 
 declare global {
-  var prisma: undefined | typeof prisma;
-  var prismaBypass: undefined | typeof baseClient;
+  var prisma: any;
+  var prismaBypass: any;
 }
 
 export default prisma;

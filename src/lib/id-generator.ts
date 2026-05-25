@@ -92,6 +92,44 @@ export class IdGenerator {
   }
 
   /**
+   * PREDICATIVE ENGINE: Suggests available school codes from a name
+   */
+  static async suggestSchoolCodes(name: string): Promise<string[]> {
+    if (!name || name.length < 3) return [];
+    const clean = name.toUpperCase().replace(/[^A-Z0-9\s]/g, '').trim();
+    const suggestions = new Set<string>();
+
+    const words = clean.split(/\s+/);
+    // 1. First letters of words (e.g. Greenwood High School -> GHS)
+    if (words.length >= 2) {
+      const initials = words.map(w => w[0]).join('').substring(0, 5);
+      if (initials.length >= 2) suggestions.add(initials);
+    }
+
+    // 2. First 3 or 4 letters
+    if (clean.length >= 3) {
+      suggestions.add(clean.substring(0, 3));
+      if (clean.length >= 4) suggestions.add(clean.substring(0, 4));
+    }
+
+    // 3. First word consonants
+    if (words[0]) {
+      const consonants = words[0].replace(/[AEIOU]/g, '').substring(0, 4);
+      if (consonants.length >= 3) suggestions.add(consonants);
+    }
+
+    // Filter out suggestions that are already in the DB
+    const list = Array.from(suggestions);
+    const existing = await prisma.school.findMany({
+      where: { code: { in: list } },
+      select: { code: true }
+    });
+    const taken = new Set(existing.map(s => s.code));
+
+    return list.filter(code => !taken.has(code));
+  }
+
+  /**
    * generateAcademicYearId (Pillar 4 DNA)
    */
   static generateAcademicYearId(schoolCode: string, yearLabel: string): string {

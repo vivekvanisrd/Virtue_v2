@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 // In a real app, this would be fetched from the backend action every 15 seconds.
 // For smooth UI experience, we'll generate the payload structure here, but signature validation happens on the backend.
-import { getSovereignIdentity } from "@/lib/actions/identity-actions";
 import { useTenant } from "@/context/tenant-context";
 
 export function AttendanceKiosk() {

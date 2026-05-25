@@ -79,7 +79,7 @@ async function main() {
       // 3. Provision Components
       await prisma.feeTemplateComponent.deleteMany({ where: { templateId: structure.id } });
       
-      const components = [
+      const components: any[] = [
         {
           schoolId: SCHOOL_ID,
           templateId: structure.id,

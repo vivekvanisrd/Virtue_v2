@@ -33,12 +33,6 @@ export default async function PaymentHubPage() {
     );
   }
 
-  // Fetch initial lookups (Branches, Academic Years)
-  const [branches, academicYears] = await Promise.all([
-    prisma.branch.findMany({ where: { schoolId: identity.schoolId } }),
-    prisma.academicYear.findMany({ where: { schoolId: identity.schoolId }, orderBy: { startDate: 'desc' } })
-  ]);
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -49,10 +43,7 @@ export default async function PaymentHubPage() {
       </div>
 
       <div className="grid gap-6">
-        <FeeCollectionForm 
-            branches={branches}
-            academicYears={academicYears}
-        />
+        <FeeCollectionForm />
       </div>
     </div>
   );

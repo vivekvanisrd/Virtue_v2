@@ -2,7 +2,7 @@
   "name": "Virtue Dashboard",
   "short_name": "Virtue",
   "description": "Enterprise School Management Interface",
-  "start_url": "/dashboard",
+  "start_url": "/mobile/attendance",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
@@ -20,6 +20,11 @@
     }
   ],
   "shortcuts": [
+    {
+      "name": "Scan Gate QR",
+      "url": "/mobile/attendance",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
     {
       "name": "Take Attendance",
       "url": "/dashboard/attendance",

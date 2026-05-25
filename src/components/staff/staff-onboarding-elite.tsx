@@ -34,7 +34,7 @@ export function StaffOnboardingElite({
 }: StaffOnboardingEliteProps) {
   const { schoolId, userRole, branchId: sessionBranchId } = useTenant();
   const isAdmin = userRole === "OWNER" || userRole === "DEVELOPER";
-  const [refData, setRefData] = useState<{ branches: any[], categories: any[] }>({ branches: [], categories: [] });
+  const [refData, setRefData] = useState<{ branches: any[], categories: any[], departments: any[] }>({ branches: [], categories: [], departments: [] });
   const [isLoadingRef, setIsLoadingRef] = useState(false);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);

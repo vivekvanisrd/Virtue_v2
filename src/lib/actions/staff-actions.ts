@@ -400,7 +400,7 @@ export async function updateStaffAction(staffId: string, data: any) {
         // Note: For updates, we use partial() to allow sparse data objects from UI steps
         const validated = staffOnboardingSchema.partial().safeParse(data);
         if (!validated.success) {
-            const errorMsg = validated.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+            const errorMsg = validated.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
             return { success: false, error: `VALIDATION_FAILED: ${errorMsg}` };
         }
 

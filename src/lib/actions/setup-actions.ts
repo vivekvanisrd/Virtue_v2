@@ -6,6 +6,7 @@ import { logPlatformActivity } from "../utils/audit-logger";
 import { revalidatePath } from "next/cache";
 import { SetupInput } from "../validations/setup";
 import prisma from "../prisma";
+import { IdGenerator } from "../id-generator";
 
 /**
  * 🔒 SOVEREIGN SETUP ACTIONS (v2.5)

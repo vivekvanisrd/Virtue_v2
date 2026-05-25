@@ -101,13 +101,13 @@ export function StudentForm() {
       country: "India",
       state: "Telangana",
       transportRequired: false,
-      admissionFee: "0",
-      cautionDeposit: "0",
-      libraryFee: "0",
-      labFee: "0",
-      sportsFee: "0",
-      developmentFee: "0",
-      examFee: "0",
+      admissionFee: 0,
+      cautionDeposit: 0,
+      libraryFee: 0,
+      labFee: 0,
+      sportsFee: 0,
+      developmentFee: 0,
+      examFee: 0,
     },
   });
 
@@ -580,7 +580,7 @@ export function StudentForm() {
 
       {/* ─── Form ─── */}
       <form 
-        onSubmit={handleSubmit(onSubmit, onError)} 
+        onSubmit={handleSubmit(onSubmit as any, onError)} 
         className="space-y-3"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
@@ -803,11 +803,12 @@ export function StudentForm() {
                           const cid = e.target.value;
                           const res = await getSectionsByClass(cid);
                           if (res.success && res.data) {
-                            setSections(res.data);
+                            const sectionsList = res.data as any[];
+                            setSections(sectionsList);
                             // 🏁 Auto-Section: Select first available section with a slight delay for DOM sync
-                            if (res.data.length > 0) {
+                            if (sectionsList.length > 0) {
                               setTimeout(() => {
-                                setValue("sectionId", res.data[0].id, { shouldValidate: true, shouldDirty: true });
+                                setValue("sectionId", sectionsList[0].id, { shouldValidate: true, shouldDirty: true });
                               }, 50);
                             } else {
                               setValue("sectionId", "");

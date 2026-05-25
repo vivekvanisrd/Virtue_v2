@@ -73,7 +73,7 @@ export default function FeeConfigPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        const res = await upsertFeeStructure(formData);
+        const res = await upsertFeeStructure(formData as any);
         if (res.success) {
             setStatus({ success: true, message: 'Fee structure saved.' });
             setShowForm(false);

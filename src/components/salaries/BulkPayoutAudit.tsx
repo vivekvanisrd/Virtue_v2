@@ -62,6 +62,8 @@ interface ParsedRow {
 }
 
 export function BulkPayoutAudit() {
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
@@ -657,7 +659,7 @@ export function BulkPayoutAudit() {
                     </button>
                     <div className="h-6 w-[1px] bg-slate-200 mx-1" />
                     <button onClick={() => handleExport("AXIS")} className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-black text-[10px] uppercase shadow-sm hover:bg-slate-50 transition-all border border-slate-200"><Download className="w-3 h-3 text-blue-600" />Axis</button>
-                    <button onClick={() => handleExport("OTHERS")} className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-black text-[10px] uppercase shadow-sm hover:bg-slate-50 transition-all border border-slate-200"><Download className="w-3 h-3 text-emerald-600" />Non-Axis</button>
+                    <button onClick={() => handleExport("OTHER")} className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-black text-[10px] uppercase shadow-sm hover:bg-slate-50 transition-all border border-slate-200"><Download className="w-3 h-3 text-emerald-600" />Non-Axis</button>
                     <button 
                       onClick={handleFinalizeToERP}
                       disabled={isProcessing}

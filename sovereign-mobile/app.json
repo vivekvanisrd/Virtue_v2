@@ -1,29 +1,38 @@
 {
   "expo": {
-    "name": "sovereign-mobile",
-    "slug": "sovereign-mobile",
+    "name": "Sovereign Staff Portal",
+    "slug": "sovereign-staff",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
+      "backgroundColor": "#0f172a"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0f172a"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.vives.sovereignstaff",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-camera",
+      "expo-location"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "51118538-38af-488d-9eef-5961493c5c8b"
+      }
+    },
+    "owner": "srivanistore"
   }
 }

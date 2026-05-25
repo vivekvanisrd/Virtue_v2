@@ -52,9 +52,8 @@ export function StaffRolesManager() {
     setMessage(null);
 
     const result = await updateStaffRole(
-      actingUserRole as Role, 
       staffId, 
-      newRole as Role
+      newRole
     );
 
     if (result.success) {

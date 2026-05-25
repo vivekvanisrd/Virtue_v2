@@ -18,7 +18,7 @@ export function ActivityLogViewer() {
 
   const fetchLogs = async () => {
     setIsLoading(true);
-    const res = await getRecentActivity(schoolId, 100);
+    const res = await getRecentActivity(100);
     if (res.success && res.data) {
       setLogs(res.data);
     }

@@ -76,8 +76,7 @@ export function InstitutionalSetupHub() {
         try {
             const res = await appointPrincipalAction({
                 ...principalForm,
-                branchId: createdBranch.id,
-                schoolId: "VIVES" // Institutional Default
+                branchId: createdBranch.id
             }) as any;
             if (res.success) {
                 setStep(3);

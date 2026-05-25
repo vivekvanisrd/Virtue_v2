@@ -86,7 +86,7 @@ export default function StudentAdmissionForm() {
         formState: { errors },
         trigger
     } = useForm<StudentAdmissionData>({
-        resolver: zodResolver(studentAdmissionSchema),
+        resolver: zodResolver(studentAdmissionSchema) as any,
         defaultValues: {
             admissionDate: new Date().toISOString().split('T')[0],
             paymentType: "Term-wise",
@@ -210,7 +210,7 @@ export default function StudentAdmissionForm() {
                 <div className="absolute left-0 right-0 top-1/2 h-[2px] bg-zinc-800 -z-0 mx-16 hidden md:block" />
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentStep}
