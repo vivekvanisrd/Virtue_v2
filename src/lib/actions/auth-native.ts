@@ -59,8 +59,8 @@ export async function signInAction(data: { identifier: string; password: string 
         // mutating the global process.env.SKIP_TENANCY which causes race conditions.
         const staffRecords = await prisma.$queryRaw<any[]>`
             SELECT * FROM "Staff" 
-            WHERE ("email" = ${identifier} OR "username" = ${identifier}) 
-            AND "status" = 'ACTIVE' 
+            WHERE (LOWER("email") = LOWER(${identifier}) OR LOWER("username") = LOWER(${identifier})) 
+            AND UPPER("status") = 'ACTIVE' 
             LIMIT 1
         `;
         const staff = staffRecords[0];
@@ -167,6 +167,79 @@ export async function refreshSessionAction() {
         revalidatePath("/", "layout");
         return { success: true, message: "Session credentials synchronized." };
     } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * GET SESSION USER: Retrieves the staff profile and attendance stats for the active session
+ */
+export async function getSessionUserAction() {
+    try {
+        const session = await verifySession();
+        if (!session) return { success: false, error: "No active session." };
+
+        const staff = await prisma.staff.findUnique({
+            where: { id: session.staffId as string }
+        });
+
+        if (!staff) return { success: false, error: "Staff record not found." };
+
+        // Get branch name
+        let branchName = "Main Campus";
+        try {
+            const branch = await prisma.branch.findUnique({
+                where: { id: staff.branchId },
+                select: { name: true }
+            });
+            branchName = branch?.name || "Main Campus";
+        } catch {}
+
+        // Get department/designation
+        let department = "Staff";
+        try {
+            const prof = await prisma.staffProfessional.findUnique({
+                where: { staffId: staff.id },
+                select: { department: true, designation: true }
+            });
+            department = prof?.designation || prof?.department || "Staff";
+        } catch {}
+
+        // Fetch attendance stats (current month)
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        let presentCount = 0;
+        let lateCount = 0;
+        try {
+            const records = await prisma.staffAttendance.findMany({
+                where: { staffId: staff.id, date: { gte: startOfMonth } }
+            });
+            presentCount = records.filter((r: any) => r.status?.toUpperCase() === "PRESENT").length;
+            lateCount = records.filter((r: any) => {
+                const checkIn = r.checkIn ? new Date(r.checkIn) : null;
+                return checkIn && (checkIn.getHours() * 60 + checkIn.getMinutes()) > 555;
+            }).length;
+        } catch {}
+
+        return {
+            success: true,
+            user: {
+                id: staff.id,
+                staffCode: staff.staffCode,
+                firstName: staff.firstName,
+                lastName: staff.lastName,
+                branchName,
+                department
+            },
+            stats: {
+                presentThisMonth: presentCount,
+                latesThisMonth: lateCount,
+                attendancePercent: Math.round((presentCount / (now.getDate() || 1)) * 100)
+            }
+        };
+    } catch (e: any) {
+        console.error("❌ [GET-SESSION-USER ERROR]", e);
         return { success: false, error: e.message };
     }
 }

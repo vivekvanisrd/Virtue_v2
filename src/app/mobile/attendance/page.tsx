@@ -18,6 +18,7 @@ import {
   X
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
+import { getSessionUserAction, signOutAction } from "@/lib/actions/auth-native";
 
 type ScreenState = "LOGIN" | "DASHBOARD";
 
@@ -52,23 +53,42 @@ export default function MobileAttendanceScanner() {
   
   const qrCodeRef = useRef<Html5Qrcode | null>(null);
 
-  // Auto-login from localStorage
+  // Auto-login from session or localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem("sov2_staff_user");
-    const savedStats = localStorage.getItem("sov2_staff_stats");
-    if (savedUser) {
+    const checkSessionAndLocal = async () => {
+      setIsLoading(true);
       try {
-        const u = JSON.parse(savedUser);
-        setUser(u);
-        if (savedStats) setStats(JSON.parse(savedStats));
-        setScreen("DASHBOARD");
-        // Background refresh stats
-        refreshData(u.staffCode);
-      } catch (e) {
-        localStorage.removeItem("sov2_staff_user");
-        localStorage.removeItem("sov2_staff_stats");
+        const sessionRes = await getSessionUserAction();
+        if (sessionRes.success && sessionRes.user) {
+          setUser(sessionRes.user);
+          if (sessionRes.stats) setStats(sessionRes.stats);
+          setScreen("DASHBOARD");
+          setIsLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Session check failed, falling back to localStorage:", err);
       }
-    }
+
+      const savedUser = localStorage.getItem("sov2_staff_user");
+      const savedStats = localStorage.getItem("sov2_staff_stats");
+      if (savedUser) {
+        try {
+          const u = JSON.parse(savedUser);
+          setUser(u);
+          if (savedStats) setStats(JSON.parse(savedStats));
+          setScreen("DASHBOARD");
+          // Background refresh stats
+          refreshData(u.staffCode);
+        } catch (e) {
+          localStorage.removeItem("sov2_staff_user");
+          localStorage.removeItem("sov2_staff_stats");
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkSessionAndLocal();
   }, []);
 
   const showToast = (type: "success" | "error" | "info" | "loading", message: string, duration = 4000) => {
@@ -132,13 +152,18 @@ export default function MobileAttendanceScanner() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem("sov2_staff_user");
     localStorage.removeItem("sov2_staff_stats");
     setUser(null);
     setStats(null);
     setScreen("LOGIN");
     setStaffCodeInput("");
+    try {
+      await signOutAction();
+    } catch (e) {
+      console.error("Sign out action failed:", e);
+    }
   };
 
   // Get high-accuracy GPS coordinates

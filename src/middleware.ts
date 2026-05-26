@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Routing Protection
-  const protectedRoutes = ['/dashboard', '/developer', '/registry', '/admin', '/super-admin'];
+  const protectedRoutes = ['/dashboard', '/developer', '/registry', '/admin', '/super-admin', '/mobile'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
   // Redirect to login if accessing protected route without session
@@ -55,6 +55,13 @@ export async function middleware(request: NextRequest) {
     const url = new URL('/login', request.url);
     url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Redirect Teacher role to /mobile/attendance
+  if (user && user.role?.toLowerCase() === 'teacher') {
+    if (!pathname.startsWith('/mobile') && !pathname.startsWith('/api')) {
+      return NextResponse.redirect(new URL('/mobile/attendance', request.url));
+    }
   }
 
   // 🛡️ LOCK: PLATFORM_ADMIN / DEVELOPER GATING

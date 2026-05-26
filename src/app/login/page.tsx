@@ -153,6 +153,9 @@ export default function LoginPage() {
                   {...register("identifier")}
                   type="text"
                   placeholder="your.email@school.com"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className={cn(
                     "w-full pl-12 pr-4 py-4 bg-muted/50 border-2 border-border rounded-2xl outline-none focus:border-primary focus:bg-background transition-all text-foreground font-medium",
                     errors.identifier && "border-red-500 focus:border-red-500"

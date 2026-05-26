@@ -249,7 +249,7 @@ export function Sidebar({
       <aside 
         style={{ width: isCollapsed ? 80 : width }}
         className={cn(
-          "fixed left-0 top-0 min-h-screen bg-sidebar-bg border-r border-border z-50 flex flex-col transition-all duration-300 shadow-2xl overflow-hidden ease-in-out lg:sticky lg:h-screen group/sidebar",
+          "fixed left-0 top-0 min-h-screen bg-sidebar-bg border-r border-border z-[110] flex flex-col transition-all duration-300 shadow-2xl overflow-hidden ease-in-out lg:sticky lg:h-screen group/sidebar",
           isResizing && "transition-none",
           !isMobileOpen && "-translate-x-full lg:translate-x-0"
         )}
