@@ -1,6 +1,9 @@
 import prisma from "@/lib/prisma";
 import { FeeReceipt } from "@/components/finance/FeeReceipt";
+import { BookReceipt } from "@/components/finance/BookReceipt";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { supabase } from "@/lib/supabase/client";
 
 // Next.js 14/15 Page
 export default async function ReceiptViewerPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
@@ -12,18 +15,47 @@ export default async function ReceiptViewerPage({ params }: { params: Promise<{ 
 
   if (receiptNumbers.length === 0) return notFound();
 
-  const collections = await prisma.collection.findMany({
-    where: { receiptNumber: { in: receiptNumbers } },
-    include: {
-      student: {
-        include: {
-          academic: { include: { class: true, section: true } }
+  let collections: any[] = [];
+  try {
+    collections = await prisma.collection.findMany({
+      where: { receiptNumber: { in: receiptNumbers } },
+      include: {
+        student: {
+          include: {
+            academic: { include: { class: true, section: true } }
+          }
         }
       }
-    }
-  });
+    });
+  } catch (err) {
+    console.warn("[RECEIPT_PAGE] Prisma query bypassed or failed (expected for public parent checkouts):", err);
+  }
 
-  if (collections.length === 0) return notFound();
+  if (collections.length === 0) {
+    const { data: link } = await supabase
+      .from("fee_payment_links")
+      .select("*")
+      .eq("token", decodedId)
+      .single();
+
+    if (!link) return notFound();
+
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-6">
+        <div className="flex flex-col items-center gap-12 max-w-5xl mx-auto">
+          <div className="text-center print:hidden mb-4">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 mb-2">Bookstore Receipt</h1>
+            <p className="text-sm font-medium text-slate-500">
+              Thank you for your purchase. Please keep this document for your records.
+            </p>
+          </div>
+          <Suspense fallback={<div className="text-center py-6 text-sm text-slate-400 font-bold uppercase tracking-widest animate-pulse">Loading receipt preview...</div>}>
+            <BookReceipt linkData={link} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }
 
   // If there are multiple receipts (batch Sibling link), they stack cleanly
   // with page breaks already engineered inside FeeReceipt if needed, 
@@ -50,7 +82,9 @@ export default async function ReceiptViewerPage({ params }: { params: Promise<{ 
 
           return (
             <div key={collection.id} className="w-full relative">
-              <FeeReceipt student={collection.student} receipt={serializedCollection} />
+              <Suspense fallback={<div className="text-center py-6 text-sm text-slate-400 font-bold uppercase tracking-widest animate-pulse">Loading receipt preview...</div>}>
+                <FeeReceipt student={collection.student} receipt={serializedCollection} />
+              </Suspense>
             </div>
           );
         })}
@@ -58,3 +92,4 @@ export default async function ReceiptViewerPage({ params }: { params: Promise<{ 
     </div>
   );
 }
+

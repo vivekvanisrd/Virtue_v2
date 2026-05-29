@@ -5,7 +5,24 @@ import { generateConsentLinksAction } from "@/lib/actions/consent-actions";
 import { Copy, Link as LinkIcon, AlertCircle, CheckCircle2, Send, Loader2, Sparkles } from "lucide-react";
 
 // Assuming we fetch these from a server action in a real scenario
-const MOCK_CLASSES = ["Nursery", "LKG", "UKG", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5"];
+const MOCK_CLASSES = [
+  "Play Group",
+  "Nursery",
+  "LKG",
+  "UKG",
+  "1st Grade",
+  "2nd Grade",
+  "3rd Grade",
+  "4th Grade",
+  "5th Grade",
+  "6th Grade",
+  "7th Grade",
+  "8th Grade",
+  "9th Grade",
+  "10th Grade",
+  "11th Grade",
+  "12th Grade"
+];
 const TARGET_YEAR = "2026-27";
 
 export function StudentPromotionManager() {

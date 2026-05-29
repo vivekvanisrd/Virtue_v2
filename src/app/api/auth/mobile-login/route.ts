@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaBypass } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { encrypt } from "@/lib/auth/session";
+import { cookies } from "next/headers";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const staffCode = body?.staffCode?.trim();
+    const password = body?.password?.trim();
 
-    if (!staffCode) {
-      return NextResponse.json({ success: false, error: "Staff Code is required" }, { status: 400 });
+    if (!staffCode || !password) {
+      return NextResponse.json({ success: false, error: "Staff Code and Password are required" }, { status: 400 });
     }
 
     // 1. Find staff by staffCode
@@ -22,6 +26,55 @@ export async function POST(req: NextRequest) {
     if (staff.status?.toUpperCase() !== "ACTIVE") {
       return NextResponse.json({ success: false, error: "Account is inactive. Contact HR." }, { status: 403 });
     }
+
+    // 2. Enforce mobile one-time password security
+    if (staff.mobilePasswordUsed) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "This temporary password has already been used once. Please request a new password from your administrator." 
+      }, { status: 403 });
+    }
+
+    // 3. Verify Password
+    if (!staff.passwordHash) {
+      return NextResponse.json({ success: false, error: "Credentials not initialized. Contact HR." }, { status: 400 });
+    }
+
+    const isValid = await bcrypt.compare(password, staff.passwordHash);
+    if (!isValid) {
+      return NextResponse.json({ success: false, error: "Invalid password. Please check and try again." }, { status: 401 });
+    }
+
+    // 4. Generate random mobileSessionToken
+    const newSessionToken = crypto.randomUUID();
+
+    // 5. Update Staff to mark password used and set mobileSessionToken
+    await prismaBypass.staff.update({
+      where: { id: staff.id },
+      data: {
+        mobileSessionToken: newSessionToken,
+        mobilePasswordUsed: true
+      }
+    });
+
+    // 6. Encrypt token and set v-session cookie
+    const token = await encrypt({
+      staffId: staff.id,
+      email: staff.email,
+      name: `${staff.firstName} ${staff.lastName || ""}`.trim(),
+      role: staff.role,
+      schoolId: staff.schoolId,
+      branchId: staff.branchId,
+      mobileSessionToken: newSessionToken
+    });
+
+    (await cookies()).set("v-session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365 // 1 year
+    });
 
     // 2. Get branch name separately
     let branchName = "Main Campus";
@@ -60,6 +113,33 @@ export async function POST(req: NextRequest) {
       }).length;
     } catch {}
 
+    // Check today's check-in status
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let todayRecord = null;
+    try {
+      todayRecord = await prismaBypass.staffAttendance.findFirst({
+        where: {
+          staffId: staff.id,
+          date: {
+            gte: today,
+            lt: tomorrow
+          }
+        }
+      });
+    } catch {}
+
+    const todayStatus = todayRecord ? todayRecord.status : null;
+    const todayCheckIn = todayRecord && todayRecord.checkIn 
+        ? new Date(todayRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        : null;
+    const todayCheckOut = todayRecord && todayRecord.checkOut
+        ? new Date(todayRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : null;
+
     return NextResponse.json({
       success: true,
       user: {
@@ -73,7 +153,10 @@ export async function POST(req: NextRequest) {
       stats: {
         presentThisMonth: presentCount,
         latesThisMonth: lateCount,
-        attendancePercent: Math.round((presentCount / (now.getDate() || 1)) * 100)
+        attendancePercent: Math.round((presentCount / (now.getDate() || 1)) * 100),
+        todayStatus,
+        todayCheckIn,
+        todayCheckOut
       }
     });
 

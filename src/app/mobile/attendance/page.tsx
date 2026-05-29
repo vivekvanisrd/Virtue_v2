@@ -15,10 +15,11 @@ import {
   Zap,
   Clock,
   QrCode,
-  X
+  X,
+  Calendar
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import { getSessionUserAction, signOutAction } from "@/lib/actions/auth-native";
+import { getSessionUserAction, signOutAction, applyStaffLeaveAction } from "@/lib/actions/auth-native";
 
 type ScreenState = "LOGIN" | "DASHBOARD";
 
@@ -35,6 +36,9 @@ type StatsState = {
   presentThisMonth: number;
   latesThisMonth: number;
   attendancePercent: number;
+  todayStatus: string | null;
+  todayCheckIn: string | null;
+  todayCheckOut: string | null;
 };
 
 type ToastState = {
@@ -45,17 +49,57 @@ type ToastState = {
 export default function MobileAttendanceScanner() {
   const [screen, setScreen] = useState<ScreenState>("LOGIN");
   const [staffCodeInput, setStaffCodeInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [user, setUser] = useState<UserState | null>(null);
   const [stats, setStats] = useState<StatsState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   
+  const [isLeaveOpen, setIsLeaveOpen] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    type: "CASUAL",
+    startDate: "",
+    endDate: "",
+    reason: ""
+  });
+
+  const handleLeaveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()) {
+      showToast("error", "Please fill in all required fields.");
+      return;
+    }
+
+    setIsLoading(true);
+    showToast("loading", "Submitting Leave Request...");
+
+    try {
+      const res = await applyStaffLeaveAction(leaveForm);
+      if (res.success) {
+        showToast("success", "Leave request submitted successfully!");
+        setIsLeaveOpen(false);
+        setLeaveForm({
+          type: "CASUAL",
+          startDate: "",
+          endDate: "",
+          reason: ""
+        });
+      } else {
+        showToast("error", res.error || "Submission failed.");
+      }
+    } catch (err) {
+      showToast("error", "Network error. Failed to submit leave.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const qrCodeRef = useRef<Html5Qrcode | null>(null);
 
-  // Auto-login from session or localStorage
+  // Auto-login from session
   useEffect(() => {
-    const checkSessionAndLocal = async () => {
+    const checkSession = async () => {
       setIsLoading(true);
       try {
         const sessionRes = await getSessionUserAction();
@@ -63,32 +107,24 @@ export default function MobileAttendanceScanner() {
           setUser(sessionRes.user);
           if (sessionRes.stats) setStats(sessionRes.stats);
           setScreen("DASHBOARD");
-          setIsLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error("Session check failed, falling back to localStorage:", err);
-      }
-
-      const savedUser = localStorage.getItem("sov2_staff_user");
-      const savedStats = localStorage.getItem("sov2_staff_stats");
-      if (savedUser) {
-        try {
-          const u = JSON.parse(savedUser);
-          setUser(u);
-          if (savedStats) setStats(JSON.parse(savedStats));
-          setScreen("DASHBOARD");
           // Background refresh stats
-          refreshData(u.staffCode);
-        } catch (e) {
+          refreshData();
+        } else {
+          // No valid session (expired or device-locked). Force login.
           localStorage.removeItem("sov2_staff_user");
           localStorage.removeItem("sov2_staff_stats");
+          setUser(null);
+          setStats(null);
+          setScreen("LOGIN");
         }
+      } catch (err) {
+        console.error("Session check failed:", err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    checkSessionAndLocal();
+    checkSession();
   }, []);
 
   const showToast = (type: "success" | "error" | "info" | "loading", message: string, duration = 4000) => {
@@ -100,8 +136,8 @@ export default function MobileAttendanceScanner() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffCodeInput.trim()) {
-      showToast("error", "Please enter your Staff Code.");
+    if (!staffCodeInput.trim() || !passwordInput.trim()) {
+      showToast("error", "Please enter both Staff Code and password.");
       return;
     }
 
@@ -112,7 +148,10 @@ export default function MobileAttendanceScanner() {
       const res = await fetch("/api/auth/mobile-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffCode: staffCodeInput.trim() })
+        body: JSON.stringify({ 
+          staffCode: staffCodeInput.trim(),
+          password: passwordInput.trim()
+        })
       });
       const data = await res.json();
 
@@ -122,6 +161,7 @@ export default function MobileAttendanceScanner() {
         localStorage.setItem("sov2_staff_user", JSON.stringify(data.user));
         localStorage.setItem("sov2_staff_stats", JSON.stringify(data.stats));
         setScreen("DASHBOARD");
+        setPasswordInput(""); // Clear password field
         setToast(null);
       } else {
         showToast("error", data.error || "Authentication failed.");
@@ -133,19 +173,19 @@ export default function MobileAttendanceScanner() {
     }
   };
 
-  const refreshData = async (code: string) => {
+  const refreshData = async () => {
     try {
-      const res = await fetch("/api/auth/mobile-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffCode: code })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUser(data.user);
-        setStats(data.stats);
-        localStorage.setItem("sov2_staff_user", JSON.stringify(data.user));
-        localStorage.setItem("sov2_staff_stats", JSON.stringify(data.stats));
+      const res = await getSessionUserAction();
+      if (res.success && res.user) {
+        setUser(res.user);
+        if (res.stats) {
+          setStats(res.stats);
+          localStorage.setItem("sov2_staff_stats", JSON.stringify(res.stats));
+        }
+        localStorage.setItem("sov2_staff_user", JSON.stringify(res.user));
+      } else if (res.error === "DEVICE_LOCK_ERROR") {
+        showToast("error", "Logged out. Session activated on another device.");
+        handleLogout();
       }
     } catch (e) {
       console.error("Stats refresh failed", e);
@@ -164,6 +204,7 @@ export default function MobileAttendanceScanner() {
     } catch (e) {
       console.error("Sign out action failed:", e);
     }
+    window.location.href = "/login";
   };
 
   // Get high-accuracy GPS coordinates
@@ -199,22 +240,42 @@ export default function MobileAttendanceScanner() {
           const qrScanner = new Html5Qrcode("reader");
           qrCodeRef.current = qrScanner;
           
-          await qrScanner.start(
-            { facingMode: "environment" },
-            {
-              fps: 10,
-              qrbox: (width, height) => {
-                const size = Math.min(width, height) * 0.7;
-                return { width: size, height: size };
+          try {
+            await qrScanner.start(
+              { facingMode: "environment" },
+              {
+                fps: 10,
+                qrbox: (width, height) => {
+                  const size = Math.min(width, height) * 0.7;
+                  return { width: size, height: size };
+                }
+              },
+              (decodedText) => {
+                handleQrFound(decodedText);
+              },
+              () => {
+                // Verbose error ignored to avoid spamming
               }
-            },
-            (decodedText) => {
-              handleQrFound(decodedText);
-            },
-            () => {
-              // Verbose error ignored to avoid spamming
-            }
-          );
+            );
+          } catch (fallbackErr) {
+            console.warn("Rear camera not found or failed, trying user-facing camera...", fallbackErr);
+            await qrScanner.start(
+              { facingMode: "user" },
+              {
+                fps: 10,
+                qrbox: (width, height) => {
+                  const size = Math.min(width, height) * 0.7;
+                  return { width: size, height: size };
+                }
+              },
+              (decodedText) => {
+                handleQrFound(decodedText);
+              },
+              () => {
+                // Verbose error ignored to avoid spamming
+              }
+            );
+          }
           setToast(null); // Clear loading toast
         } catch (err: any) {
           console.error("Camera start error", err);
@@ -268,7 +329,7 @@ export default function MobileAttendanceScanner() {
       if (data.success) {
         showToast("success", data.message || "Attendance recorded successfully!");
         // Refresh local stats
-        refreshData(user.staffCode);
+        refreshData();
       } else {
         showToast("error", data.error || "Gate scan failed.");
       }
@@ -334,6 +395,23 @@ export default function MobileAttendanceScanner() {
                 </div>
               </div>
 
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">One-Time Security Password</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-500 transition-colors">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    className="w-full bg-slate-900/60 border border-white/5 focus:border-blue-500/40 rounded-2xl pl-11 pr-4 py-4 text-sm font-bold text-white placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all shadow-inner"
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
@@ -346,6 +424,71 @@ export default function MobileAttendanceScanner() {
         ) : (
           user && (
             <div className="w-full space-y-6 animate-in fade-in duration-500">
+              {/* Today's Punch-In/Out Status & Reminder Banner */}
+              {stats && (
+                <div className="space-y-3">
+                  {stats.todayCheckOut ? (
+                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-between shadow-inner">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-400" />
+                        <div className="text-left">
+                          <p className="text-[10px] font-black uppercase tracking-widest leading-none text-blue-300">Attendance Completed</p>
+                          <p className="text-[9px] text-blue-500/60 font-bold mt-1">Checked In & Out Today</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 font-mono text-[9px]">
+                        <span className="text-slate-400">IN: {stats.todayCheckIn}</span>
+                        <span className="text-blue-400 font-bold">OUT: {stats.todayCheckOut}</span>
+                      </div>
+                    </div>
+                  ) : stats.todayCheckIn ? (
+                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-between shadow-inner">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                        <div className="text-left">
+                          <p className="text-[10px] font-black uppercase tracking-widest leading-none text-emerald-300">Punched In Today</p>
+                          <p className="text-[9px] text-emerald-500/60 font-bold mt-1">Verified Gate Identity</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-xl font-mono">{stats.todayCheckIn}</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-amber-500/5 border border-amber-500/15 text-amber-400 rounded-2xl flex items-center justify-between shadow-inner">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 shrink-0 animate-pulse text-amber-400" />
+                          <div className="text-left">
+                            <p className="text-[10px] font-black uppercase tracking-widest leading-none text-amber-300">Attendance Pending</p>
+                            <p className="text-[9px] text-amber-500/55 font-bold mt-1">Please scan the Gate QR code</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black bg-amber-500/15 text-amber-300 px-2.5 py-1 rounded-xl uppercase tracking-wider">Unmarked</span>
+                      </div>
+
+                      {/* Timely Reminder if past 9:00 AM */}
+                      {(() => {
+                        const hr = new Date().getHours();
+                        const isWeekday = ![0, 6].includes(new Date().getDay()); // Not Sat/Sun
+                        if (isWeekday && hr >= 9) {
+                          return (
+                            <div className="p-4 bg-rose-500/15 border border-rose-500/20 text-rose-400 rounded-2xl flex flex-col gap-1.5 shadow-lg shadow-rose-950/20 animate-[pulse_2s_infinite]">
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                                <p className="text-[10px] font-black uppercase tracking-widest leading-none text-rose-300">LATE PUNCH-IN REMINDER</p>
+                              </div>
+                              <p className="text-[9px] text-rose-400/90 font-bold leading-normal">
+                                It is past 09:00 AM. Please scan the gate kiosk QR immediately to register attendance.
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Profile Card */}
               <div className="p-6 bg-slate-900/40 border border-white/5 rounded-3xl backdrop-blur-xl relative overflow-hidden group shadow-xl shadow-black/10">
                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -390,17 +533,39 @@ export default function MobileAttendanceScanner() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-2xl rounded-full pointer-events-none" />
                 <div className="space-y-1">
                   <h4 className="text-xs font-black tracking-widest uppercase text-slate-400">Daily Attendance Portal</h4>
-                  <p className="text-[9px] font-semibold text-slate-500 tracking-wide">Register presence inside school coordinates</p>
+                  <p className="text-[9px] font-semibold text-slate-500 tracking-wide">
+                    {stats?.todayCheckOut 
+                      ? "Attendance registered for today" 
+                      : stats?.todayCheckIn 
+                      ? "Punched in. Remember to scan out before leaving." 
+                      : "Register presence inside school coordinates"}
+                  </p>
                 </div>
                 
-                <button
-                  onClick={() => setIsScanning(true)}
-                  className="w-48 h-48 bg-slate-900 border border-white/5 rounded-full flex flex-col items-center justify-center gap-2 hover:border-blue-500/20 shadow-2xl hover:shadow-blue-500/5 hover:scale-[1.02] active:scale-[0.98] transition-all relative group"
-                >
-                  <div className="absolute inset-2 border-2 border-dashed border-white/5 group-hover:border-blue-500/20 rounded-full animate-[spin_20s_linear_infinite]" />
-                  <Camera className="w-10 h-10 text-blue-500" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest mt-1">Tap to Scan</span>
-                </button>
+                {stats?.todayCheckOut ? (
+                  <div className="w-48 h-48 bg-emerald-500/5 border border-emerald-500/20 rounded-full flex flex-col items-center justify-center gap-2 shadow-2xl relative">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-1">Completed</span>
+                  </div>
+                ) : stats?.todayCheckIn ? (
+                  <button
+                    onClick={() => setIsScanning(true)}
+                    className="w-48 h-48 bg-slate-900 border border-amber-500/20 rounded-full flex flex-col items-center justify-center gap-2 hover:border-amber-500/40 shadow-2xl hover:shadow-amber-500/5 hover:scale-[1.02] active:scale-[0.98] transition-all relative group"
+                  >
+                    <div className="absolute inset-2 border-2 border-dashed border-white/5 group-hover:border-amber-500/20 rounded-full animate-[spin_20s_linear_infinite]" />
+                    <Camera className="w-10 h-10 text-amber-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest mt-1">Tap to Scan Out</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsScanning(true)}
+                    className="w-48 h-48 bg-slate-900 border border-white/5 rounded-full flex flex-col items-center justify-center gap-2 hover:border-blue-500/20 shadow-2xl hover:shadow-blue-500/5 hover:scale-[1.02] active:scale-[0.98] transition-all relative group"
+                  >
+                    <div className="absolute inset-2 border-2 border-dashed border-white/5 group-hover:border-blue-500/20 rounded-full animate-[spin_20s_linear_infinite]" />
+                    <Camera className="w-10 h-10 text-blue-500" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest mt-1">Tap to Scan In</span>
+                  </button>
+                )}
               </div>
 
               {/* Code ID card */}
@@ -408,6 +573,14 @@ export default function MobileAttendanceScanner() {
                 <span className="text-[7px] font-black tracking-widest text-slate-500 uppercase">Secure Identity Code</span>
                 <span className="text-xs font-black tracking-wider text-blue-400 mt-1 font-mono">{user.staffCode}</span>
               </div>
+
+              {/* Leave Application Button */}
+              <button
+                onClick={() => setIsLeaveOpen(true)}
+                className="w-full py-4 bg-slate-900/60 hover:bg-slate-900 text-slate-300 hover:text-white border border-white/5 hover:border-blue-500/30 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Calendar className="w-4 h-4 text-blue-500" /> Apply For Leave
+              </button>
             </div>
           )
         )}
@@ -443,6 +616,83 @@ export default function MobileAttendanceScanner() {
             <div className="text-center space-y-1 max-w-xs mx-auto">
               <p className="text-xs font-black text-white uppercase tracking-widest">Sample Camera Feed</p>
               <p className="text-[9px] font-semibold text-slate-500">Align the Gate QR code within the focus frame to scan</p>
+            </div>
+          </div>
+        )}
+
+        {/* Leave Application Modal */}
+        {isLeaveOpen && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+            <div className="w-full max-w-sm bg-slate-950 border border-white/10 rounded-[2.5rem] p-6 space-y-6 relative animate-in zoom-in-95 duration-300 shadow-2xl">
+              <button 
+                onClick={() => setIsLeaveOpen(false)}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="space-y-1 text-center">
+                <h3 className="text-xl font-black text-white tracking-tight uppercase">Request Leave</h3>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Provision pending absence logs</p>
+              </div>
+
+              <form onSubmit={handleLeaveSubmit} className="space-y-4 text-left">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Leave Type</label>
+                  <select 
+                    value={leaveForm.type}
+                    onChange={(e) => setLeaveForm(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full bg-slate-900 border border-white/5 rounded-2xl px-4 py-3.5 text-xs font-bold text-white focus:outline-none focus:border-blue-500/40"
+                  >
+                    <option value="CASUAL">Casual Leave</option>
+                    <option value="SICK">Sick Leave</option>
+                    <option value="UNPAID">Unpaid Leave</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
+                    <input 
+                      type="date"
+                      required
+                      value={leaveForm.startDate}
+                      onChange={(e) => setLeaveForm(prev => ({ ...prev, startDate: e.target.value }))}
+                      className="w-full bg-slate-900 border border-white/5 rounded-2xl px-4 py-3.5 text-xs font-bold text-white focus:outline-none focus:border-blue-500/40"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
+                    <input 
+                      type="date"
+                      required
+                      value={leaveForm.endDate}
+                      onChange={(e) => setLeaveForm(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="w-full bg-slate-900 border border-white/5 rounded-2xl px-4 py-3.5 text-xs font-bold text-white focus:outline-none focus:border-blue-500/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Reason / Description</label>
+                  <textarea 
+                    required
+                    rows={3}
+                    placeholder="Enter reason for leave..."
+                    value={leaveForm.reason}
+                    onChange={(e) => setLeaveForm(prev => ({ ...prev, reason: e.target.value }))}
+                    className="w-full bg-slate-900 border border-white/5 rounded-2xl px-4 py-3.5 text-xs font-bold text-white focus:outline-none focus:border-blue-500/40 placeholder-slate-600"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/10 hover:shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Leave Request"}
+                </button>
+              </form>
             </div>
           </div>
         )}

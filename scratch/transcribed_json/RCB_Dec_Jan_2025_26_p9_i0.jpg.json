@@ -1,0 +1,30 @@
+[
+  {
+    "date": "2026-01-30",
+    "name": "D. SAHASRA",
+    "class": "6TH",
+    "receipt_no": "006",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2026-01-30",
+    "name": "D. PRAVARTHIKA",
+    "class": "3RD",
+    "receipt_no": "007",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 2
+  }
+]

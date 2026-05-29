@@ -5,15 +5,31 @@ import { QRCodeSVG } from "qrcode.react";
 import { Shield, Zap, Clock, Smartphone, Fingerprint, RefreshCcw } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-// In a real app, this would be fetched from the backend action every 15 seconds.
-// For smooth UI experience, we'll generate the payload structure here, but signature validation happens on the backend.
 import { useTenant } from "@/context/tenant-context";
+import { getRecentKioskAttendanceAction } from "@/lib/actions/auth-native";
 
 export function AttendanceKiosk() {
   const { schoolId } = useTenant();
   const [token, setToken] = useState("");
   const [timeLeft, setTimeLeft] = useState(15);
+  const [recentScans, setRecentScans] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchRecentScans = async () => {
+      try {
+        const res = await getRecentKioskAttendanceAction();
+        if (res.success && res.records) {
+          setRecentScans(res.records);
+        }
+      } catch (e) {
+        console.error("Failed to fetch recent scans:", e);
+      }
+    };
+
+    fetchRecentScans();
+    const interval = setInterval(fetchRecentScans, 3000); // Poll every 3 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // We would ideally fetch the true encrypted token from the server.
@@ -87,6 +103,39 @@ export function AttendanceKiosk() {
                   </div>
                </div>
             ))}
+         </div>
+
+         {/* Live Punch-In Feed */}
+         <div className="mt-10 max-w-md space-y-4">
+            <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+               <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Punch-In Activity</h3>
+            </div>
+            
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+               {recentScans.length === 0 ? (
+                  <p className="text-[11px] italic text-slate-500 font-bold uppercase tracking-widest">No activity recorded yet today.</p>
+               ) : (
+                  recentScans.map((scan) => (
+                     <div key={scan.id} className="flex items-center justify-between p-3.5 bg-slate-900/40 border border-slate-800/60 rounded-2xl animate-in slide-in-from-left-2 duration-300">
+                        <div className="flex items-center gap-3">
+                           <div className="w-8 h-8 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center font-black text-xs text-blue-400 select-none uppercase">
+                              {scan.name.charAt(0)}
+                           </div>
+                           <div>
+                              <p className="text-xs font-black text-white">{scan.name}</p>
+                              <p className="text-[8px] font-black tracking-widest text-slate-500 mt-0.5">{scan.code}</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/10 text-[9px] font-black uppercase tracking-wider rounded-xl">
+                              {scan.time}
+                           </span>
+                        </div>
+                     </div>
+                  ))
+               )}
+            </div>
          </div>
       </div>
 

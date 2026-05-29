@@ -995,6 +995,9 @@ model Staff {
   vehicleAssignments  VehicleStaff[]
   biometricId         String?               @unique
   assignedSection     Section?              @relation("SectionTeacher")
+  leaveRequests       LeaveRequest[]
+  mobileSessionToken  String?
+  mobilePasswordUsed  Boolean               @default(false)
 
   @@unique([branchId, staffCode])
   @@unique([branchId, email])
@@ -1723,3 +1726,46 @@ model BankStatementEntry {
   @@index([txnDate])
   @@index([schoolId])
 }
+
+model LeaveRequest {
+  id          String    @id @default(uuid())
+  staffId     String
+  startDate   DateTime
+  endDate     DateTime
+  type        String    // CASUAL | SICK | UNPAID
+  reason      String
+  status      String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  staff       Staff     @relation(fields: [staffId], references: [id])
+}
+
+// -----------------------------------------------------------------------
+// FEE PAYMENT LINKS — Standalone. Do not modify any fields below.
+// -----------------------------------------------------------------------
+model FeePaymentLink {
+  id                String    @id @default(uuid())
+  token             String    @unique
+  studentName       String
+  parentName        String
+  phone             String
+  amount            Float
+  description       String?
+  pendingItems      String?   // Free text: "Science Book, Lab Manual, ID Card"
+  razorpayLinkId    String?
+  razorpayShortUrl  String?
+  status            String    @default("PENDING") // PENDING | PAID | EXPIRED
+  razorpayPaymentId String?
+  paidAt            DateTime?
+  feedbackRating    String?   // GREAT | OKAY | POOR
+  feedbackNote      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([phone])
+  @@index([token])
+  @@index([razorpayLinkId])
+}
+

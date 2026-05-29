@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import { useSearchParams } from "next/navigation";
 
 interface FeeReceiptProps {
   student: any;
@@ -58,6 +59,17 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
 
   const receiptRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  const searchParams = useSearchParams();
+  const autoDownload = searchParams ? searchParams.get("autodownload") === "true" : false;
+
+  React.useEffect(() => {
+    if (autoDownload && receiptRef.current) {
+      const timer = setTimeout(() => {
+        handleDownloadPDF();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoDownload]);
 
   const handleDownloadPDF = async () => {
     if (!receiptRef.current) return;

@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 };
 
 import { UIProvider } from "@/providers/ui-provider";
+import { PWAInstallBlocker } from "@/components/layout/PWAInstallBlocker";
 
 export default function RootLayout({
   children,
@@ -34,6 +35,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className} suppressHydrationWarning>
         <UIProvider>
+          <PWAInstallBlocker />
           <div className="min-h-screen relative overflow-x-hidden">
             {children}
           </div>

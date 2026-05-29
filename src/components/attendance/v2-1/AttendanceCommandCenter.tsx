@@ -16,13 +16,16 @@ import {
   ShieldCheck,
   CalendarDays,
   Rows,
-  Fingerprint
+  Fingerprint,
+  Loader2
 } from "lucide-react";
 import { 
   getAttendanceCommandStatsAction, 
   submitManualAttendanceAction, 
   submitFaceAttendanceAction,
-  getStaffPulseAction
+  getStaffPulseAction,
+  getBranchGeofenceSettingsAction,
+  updateBranchGeofenceSettingsAction
 } from "@/lib/actions/attendance-v2-actions";
 import { MonthlyRegister } from "./MonthlyRegister";
 import { ShiftManager } from "./ShiftManager";
@@ -33,11 +36,48 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 export function AttendanceCommandCenter() {
-  const [activeTab, setActiveTab] = useState<"PULSE" | "REGISTER" | "SHIFTS" | "LEDGER" | "PERSONNEL" | "AUDIT">("PULSE");
+  const [activeTab, setActiveTab] = useState<"PULSE" | "REGISTER" | "SHIFTS" | "LEDGER" | "PERSONNEL" | "AUDIT" | "SETTINGS">("PULSE");
   const [stats, setStats] = useState<any>(null);
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+
+  // Geofencing settings states
+  const [geofenceForm, setGeofenceForm] = useState({
+    latitude: "",
+    longitude: "",
+    geofenceRadius: 200,
+    isGeofenceEnabled: false
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  const fetchGeofenceSettings = async () => {
+    try {
+      const res = await getBranchGeofenceSettingsAction();
+      if (res.success && res.data) {
+        setGeofenceForm(res.data);
+      }
+    } catch (e) {
+      console.error("Failed to load geofence settings:", e);
+    }
+  };
+
+  const handleSaveGeofence = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    try {
+      const res = await updateBranchGeofenceSettingsAction(geofenceForm);
+      if (res.success) {
+        alert("Geofence settings updated successfully!");
+      } else {
+        alert(res.error || "Failed to update settings.");
+      }
+    } catch (err) {
+      alert("A technical error occurred while saving.");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
   
   // Biometric State
   const [isFaceMode, setIsFaceMode] = useState(false);
@@ -68,6 +108,7 @@ export function AttendanceCommandCenter() {
   useEffect(() => {
     fetchStats();
     fetchStaff();
+    fetchGeofenceSettings();
   }, []);
 
   const handleManualMark = async (staffId: string, status?: string) => {
@@ -189,16 +230,25 @@ export function AttendanceCommandCenter() {
             >
                <UserCheck className="w-4 h-4" /> Personnel
             </button>
-            <button 
-               onClick={() => setActiveTab("AUDIT")}
-               className={cn(
-                  "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3",
-                  activeTab === "AUDIT" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-               )}
-            >
-               <AlertTriangle className="w-4 h-4" /> Audit
-            </button>
-         </div>
+             <button 
+                onClick={() => setActiveTab("AUDIT")}
+                className={cn(
+                   "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3",
+                   activeTab === "AUDIT" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                )}
+             >
+                <AlertTriangle className="w-4 h-4" /> Audit
+             </button>
+             <button 
+                onClick={() => setActiveTab("SETTINGS")}
+                className={cn(
+                   "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3",
+                   activeTab === "SETTINGS" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                )}
+             >
+                <Settings2 className="w-4 h-4" /> Location Settings
+             </button>
+          </div>
 
          <div className="flex items-center gap-4 text-slate-400 italic">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -511,6 +561,87 @@ export function AttendanceCommandCenter() {
                 fetchStaff();
             }} 
          />
+      )}
+      
+      {activeTab === "SETTINGS" && (
+         <div className="bg-white rounded-[3rem] border border-slate-200 overflow-hidden shadow-2xl p-10 max-w-2xl mx-auto animate-in slide-in-from-bottom-6 duration-500">
+            <div className="border-b border-slate-100 pb-6 mb-8">
+               <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">Attendance Location Verification</h3>
+               <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.3em] text-slate-500">Configure GPS Geofencing for mobile scans</p>
+            </div>
+
+            <form onSubmit={handleSaveGeofence} className="space-y-6">
+               {/* Toggle switch for enabled/disabled */}
+               <div className="flex items-center justify-between p-6 bg-slate-50 border border-slate-100 rounded-3xl">
+                  <div>
+                     <p className="text-sm font-black text-slate-900 uppercase">Enable Location Verification</p>
+                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Requires teachers to be physically present at school coordinates to scan</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                     <input 
+                        type="checkbox" 
+                        checked={geofenceForm.isGeofenceEnabled} 
+                        onChange={(e) => setGeofenceForm(prev => ({ ...prev, isGeofenceEnabled: e.target.checked }))}
+                        className="sr-only peer" 
+                     />
+                     <div className="w-14 h-8 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+               </div>
+
+               {/* Lat & Lon inputs */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Campus Latitude</label>
+                     <input 
+                        type="text" 
+                        required={geofenceForm.isGeofenceEnabled}
+                        placeholder="e.g. 17.5841875" 
+                        value={geofenceForm.latitude}
+                        onChange={(e) => setGeofenceForm(prev => ({ ...prev, latitude: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-2xl px-5 py-4 text-xs font-bold text-slate-900 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/5"
+                     />
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Campus Longitude</label>
+                     <input 
+                        type="text" 
+                        required={geofenceForm.isGeofenceEnabled}
+                        placeholder="e.g. 78.0769531" 
+                        value={geofenceForm.longitude}
+                        onChange={(e) => setGeofenceForm(prev => ({ ...prev, longitude: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 focus:border-blue-500 rounded-2xl px-5 py-4 text-xs font-bold text-slate-900 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/5"
+                     />
+                  </div>
+               </div>
+
+               {/* Range/Radius input */}
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Allowed Radius Range (Meters)</label>
+                  <div className="flex gap-4 items-center">
+                     <input 
+                        type="number" 
+                        required={geofenceForm.isGeofenceEnabled}
+                        min={10}
+                        max={5000}
+                        value={geofenceForm.geofenceRadius}
+                        onChange={(e) => setGeofenceForm(prev => ({ ...prev, geofenceRadius: parseInt(e.target.value, 10) }))}
+                        className="w-32 bg-white border border-slate-200 focus:border-blue-500 rounded-2xl px-5 py-4 text-xs font-bold text-slate-900 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/5"
+                     />
+                     <span className="text-xs font-bold text-slate-400">meters from the center point</span>
+                  </div>
+               </div>
+
+               <div className="pt-6 border-t border-slate-100 flex justify-end">
+                  <button 
+                     type="submit" 
+                     disabled={isSavingSettings}
+                     className="px-10 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2"
+                  >
+                     {isSavingSettings ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Location Settings"}
+                  </button>
+               </div>
+            </form>
+         </div>
       )}
     </div>
   );

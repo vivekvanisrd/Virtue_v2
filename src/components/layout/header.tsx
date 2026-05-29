@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ThemeCustomizer } from "./theme-customizer";
 import { BranchSwitcher } from "./BranchSwitcher";
+import { signOutAction } from "@/lib/actions/auth-native";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -131,8 +132,11 @@ export function Header({
           <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all duration-300 z-50 p-2 transform origin-top translate-y-2 group-hover/profile:translate-y-0">
              <button 
                 onClick={async () => {
-                   const { signOutAction } = await import("@/lib/actions/auth-native");
-                   await signOutAction();
+                   try {
+                      await signOutAction();
+                   } catch (e) {
+                      console.error("Sign out error:", e);
+                   }
                    window.location.href = "/login";
                 }}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-colors uppercase tracking-widest italic"

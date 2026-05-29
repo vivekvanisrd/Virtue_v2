@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sovereign Student Registry & Payments Audit</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Local script load for file:// compatibility -->
+  <script src="./student_data.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars for a premium feel */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(241, 245, 249, 0.9);
+    }
+  </style>
+</head>
+<body class="h-full font-sans text-slate-800 antialiased">
+  
+  <div class="min-h-full flex flex-col">
+    
+    <!-- Top Header navigation -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 px-6 py-4 flex items-center justify-between border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/20 text-white flex items-center justify-center font-outfit font-black text-xl tracking-tighter">
+          🏛️
+        </div>
+        <div>
+          <h1 class="text-lg lg:text-xl font-outfit font-black tracking-tight flex items-center gap-2">
+            Sovereign Student Registry <span class="text-indigo-400 font-mono text-[10px] uppercase font-black tracking-widest border border-indigo-500/30 px-2 py-0.5 rounded-md bg-indigo-950/40">Audit v1.2</span>
+          </h1>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Independent Payment & Profile Directory</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-4 text-xs font-mono font-bold text-slate-400 hidden sm:flex">
+        <span>Active File: DAILY ACCOUNTS.xlsx</span>
+        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+        <span class="text-emerald-400">Database Active</span>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      
+      <!-- KPI Stats Section -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div class="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-sm flex items-center gap-5 hover:scale-[1.01] transition-all">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 font-outfit font-black flex items-center justify-center text-2xl shadow-inner shrink-0">👥</div>
+          <div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Total Profiles</p>
+            <h3 id="stat-total-students" class="text-3xl font-black font-outfit text-slate-900">0</h3>
+            <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Aggregated Registry</p>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-sm flex items-center gap-5 hover:scale-[1.01] transition-all">
+          <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 font-outfit font-black flex items-center justify-center text-2xl shadow-inner shrink-0">💰</div>
+          <div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Total Collections</p>
+            <h3 id="stat-total-payments" class="text-3xl font-black font-outfit text-slate-900">Rs. 0</h3>
+            <p class="text-[9px] text-emerald-600 font-semibold mt-0.5">Summed Payment Receipts</p>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-[2rem] bg-white border border-slate-200 shadow-sm flex items-center gap-5 hover:scale-[1.01] transition-all">
+          <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 font-outfit font-black flex items-center justify-center text-2xl shadow-inner shrink-0">🏫</div>
+          <div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Active Campus Branches</p>
+            <h3 id="stat-branches" class="text-3xl font-black font-outfit text-slate-900">RCB, SNB, MNB</h3>
+            <p class="text-[9px] text-slate-400 font-semibold mt-0.5">3 Localized Zones</p>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-[2rem] bg-indigo-900 text-white shadow-xl relative overflow-hidden group">
+          <div class="relative z-10 flex flex-col justify-between h-full">
+            <div>
+              <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Direct ERP Export</h4>
+              <p class="text-xs text-indigo-100 font-medium leading-relaxed pr-2">Verify and clean data records here, then click export to import directly into ERP Postgres database.</p>
+            </div>
+            <div class="mt-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-indigo-200">
+              <span>Ready for import</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-indigo-300"></span>
+            </div>
+          </div>
+          <div class="absolute -right-4 -bottom-4 text-7xl opacity-5 group-hover:scale-110 transition-transform">⚙️</div>
+        </div>
+      </section>
+
+      <!-- Search & Filters Tool -->
+      <section class="p-6 sm:p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-sm space-y-6">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <h3 class="text-lg font-black tracking-tight text-slate-900 font-outfit uppercase">Search Registry Filters</h3>
+            <p class="text-slate-400 text-xs mt-0.5 font-medium">Filter, sort, and isolate student profiles recursively.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-3">
+            <button onclick="clearAllFilters()" class="px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95">
+              Reset Filters
+            </button>
+            
+            <button onclick="openAddStudentModal()" class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1.5 border border-indigo-100">
+              ➕ Add Student
+            </button>
+            
+            <button onclick="exportProfiles()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2">
+              👤 Export Profiles (CSV)
+            </button>
+            
+            <button onclick="exportPayments()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2">
+              🧾 Export Payments (CSV)
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- Text Search -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Search query</label>
+            <input 
+              id="search-input" 
+              type="text" 
+              placeholder="Name, Parent, Phone, Aadhaar..."
+              oninput="handleFilterChange()"
+              class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5 shadow-inner"
+            />
+          </div>
+
+          <!-- Receipt No Search -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Receipt / Bill No</label>
+            <input 
+              id="receipt-input" 
+              type="text" 
+              placeholder="e.g. 4338, 3439..."
+              oninput="handleFilterChange()"
+              class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5 shadow-inner"
+            />
+          </div>
+
+          <!-- Branch Filter -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch Location</label>
+            <select 
+              id="filter-branch" 
+              onchange="handleFilterChange()"
+              class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5"
+            >
+              <option value="">All Branches</option>
+              <option value="RCB">RCB (Reddy Colony Branch)</option>
+              <option value="SNB">SNB Branch</option>
+              <option value="MNB">MNB Branch</option>
+              <option value="GLOBAL">GLOBAL / Unspecified</option>
+            </select>
+          </div>
+
+          <!-- Class Filter -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Grade Class</label>
+            <select 
+              id="filter-class" 
+              onchange="handleFilterChange()"
+              class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5"
+            >
+              <option value="">All Classes</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Audit Filters -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Audit Checks</label>
+            <select 
+              id="filter-audit" 
+              onchange="handleFilterChange()"
+              class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 outline-none transition-all focus:ring-4 focus:ring-indigo-500/5"
+            >
+              <option value="">No Audit Filter</option>
+              <option value="no-payments">Show Students with No Payments</option>
+              <option value="has-payments">Show Students with Payments</option>
+              <option value="missing-aadhar">Show Students with Missing Aadhaar</option>
+              <option value="missing-phone">Show Students with Missing Phone</option>
+              <option value="bus-students">Show Bus Route Students Only</option>
+              <option value="has-receipt">Show Records with Receipt No</option>
+              <option value="no-receipt">Show Records without Receipt No</option>
+              <option value="fully-paid">Show Fully Paid (Dues Cleared)</option>
+              <option value="partially-paid">Show Partially Paid (Outstanding Dues)</option>
+              <option value="not-paid">Show Not Paid (Committed but Zero Payments)</option>
+              <option value="name-duplicates">Show Potential Name Duplicates (Ignore Spaces/Dots)</option>
+              <option value="unique-names">Hide Potential Name Duplicates (Unique Names Only)</option>
+            </select>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Data Table Display -->
+      <section class="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm flex flex-col">
+        
+        <!-- View Mode Switcher tabs -->
+        <div class="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-2">
+          <button id="tab-student" onclick="setViewMode('student')" class="px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all active:scale-95 duration-150 border-indigo-600 text-indigo-600">
+            👤 Student Wise
+          </button>
+          <button id="tab-payment" onclick="setViewMode('payment')" class="px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all active:scale-95 duration-150 border-transparent text-slate-400 hover:text-slate-600">
+            🧾 Payment Wise
+          </button>
+          <button id="tab-aadhar" onclick="setViewMode('aadhar')" class="px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all active:scale-95 duration-150 border-transparent text-slate-400 hover:text-slate-600">
+            🪪 Aadhaar Wise
+          </button>
+        </div>
+
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-2">
+            <span id="filtered-count" class="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-black text-indigo-600">0</span>
+            <span id="filtered-count-label" class="text-xs font-bold text-slate-400 uppercase tracking-wide">profiles found</span>
+          </div>
+          
+          <div id="selection-banner" class="text-xs font-bold text-indigo-600 animate-pulse hidden">
+            Selected <span id="selection-count">0</span> items for download.
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[1200px]">
+            <thead id="table-header">
+              <!-- Rendered Dynamically -->
+            </thead>
+            <tbody id="table-body" class="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+
+              <!-- Rendered Dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="p-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-bold bg-slate-50/50">
+          <div>
+            Showing <span id="table-showing-start">0</span> to <span id="table-showing-end">0</span> of <span id="table-showing-total">0</span> entries
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="changePage(-1)" id="btn-prev" class="px-3.5 py-2 border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 rounded-xl transition-all font-black text-slate-700">
+              Previous
+            </button>
+            <span class="font-mono text-slate-900 font-bold">Page <span id="page-num">1</span> of <span id="page-total">1</span></span>
+            <button onclick="changePage(1)" id="btn-next" class="px-3.5 py-2 border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 rounded-xl transition-all font-black text-slate-700">
+              Next
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- Detailed Payment Info Modal Overlay -->
+  <div id="payment-modal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden animate-in fade-in duration-300 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-[3rem] shadow-2xl w-full max-w-3xl overflow-hidden max-h-[85vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="p-6 lg:p-8 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div>
+          <h3 id="modal-student-name" class="text-xl font-black text-slate-900 font-outfit uppercase">Student Payments</h3>
+          <p id="modal-student-class" class="text-slate-400 text-[10px] font-black uppercase tracking-wider mt-1">Class details</p>
+        </div>
+        <button onclick="closeModal()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full flex items-center justify-center font-bold transition-colors">
+          ✕
+        </button>
+      </div>
+      
+      <!-- Modal Content (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Left info column -->
+          <div class="space-y-3 p-5 rounded-3xl bg-slate-50 border border-slate-100">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1.5">Registry Profile Info</h4>
+            <div class="space-y-2 text-xs font-semibold text-slate-600">
+              <div class="flex justify-between"><span class="text-slate-400">ID:</span> <span id="modal-id" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Aadhaar Card:</span> <span id="modal-aadhar" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Father Name:</span> <span id="modal-father" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Mother Name:</span> <span id="modal-mother" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Father Phone:</span> <span id="modal-father-phone" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Mother Phone:</span> <span id="modal-mother-phone" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Home Address:</span> <span id="modal-address" class="font-bold text-slate-900"></span></div>
+            </div>
+          </div>
+          
+          <!-- Right info column -->
+          <div class="space-y-3 p-5 rounded-3xl bg-slate-50 border border-slate-100">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1.5">Financial & Route Context</h4>
+            <div class="space-y-2 text-xs font-semibold text-slate-600">
+              <div class="flex justify-between"><span class="text-slate-400">Campus Branch:</span> <span id="modal-branch" class="font-bold text-slate-900 uppercase"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Bus Transport Stop:</span> <span id="modal-pickup" class="font-bold text-slate-900"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Committed Term Fee:</span> <span id="modal-committed" class="font-bold text-indigo-600"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Total Payments:</span> <span id="modal-total-paid" class="font-extrabold text-emerald-600"></span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Aggregated Sources:</span> <span id="modal-sources" class="font-bold text-slate-500 break-all text-[9px] leading-relaxed"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <h4 class="text-sm font-black text-slate-900 font-outfit uppercase">Payments Ledger Logs</h4>
+          
+          <div class="border border-slate-200 rounded-3xl overflow-hidden shadow-inner bg-slate-50">
+            <table class="w-full text-left border-collapse text-xs font-semibold">
+              <thead>
+                <tr class="bg-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                  <th class="py-3 px-4">Receipt Date</th>
+                  <th class="py-3 px-4">Receipt No</th>
+                  <th class="py-3 px-4">Source Sheet</th>
+                  <th class="py-3 px-4">Name in Sheet</th>
+                  <th class="py-3 px-4">Class in Sheet</th>
+                  <th class="py-3 px-4 text-right pr-6">Payments Transacted</th>
+                </tr>
+              </thead>
+              <tbody id="modal-payment-rows" class="divide-y divide-slate-100 text-slate-700">
+                <!-- Rendered Dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Add Student Modal Overlay -->
+  <div id="add-student-modal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden animate-in fade-in duration-300 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="p-6 lg:p-8 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div>
+          <h3 class="text-xl font-black text-slate-900 font-outfit uppercase">Add Missing Student Profile</h3>
+          <p class="text-slate-400 text-[10px] font-black uppercase tracking-wider mt-1">Create a new local student record</p>
+        </div>
+        <button onclick="closeAddStudentModal()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full flex items-center justify-center font-bold transition-colors">
+          ✕
+        </button>
+      </div>
+      
+      <!-- Modal Content -->
+      <form id="add-student-form" onsubmit="saveNewStudent(event)" class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Student Details -->
+          <div class="space-y-4 p-5 rounded-3xl bg-slate-50 border border-slate-100">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1.5">Student Info</h4>
+            
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Name *</label>
+                <input id="add-name" type="text" required class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+              </div>
+              
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class *</label>
+                <input id="add-class" type="text" required placeholder="e.g. LKG, 5TH" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+              </div>
+              
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch *</label>
+                <select id="add-branch" required class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all mt-1">
+                  <option value="RCB">RCB</option>
+                  <option value="SNB">SNB</option>
+                  <option value="MNB">MNB</option>
+                  <option value="GLOBAL">GLOBAL</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aadhaar Card</label>
+                <input id="add-aadhar" type="text" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1 font-mono" />
+              </div>
+            </div>
+          </div>
+          
+          <!-- Parent & Phone Details -->
+          <div class="space-y-4 p-5 rounded-3xl bg-slate-50 border border-slate-100">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1.5">Family & Contact</h4>
+            
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Father's Name</label>
+                <input id="add-father" type="text" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+              </div>
+              
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mother's Name</label>
+                <input id="add-mother" type="text" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+              </div>
+              
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Father's Phone</label>
+                <input id="add-f-phone" type="text" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1 font-mono" />
+              </div>
+
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mother's Phone</label>
+                <input id="add-m-phone" type="text" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1 font-mono" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional details -->
+        <div class="space-y-4 p-5 rounded-3xl bg-slate-50 border border-slate-100">
+          <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-1.5">Address & Finances</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Home Address</label>
+              <input id="add-address" type="text" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Committed Fee (Rs)</label>
+              <input id="add-committed" type="number" step="any" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Paid Fee (Rs)</label>
+              <input id="add-paid" type="number" step="any" class="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none transition-all shadow-sm mt-1" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <button type="button" onclick="closeAddStudentModal()" class="px-5 py-2.5 border border-slate-200 hover:border-slate-300 text-slate-600 rounded-xl text-xs font-bold transition-all active:scale-95">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95">
+            Save Student
+          </button>
+        </div>
+
+      </form>
+      
+    </div>
+  </div>
+
+  <!-- JavaScript logic -->
+  <script>
+    // State management
+    let studentsData = [];
+    let filteredData = [];
+    let classes = [];
+    
+    // Page details
+    const limit = 25;
+    let page = 1;
+    
+    // Sort details
+    let sortColumn = "name";
+    let sortOrder = "asc"; // "asc" or "desc"
+    
+    // Selected keys for checkbox selection
+    let selectedKeys = new Set();
+    
+    // View mode: "student", "payment", or "aadhar"
+    let currentViewMode = "student";
+
+    // Initialize/Sync database with localStorage overrides
+    function initializeData() {
+      // Create a deep copy of window.studentsData
+      studentsData = JSON.parse(JSON.stringify(window.studentsData || []));
+      
+      const studentOverrides = JSON.parse(localStorage.getItem("student_overrides") || "{}");
+      const receiptOverrides = JSON.parse(localStorage.getItem("receipt_overrides") || "{}");
+      const customStudents = JSON.parse(localStorage.getItem("custom_students") || "[]");
+      
+      // Assign unique keys to core database students
+      studentsData.forEach(s => {
+        s.uniqueKey = `${s.name}_${s.normalized_class}_${s.branch}`;
+      });
+      
+      // Inject custom created students
+      customStudents.forEach(cs => {
+        cs.uniqueKey = cs.uniqueKey || `custom_${cs.name}_${cs.normalized_class}_${cs.branch}`;
+        cs.isCustom = true;
+        studentsData.push(cs);
+      });
+      
+      // Apply additions to missing fields (Demographics)
+      studentsData.forEach(s => {
+        const over = studentOverrides[s.uniqueKey];
+        if (over) {
+          if (!s.aadhar && over.aadhar) s.aadhar = over.aadhar;
+          if (!s.father && over.father) s.father = over.father;
+          if (!s.mother && over.mother) s.mother = over.mother;
+          if (!s.f_phone && over.f_phone) s.f_phone = over.f_phone;
+          if (!s.m_phone && over.m_phone) s.m_phone = over.m_phone;
+          if (!s.address && over.address) s.address = over.address;
+        }
+        
+        // Apply receipt number edits (Payments)
+        if (s.payments) {
+          s.payments.forEach(p => {
+            const key = `${s.uniqueKey}_${p.sheet}_${p.row}`;
+            if (receiptOverrides[key] !== undefined) {
+              p.receipt_no = receiptOverrides[key];
+            }
+          });
+        }
+      });
+      
+      // Build class filter option lists dynamically
+      const classSet = new Set();
+      studentsData.forEach(s => {
+        if (s.normalized_class) classSet.add(s.normalized_class);
+      });
+      classes = Array.from(classSet).sort();
+    }
+
+    // Save student Demographic Additions
+    function saveStudentOverride(studentKey, field, value) {
+      const studentOverrides = JSON.parse(localStorage.getItem("student_overrides") || "{}");
+      const s = studentsData.find(st => st.uniqueKey === studentKey);
+      if (!s) return;
+      
+      // Safeguard: Do not allow editing of original non-empty values
+      const originalS = (window.studentsData || []).find(st => 
+        st.name === s.name && 
+        st.normalized_class === s.normalized_class && 
+        st.branch === s.branch
+      );
+      if (originalS && originalS[field]) {
+        alert("Action Denied: You can only add missing details, not edit existing ones.");
+        return;
+      }
+      
+      const trimmedVal = value.trim();
+      if (!trimmedVal) {
+        if (studentOverrides[studentKey]) {
+          delete studentOverrides[studentKey][field];
+          if (Object.keys(studentOverrides[studentKey]).length === 0) {
+            delete studentOverrides[studentKey];
+          }
+        }
+      } else {
+        if (!studentOverrides[studentKey]) {
+          studentOverrides[studentKey] = {};
+        }
+        studentOverrides[studentKey][field] = trimmedVal;
+      }
+      
+      localStorage.setItem("student_overrides", JSON.stringify(studentOverrides));
+      initializeData();
+      calculateStats();
+      handleFilterChange();
+    }
+
+    function saveStudentOverrideAndRefreshModal(studentKey, field, value) {
+      saveStudentOverride(studentKey, field, value);
+      viewStudentDetails(studentKey);
+    }
+
+    // Save receipt number edits
+    function saveReceiptOverride(studentKey, sheet, row, value) {
+      const receiptOverrides = JSON.parse(localStorage.getItem("receipt_overrides") || "{}");
+      const key = `${studentKey}_${sheet}_${row}`;
+      const trimmedVal = value.trim();
+      
+      if (!trimmedVal) {
+        delete receiptOverrides[key];
+      } else {
+        receiptOverrides[key] = trimmedVal;
+      }
+      
+      localStorage.setItem("receipt_overrides", JSON.stringify(receiptOverrides));
+      initializeData();
+      handleFilterChange();
+      
+      // Refresh modal ledger if it is open
+      const modal = document.getElementById("payment-modal");
+      if (modal && !modal.classList.contains("hidden")) {
+        viewStudentDetails(studentKey);
+      }
+    }
+
+    // Add Missing Student Manual Creation
+    function openAddStudentModal() {
+      document.getElementById("add-student-modal").classList.remove("hidden");
+    }
+
+    function closeAddStudentModal() {
+      document.getElementById("add-student-modal").classList.add("hidden");
+    }
+
+    function saveNewStudent(event) {
+      event.preventDefault();
+      const name = document.getElementById("add-name").value.trim().toUpperCase();
+      const cls = document.getElementById("add-class").value.trim();
+      const branch = document.getElementById("add-branch").value;
+      
+      if (!name || !cls || !branch) {
+        alert("Name, Class, and Branch are required fields.");
+        return;
+      }
+      
+      const newStudent = {
+        id: "CUSTOM_" + Date.now(),
+        name: name,
+        class: cls,
+        normalized_class: cls.replace(/\s+/g, "").toUpperCase(),
+        section: "",
+        branch: branch,
+        father: document.getElementById("add-father").value.trim(),
+        mother: document.getElementById("add-mother").value.trim(),
+        f_phone: document.getElementById("add-f-phone").value.trim(),
+        m_phone: document.getElementById("add-m-phone").value.trim(),
+        aadhar: document.getElementById("add-aadhar").value.trim(),
+        address: document.getElementById("add-address").value.trim(),
+        bus_route: "",
+        pickup_point: "",
+        committed_fee: parseFloat(document.getElementById("add-committed").value) || 0.0,
+        total_paid: parseFloat(document.getElementById("add-paid").value) || 0.0,
+        payments: [],
+        source: "Manual Registry Addition"
+      };
+      
+      const customStudents = JSON.parse(localStorage.getItem("custom_students") || "[]");
+      customStudents.push(newStudent);
+      localStorage.setItem("custom_students", JSON.stringify(customStudents));
+      
+      initializeData();
+      populateClassDropdown();
+      calculateStats();
+      handleFilterChange();
+      closeAddStudentModal();
+      document.getElementById("add-student-form").reset();
+    }
+
+    // On Load
+    window.addEventListener("DOMContentLoaded", async () => {
+      try {
+        console.log("Checking student database...");
+        
+        // If window.studentsData was loaded via <script> tag (e.g. local file protocol)
+        if (window.studentsData && window.studentsData.length > 0) {
+          console.log("Database loaded locally via script tag.");
+        } else {
+          console.log("Fetching database via network fetch...");
+          const res = await fetch("./student_data.json");
+          if (!res.ok) throw new Error("Database JSON not found");
+          window.studentsData = await res.json();
+        }
+        
+        // Load, override, and merge data
+        initializeData();
+        
+        populateClassDropdown();
+        calculateStats();
+        
+        // Initialize table headers and view
+        setViewMode("student");
+        
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load database. Error details: " + err.message + "\n\nIf you are viewing this page on localhost, try performing a Force Refresh (Ctrl+F5 on Windows, Cmd+Shift+R on Mac) to bypass the browser cache.\nOtherwise, make sure python generate_student_db.py has been run to generate student_data.js.");
+      }
+    });
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      
+      // Update tab styles
+      const tabs = ["student", "payment", "aadhar"];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+          if (t === mode) {
+            btn.className = "px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all active:scale-95 duration-150 border-indigo-600 text-indigo-600 font-extrabold";
+          } else {
+            btn.className = "px-5 py-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all active:scale-95 duration-150 border-transparent text-slate-400 hover:text-slate-600 font-bold";
+          }
+        }
+      });
+      
+      // Reset page and selection
+      page = 1;
+      selectedKeys.clear();
+      const selectAllEl = document.getElementById("select-all");
+      if (selectAllEl) {
+        selectAllEl.checked = false;
+      }
+      
+      // Reset sort column to defaults
+      if (mode === "student") {
+        sortColumn = "name";
+      } else if (mode === "payment") {
+        sortColumn = "date";
+      } else if (mode === "aadhar") {
+        sortColumn = "aadhar";
+      }
+      sortOrder = "asc";
+      
+      // Update filtered counts labels
+      const label = document.getElementById("filtered-count-label");
+      if (label) {
+        if (mode === "student") label.textContent = "profiles found";
+        else if (mode === "payment") label.textContent = "transactions found";
+        else if (mode === "aadhar") label.textContent = "Aadhaar groups found";
+      }
+      
+      handleFilterChange();
+    }
+
+    function populateClassDropdown() {
+      const dropdown = document.getElementById("filter-class");
+      classes.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c;
+        option.textContent = c;
+        dropdown.appendChild(option);
+      });
+    }
+
+    function calculateStats() {
+      // Total count
+      document.getElementById("stat-total-students").textContent = studentsData.length.toLocaleString();
+      
+      // Sum collections
+      let sum = 0;
+      studentsData.forEach(s => {
+        sum += s.total_paid;
+      });
+      document.getElementById("stat-total-payments").textContent = "Rs. " + sum.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    }
+
+    function clearAllFilters() {
+      document.getElementById("search-input").value = "";
+      document.getElementById("receipt-input").value = "";
+      document.getElementById("filter-branch").value = "";
+      document.getElementById("filter-class").value = "";
+      document.getElementById("filter-audit").value = "";
+      selectedKeys.clear();
+      const selectAllEl = document.getElementById("select-all");
+      if (selectAllEl) {
+        selectAllEl.checked = false;
+      }
+      
+      handleFilterChange();
+    }
+
+    function handleFilterChange() {
+      const search = document.getElementById("search-input").value.toUpperCase().trim();
+      const receiptSearch = document.getElementById("receipt-input").value.trim();
+      const branch = document.getElementById("filter-branch").value;
+      const cls = document.getElementById("filter-class").value;
+      const audit = document.getElementById("filter-audit").value;
+      
+      // Calculate normalized name frequencies for duplicate audit filters
+      const nameFreq = {};
+      studentsData.forEach(s => {
+        const norm = s.name.replace(/[\s\.]/g, "").toUpperCase();
+        nameFreq[norm] = (nameFreq[norm] || 0) + 1;
+      });
+      
+      if (currentViewMode === "student") {
+        filteredData = studentsData.filter(s => {
+          // Search filter: Student Name, Parent Names, Phone Numbers, Aadhaar
+          let searchMatch = true;
+          if (search) {
+            const nameMatch = s.name.toUpperCase().includes(search);
+            const fatherMatch = s.father.toUpperCase().includes(search);
+            const motherMatch = s.mother.toUpperCase().includes(search);
+            const phoneMatch = s.f_phone.includes(search) || s.m_phone.includes(search);
+            const aadharMatch = s.aadhar.includes(search);
+            searchMatch = nameMatch || fatherMatch || motherMatch || phoneMatch || aadharMatch;
+          }
+          
+          // Receipt match
+          let receiptMatch = true;
+          if (receiptSearch) {
+            receiptMatch = s.payments && s.payments.some(p => p.receipt_no && p.receipt_no.includes(receiptSearch));
+          }
+          
+          // Branch filter
+          let branchMatch = true;
+          if (branch) {
+            branchMatch = (s.branch === branch);
+          }
+          
+          // Class filter
+          let classMatch = true;
+          if (cls) {
+            classMatch = (s.normalized_class === cls);
+          }
+          
+          // Audit filter
+          let auditMatch = true;
+          if (audit === "no-payments") {
+            auditMatch = (s.total_paid === 0);
+          } else if (audit === "has-payments") {
+            auditMatch = (s.total_paid > 0);
+          } else if (audit === "missing-aadhar") {
+            auditMatch = (!s.aadhar);
+          } else if (audit === "missing-phone") {
+            auditMatch = (!s.f_phone && !s.m_phone);
+          } else if (audit === "bus-students") {
+            auditMatch = (!!s.bus_route);
+          } else if (audit === "has-receipt") {
+            auditMatch = s.payments && s.payments.some(p => p.receipt_no);
+          } else if (audit === "no-receipt") {
+            auditMatch = !s.payments || s.payments.every(p => !p.receipt_no);
+          } else if (audit === "fully-paid") {
+            auditMatch = s.committed_fee > 0 ? (s.total_paid >= s.committed_fee) : (s.total_paid > 0);
+          } else if (audit === "partially-paid") {
+            auditMatch = s.committed_fee > 0 && s.total_paid > 0 && s.total_paid < s.committed_fee;
+          } else if (audit === "not-paid") {
+            auditMatch = (s.total_paid === 0);
+          } else if (audit === "name-duplicates") {
+            const normName = s.name.replace(/[\s\.]/g, "").toUpperCase();
+            auditMatch = (nameFreq[normName] > 1);
+          } else if (audit === "unique-names") {
+            const normName = s.name.replace(/[\s\.]/g, "").toUpperCase();
+            auditMatch = (studentsData.indexOf(s) === studentsData.findIndex(st => st.name.replace(/[\s\.]/g, "").toUpperCase() === normName));
+          }
+          
+          return searchMatch && receiptMatch && branchMatch && classMatch && auditMatch;
+        });
+        
+      } else if (currentViewMode === "payment") {
+        // Compile all payment rows first
+        let paymentList = [];
+        studentsData.forEach(s => {
+          if (s.payments) {
+            s.payments.forEach(p => {
+              p.payments.forEach(([label, val]) => {
+                paymentList.push({
+                  uniqueKey: `${s.uniqueKey}_${p.sheet}_${p.row}_${label}`,
+                  studentID: s.id,
+                  studentKey: s.uniqueKey,
+                  studentName: s.name,
+                  studentClass: s.class,
+                  normalizedClass: s.normalized_class,
+                  branch: s.branch,
+                  date: p.date,
+                  receiptNo: p.receipt_no,
+                  sheet: p.sheet,
+                  label: label,
+                  amount: typeof val === "number" ? val : 0,
+                  rowNum: p.row,
+                  father: s.father,
+                  mother: s.mother,
+                  f_phone: s.f_phone,
+                  m_phone: s.m_phone,
+                  aadhar: s.aadhar,
+                  bus_route: s.bus_route
+                });
+              });
+            });
+          }
+        });
+        
+        filteredData = paymentList.filter(p => {
+          // Search filter: Student Name, Parent Names, Phone Numbers, Aadhaar, Sheet Name
+          let searchMatch = true;
+          if (search) {
+            const nameMatch = p.studentName.toUpperCase().includes(search);
+            const fatherMatch = p.father.toUpperCase().includes(search) || p.mother.toUpperCase().includes(search);
+            const phoneMatch = p.f_phone.includes(search) || p.m_phone.includes(search);
+            const aadharMatch = p.aadhar.includes(search);
+            const sheetMatch = p.sheet.toUpperCase().includes(search);
+            searchMatch = nameMatch || fatherMatch || phoneMatch || aadharMatch || sheetMatch;
+          }
+          
+          // Receipt match
+          let receiptMatch = true;
+          if (receiptSearch) {
+            receiptMatch = p.receiptNo && p.receiptNo.includes(receiptSearch);
+          }
+          
+          // Branch filter
+          let branchMatch = true;
+          if (branch) {
+            branchMatch = (p.branch === branch);
+          }
+          
+          // Class filter
+          let classMatch = true;
+          if (cls) {
+            classMatch = (p.normalizedClass === cls);
+          }
+          
+          // Audit filter
+          let auditMatch = true;
+          if (audit === "missing-aadhar") {
+            auditMatch = (!p.aadhar);
+          } else if (audit === "missing-phone") {
+            auditMatch = (!p.f_phone && !p.m_phone);
+          } else if (audit === "bus-students") {
+            auditMatch = (!!p.bus_route);
+          } else if (audit === "has-receipt") {
+            auditMatch = (!!p.receiptNo);
+          } else if (audit === "no-receipt") {
+            auditMatch = (!p.receiptNo);
+          } else if (audit === "fully-paid") {
+            const s = studentsData.find(st => st.uniqueKey === p.studentKey);
+            auditMatch = s && (s.committed_fee > 0 ? (s.total_paid >= s.committed_fee) : (s.total_paid > 0));
+          } else if (audit === "partially-paid") {
+            const s = studentsData.find(st => st.uniqueKey === p.studentKey);
+            auditMatch = s && (s.committed_fee > 0 && s.total_paid > 0 && s.total_paid < s.committed_fee);
+          } else if (audit === "not-paid") {
+            auditMatch = false; // Rows in payment mode always have a paid amount > 0
+          } else if (audit === "name-duplicates") {
+            const normName = p.studentName.replace(/[\s\.]/g, "").toUpperCase();
+            auditMatch = (nameFreq[normName] > 1);
+          } else if (audit === "unique-names") {
+            const normName = p.studentName.replace(/[\s\.]/g, "").toUpperCase();
+            const s = studentsData.find(st => st.uniqueKey === p.studentKey);
+            auditMatch = s && (studentsData.indexOf(s) === studentsData.findIndex(st => st.name.replace(/[\s\.]/g, "").toUpperCase() === normName));
+          }
+          
+          return searchMatch && receiptMatch && branchMatch && classMatch && auditMatch;
+        });
+        
+      } else if (currentViewMode === "aadhar") {
+        // Compile Aadhaar groups
+        let groups = {};
+        studentsData.forEach(s => {
+          const key = s.aadhar || "MISSING";
+          if (!groups[key]) {
+            groups[key] = {
+              uniqueKey: key,
+              aadhar: key,
+              students: [],
+              father: s.father,
+              mother: s.mother,
+              f_phone: s.f_phone,
+              m_phone: s.m_phone,
+              totalPaid: 0,
+              paymentsCount: 0
+            };
+          }
+          groups[key].students.push(s);
+          groups[key].totalPaid += s.total_paid;
+          if (s.payments) groups[key].paymentsCount += s.payments.length;
+          
+          // Merge details
+          if (!groups[key].father && s.father) groups[key].father = s.father;
+          if (!groups[key].mother && s.mother) groups[key].mother = s.mother;
+          if (!groups[key].f_phone && s.f_phone) groups[key].f_phone = s.f_phone;
+          if (!groups[key].m_phone && s.m_phone) groups[key].m_phone = s.m_phone;
+        });
+        
+        let aadharList = Object.values(groups);
+        
+        filteredData = aadharList.filter(g => {
+          // Search query match
+          let searchMatch = true;
+          if (search) {
+            const aadharMatch = g.aadhar.includes(search);
+            const studentNamesMatch = g.students.some(s => s.name.toUpperCase().includes(search));
+            const fatherMatch = g.father.toUpperCase().includes(search) || g.mother.toUpperCase().includes(search);
+            const phoneMatch = g.f_phone.includes(search) || g.m_phone.includes(search);
+            searchMatch = aadharMatch || studentNamesMatch || fatherMatch || phoneMatch;
+          }
+          
+          // Receipt match
+          let receiptMatch = true;
+          if (receiptSearch) {
+            receiptMatch = g.students.some(s => s.payments && s.payments.some(p => p.receipt_no && p.receipt_no.includes(receiptSearch)));
+          }
+          
+          // Branch match
+          let branchMatch = true;
+          if (branch) {
+            branchMatch = g.students.some(s => s.branch === branch);
+          }
+          
+          // Class match
+          let classMatch = true;
+          if (cls) {
+            classMatch = g.students.some(s => s.normalized_class === cls);
+          }
+          
+          // Audit match
+          let auditMatch = true;
+          if (audit === "no-payments") {
+            auditMatch = (g.totalPaid === 0);
+          } else if (audit === "has-payments") {
+            auditMatch = (g.totalPaid > 0);
+          } else if (audit === "missing-aadhar") {
+            auditMatch = (g.aadhar === "MISSING");
+          } else if (audit === "missing-phone") {
+            auditMatch = (!g.f_phone && !g.m_phone);
+          } else if (audit === "bus-students") {
+            auditMatch = g.students.some(s => !!s.bus_route);
+          } else if (audit === "has-receipt") {
+            auditMatch = g.students.some(s => s.payments && s.payments.some(p => p.receipt_no));
+          } else if (audit === "no-receipt") {
+            auditMatch = g.students.every(s => !s.payments || s.payments.every(p => !p.receipt_no));
+          } else if (audit === "fully-paid") {
+            auditMatch = g.students.every(s => s.committed_fee > 0 ? (s.total_paid >= s.committed_fee) : (s.total_paid > 0));
+          } else if (audit === "partially-paid") {
+            auditMatch = g.students.some(s => s.committed_fee > 0 && s.total_paid > 0 && s.total_paid < s.committed_fee);
+          } else if (audit === "not-paid") {
+            auditMatch = g.students.every(s => s.total_paid === 0);
+          } else if (audit === "name-duplicates") {
+            auditMatch = g.students.some(s => {
+              const normName = s.name.replace(/[\s\.]/g, "").toUpperCase();
+              return (nameFreq[normName] > 1);
+            });
+          } else if (audit === "unique-names") {
+            auditMatch = g.students.some(s => {
+              const normName = s.name.replace(/[\s\.]/g, "").toUpperCase();
+              return (studentsData.indexOf(s) === studentsData.findIndex(st => st.name.replace(/[\s\.]/g, "").toUpperCase() === normName));
+            });
+          }
+          
+          return searchMatch && receiptMatch && branchMatch && classMatch && auditMatch;
+        });
+      }
+      
+      page = 1; // Reset to page 1 on filter
+      updateDisplay();
+    }
+
+    function handleSort(column) {
+      if (sortColumn === column) {
+        sortOrder = (sortOrder === "asc") ? "desc" : "asc";
+      } else {
+        sortColumn = column;
+        sortOrder = "asc";
+      }
+      updateDisplay();
+    }
+
+    function sortData() {
+      filteredData.sort((a, b) => {
+        let valA, valB;
+        
+        if (currentViewMode === "student" || currentViewMode === "payment") {
+          valA = a[sortColumn];
+          valB = b[sortColumn];
+        } else if (currentViewMode === "aadhar") {
+          if (sortColumn === "studentsCount") {
+            valA = a.students.length;
+            valB = b.students.length;
+          } else {
+            valA = a[sortColumn];
+            valB = b[sortColumn];
+          }
+        }
+        
+        if (valA === undefined || valA === null) valA = "";
+        if (valB === undefined || valB === null) valB = "";
+        
+        // Handle string comparison
+        if (typeof valA === "string") valA = valA.toUpperCase();
+        if (typeof valB === "string") valB = valB.toUpperCase();
+        
+        if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+        if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    function renderTableHeaders() {
+      const header = document.getElementById("table-header");
+      if (!header) return;
+      
+      if (currentViewMode === "student") {
+        header.innerHTML = `
+          <tr class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <th class="py-5 px-6 w-12 text-center">
+              <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+            </th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('name')">Student Name <span id="sort-icon-name"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('class')">Class <span id="sort-icon-class"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('branch')">Branch <span id="sort-icon-branch"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('father')">Parents <span id="sort-icon-father"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('f_phone')">Primary Phone <span id="sort-icon-f_phone"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('aadhar')">Aadhaar Card <span id="sort-icon-aadhar"></span></th>
+            <th class="py-5 px-4">Address / Bus Stop</th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors text-right pr-6" onclick="handleSort('total_paid')">Total Paid <span id="sort-icon-total_paid"></span></th>
+            <th class="py-5 px-6 text-center">Actions</th>
+          </tr>
+        `;
+      } else if (currentViewMode === "payment") {
+        header.innerHTML = `
+          <tr class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <th class="py-5 px-6 w-12 text-center">
+              <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+            </th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('studentName')">Student Name <span id="sort-icon-studentName"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('studentClass')">Class <span id="sort-icon-studentClass"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('branch')">Branch <span id="sort-icon-branch"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('date')">Payment Date <span id="sort-icon-date"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('receiptNo')">Receipt No <span id="sort-icon-receiptNo"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('sheet')">Source Sheet <span id="sort-icon-sheet"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('label')">Payment Mode/Label <span id="sort-icon-label"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors text-right pr-6" onclick="handleSort('amount')">Amount <span id="sort-icon-amount"></span></th>
+          </tr>
+        `;
+      } else if (currentViewMode === "aadhar") {
+        header.innerHTML = `
+          <tr class="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('aadhar')">Aadhaar Number <span id="sort-icon-aadhar"></span></th>
+            <th class="py-5 px-4">Associated Students</th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('father')">Parents <span id="sort-icon-father"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors" onclick="handleSort('f_phone')">Phone <span id="sort-icon-f_phone"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors text-center" onclick="handleSort('studentsCount')">Students Count <span id="sort-icon-studentsCount"></span></th>
+            <th class="py-5 px-4 cursor-pointer hover:text-indigo-600 transition-colors text-right pr-6" onclick="handleSort('totalPaid')">Total Paid <span id="sort-icon-totalPaid"></span></th>
+          </tr>
+        `;
+      }
+    }
+
+    function updateSortIcons() {
+      // Clear icons
+      const cols = ["name", "class", "branch", "total_paid", "studentName", "studentClass", "date", "receiptNo", "sheet", "label", "amount", "aadhar", "father", "f_phone", "studentsCount", "totalPaid"];
+      cols.forEach(c => {
+        const el = document.getElementById(`sort-icon-${c}`);
+        if (el) el.textContent = "";
+      });
+      
+      const arrow = sortOrder === "asc" ? " 🔼" : " 🔽";
+      const activeIcon = document.getElementById(`sort-icon-${sortColumn}`);
+      if (activeIcon) activeIcon.textContent = arrow;
+    }
+
+    function updateDisplay() {
+      // Sort first
+      sortData();
+      renderTableHeaders();
+      updateSortIcons();
+      
+      const total = filteredData.length;
+      document.getElementById("filtered-count").textContent = total;
+      
+      // Paginate
+      const totalPages = Math.ceil(total / limit) || 1;
+      if (page > totalPages) page = totalPages;
+      
+      const start = (page - 1) * limit;
+      const end = Math.min(start + limit, total);
+      
+      document.getElementById("page-num").textContent = page;
+      document.getElementById("page-total").textContent = totalPages;
+      document.getElementById("btn-prev").disabled = (page === 1);
+      document.getElementById("btn-next").disabled = (page === totalPages);
+      
+      document.getElementById("table-showing-start").textContent = total === 0 ? 0 : start + 1;
+      document.getElementById("table-showing-end").textContent = end;
+      document.getElementById("table-showing-total").textContent = total;
+      
+      const tbody = document.getElementById("table-body");
+      tbody.innerHTML = "";
+      
+      const pageData = filteredData.slice(start, end);
+      
+      if (pageData.length === 0) {
+        const spanCols = currentViewMode === "student" ? 10 : (currentViewMode === "payment" ? 9 : 6);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${spanCols}" class="py-12 text-center text-slate-400 italic font-medium">
+              No matching records found.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      if (currentViewMode === "student") {
+        pageData.forEach(s => {
+          const isChecked = selectedKeys.has(s.uniqueKey);
+          
+          // Parents Text & Inline Addition
+          let parentsText = "";
+          if (s.father && s.mother) {
+            parentsText = `F: ${s.father}<br>M: ${s.mother}`;
+          } else if (s.father) {
+            parentsText = `F: ${s.father}<br><input type="text" placeholder="+ Mother Name" onchange="saveStudentOverride('${s.uniqueKey}', 'mother', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-medium mt-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />`;
+          } else if (s.mother) {
+            parentsText = `<input type="text" placeholder="+ Father Name" onchange="saveStudentOverride('${s.uniqueKey}', 'father', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-medium mb-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" /><br>M: ${s.mother}`;
+          } else {
+            parentsText = `
+              <div class="flex flex-col gap-1">
+                <input type="text" placeholder="+ Father Name" onchange="saveStudentOverride('${s.uniqueKey}', 'father', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />
+                <input type="text" placeholder="+ Mother Name" onchange="saveStudentOverride('${s.uniqueKey}', 'mother', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />
+              </div>
+            `;
+          }
+          
+          // Phone Text & Inline Addition
+          let phoneText = "";
+          if (s.f_phone && s.m_phone) {
+            phoneText = `F: ${s.f_phone}<br>M: ${s.m_phone}`;
+          } else if (s.f_phone) {
+            phoneText = `F: ${s.f_phone}<br><input type="text" placeholder="+ Mother Phone" onchange="saveStudentOverride('${s.uniqueKey}', 'm_phone', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-semibold font-mono mt-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />`;
+          } else if (s.m_phone) {
+            phoneText = `<input type="text" placeholder="+ Father Phone" onchange="saveStudentOverride('${s.uniqueKey}', 'f_phone', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-semibold font-mono mb-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" /><br>M: ${s.m_phone}`;
+          } else {
+            phoneText = `
+              <div class="flex flex-col gap-1">
+                <input type="text" placeholder="+ Father Phone" onchange="saveStudentOverride('${s.uniqueKey}', 'f_phone', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-semibold font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />
+                <input type="text" placeholder="+ Mother Phone" onchange="saveStudentOverride('${s.uniqueKey}', 'm_phone', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 text-[10px] w-full font-semibold font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />
+              </div>
+            `;
+          }
+          
+          // Aadhaar Text & Inline Addition
+          let aadharText = "";
+          if (s.aadhar) {
+            aadharText = `<span class="font-mono">${s.aadhar}</span>`;
+          } else {
+            aadharText = `<input type="text" placeholder="+ Add Aadhaar" onchange="saveStudentOverride('${s.uniqueKey}', 'aadhar', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1.5 py-1 text-[10px] w-28 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />`;
+          }
+          
+          // Address / Bus Stop Text & Inline Addition
+          let addressText = "";
+          if (s.bus_route) {
+            addressText = `<span class="text-indigo-600 font-bold">🚍 ${s.bus_route}</span><br><span class="text-slate-400 text-[10px]">${s.pickup_point || "No Stop"}</span>`;
+          } else if (s.address) {
+            addressText = s.address;
+          } else {
+            addressText = `<input type="text" placeholder="+ Add Address" onchange="saveStudentOverride('${s.uniqueKey}', 'address', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1.5 py-1 text-[10px] w-full max-w-[150px] focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all" />`;
+          }
+          
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-50/80 transition-colors duration-150";
+          row.innerHTML = `
+            <td class="py-4 px-6 text-center">
+              <input type="checkbox" onclick="toggleSelectRow(this, '${s.uniqueKey}')" ${isChecked ? "checked" : ""} class="row-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+            </td>
+            <td class="py-4 px-4 font-outfit text-[13px] font-bold text-slate-900 cursor-pointer hover:text-indigo-600 hover:underline transition-colors" onclick="viewStudentDetails('${s.uniqueKey}')">${s.name}</td>
+            <td class="py-4 px-4">${s.class}</td>
+            <td class="py-4 px-4"><span class="px-2 py-1 text-[10px] font-extrabold rounded-md ${getBranchBadgeClass(s.branch)}">${s.branch}</span></td>
+            <td class="py-4 px-4 font-medium text-slate-500 leading-normal">${parentsText}</td>
+            <td class="py-4 px-4 font-mono text-[11px] font-semibold text-slate-500 leading-normal">${phoneText}</td>
+            <td class="py-4 px-4 font-mono text-[11px] text-slate-500">${aadharText}</td>
+            <td class="py-4 px-4 leading-normal font-medium text-slate-500 max-w-[200px] truncate">${addressText}</td>
+            <td class="py-4 px-4 text-right pr-6 font-outfit text-sm font-black text-emerald-600">Rs. ${s.total_paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            <td class="py-4 px-6 text-center">
+              <button onclick="viewStudentDetails('${s.uniqueKey}')" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-[10px] font-extrabold text-indigo-600 transition-colors shadow-sm active:scale-95">
+                🔍 Ledger
+              </button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+        
+      } else if (currentViewMode === "payment") {
+        pageData.forEach(p => {
+          const isChecked = selectedKeys.has(p.uniqueKey);
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-50/80 transition-colors duration-150";
+          row.innerHTML = `
+            <td class="py-4 px-6 text-center">
+              <input type="checkbox" onclick="toggleSelectRow(this, '${p.uniqueKey}')" ${isChecked ? "checked" : ""} class="row-checkbox w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+            </td>
+            <td class="py-4 px-4 font-outfit text-[13px] font-bold text-slate-900 cursor-pointer hover:text-indigo-600 hover:underline transition-colors" onclick="viewStudentDetails('${p.studentKey}')">${p.studentName}</td>
+            <td class="py-4 px-4">${p.studentClass || '-'}</td>
+            <td class="py-4 px-4"><span class="px-2 py-1 text-[10px] font-extrabold rounded-md ${getBranchBadgeClass(p.branch)}">${p.branch}</span></td>
+            <td class="py-4 px-4 font-mono text-[11px]">${p.date || '-'}</td>
+            <td class="py-4 px-4 font-mono text-[11px]">
+              <input type="text" value="${p.receiptNo || ''}" onchange="saveReceiptOverride('${p.studentKey}', '${p.sheet}', '${p.rowNum}', this.value)" class="bg-slate-50 hover:bg-white border border-slate-200 focus:border-indigo-500 rounded px-1.5 py-0.5 text-xs w-28 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-mono font-bold" placeholder="Add Receipt No..." />
+            </td>
+            <td class="py-4 px-4 font-medium text-slate-500">${p.sheet}</td>
+            <td class="py-4 px-4 text-slate-500">${p.label}</td>
+            <td class="py-4 px-4 text-right pr-6 font-outfit text-sm font-black text-emerald-600">Rs. ${p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          `;
+          tbody.appendChild(row);
+        });
+        
+      } else if (currentViewMode === "aadhar") {
+        pageData.forEach(g => {
+          const stuListHtml = g.students.map(s => `
+            <div class="mb-1">
+              <span class="font-bold text-slate-900 cursor-pointer hover:text-indigo-600 hover:underline transition-colors" onclick="viewStudentDetails('${s.uniqueKey}')">${s.name}</span> 
+              <span class="text-[10px] text-slate-400">(${s.class} | ${s.branch})</span>
+            </div>
+          `).join("");
+          
+          let phoneText = "None";
+          if (g.f_phone && g.m_phone) phoneText = `F: ${g.f_phone}<br>M: ${g.m_phone}`;
+          else if (g.f_phone) phoneText = `F: ${g.f_phone}`;
+          else if (g.m_phone) phoneText = `M: ${g.m_phone}`;
+          
+          let parentsText = "None";
+          if (g.father && g.mother) parentsText = `F: ${g.father}<br>M: ${g.mother}`;
+          else if (g.father) parentsText = `F: ${g.father}`;
+          else if (g.mother) parentsText = `M: ${g.mother}`;
+          
+          const aadharDisplay = g.aadhar === "MISSING" ? '<span class="text-rose-500 font-bold">Missing Aadhaar</span>' : g.aadhar;
+          
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-50/80 transition-colors duration-150";
+          row.innerHTML = `
+            <td class="py-4 px-4 font-mono text-[11px] font-bold text-slate-900">${aadharDisplay}</td>
+            <td class="py-4 px-4 leading-normal font-medium">${stuListHtml}</td>
+            <td class="py-4 px-4 font-medium text-slate-500 leading-normal">${parentsText}</td>
+            <td class="py-4 px-4 font-mono text-[11px] font-semibold text-slate-500 leading-normal">${phoneText}</td>
+            <td class="py-4 px-4 text-center text-sm font-black text-slate-950">${g.students.length}</td>
+            <td class="py-4 px-4 text-right pr-6 font-outfit text-sm font-black text-emerald-600">Rs. ${g.totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+      
+      updateSelectionBanner();
+    }
+
+    function getBranchBadgeClass(branch) {
+      if (branch === "RCB") return "bg-blue-50 text-blue-700 border border-blue-100";
+      if (branch === "SNB") return "bg-purple-50 text-purple-700 border border-purple-100";
+      if (branch === "MNB") return "bg-amber-50 text-amber-700 border border-amber-100";
+      return "bg-slate-50 text-slate-600 border border-slate-100";
+    }
+
+    function changePage(direction) {
+      page += direction;
+      updateDisplay();
+    }
+
+    function toggleSelectRow(checkbox, key) {
+      if (checkbox.checked) {
+        selectedKeys.add(key);
+      } else {
+        selectedKeys.delete(key);
+        document.getElementById("select-all").checked = false;
+      }
+      updateSelectionBanner();
+    }
+
+    function toggleSelectAll(masterCheckbox) {
+      const checkboxes = document.querySelectorAll(".row-checkbox");
+      const currentStart = (page - 1) * limit;
+      const currentEnd = Math.min(currentStart + limit, filteredData.length);
+      const pageKeys = filteredData.slice(currentStart, currentEnd).map(item => item.uniqueKey);
+      
+      checkboxes.forEach((cb, idx) => {
+        cb.checked = masterCheckbox.checked;
+        const key = pageKeys[idx];
+        if (key) {
+          if (masterCheckbox.checked) selectedKeys.add(key);
+          else selectedKeys.delete(key);
+        }
+      });
+      updateSelectionBanner();
+    }
+
+    function updateSelectionBanner() {
+      const banner = document.getElementById("selection-banner");
+      const countEl = document.getElementById("selection-count");
+      
+      if (selectedKeys.size > 0) {
+        banner.classList.remove("hidden");
+        countEl.textContent = selectedKeys.size;
+      } else {
+        banner.classList.add("hidden");
+      }
+    }
+
+    function viewStudentDetails(key) {
+      const student = studentsData.find(s => s.uniqueKey === key);
+      if (!student) return;
+      
+      // Populate labels
+      document.getElementById("modal-student-name").textContent = student.name;
+      document.getElementById("modal-student-class").textContent = `${student.class} | Branch: ${student.branch}`;
+      document.getElementById("modal-id").textContent = student.id || "Not Available";
+      
+      // Aadhaar Card
+      if (student.aadhar) {
+        document.getElementById("modal-aadhar").innerHTML = `<span class="font-mono">${student.aadhar}</span>`;
+      } else {
+        document.getElementById("modal-aadhar").innerHTML = `<input type="text" placeholder="Add Aadhaar..." onchange="saveStudentOverrideAndRefreshModal('${student.uniqueKey}', 'aadhar', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-full max-w-[180px] focus:outline-none" />`;
+      }
+      
+      // Father Name
+      if (student.father) {
+        document.getElementById("modal-father").textContent = student.father;
+      } else {
+        document.getElementById("modal-father").innerHTML = `<input type="text" placeholder="Add Father Name..." onchange="saveStudentOverrideAndRefreshModal('${student.uniqueKey}', 'father', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-full max-w-[180px] focus:outline-none" />`;
+      }
+      
+      // Mother Name
+      if (student.mother) {
+        document.getElementById("modal-mother").textContent = student.mother;
+      } else {
+        document.getElementById("modal-mother").innerHTML = `<input type="text" placeholder="Add Mother Name..." onchange="saveStudentOverrideAndRefreshModal('${student.uniqueKey}', 'mother', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-full max-w-[180px] focus:outline-none" />`;
+      }
+      
+      // Father Phone
+      if (student.f_phone) {
+        document.getElementById("modal-father-phone").innerHTML = `<span class="font-mono">${student.f_phone}</span>`;
+      } else {
+        document.getElementById("modal-father-phone").innerHTML = `<input type="text" placeholder="Add Father Phone..." onchange="saveStudentOverrideAndRefreshModal('${student.uniqueKey}', 'f_phone', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-full max-w-[180px] focus:outline-none font-mono" />`;
+      }
+      
+      // Mother Phone
+      if (student.m_phone) {
+        document.getElementById("modal-mother-phone").innerHTML = `<span class="font-mono">${student.m_phone}</span>`;
+      } else {
+        document.getElementById("modal-mother-phone").innerHTML = `<input type="text" placeholder="Add Mother Phone..." onchange="saveStudentOverrideAndRefreshModal('${student.uniqueKey}', 'm_phone', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-full max-w-[180px] focus:outline-none font-mono" />`;
+      }
+      
+      // Home Address
+      if (student.address) {
+        document.getElementById("modal-address").textContent = student.address;
+      } else {
+        document.getElementById("modal-address").innerHTML = `<input type="text" placeholder="Add Address..." onchange="saveStudentOverrideAndRefreshModal('${student.uniqueKey}', 'address', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-full focus:outline-none" />`;
+      }
+      
+      document.getElementById("modal-branch").textContent = student.branch;
+      document.getElementById("modal-pickup").textContent = student.bus_route ? `${student.pickup_point} (${student.bus_route})` : "No Bus Assignment";
+      document.getElementById("modal-committed").textContent = student.committed_fee > 0 ? "Rs. " + student.committed_fee.toLocaleString() : "Not Listed";
+      document.getElementById("modal-total-paid").textContent = "Rs. " + student.total_paid.toLocaleString();
+      document.getElementById("modal-sources").textContent = student.source;
+      
+      // Populate payment logs
+      const tbody = document.getElementById("modal-payment-rows");
+      tbody.innerHTML = "";
+      
+      if (!student.payments || student.payments.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-slate-400 italic">
+              No payments transacted in this registry session.
+            </td>
+          </tr>
+        `;
+      } else {
+        student.payments.forEach(p => {
+          const paysStr = p.payments.map(([label, val]) => {
+            if (typeof val === "number") return `Rs. ${val.toLocaleString()} (${label})`;
+            return `${val} (${label})`;
+          }).join(", ");
+          
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-100/50 transition-colors";
+          row.innerHTML = `
+            <td class="py-3 px-4 font-mono font-medium">${p.date || '-'}</td>
+            <td class="py-3 px-4 font-mono">
+              <input type="text" value="${p.receipt_no || ''}" onchange="saveReceiptOverride('${student.uniqueKey}', '${p.sheet}', '${p.row}', this.value)" class="bg-white border border-slate-200 focus:border-indigo-500 rounded px-2 py-0.5 text-xs w-28 text-slate-800 focus:outline-none font-bold font-mono" placeholder="Add Receipt No..." />
+            </td>
+            <td class="py-3 px-4">${p.sheet}</td>
+            <td class="py-3 px-4 font-bold text-slate-800">${p.name}</td>
+            <td class="py-3 px-4">${p.class || '-'}</td>
+            <td class="py-3 px-4 text-right pr-6 font-bold text-emerald-600">${paysStr}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+      
+      // Open modal
+      document.getElementById("payment-modal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("payment-modal").classList.add("hidden");
+    }
+
+    function exportProfiles() {
+      let targetStudents = [];
+      
+      if (currentViewMode === "student") {
+        let targets = selectedKeys.size > 0 
+          ? studentsData.filter(s => selectedKeys.has(s.uniqueKey)) 
+          : [...filteredData];
+        targetStudents = targets;
+      } else if (currentViewMode === "payment") {
+        let targets = selectedKeys.size > 0
+          ? filteredData.filter(p => selectedKeys.has(p.uniqueKey))
+          : [...filteredData];
+        let studentKeys = new Set(targets.map(p => p.studentKey));
+        targetStudents = studentsData.filter(s => studentKeys.has(s.uniqueKey));
+      } else if (currentViewMode === "aadhar") {
+        let targets = [...filteredData]; 
+        targets.forEach(g => {
+          targetStudents.push(...g.students);
+        });
+      }
+      
+      if (targetStudents.length === 0) {
+        alert("No student profiles found to export!");
+        return;
+      }
+      
+      // Generate CSV content
+      const headers = [
+        "Student ID", "Student Name", "Class", "Section", "Branch", 
+        "Father Name", "Father Phone", "Mother Name", "Mother Phone", 
+        "Aadhaar Number", "Address", "Bus Route", "Pickup Stop", "Committed Fee", "Total Paid"
+      ];
+      
+      let csvContent = "\uFEFF"; // Add UTF-8 BOM so Excel opens it with correct formatting
+      csvContent += headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\r\n";
+      
+      targetStudents.forEach(s => {
+        const row = [
+          s.id, s.name, s.class, s.section, s.branch,
+          s.father, s.f_phone, s.mother, s.m_phone,
+          s.aadhar, s.address, s.bus_route, s.pickup_point, s.committed_fee, s.total_paid
+        ];
+        csvContent += row.map(v => {
+          const str = (v === null || v === undefined) ? "" : String(v);
+          return `"${str.replace(/"/g, '""')}"`;
+        }).join(",") + "\r\n";
+      });
+      
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.setAttribute("download", `Student_Registry_Profiles_${timestamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportPayments() {
+      let csvContent = "\uFEFF"; // Add UTF-8 BOM
+      const headers = [
+        "Student ID", "Student Name", "Class", "Branch", "Father Name", "Father Phone", "Aadhaar Number",
+        "Payment Date", "Receipt No", "Source Sheet", "Payment Mode/Label", "Amount", "Row"
+      ];
+      csvContent += headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\r\n";
+      
+      if (currentViewMode === "payment") {
+        let targets = selectedKeys.size > 0
+          ? filteredData.filter(p => selectedKeys.has(p.uniqueKey))
+          : [...filteredData];
+          
+        if (targets.length === 0) {
+          alert("No payments found to export!");
+          return;
+        }
+        
+        targets.forEach(p => {
+          const row = [
+            p.studentID || "", p.studentName, p.studentClass, p.branch, p.father, p.f_phone, p.aadhar,
+            p.date, p.receiptNo, p.sheet, p.label, p.amount, p.rowNum
+          ];
+          csvContent += row.map(v => {
+            const str = (v === null || v === undefined) ? "" : String(v);
+            return `"${str.replace(/"/g, '""')}"`;
+          }).join(",") + "\r\n";
+        });
+        
+      } else {
+        let targetStudents = [];
+        if (currentViewMode === "student") {
+          targetStudents = selectedKeys.size > 0
+            ? studentsData.filter(s => selectedKeys.has(s.uniqueKey))
+            : [...filteredData];
+        } else if (currentViewMode === "aadhar") {
+          let targets = [...filteredData];
+          targets.forEach(g => {
+            targetStudents.push(...g.students);
+          });
+        }
+        
+        let paymentCount = 0;
+        targetStudents.forEach(s => {
+          if (s.payments) {
+            s.payments.forEach(p => {
+              p.payments.forEach(([label, val]) => {
+                paymentCount++;
+                const amount = typeof val === "number" ? val : 0;
+                const row = [
+                  s.id, s.name, s.class, s.branch, s.father, s.f_phone, s.aadhar,
+                  p.date, p.receipt_no, p.sheet, label, amount, p.row
+                ];
+                csvContent += row.map(v => {
+                  const str = (v === null || v === undefined) ? "" : String(v);
+                  return `"${str.replace(/"/g, '""')}"`;
+                }).join(",") + "\r\n";
+              });
+            });
+          }
+        });
+        
+        if (paymentCount === 0) {
+          alert("No transacted payments found for the selected students!");
+          return;
+        }
+      }
+      
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.setAttribute("download", `Student_Payments_Ledger_${timestamp}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>

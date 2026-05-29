@@ -441,7 +441,11 @@ export async function resetUserPassword(identifier: string, newPassword?: string
 
         await prisma.staff.update({
             where: identifier.includes('@') ? { email: identifier } : { id: identifier },
-            data: { passwordHash }
+            data: { 
+                passwordHash,
+                mobilePasswordUsed: false,
+                mobileSessionToken: null
+            }
         });
 
         return { success: true, message: `Password reset to: ${password}` };

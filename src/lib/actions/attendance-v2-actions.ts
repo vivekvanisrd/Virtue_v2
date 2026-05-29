@@ -375,3 +375,73 @@ export async function submitFingerprintAttendanceAction(pidBlock: string, machin
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * GEOFENCING CONFIGURATION ACTIONS
+ * --------------------------------
+ */
+
+export async function getBranchGeofenceSettingsAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED");
+
+    const branch = await prisma.branch.findUnique({
+      where: { id: identity.branchId },
+      select: { metadata: true }
+    });
+
+    if (!branch) throw new Error("Branch not found.");
+
+    const meta = (branch.metadata || {}) as any;
+
+    return {
+      success: true,
+      data: {
+        latitude: meta.latitude || "",
+        longitude: meta.longitude || "",
+        geofenceRadius: meta.geofenceRadius !== undefined ? parseInt(meta.geofenceRadius, 10) : 200,
+        isGeofenceEnabled: meta.isGeofenceEnabled !== undefined ? !!meta.isGeofenceEnabled : false
+      }
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateBranchGeofenceSettingsAction(data: {
+  latitude: string;
+  longitude: string;
+  geofenceRadius: number;
+  isGeofenceEnabled: boolean;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED");
+
+    const branch = await prisma.branch.findUnique({
+      where: { id: identity.branchId }
+    });
+
+    if (!branch) throw new Error("Branch not found.");
+
+    const existingMetadata = (branch.metadata || {}) as any;
+    const updatedMetadata = {
+      ...existingMetadata,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      geofenceRadius: data.geofenceRadius,
+      isGeofenceEnabled: data.isGeofenceEnabled
+    };
+
+    const result = await prisma.branch.update({
+      where: { id: identity.branchId },
+      data: { metadata: updatedMetadata }
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true, data: result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

@@ -129,7 +129,11 @@ export function EnquiryForm() {
             <div className="flex flex-col gap-1"><input {...register("studentLastName")} placeholder="Last Name" className={inputCls} /></div>
             <div className="flex flex-col gap-1"><select {...register("requestedClass")} className={inputCls} defaultValue="">
               <option value="" disabled>Grade Applying For *</option>
-              {["Nursery", "LKG", "UKG", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5"].map(c => (
+              {[
+                "Play Group", "Nursery", "LKG", "UKG", "1st Grade", "2nd Grade", 
+                "3rd Grade", "4th Grade", "5th Grade", "6th Grade", "7th Grade", 
+                "8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"
+              ].map(c => (
                 <option key={c} value={c} className="text-black">{c}</option>
               ))}
             </select>{errors.requestedClass && <span className="text-[10px] text-rose-400 font-bold px-1">{errors.requestedClass.message}</span>}</div>

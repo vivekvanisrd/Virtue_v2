@@ -1,0 +1,182 @@
+[
+  {
+    "date": "2025-09-01",
+    "name": "K. SAIPRANEETH",
+    "class": "IV",
+    "receipt_no": "5678",
+    "payments": [["CASH", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-09-01",
+    "name": "K. BAVISHYA",
+    "class": "III",
+    "receipt_no": "5679",
+    "payments": [["CASH", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-09-01",
+    "name": "K. GEETHIKASAI",
+    "class": "VII",
+    "receipt_no": "5680",
+    "payments": [["CASH", 30000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-09-01",
+    "name": "C.H. KOMALI",
+    "class": "VI",
+    "receipt_no": "5681",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-09-01",
+    "name": "C.H. SOUKYA",
+    "class": "III",
+    "receipt_no": "5682",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-09-01",
+    "name": "M. SHASRA",
+    "class": "1ST",
+    "receipt_no": "5683",
+    "payments": [["ONLINE", 15000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-09-01",
+    "name": "C. VARNIKAPRIYA",
+    "class": "3RD",
+    "receipt_no": "5684",
+    "payments": [["ONLINE", 11000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-09-01",
+    "name": "K. THRISHA",
+    "class": "2ND",
+    "receipt_no": "5685",
+    "payments": [["ONLINE", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-09-01",
+    "name": "C.H. SHANVITHA",
+    "class": "3RD",
+    "receipt_no": "5686",
+    "payments": [["CASH", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-09-01",
+    "name": "C.H. VEDASRI",
+    "class": "2ND",
+    "receipt_no": "5687",
+    "payments": [["CASH", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-09-01",
+    "name": "M. HARSHITH",
+    "class": "5TH",
+    "receipt_no": "5688",
+    "payments": [["CASH", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-09-01",
+    "name": "M. SHASRA",
+    "class": "3RD",
+    "receipt_no": "5110",
+    "payments": [["ONLINE", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-09-02",
+    "name": "K. ABHINAV",
+    "class": "LKG",
+    "receipt_no": "5689",
+    "payments": [["ONLINE", 2500]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-09-02",
+    "name": "C. PRAJWALA",
+    "class": "2ND",
+    "receipt_no": "5690",
+    "payments": [["CASH", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2025-09-02",
+    "name": "P. SHIVANK",
+    "class": "3RD",
+    "receipt_no": "5691",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2025-09-02",
+    "name": "P. KARTHIKEY",
+    "class": "8TH",
+    "receipt_no": "5692",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2025-09-02",
+    "name": "M. ABHINAYSRI",
+    "class": "UKG",
+    "receipt_no": "5693",
+    "payments": [["ONLINE", 25000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 17
+  },
+  {
+    "date": "2025-09-02",
+    "name": "C. PRAJWALA",
+    "class": "2ND",
+    "receipt_no": "5111",
+    "payments": [["CASH", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 18
+  },
+  {
+    "date": "2025-09-02",
+    "name": "P. KARTHIKEY",
+    "class": "8TH",
+    "receipt_no": "5112",
+    "payments": [["ONLINE", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 19
+  },
+  {
+    "date": "2025-09-02",
+    "name": "P. SHIVANK",
+    "class": "3RD",
+    "receipt_no": "5113",
+    "payments": [["ONLINE", 5000]],
+    "sheet": "RCB_Sep_2025_26.pdf",
+    "row": 20
+  }
+]

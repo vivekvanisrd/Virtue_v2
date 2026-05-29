@@ -110,6 +110,17 @@ export async function signInAction(data: { identifier: string; password: string 
  * NATIVE SIGN OUT: Clears the internal session cookie
  */
 export async function signOutAction() {
+    try {
+        const session = await verifySession();
+        if (session && session.staffId) {
+            await prisma.staff.update({
+                where: { id: session.staffId as string },
+                data: { mobileSessionToken: null }
+            });
+        }
+    } catch (err) {
+        console.error("Error clearing mobile session token on sign out:", err);
+    }
     (await cookies()).delete("v-session");
     revalidatePath("/");
     return { success: true };
@@ -185,6 +196,11 @@ export async function getSessionUserAction() {
 
         if (!staff) return { success: false, error: "Staff record not found." };
 
+        // Enforce single-device mobile lock if this is a mobile session
+        if (session.mobileSessionToken && staff.mobileSessionToken !== session.mobileSessionToken) {
+            return { success: false, error: "DEVICE_LOCK_ERROR" };
+        }
+
         // Get branch name
         let branchName = "Main Campus";
         try {
@@ -221,6 +237,32 @@ export async function getSessionUserAction() {
                 return checkIn && (checkIn.getHours() * 60 + checkIn.getMinutes()) > 555;
             }).length;
         } catch {}
+        // Check today's check-in status
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        let todayRecord = null;
+        try {
+            todayRecord = await prisma.staffAttendance.findFirst({
+                where: {
+                    staffId: staff.id,
+                    date: {
+                        gte: today,
+                        lt: tomorrow
+                    }
+                }
+            });
+        } catch {}
+
+        const todayStatus = todayRecord ? todayRecord.status : null;
+        const todayCheckIn = todayRecord && todayRecord.checkIn 
+            ? new Date(todayRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+            : null;
+        const todayCheckOut = todayRecord && todayRecord.checkOut
+            ? new Date(todayRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : null;
 
         return {
             success: true,
@@ -235,11 +277,93 @@ export async function getSessionUserAction() {
             stats: {
                 presentThisMonth: presentCount,
                 latesThisMonth: lateCount,
-                attendancePercent: Math.round((presentCount / (now.getDate() || 1)) * 100)
+                attendancePercent: Math.round((presentCount / (now.getDate() || 1)) * 100),
+                todayStatus,
+                todayCheckIn,
+                todayCheckOut
             }
         };
     } catch (e: any) {
         console.error("❌ [GET-SESSION-USER ERROR]", e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * GET RECENT KIOSK ATTENDANCE: Fetches today's last 5 successful punch-ins
+ */
+export async function getRecentKioskAttendanceAction() {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const records = await prisma.staffAttendance.findMany({
+            where: {
+                date: {
+                    gte: today,
+                    lt: tomorrow
+                },
+                status: "Present"
+            },
+            orderBy: {
+                checkIn: "desc"
+            },
+            take: 5,
+            include: {
+                staff: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        staffCode: true
+                    }
+                }
+            }
+        });
+
+        return {
+            success: true,
+            records: records.map((r: any) => ({
+                id: r.id,
+                name: `${r.staff.firstName} ${r.staff.lastName}`,
+                code: r.staff.staffCode,
+                time: r.checkIn ? new Date(r.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "---"
+            }))
+        };
+    } catch (e: any) {
+        console.error("❌ [GET-RECENT-KIOSK ERROR]", e);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * APPLY STAFF LEAVE: Provisions a pending LeaveRequest for staff
+ */
+export async function applyStaffLeaveAction(data: {
+    startDate: string;
+    endDate: string;
+    type: string;
+    reason: string;
+}) {
+    try {
+        const session = await verifySession();
+        if (!session) return { success: false, error: "No active session." };
+
+        const leave = await prisma.leaveRequest.create({
+            data: {
+                staffId: session.staffId as string,
+                startDate: new Date(data.startDate),
+                endDate: new Date(data.endDate),
+                type: data.type,
+                reason: data.reason,
+                status: "PENDING"
+            }
+        });
+
+        return { success: true, leave };
+    } catch (e: any) {
+        console.error("❌ [APPLY-LEAVE ERROR]", e);
         return { success: false, error: e.message };
     }
 }

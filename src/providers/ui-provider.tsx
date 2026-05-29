@@ -18,6 +18,13 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Register PWA service worker
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js")
+        .then((reg) => console.log("Service Worker registered successfully:", reg.scope))
+        .catch((err) => console.error("Service Worker registration failed:", err));
+    }
+
     // Load preferences
     const savedTheme = localStorage.getItem("ui-theme") || "pava-bright";
     const savedScale = parseFloat(localStorage.getItem("ui-font-scale") || "1.0");

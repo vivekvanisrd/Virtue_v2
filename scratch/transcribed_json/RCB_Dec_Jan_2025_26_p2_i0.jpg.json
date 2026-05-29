@@ -1,0 +1,394 @@
+[
+  {
+    "date": "2025-12-13",
+    "name": "P. YASHWANTH",
+    "class": "1ST",
+    "receipt_no": "5326",
+    "payments": [
+      [
+        "CASH",
+        7500
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-12-13",
+    "name": "P. YASHASWI",
+    "class": "1ST",
+    "receipt_no": "5327",
+    "payments": [
+      [
+        "CASH",
+        7500
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-12-13",
+    "name": "R. MANOGNA",
+    "class": "UKG",
+    "receipt_no": "5328",
+    "payments": [
+      [
+        "CASH",
+        6000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-12-15",
+    "name": "G. LAKNATHAN",
+    "class": "5TH",
+    "receipt_no": "5329",
+    "payments": [
+      [
+        "ONLINE",
+        13500
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-12-15",
+    "name": "G. PREETHIKA",
+    "class": "UKG",
+    "receipt_no": "5330",
+    "payments": [
+      [
+        "ONLINE",
+        13000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-12-15",
+    "name": "J. BHAVINI",
+    "class": "4TH",
+    "receipt_no": "5331",
+    "payments": [
+      [
+        "CASH",
+        10500
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-12-15",
+    "name": "J. GOUTHAM",
+    "class": "1ST",
+    "receipt_no": "5332",
+    "payments": [
+      [
+        "CASH",
+        10500
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-12-15",
+    "name": "S. VENNELA",
+    "class": "8TH",
+    "receipt_no": "5333",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-12-15",
+    "name": "S. NAVYA SREE",
+    "class": "2ND",
+    "receipt_no": "5334",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-12-15",
+    "name": "S. VISHWADEEP",
+    "class": "UKG",
+    "receipt_no": "5335",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-12-16",
+    "name": "N. SHREYANVI",
+    "class": "UKG",
+    "receipt_no": "5336",
+    "payments": [
+      [
+        "ONLINE",
+        6000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-12-16",
+    "name": "O. ANAGHYA",
+    "class": "3RD",
+    "receipt_no": "5337",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-12-16",
+    "name": "O. YASHWI",
+    "class": "UKG",
+    "receipt_no": "5338",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-12-16",
+    "name": "T. MANOJITH",
+    "class": "LKG",
+    "receipt_no": "5339",
+    "payments": [
+      [
+        "CASH",
+        4500
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2025-12-16",
+    "name": "B. ADWITH",
+    "class": "2ND",
+    "receipt_no": "5340",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2025-12-17",
+    "name": "S. SHANVI SREE",
+    "class": "4TH",
+    "receipt_no": "5341",
+    "payments": [
+      [
+        "ONLINE",
+        8000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2025-12-17",
+    "name": "S. HITESH KUMAR",
+    "class": "LKG",
+    "receipt_no": "5342",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 17
+  },
+  {
+    "date": "2025-12-18",
+    "name": "A. ANVAITH",
+    "class": "1ST",
+    "receipt_no": "5343",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 18
+  },
+  {
+    "date": "2025-12-18",
+    "name": "A. JIYANSH",
+    "class": "LKG",
+    "receipt_no": "5344",
+    "payments": [
+      [
+        "ONLINE",
+        8000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 19
+  },
+  {
+    "date": "2025-12-18",
+    "name": "M. BHAGYA",
+    "class": "LKG",
+    "receipt_no": "5345",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 20
+  },
+  {
+    "date": "2025-12-19",
+    "name": "G. PAVAN",
+    "class": "6TH",
+    "receipt_no": "5346",
+    "payments": [
+      [
+        "CASH",
+        3200
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 21
+  },
+  {
+    "date": "2025-12-19",
+    "name": "B. MANASWI",
+    "class": "1ST",
+    "receipt_no": "5347",
+    "payments": [
+      [
+        "CASH",
+        2000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 22
+  },
+  {
+    "date": "2025-12-20",
+    "name": "JOSHIKA",
+    "class": "4TH",
+    "receipt_no": "5348",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 23
+  },
+  {
+    "date": "2025-12-22",
+    "name": "N. SANJANA",
+    "class": "3RD",
+    "receipt_no": "5349",
+    "payments": [
+      [
+        "CASH",
+        20000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 24
+  },
+  {
+    "date": "2025-12-22",
+    "name": "N. SOWJANYA",
+    "class": "2ND",
+    "receipt_no": "5350",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 25
+  },
+  {
+    "date": "2025-12-22",
+    "name": "K. TRISHA",
+    "class": "3RD",
+    "receipt_no": "5351",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 26
+  },
+  {
+    "date": "2025-12-13",
+    "name": "J. GOWTHAM",
+    "class": "7TH",
+    "receipt_no": "5206",
+    "payments": [
+      [
+        "CASH (TRANSPORT)",
+        1000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 27
+  },
+  {
+    "date": "2025-12-13",
+    "name": "JOSHIKA",
+    "class": "V",
+    "receipt_no": "5207",
+    "payments": [
+      [
+        "CASH (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Dec Jan 2025 26.pdf",
+    "row": 28
+  }
+]

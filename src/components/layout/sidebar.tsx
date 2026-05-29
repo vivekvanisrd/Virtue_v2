@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useTabs, Tab } from "@/context/tab-context";
 import { useTenant } from "@/context/tenant-context";
 import { createClient } from "@/lib/supabase/client";
+import { signOutAction } from "@/lib/actions/auth-native";
 
 type MenuItem = {
   id: string;
@@ -429,7 +430,27 @@ export function Sidebar({
           })}
         </nav>
 
-        {/* Footer removed to allow undisturbed scroll */}
+        {/* Sign Out Button at the bottom of the sidebar */}
+        <div className={cn("p-4 border-t border-white/5 relative z-20 bg-sidebar-bg shrink-0", isCollapsed && "flex justify-center p-2")}>
+          <button
+            onClick={async () => {
+              try {
+                await signOutAction();
+              } catch (e) {
+                console.error("Sign out error:", e);
+              }
+              window.location.href = "/login";
+            }}
+            className={cn(
+              "flex items-center gap-3 w-full text-xs font-black text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors uppercase tracking-widest italic border border-rose-500/10 hover:border-rose-500/20 active:scale-95 transition-all duration-250",
+              isCollapsed ? "justify-center p-2.5 w-10 h-10 border-0 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20" : "px-4 py-3"
+            )}
+            title="Sign Out from System"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span className="truncate">Sign Out</span>}
+          </button>
+        </div>
       </aside>
     </>
   );

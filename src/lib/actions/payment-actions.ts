@@ -1,5 +1,6 @@
 "use server";
 
+import prisma from "@/lib/prisma";
 import { razorpay } from "@/lib/razorpay";
 import { getSovereignIdentity } from "../auth/backbone";
 
@@ -56,7 +57,7 @@ export async function createPaymentLinkAction(details: {
         email: details.email || undefined,
         contact: details.contact || undefined
       },
-      reference_id: details.studentId,
+      reference_id: `${details.studentId.slice(0, 20)}_${Date.now()}`,
       notify: {
         sms: true,
         email: true
@@ -92,5 +93,46 @@ export async function createPaymentLinkAction(details: {
       success: false, 
       error: `Razorpay: ${detailedError}`
     };
+  }
+}
+
+/**
+ * saveReceiptFeedbackAction
+ * 
+ * Appends parent feedback directly to the Collection database record JSON metadata.
+ */
+export async function saveReceiptFeedbackAction(
+  receiptNumber: string,
+  feedback: { rating: string; note?: string }
+) {
+  try {
+    const collection = await prisma.collection.findFirst({
+      where: { receiptNumber }
+    });
+    if (!collection) {
+      return { success: false, error: "Receipt not found." };
+    }
+
+    const currentAllocated = (collection.allocatedTo as Record<string, any>) || {};
+    const updatedAllocated = {
+      ...currentAllocated,
+      feedback: {
+        rating: feedback.rating,
+        note: feedback.note?.trim() || null,
+        submittedAt: new Date().toISOString()
+      }
+    };
+
+    await prisma.collection.update({
+      where: { id: collection.id },
+      data: {
+        allocatedTo: updatedAllocated
+      }
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[RECEIPT_FEEDBACK_ERROR]", err);
+    return { success: false, error: err.message || "Failed to save feedback." };
   }
 }

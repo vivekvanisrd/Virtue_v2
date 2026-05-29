@@ -1,0 +1,92 @@
+[
+  {
+    "date": "2025-07-15",
+    "name": "VARSHITH CHARY",
+    "class": "I",
+    "receipt_no": "5578",
+    "payments": [["ONLINE", 13000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-07-15",
+    "name": "MANIDEEP CHARY",
+    "class": "I",
+    "receipt_no": "5579",
+    "payments": [["ONLINE", 13000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-07-15",
+    "name": "A. ADVITH",
+    "class": "1ST",
+    "receipt_no": "5580",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-07-15",
+    "name": "A. JIYANSH",
+    "class": "LKG",
+    "receipt_no": "5581",
+    "payments": [["ONLINE", 7000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-07-15",
+    "name": "S. ADVIK",
+    "class": "IV",
+    "receipt_no": "5582",
+    "payments": [["ONLINE", 31000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-07-15",
+    "name": "CH. AKSHITH",
+    "class": "II",
+    "receipt_no": "5583",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-07-15",
+    "name": "CH. PRANEETH YADAV",
+    "class": "IV",
+    "receipt_no": "5584",
+    "payments": [["ONLINE", 10000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-07-15",
+    "name": "S. ADVIK",
+    "class": "IV",
+    "receipt_no": "5038",
+    "payments": [["ONLINE (T.F)", 8000]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-07-15",
+    "name": "CH. AKSHITH",
+    "class": "II",
+    "receipt_no": "5039",
+    "payments": [["ONLINE (T.F)", 2500]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-07-15",
+    "name": "CH. PRANEETH YADAV",
+    "class": "IV",
+    "receipt_no": "5040",
+    "payments": [["ONLINE (T.F)", 2500]],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 10
+  }
+]
