@@ -25,13 +25,46 @@ export async function POST(req: NextRequest) {
     if (event === "payment_link.paid") {
       const paymentLink = json.payload.payment_link.entity;
       const token = paymentLink.reference_id;
-      const paymentId = json.payload.payment.entity.id;
+      const payment = json.payload.payment?.entity;
+      const paymentId = payment?.id;
 
-      if (token) {
+      let method = "unknown";
+      let details = "";
+
+      if (payment) {
+        method = payment.method || "unknown";
+        if (method === "upi") {
+          const vpa = payment.vpa || "";
+          let app = "UPI";
+          if (vpa.includes("@okaxis") || vpa.includes("@okhdfcbank") || vpa.includes("@okicici") || vpa.includes("@oksbi")) {
+            app = "Google Pay";
+          } else if (vpa.includes("@ybl") || vpa.includes("@ibl") || vpa.includes("@axl")) {
+            app = "PhonePe";
+          } else if (vpa.includes("@paytm")) {
+            app = "Paytm";
+          }
+          details = `${app} (${vpa})`;
+        } else if (method === "card") {
+          const card = payment.card || {};
+          const brand = card.network || "Card";
+          const last4 = card.last4 || "";
+          details = `${brand} ending in ${last4}`;
+        } else if (method === "netbanking") {
+          details = payment.bank || "Netbanking";
+        } else if (method === "wallet") {
+          details = `${payment.wallet || "Wallet"} Wallet`;
+        } else {
+          details = method;
+        }
+      }
+
+      if (token && paymentId) {
         await supabase.from("fee_payment_links").update({
           status: "PAID",
           razorpay_payment_id: paymentId,
           paid_at: new Date().toISOString(),
+          payment_method: method,
+          payment_details: details,
         }).eq("token", token);
       }
     }

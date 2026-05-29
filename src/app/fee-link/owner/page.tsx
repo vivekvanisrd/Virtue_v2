@@ -8,6 +8,7 @@ type Record = {
   phone: string; amount: number; description: string | null; pending_items: string | null;
   razorpay_short_url: string | null; status: string; paid_at: string | null;
   feedback_rating: string | null; feedback_note: string | null; created_at: string;
+  razorpay_payment_id?: string | null; payment_method?: string | null; payment_details?: string | null;
 };
 
 type Summary = { total: number; paid: number; pending: number; totalAmount: number; collected: number };
@@ -15,12 +16,12 @@ type Summary = { total: number; paid: number; pending: number; totalAmount: numb
 const EMOJI: Record<string, string> = { GREAT: "😊 Great", OKAY: "😐 Okay", POOR: "😞 Poor" };
 
 function exportCSV(records: Record[]) {
-  const headers = ["Student Name","Parent Name","Phone","Amount","Status","Description","Pending Items","Created","Paid At","Feedback"];
+  const headers = ["Student Name","Parent Name","Phone","Amount","Status","Transaction ID","Payment Method","Payment Details","Description","Pending Items","Created","Paid At","Feedback"];
   const rows = records.map(r => [
     r.student_name, r.parent_name, r.phone, r.amount,
-    r.status, r.description || "", r.pending_items || "",
+    r.status, r.razorpay_payment_id || "", r.payment_method || "", r.payment_details || "", r.description || "", r.pending_items || "",
     new Date(r.created_at).toLocaleDateString("en-IN"),
-    r.paid_at ? new Date(r.paid_at).toLocaleDateString("en-IN") : "",
+    r.paid_at ? new Date(r.paid_at).toLocaleString("en-IN") : "",
     r.feedback_rating ? EMOJI[r.feedback_rating] || r.feedback_rating : "",
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,"'")}"`).join(",")).join("\n");
@@ -162,14 +163,14 @@ export default function OwnerPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-[#DDDDDD]">
-                  {["Student", "Parent", "Phone", "Amount", "Status", "Pending Items", "Feedback", "Created", "Paid At"].map(h => (
+                  {["Student", "Parent", "Phone", "Amount", "Status", "Transaction ID", "Payment Method", "Pending Items", "Feedback", "Created", "Paid At"].map(h => (
                     <th key={h} className="text-left px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#DDDDDD]/50">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={9} className="text-center py-12 text-slate-400">No records found</td></tr>
+                  <tr><td colSpan={11} className="text-center py-12 text-slate-400">No records found</td></tr>
                 ) : filtered.map(r => (
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-4 font-semibold text-slate-800 whitespace-nowrap">{r.student_name}</td>
@@ -180,6 +181,15 @@ export default function OwnerPage() {
                       {r.status === "PAID"
                         ? <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">✓ Paid</span>
                         : <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200">Pending</span>}
+                    </td>
+                    <td className="px-4 py-4 text-slate-500 font-mono text-xs whitespace-nowrap">{r.razorpay_payment_id || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-4 text-slate-600 text-xs whitespace-nowrap">
+                      {r.payment_method ? (
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-700 capitalize">{r.payment_method}</span>
+                          {r.payment_details && <span className="text-[10px] text-slate-400">{r.payment_details}</span>}
+                        </div>
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-4 py-4 max-w-[180px]">
                       {r.pending_items ? (
@@ -194,7 +204,13 @@ export default function OwnerPage() {
                       ) : <span className="text-slate-300 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-4 text-slate-400 text-xs whitespace-nowrap">{new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</td>
-                    <td className="px-4 py-4 text-emerald-600 text-xs whitespace-nowrap">{r.paid_at ? new Date(r.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" }) : "—"}</td>
+                    <td className="px-4 py-4 text-emerald-600 text-xs whitespace-nowrap">
+                      {r.paid_at ? (
+                        <span title={new Date(r.paid_at).toLocaleString("en-IN")}>
+                          {new Date(r.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}
+                        </span>
+                      ) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
