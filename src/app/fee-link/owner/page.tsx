@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Eye, EyeOff, TrendingUp, Users, CheckCircle2, Clock, BookOpen, Download, ArrowLeft } from "lucide-react";
+import { Lock, Eye, EyeOff, TrendingUp, Users, CheckCircle2, Clock, BookOpen, Download, ArrowLeft, X, Copy, ExternalLink, Check, FileText, IndianRupee } from "lucide-react";
 
 type PaymentLinkRecord = {
   id: string; token: string; student_name: string; parent_name: string;
@@ -39,6 +39,14 @@ export default function OwnerPage() {
   const [records, setRecords] = useState<PaymentLinkRecord[] | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedRecord, setSelectedRecord] = useState<PaymentLinkRecord | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  function handleCopy(text: string, field: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -172,7 +180,11 @@ export default function OwnerPage() {
                 {filtered.length === 0 ? (
                   <tr><td colSpan={8} className="text-center py-12 text-slate-400">No records found</td></tr>
                 ) : filtered.map(r => (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                  <tr 
+                    key={r.id} 
+                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    onClick={() => setSelectedRecord(r)}
+                  >
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-800">{r.student_name}</span>
@@ -238,6 +250,263 @@ export default function OwnerPage() {
           )}
         </div>
       </div>
+
+      {/* Transaction Details Modal */}
+      {selectedRecord && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300">
+          <div className="bg-white rounded-3xl max-w-3xl w-full border border-[#DDDDDD] shadow-2xl p-6 relative overflow-hidden animate-fade-up">
+            {/* Background Decorative Accents */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#4DA8DA]/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#FF9933]/5 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6 relative z-10">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Transaction Details</span>
+                <h2 className="text-xl font-black text-slate-800 mt-1">{selectedRecord.student_name}</h2>
+                <p className="text-slate-500 text-xs font-semibold">Parent: {selectedRecord.parent_name}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedRecord(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Main Details Body */}
+            <div className="space-y-4 relative z-10 max-h-[82vh] overflow-y-auto pr-1">
+              {/* Status & Amount Hero */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-[#DDDDDD]/60 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Amount</p>
+                  <p className="text-3xl font-black text-[#4DA8DA] mt-0.5">₹{Number(selectedRecord.amount).toLocaleString("en-IN")}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</p>
+                  {selectedRecord.status === "PAID" ? (
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
+                      <CheckCircle2 className="w-4 h-4" /> Paid
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200">
+                      <Clock className="w-4 h-4" /> Pending
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Two Column Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  {/* Phone & Student Name Card */}
+                  <div className="bg-slate-50/50 border border-[#DDDDDD]/50 rounded-2xl p-4 space-y-3">
+                    <div>
+                      <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px] mb-1">Student & Parent Info</p>
+                      <div className="grid grid-cols-2 gap-2 mt-1.5">
+                        <div>
+                          <span className="text-slate-400 text-[10px]">Student Name</span>
+                          <p className="font-bold text-slate-800 text-sm mt-0.5">{selectedRecord.student_name}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px]">Parent Name</span>
+                          <p className="font-semibold text-slate-700 text-sm mt-0.5">{selectedRecord.parent_name}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-[#DDDDDD]/50">
+                      <span className="text-slate-400 text-[10px]">Phone Number</span>
+                      <p className="font-semibold text-slate-800 text-sm mt-0.5">{selectedRecord.phone}</p>
+                    </div>
+                  </div>
+
+                  {/* Timeline Card */}
+                  <div className="bg-slate-50/50 border border-[#DDDDDD]/50 rounded-2xl p-4 space-y-3">
+                    <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px] mb-1">Timeline</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 text-[10px]">Created Date</span>
+                        <p className="font-semibold text-slate-700 mt-0.5">
+                          {new Date(selectedRecord.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          <span className="block text-[10px] text-slate-400 font-normal">
+                            {new Date(selectedRecord.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                          </span>
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px]">Paid Date</span>
+                        <p className="font-semibold text-slate-700 mt-0.5">
+                          {selectedRecord.paid_at ? (
+                            <>
+                              {new Date(selectedRecord.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                              <span className="block text-[10px] text-slate-400 font-normal">
+                                {new Date(selectedRecord.paid_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 italic">Not paid yet</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-4">
+                  {/* Token Card */}
+                  <div className="bg-slate-50/50 border border-[#DDDDDD]/50 rounded-2xl p-4 space-y-2">
+                    <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Receipt Token ID</p>
+                    <div className="flex items-center justify-between gap-2 bg-white border border-[#DDDDDD]/60 rounded-xl p-2.5">
+                      <span className="font-mono text-slate-700 font-bold truncate text-xs">
+                        {selectedRecord.token}
+                      </span>
+                      <button 
+                        onClick={() => handleCopy(selectedRecord.token, "token")}
+                        className="p-1 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                        title="Copy receipt token"
+                      >
+                        {copiedField === "token" ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment details if paid, or Payment Link if pending */}
+                  {selectedRecord.status === "PAID" ? (
+                    <div className="bg-emerald-50/20 border border-emerald-100/50 rounded-2xl p-4 space-y-3">
+                      <p className="font-bold text-emerald-800 uppercase tracking-wider text-[9px] mb-1">Transaction Details</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-400 text-[10px]">Reference Ref ID</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="font-mono text-slate-700 font-bold truncate max-w-[110px]" title={selectedRecord.razorpay_payment_id || ""}>
+                              {selectedRecord.razorpay_payment_id || "N/A"}
+                            </span>
+                            {selectedRecord.razorpay_payment_id && (
+                              <button 
+                                onClick={() => handleCopy(selectedRecord.razorpay_payment_id!, "payment_id")}
+                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                              >
+                                {copiedField === "payment_id" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px]">Method</span>
+                          <p className="font-semibold text-slate-800 mt-0.5 capitalize truncate" title={`${selectedRecord.payment_method || ""} ${selectedRecord.payment_details || ""}`}>
+                            {selectedRecord.payment_method || "N/A"} {selectedRecord.payment_details ? `(${selectedRecord.payment_details})` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    selectedRecord.razorpay_short_url && (
+                      <div className="bg-slate-50/50 border border-[#DDDDDD]/50 rounded-2xl p-4 space-y-2">
+                        <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Payment URL Link</p>
+                        <div className="flex items-center justify-between gap-2 bg-white border border-[#DDDDDD]/60 rounded-xl p-2.5">
+                          <span className="font-mono text-slate-500 truncate text-[11px] flex-1">
+                            {selectedRecord.razorpay_short_url}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button 
+                              onClick={() => handleCopy(selectedRecord.razorpay_short_url!, "pay_url")}
+                              className="p-1 hover:bg-slate-50 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                              title="Copy payment link"
+                            >
+                              {copiedField === "pay_url" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                            <a 
+                              href={selectedRecord.razorpay_short_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 hover:bg-slate-50 rounded text-[#4DA8DA] hover:text-[#3c97c9] transition-colors"
+                              title="Open payment link"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* Feedback Card */}
+                  {selectedRecord.feedback_rating && (
+                    <div className="bg-slate-50/50 border border-[#DDDDDD]/50 rounded-2xl p-4 space-y-2">
+                      <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Parent Feedback</p>
+                      <div className="flex items-start gap-3 bg-white border border-[#DDDDDD]/40 rounded-xl p-3">
+                        <span className="text-2xl mt-0.5">{selectedRecord.feedback_rating === "GREAT" ? "😊" : selectedRecord.feedback_rating === "OKAY" ? "😐" : "😞"}</span>
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-slate-700 capitalize text-xs">{selectedRecord.feedback_rating.toLowerCase()} Rating</span>
+                          {selectedRecord.feedback_note ? (
+                            <p className="text-slate-500 text-xs italic leading-relaxed">"{selectedRecord.feedback_note}"</p>
+                          ) : (
+                            <p className="text-slate-400 text-xs italic">No text review submitted</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Full Width Section: Description & Pending Items */}
+              {(selectedRecord.description || selectedRecord.pending_items) && (
+                <div className="bg-slate-50/50 border border-[#DDDDDD]/50 rounded-2xl p-4 space-y-3 text-xs">
+                  <p className="font-bold text-slate-400 uppercase tracking-wider text-[9px] mb-1">Kit & Purchase Details</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedRecord.description && (
+                      <div>
+                        <span className="text-slate-400 text-[10px]">Description</span>
+                        <p className="text-slate-700 font-medium mt-0.5">{selectedRecord.description}</p>
+                      </div>
+                    )}
+                    {selectedRecord.pending_items && (
+                      <div className="bg-sky-50/40 border border-sky-100/50 rounded-xl p-3">
+                        <span className="text-sky-700 font-bold text-[10px] flex items-center gap-1">
+                          <BookOpen className="w-3.5 h-3.5 text-[#FF9933]" /> Included Books / Items:
+                        </span>
+                        <p className="text-sky-800 font-medium mt-1.5 text-[11px] leading-relaxed">{selectedRecord.pending_items}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer / Actions */}
+            <div className="mt-6 pt-4 border-t border-[#DDDDDD] flex items-center justify-end gap-2 relative z-10">
+              <button
+                onClick={() => setSelectedRecord(null)}
+                className="px-4 py-2 border border-[#DDDDDD] hover:bg-slate-50 text-slate-500 hover:text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                Close Details
+              </button>
+              {selectedRecord.status === "PAID" ? (
+                <a
+                  href={`/receipt/${selectedRecord.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-600/15"
+                >
+                  <FileText className="w-3.5 h-3.5" /> View/Download Receipt
+                </a>
+              ) : (
+                <a
+                  href={`/fee-pay/${selectedRecord.token}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-[#4DA8DA] hover:bg-[#3c97c9] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-[#4DA8DA]/15"
+                >
+                  <IndianRupee className="w-3.5 h-3.5" /> Open Parent Pay Portal
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

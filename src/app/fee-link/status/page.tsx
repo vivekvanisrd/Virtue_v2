@@ -32,7 +32,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function StatusChecker() {
-  const [phone, setPhone] = useState("");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState<PaymentLinkStatusRecord[] | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -45,7 +45,7 @@ function StatusChecker() {
     setNotFound(false);
     setRecords(null);
     try {
-      const res = await fetch(`/api/fee-link/status?phone=${encodeURIComponent(phone)}`);
+      const res = await fetch(`/api/fee-link/status?query=${encodeURIComponent(query)}`);
       const data = await res.json();
       if (data.found) setRecords(data.records);
       else setNotFound(true);
@@ -77,18 +77,18 @@ function StatusChecker() {
 
         {/* Search Form */}
         <form onSubmit={handleSearch} className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-[#DDDDDD] p-6 mb-6">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Phone Number</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Phone or Receipt / Ref ID</label>
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <Phone className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
               <input
-                type="tel"
+                type="text"
                 className="w-full pl-10 pr-4 py-3 border border-[#DDDDDD] rounded-xl focus:outline-none focus:border-[#4DA8DA] focus:ring-2 focus:ring-[#4DA8DA]/20 text-slate-800 text-sm transition-all"
-                placeholder="Enter 10-digit mobile number"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
+                placeholder="Enter mobile number, receipt ID, or Ref ID"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
                 required
-                maxLength={15}
+                maxLength={50}
               />
             </div>
             <button
@@ -107,7 +107,7 @@ function StatusChecker() {
           <div className="bg-white rounded-3xl border border-[#DDDDDD] shadow-sm p-8 text-center animate-fade-up">
             <XCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600 font-bold">No records found</p>
-            <p className="text-slate-400 text-sm mt-1">No payment link found for this phone number.</p>
+            <p className="text-slate-400 text-sm mt-1">No payment link found matching this phone number or receipt/reference ID.</p>
           </div>
         )}
 
