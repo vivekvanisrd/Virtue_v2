@@ -19,13 +19,14 @@ interface BookReceiptProps {
     paid_at?: string;
     created_at?: string;
   };
+  autoDownloadOverride?: boolean;
 }
 
-export function BookReceipt({ linkData }: BookReceiptProps) {
+export function BookReceipt({ linkData, autoDownloadOverride }: BookReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const searchParams = useSearchParams();
-  const autoDownload = searchParams ? searchParams.get("autodownload") === "true" : false;
+  const autoDownload = autoDownloadOverride ?? (searchParams ? searchParams.get("autodownload") === "true" : false);
 
   const date = new Date(linkData.paid_at || linkData.created_at || new Date()).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -281,11 +282,11 @@ export function BookReceipt({ linkData }: BookReceiptProps) {
 
         {/* Terms */}
         <div className="pt-6 border-t border-dashed border-slate-200">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Notice</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Notice / గమనిక</p>
           <ul className="text-[9px] text-slate-400 space-y-1 font-medium leading-relaxed">
-            <li>• This official receipt acts as verification of bookstore supply purchase.</li>
-            <li>• Materials will be directly issued to the student inside the classroom.</li>
-            <li>• For returns or damaged products, contact support within 7 business days.</li>
+            <li>• Show this receipt on your mobile phone or as a printout to collect books from the school. / పాఠశాలలో పుస్తకాలు తీసుకోవడానికి ఈ రశీదును మీ మొబైల్ ఫోన్‌లో లేదా ప్రింట్ కాపీ రూపంలో చూపించాల్సి ఉంటుంది.</li>
+            <li>• The materials listed above are included in the kit. Please verify all items before leaving the counter. / ఈ క్రింది సామాగ్రి కిట్‌లో చేర్చబడింది. దయచేసి కౌంటర్ నుండి వెళ్లే ముందు అన్ని వస్తువులను సరిచూసుకోండి.</li>
+            <li>• Fees once paid are strictly non-refundable. / ఒకసారి చెల్లించిన రుసుము ఎట్టిపరిస్థితుల్లోనూ తిరిగి ఇవ్వబడదు.</li>
           </ul>
         </div>
       </div>

@@ -148,20 +148,20 @@ export default function ParentPayClient({ token }: Props) {
               </div>
             </div>
 
-            {/* Pending Items — highlight prominently */}
+            {/* Included Bookstore Items */}
             {data.pendingItems && (
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 animate-fade-up">
+              <div className="bg-sky-50/50 border-2 border-sky-200 rounded-3xl p-6 animate-fade-up">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-[#4DA8DA] flex items-center justify-center">
                     <BookOpen className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="font-black text-amber-900 text-sm">Pending Books / Items</p>
-                    <p className="text-amber-600 text-xs">The following items will be given to your child</p>
+                    <p className="font-black text-sky-950 text-sm">Included Bookstore Items</p>
+                    <p className="text-sky-600 text-xs">Following items are included in the kit. Please check before leaving the counter.</p>
                   </div>
                 </div>
                 <div className="bg-white/70 rounded-2xl p-4">
-                  <p className="text-amber-800 font-semibold text-sm leading-relaxed">{data.pendingItems}</p>
+                  <p className="text-sky-900 font-semibold text-sm leading-relaxed">{data.pendingItems}</p>
                 </div>
 
                 {/* Acknowledge Checkbox */}
@@ -170,10 +170,10 @@ export default function ParentPayClient({ token }: Props) {
                   onClick={() => setAcknowledged(a => !a)}
                   className="flex items-start gap-3 mt-4 text-left w-full group"
                 >
-                  <div className={`mt-0.5 w-5 h-5 rounded shrink-0 border-2 transition-all flex items-center justify-center ${acknowledged ? "bg-amber-500 border-amber-500" : "border-amber-400 bg-white group-hover:border-amber-500"}`}>
+                  <div className={`mt-0.5 w-5 h-5 rounded shrink-0 border-2 transition-all flex items-center justify-center ${acknowledged ? "bg-sky-500 border-sky-500" : "border-sky-400 bg-white group-hover:border-sky-500"}`}>
                     {acknowledged && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                   </div>
-                  <span className="text-amber-800 text-sm font-medium">I acknowledge that the above items are pending and will be collected when available.</span>
+                  <span className="text-sky-900 text-sm font-medium">I confirm that these items are included in my kit and I will verify them at the counter.</span>
                 </button>
               </div>
             )}

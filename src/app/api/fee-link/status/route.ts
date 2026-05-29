@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       found: true,
       records: results.map((r: any) => ({
+        token: r.token,
         studentName: r.student_name,
         parentName: r.parent_name,
         amount: r.amount,

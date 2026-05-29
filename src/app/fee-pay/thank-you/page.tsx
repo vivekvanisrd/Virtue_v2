@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Lock, Unlock, FileText } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
+import { BookReceipt } from "@/components/finance/BookReceipt";
 
 const EMOJI = [
   { key: "GREAT", icon: "😊", label: "Great", color: "border-emerald-300 bg-emerald-50 hover:bg-emerald-100" },
@@ -15,6 +17,7 @@ function ThankYouContent() {
   const status = sp.get("status");
   const token  = sp.get("token");
 
+  const [linkData, setLinkData] = useState<any>(null);
   const [rating, setRating] = useState("");
   const [note, setNote]     = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -24,6 +27,23 @@ function ThankYouContent() {
   const isPaid      = status === "success";
   const isCancelled = status === "cancelled";
   const isError     = status === "error";
+
+  // Auto-fetch paid link details to compile receipt off-screen
+  useEffect(() => {
+    if (!token || !isPaid) return;
+    
+    // Poll or fetch the status to make sure webhook has updated it, or get immediate local callback state
+    supabase
+      .from("fee_payment_links")
+      .select("*")
+      .eq("token", token)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setLinkData(data);
+        }
+      });
+  }, [token, isPaid]);
 
   async function submitFeedback() {
     if (!rating || !token) return;
@@ -38,11 +58,6 @@ function ThankYouContent() {
       const json = await res.json();
       if (json.success) {
         setFeedbackDone(true);
-        if (json.receiptNumber) {
-          setTimeout(() => {
-            window.location.href = `/receipt/${encodeURIComponent(json.receiptNumber)}?autodownload=true`;
-          }, 1200);
-        }
       } else {
         throw new Error(json.error || "Failed to submit feedback.");
       }
@@ -86,18 +101,54 @@ function ThankYouContent() {
                 </div>
                 <h1 className="text-2xl font-black text-white">Payment Confirmed!</h1>
                 <p className="text-emerald-100 text-sm mt-2">
-                  Thank you. Please submit your feedback below to generate and download your receipt.
+                  Thank you. Your receipt is downloading automatically in the background. Please provide feedback below to complete the flow.
                 </p>
               </div>
             </div>
 
+            {/* Hidden off-screen receipt generator for background auto-download */}
+            {linkData && (
+              <div className="absolute opacity-0 pointer-events-none -left-[9999px] -top-[9999px]" style={{ width: "210mm", height: "297mm" }}>
+                <BookReceipt linkData={linkData} autoDownloadOverride={true} />
+              </div>
+            )}
+
             {/* Feedback Card */}
             {!feedbackDone ? (
-              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 animate-fade-up">
-                <h2 className="text-base font-black text-slate-800 text-center mb-1">How was your experience?</h2>
-                <p className="text-slate-400 text-xs text-center mb-5">Feedback is required to download your receipt</p>
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 animate-fade-up space-y-5">
+                
+                {/* Visual Lock/Unlock Banner */}
+                {(!rating || !note.trim()) ? (
+                  <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 flex items-start gap-3.5 shadow-sm">
+                    <Lock className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-2">
+                      <p className="text-sm font-black text-amber-950 uppercase tracking-wide">
+                        Receipt Download Status / రశీదు డౌన్‌లోడ్ సమాచారం
+                      </p>
+                      <p className="text-xs md:text-sm font-bold text-amber-900 leading-normal">
+                        📥 Your receipt is <span className="bg-amber-200 px-1 py-0.5 rounded text-amber-950 font-black">downloading in the background</span>. Please fill in the experience form below. If you don't have any issues, simply write <span className="underline">"None"</span> or <span className="underline">"Good"</span>.
+                      </p>
+                      <p className="text-xs md:text-sm font-bold text-amber-900 leading-normal border-t border-amber-200/60 pt-1.5">
+                        📥 మీ రశీదు <span className="bg-amber-200 px-1 py-0.5 rounded text-amber-950 font-black">బ్యాక్‌గ్రౌండ్‌లో డౌన్‌లోడ్ అవుతోంది</span>. దయచేసి క్రింద మీ అభిప్రాయాన్ని తెలియజేయండి. ఎలాంటి సమస్యలు లేకపోతే <span className="underline">"None"</span> లేదా <span className="underline">"Good"</span> అని రాయండి.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 flex items-start gap-3 animate-pulse">
+                    <Unlock className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-black text-emerald-950 uppercase tracking-wide">Feedback Ready to Submit / అభిప్రాయం సిద్ధంగా ఉంది</p>
+                      <p className="text-xs md:text-sm font-bold text-emerald-800 mt-1">Click the button below to submit your feedback.</p>
+                    </div>
+                  </div>
+                )}
 
-                <div className="flex justify-center gap-3 mb-5">
+                <div className="text-center">
+                  <h2 className="text-base font-black text-slate-800">How was your experience?</h2>
+                  <p className="text-slate-400 text-xs mt-0.5">Feedback is required to complete the payment flow</p>
+                </div>
+
+                <div className="flex justify-center gap-3">
                   {EMOJI.map(e => (
                     <button
                       key={e.key}
@@ -110,36 +161,62 @@ function ThankYouContent() {
                   ))}
                 </div>
 
-                <div className="mb-4">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                    Pending Books & Issues
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 flex items-center justify-between">
+                    <span>Feedback & Comments (Mandatory / తప్పనిసరి) *</span>
+                    {note.trim().length > 0 && <span className="text-emerald-600">✓ Filled</span>}
                   </label>
                   <textarea
                     className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:border-indigo-500 resize-none h-20 transition-all focus:ring-4 focus:ring-indigo-100"
-                    placeholder="Mention if you have any pending books, and any issues or complaints you have regarding books..."
+                    placeholder="e.g. Good, None, or write comments if any..."
                     value={note}
                     onChange={e => setNote(e.target.value)}
                   />
                 </div>
 
-                {feedbackError && <p className="text-red-500 text-xs text-center mt-2 font-bold">⚠️ {feedbackError}</p>}
+                {feedbackError && <p className="text-red-500 text-xs text-center font-bold">⚠️ {feedbackError}</p>}
 
-                <div className="mt-4">
-                  <button
-                    onClick={submitFeedback}
-                    disabled={!rating || !note.trim() || submitting}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-bold py-3.5 rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
-                  >
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit & Download Receipt"}
-                  </button>
+                <div>
+                  {(!rating || !note.trim()) ? (
+                    <button
+                      disabled
+                      className="w-full bg-slate-100 text-slate-400 font-bold py-4 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Enter Feedback to Complete
+                    </button>
+                  ) : (
+                    <button
+                      onClick={submitFeedback}
+                      disabled={submitting}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+                    >
+                      {submitting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          Submit Feedback & Complete
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-3xl border border-slate-100 p-6 text-center animate-scale-in">
-                <p className="text-3xl mb-2">🎉</p>
+              <div className="bg-white rounded-3xl border border-slate-100 p-8 text-center animate-scale-in space-y-4">
+                <p className="text-3xl">🎉</p>
                 <p className="font-bold text-slate-800">Feedback Submitted!</p>
-                <p className="text-slate-400 text-sm mt-1">Generating and downloading your receipt. Please wait...</p>
-                <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mx-auto mt-4" />
+                <p className="text-slate-400 text-sm">Thank you. Your receipt has been downloaded successfully.</p>
+                <a
+                  href={`/receipt/${encodeURIComponent(token || "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 mx-auto"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  View Receipt Details
+                </a>
               </div>
             )}
           </div>
@@ -160,4 +237,3 @@ export default function ThankYouPage() {
     </Suspense>
   );
 }
-

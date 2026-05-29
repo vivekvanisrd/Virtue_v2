@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { Phone, Search, CheckCircle2, Clock, XCircle, BookOpen, ArrowLeft } from "lucide-react";
+import { Phone, Search, CheckCircle2, Clock, XCircle, BookOpen, ArrowLeft, FileText, IndianRupee } from "lucide-react";
 
-type Record = {
+type PaymentLinkStatusRecord = {
+  token: string;
   studentName: string;
   parentName: string;
   amount: number;
@@ -33,7 +34,7 @@ function StatusBadge({ status }: { status: string }) {
 function StatusChecker() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [records, setRecords] = useState<Record[] | null>(null);
+  const [records, setRecords] = useState<PaymentLinkStatusRecord[] | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState("");
 
@@ -134,17 +135,37 @@ function StatusChecker() {
                   {r.description && <p className="text-slate-600 text-sm mt-2">{r.description}</p>}
 
                   {r.pendingItems && (
-                    <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                      <p className="text-amber-700 text-xs font-bold flex items-center gap-1 mb-1">
-                        <BookOpen className="w-3.5 h-3.5 text-[#FF9933]" /> Pending Items
+                    <div className="mt-3 bg-sky-50/50 border border-sky-100 rounded-xl px-3 py-2">
+                      <p className="text-sky-700 text-xs font-bold flex items-center gap-1 mb-1">
+                        <BookOpen className="w-3.5 h-3.5 text-[#FF9933]" /> Included Items
                       </p>
-                      <p className="text-amber-600 text-xs">{r.pendingItems}</p>
+                      <p className="text-sky-600 text-xs">{r.pendingItems}</p>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#DDDDDD]">
                     <span className="text-slate-400 text-xs">Created: {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
                     {r.paidAt && <span className="text-emerald-600 text-xs font-semibold">Paid: {new Date(r.paidAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-[#DDDDDD]/60 flex items-center justify-end gap-2">
+                    {r.status === "PAID" ? (
+                      <a
+                        href={`/receipt/${r.token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-600/10 flex items-center gap-1.5"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> View Receipt
+                      </a>
+                    ) : (
+                      <a
+                        href={`/fee-pay/${r.token}`}
+                        className="px-4 py-2 bg-[#4DA8DA] hover:bg-[#3c97c9] text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-[#4DA8DA]/10 flex items-center gap-1.5"
+                      >
+                        <IndianRupee className="w-3.5 h-3.5" /> Pay Now
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       }
       details = `${app} (${vpa})`;
     } else if (method === "card") {
-      const card = payment.card || {};
+      const card = (payment.card || {}) as any;
       const brand = card.network || "Card";
       const last4 = card.last4 || "";
       details = `${brand} ending in ${last4}`;

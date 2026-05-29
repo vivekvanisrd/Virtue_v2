@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Lock, Eye, EyeOff, TrendingUp, Users, CheckCircle2, Clock, BookOpen, Download, ArrowLeft } from "lucide-react";
 
-type Record = {
+type PaymentLinkRecord = {
   id: string; token: string; student_name: string; parent_name: string;
   phone: string; amount: number; description: string | null; pending_items: string | null;
   razorpay_short_url: string | null; status: string; paid_at: string | null;
@@ -15,8 +15,8 @@ type Summary = { total: number; paid: number; pending: number; totalAmount: numb
 
 const EMOJI: Record<string, string> = { GREAT: "😊 Great", OKAY: "😐 Okay", POOR: "😞 Poor" };
 
-function exportCSV(records: Record[]) {
-  const headers = ["Student Name","Parent Name","Phone","Amount","Status","Transaction ID","Payment Method","Payment Details","Description","Pending Items","Created","Paid At","Feedback"];
+function exportCSV(records: PaymentLinkRecord[]) {
+  const headers = ["Student Name","Parent Name","Phone","Amount","Status","Transaction ID","Payment Method","Payment Details","Description","Included Items","Created","Paid At","Feedback"];
   const rows = records.map(r => [
     r.student_name, r.parent_name, r.phone, r.amount,
     r.status, r.razorpay_payment_id || "", r.payment_method || "", r.payment_details || "", r.description || "", r.pending_items || "",
@@ -36,7 +36,7 @@ export default function OwnerPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [records, setRecords] = useState<Record[] | null>(null);
+  const [records, setRecords] = useState<PaymentLinkRecord[] | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [search, setSearch] = useState("");
 
@@ -163,7 +163,7 @@ export default function OwnerPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-[#DDDDDD]">
-                  {["Student & Parent", "Phone", "Amount", "Status", "Transaction Details", "Pending Items", "Feedback", "Timeline"].map(h => (
+                  {["Student & Parent", "Phone", "Amount", "Status", "Transaction Details", "Included Items", "Feedback", "Timeline"].map(h => (
                     <th key={h} className="text-left px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
