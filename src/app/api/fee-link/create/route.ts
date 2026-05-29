@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
         razorpayLinkId = link.id;
         razorpayShortUrl = link.short_url;
       } catch (rzpErr: any) {
-        console.error("[CREATE] Razorpay error:", rzpErr.message);
+        const detailedError = rzpErr.error?.description || rzpErr.message || JSON.stringify(rzpErr);
+        console.error("[CREATE] Razorpay error:", detailedError);
         isMock = true;
       }
     } else {
