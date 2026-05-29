@@ -24,11 +24,15 @@ export async function POST(req: NextRequest) {
     // Look up the collection's receipt numbers associated with this payment ID
     let receiptNumber = token;
     if (record.razorpay_payment_id) {
-      const collections = await prisma.collection.findMany({
-        where: { paymentReference: record.razorpay_payment_id }
-      });
-      if (collections.length > 0) {
-        receiptNumber = collections.map(c => c.receiptNumber).join(",");
+      try {
+        const collections = await prisma.collection.findMany({
+          where: { paymentReference: record.razorpay_payment_id }
+        });
+        if (collections.length > 0) {
+          receiptNumber = collections.map(c => c.receiptNumber).join(",");
+        }
+      } catch (prismaErr: any) {
+        console.warn("[FEEDBACK_ROUTE] Prisma query bypassed or failed:", prismaErr.message);
       }
     }
 
