@@ -163,18 +163,22 @@ export default function OwnerPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-[#DDDDDD]">
-                  {["Student", "Parent", "Phone", "Amount", "Status", "Transaction ID", "Payment Method", "Pending Items", "Feedback", "Created", "Paid At"].map(h => (
+                  {["Student & Parent", "Phone", "Amount", "Status", "Transaction Details", "Pending Items", "Feedback", "Timeline"].map(h => (
                     <th key={h} className="text-left px-4 py-4 text-xs font-bold text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#DDDDDD]/50">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={11} className="text-center py-12 text-slate-400">No records found</td></tr>
+                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">No records found</td></tr>
                 ) : filtered.map(r => (
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-4 font-semibold text-slate-800 whitespace-nowrap">{r.student_name}</td>
-                    <td className="px-4 py-4 text-slate-600 whitespace-nowrap">{r.parent_name}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-800">{r.student_name}</span>
+                        <span className="text-xs text-slate-400 font-medium">{r.parent_name}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-4 text-slate-500 font-mono text-xs">{r.phone}</td>
                     <td className="px-4 py-4 font-black text-[#4DA8DA] whitespace-nowrap">₹{Number(r.amount).toLocaleString("en-IN")}</td>
                     <td className="px-4 py-4">
@@ -182,14 +186,19 @@ export default function OwnerPage() {
                         ? <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">✓ Paid</span>
                         : <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200">Pending</span>}
                     </td>
-                    <td className="px-4 py-4 text-slate-500 font-mono text-xs whitespace-nowrap">{r.razorpay_payment_id || <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-4 text-slate-600 text-xs whitespace-nowrap">
-                      {r.payment_method ? (
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {r.razorpay_payment_id ? (
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-700 capitalize">{r.payment_method}</span>
-                          {r.payment_details && <span className="text-[10px] text-slate-400">{r.payment_details}</span>}
+                          <span className="font-mono text-xs text-slate-700 font-bold">{r.razorpay_payment_id}</span>
+                          {r.payment_method && (
+                            <span className="text-[10px] text-slate-400 font-medium capitalize">
+                              {r.payment_method}: {r.payment_details}
+                            </span>
+                          )}
                         </div>
-                      ) : <span className="text-slate-300">—</span>}
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 max-w-[180px]">
                       {r.pending_items ? (
@@ -203,13 +212,19 @@ export default function OwnerPage() {
                         </span>
                       ) : <span className="text-slate-300 text-xs">—</span>}
                     </td>
-                    <td className="px-4 py-4 text-slate-400 text-xs whitespace-nowrap">{new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}</td>
-                    <td className="px-4 py-4 text-emerald-600 text-xs whitespace-nowrap">
-                      {r.paid_at ? (
-                        <span title={new Date(r.paid_at).toLocaleString("en-IN")}>
-                          {new Date(r.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-slate-400 text-[11px] font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                          Created: {new Date(r.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
                         </span>
-                      ) : "—"}
+                        {r.paid_at && (
+                          <span className="text-emerald-600 text-[11px] font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Paid: {new Date(r.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
