@@ -1,0 +1,240 @@
+[
+  {
+    "date": "2025-09-16",
+    "name": "K. NITYA SREE",
+    "class": "II",
+    "receipt_no": "5127",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-09-16",
+    "name": "E. SREYAN",
+    "class": "VII",
+    "receipt_no": "5128",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        2000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-09-16",
+    "name": "E. SRINIDHI",
+    "class": "V",
+    "receipt_no": "5129",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        2000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-09-16",
+    "name": "C. ARYAN",
+    "class": "III",
+    "receipt_no": "5130",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-09-16",
+    "name": "C. NISHA",
+    "class": "LKG",
+    "receipt_no": "5131",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-09-16",
+    "name": "K. KRISHNA CHAITAN",
+    "class": "II",
+    "receipt_no": "5132",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-09-16",
+    "name": "K. HARISANKERTHAN",
+    "class": "IV",
+    "receipt_no": "5133",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-09-16",
+    "name": "G. MANVITHA",
+    "class": "IV",
+    "receipt_no": "5747",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-09-16",
+    "name": "G. MANVIK",
+    "class": "II",
+    "receipt_no": "5748",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-09-16",
+    "name": "K. VARSHINI",
+    "class": "VIII",
+    "receipt_no": "5749",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-09-16",
+    "name": "K. SAHASRA",
+    "class": "VII",
+    "receipt_no": "5750",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        17000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-09-16",
+    "name": "K. ASHWANTH",
+    "class": "I",
+    "receipt_no": "5751",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        15000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-09-17",
+    "name": "G. ANANYA",
+    "class": "UKG",
+    "receipt_no": "5752",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-09-17",
+    "name": "N. DEEKSHITH",
+    "class": "IV",
+    "receipt_no": "5753",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2025-09-17",
+    "name": "M. BHANU CHARAN",
+    "class": "II",
+    "receipt_no": "5754",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2025-09-17",
+    "name": "N. SHREYANVI",
+    "class": "UKG",
+    "receipt_no": "5755",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2025-09-17",
+    "name": "N. SHREYANVI",
+    "class": "UKG",
+    "receipt_no": "5134",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
+    "row": 17
+  }
+]

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
+import { InventoryService } from "@/lib/services/inventory-service";
 
 // DEMO ONLY — simulates a successful payment without real Razorpay keys
 export async function POST(req: NextRequest) {
@@ -16,6 +17,12 @@ export async function POST(req: NextRequest) {
       razorpay_payment_id: `MOCK_PAY_${Date.now()}`,
       paid_at: new Date().toISOString(),
     }).eq("token", token);
+
+    try {
+      await InventoryService.reserveInventoryForPayment(token);
+    } catch (resErr: any) {
+      console.error("[MOCKPAY] Reservation trigger failed:", resErr.message);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

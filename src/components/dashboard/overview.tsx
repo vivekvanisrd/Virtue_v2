@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Users, 
@@ -10,60 +10,56 @@ import {
   ShieldCheck,
   Zap,
   Clock,
-  Layout
+  Layout,
+  ArrowRight,
+  TrendingDown,
+  Percent,
+  Wallet,
+  Activity,
+  ArrowUpRight,
+  ShieldAlert,
+  Loader2,
+  ChevronRight,
+  IndianRupee,
+  RefreshCw,
+  Search,
+  CheckCircle2,
+  AlertTriangle,
+  Banknote
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/context/tab-context";
 import { getDashboardStatsAction } from "@/lib/actions/dashboard-actions";
-
 import { useTenant } from "@/context/tenant-context";
-
-// Static stats removed in favor of dynamic fetching
+import { formatCurrency } from "@/lib/utils/fee-utils";
 
 export function OverviewContent() {
   const { openTab } = useTabs();
   const { schoolName, isOperationalReady } = useTenant();
-  const [data, setData] = React.useState({
-    studentCount: "...",
-    teacherCount: "...",
-    financeBalance: "...",
-    pendingIssues: "...",
-    voidRequests: 0,
-    academicYear: "",
-    isSkeleton: false
-  });
-  const [activities, setActivities] = React.useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  React.useEffect(() => {
-    getDashboardStatsAction().then(res => {
+  const fetchStats = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    
+    try {
+      const res = await getDashboardStatsAction();
       if (res.success && res.data) {
-        setData({
-          studentCount: res.data.studentCount.toLocaleString(),
-          teacherCount: res.data.teacherCount.toLocaleString(),
-          financeBalance: res.data.financeBalance,
-          pendingIssues: res.data.pendingIssues.toString(),
-          voidRequests: res.data.voidRequests || 0,
-          academicYear: res.data.academicYear,
-          isSkeleton: res.data.isSkeleton
-        });
+        setStats(res.data);
       }
-    });
+    } catch (err) {
+      console.error("Failed to load dashboard stats", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-    import("@/lib/actions/dashboard-actions").then(mod => {
-      mod.getRecentActivitiesAction().then(res => {
-        if (res.success && res.data) {
-          setActivities(res.data);
-        }
-      });
-    });
+  useEffect(() => {
+    fetchStats();
   }, []);
-
-  const stats = [
-    { id: "students-all", label: "Total Students", value: data.studentCount, icon: GraduationCap, color: "bg-blue-500", component: "Students" },
-    { id: "staff-directory", label: "Total Teachers", value: data.teacherCount, icon: Users, color: "bg-purple-500", component: "Staff" },
-    { id: "finance", label: "Collected Today", value: data.financeBalance, icon: CreditCard, color: "bg-emerald-500", component: "Finance" },
-    { id: "students-enquiries", label: "Pending Enquiries", value: data.pendingIssues, icon: Zap, color: "bg-orange-500", component: "Students" },
-  ];
 
   // 🛡️ OPERATIONAL GUARD: Show personalized setup guide if no campus branch exists
   if (!isOperationalReady) {
@@ -107,158 +103,419 @@ export function OverviewContent() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-pulse p-4">
+        <div className="flex justify-between items-center">
+          <div className="h-10 w-48 bg-slate-200 rounded-xl" />
+          <div className="h-10 w-64 bg-slate-200 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-32 bg-slate-200 rounded-[2rem]" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 h-[400px] bg-slate-200 rounded-[2.5rem]" />
+          <div className="h-[400px] bg-slate-200 rounded-[2.5rem]" />
+        </div>
+      </div>
+    );
+  }
+
+  const outstandingDues = stats?.outstandingDues || 0;
+  const expectedRevenue = stats?.expectedRevenue || 0;
+  const collectedRevenue = stats?.collectedRevenue || 0;
+  const collectionRate = stats?.collectionRate || 0;
+  
+  // Calculate channel split percentages
+  const totalModePaid = (stats?.cashCollected || 0) + (stats?.onlineCollected || 0) || 1;
+  const cashPct = Math.round(((stats?.cashCollected || 0) / totalModePaid) * 100);
+  const onlinePct = Math.round(((stats?.onlineCollected || 0) / totalModePaid) * 100);
+
   return (
-    <div className="space-y-6 lg:space-y-8">
-      {/* 1. Audit Alert Banner */}
-      {data.voidRequests > 0 && (
+    <div className="space-y-6 lg:space-y-8 pb-10">
+      
+      {/* 1. Header Banner Alert for Void Requests */}
+      {stats?.voidRequests > 0 && (
          <motion.div 
            initial={{ height: 0, opacity: 0 }} 
            animate={{ height: "auto", opacity: 1 }}
-           className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex items-center justify-between gap-4"
+           className="bg-rose-50 border-2 border-rose-100 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
          >
             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 bg-rose-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-rose-200">
-                  <ShieldCheck className="w-5 h-5" />
+               <div className="w-12 h-12 bg-rose-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-rose-200">
+                  <ShieldAlert className="w-6 h-6 animate-pulse" />
                </div>
                <div>
-                  <p className="text-xs font-black text-rose-900 uppercase">Action Required: {data.voidRequests} Void Requests</p>
-                  <p className="text-[10px] font-bold text-rose-700 opacity-60">Manager authorization needed for receipt reversals</p>
+                  <p className="text-sm font-black text-rose-900 uppercase tracking-wide">Manager Action Required: {stats.voidRequests} Reversal Requests</p>
+                  <p className="text-xs font-bold text-rose-700 opacity-70">Unsettled transaction voids require forensic verification & ledger approval.</p>
                </div>
             </div>
             <button 
               onClick={() => openTab({ id: "finance", title: "Finance Hub", icon: CreditCard, component: "Finance" })}
-              className="px-4 py-2 bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase hover:bg-rose-600 transition-all"
+              className="px-6 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-black uppercase hover:bg-rose-700 transition-all active:scale-95 shadow-md shadow-rose-500/10"
             >
-               Go to Audit Tray
+               Authorize Audit Tray
             </button>
          </motion.div>
       )}
 
-      {/* 2. Header Section */}
+      {/* 2. Professional Header Area */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
-        <motion.div
-           initial={{ opacity: 0, x: -20 }}
-           animate={{ opacity: 1, x: 0 }}
-        >
-          <h2 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight italic">System Overview</h2>
-          <p className="text-foreground opacity-50 font-medium mt-1 text-xs lg:text-sm italic">Real-time snapshots for {data.academicYear || "Current Session"}</p>
-        </motion.div>
+        <div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight italic">
+              Executive Dashboard
+            </h2>
+            <button 
+              onClick={() => fetchStats(true)} 
+              disabled={refreshing}
+              className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors border border-slate-100 bg-white"
+            >
+              <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+            </button>
+          </div>
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] lg:text-[10px] mt-2">
+            Real-time Financial Snapshot &bull; Session {stats?.academicYear || "2026-27"}
+          </p>
+        </div>
         
-        <div className="flex gap-2 w-full lg:w-auto">
+        <div className="flex gap-3 w-full lg:w-auto">
              <button 
                onClick={() => openTab({ id: "finance", title: "Finance Hub", icon: CreditCard, component: "Finance" })}
-               className="flex-1 lg:flex-none px-4 py-2 bg-background border border-border rounded-xl font-bold text-foreground opacity-60 hover:opacity-100 hover:bg-muted transition-all text-[10px] lg:text-xs premium-shadow"
+               className="flex-1 lg:flex-none px-6 py-3.5 bg-white border-2 border-slate-100 text-slate-800 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
              >
-                Finance Hub
+                Daily Ledger
              </button>
              <button 
-               onClick={() => openTab({ id: "fee-collection", title: "Fee Collection", icon: CreditCard, component: "Finance" })}
-               className="flex-1 lg:flex-none px-4 py-2 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all text-[10px] lg:text-xs premium-shadow shadow-primary/20"
+               onClick={() => openTab({ id: "fee-collection", title: "Fee Collection", icon: Wallet, component: "Finance" })}
+               className="flex-1 lg:flex-none px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-emerald-600/10 flex items-center justify-center gap-2"
              >
-                Start Collection
+                <Wallet className="w-4 h-4" /> Start Fee Collection
              </button>
         </div>
       </div>
 
-      {/* 3. Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="group bg-background p-5 lg:p-6 rounded-2xl border border-border premium-shadow hover:scale-[1.02] transition-all cursor-pointer overflow-hidden relative"
-            onClick={() => openTab({ id: stat.id, title: stat.label, icon: stat.icon, component: stat.component as any })}
-          >
-            <div className={cn("absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-5 group-hover:scale-150 transition-transform duration-700", stat.color)} />
-            
-            <div className="flex justify-between items-start mb-4">
-              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg", stat.color)}>
-                 <stat.icon className="w-6 h-6" />
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted text-primary rounded-full text-[9px] font-bold">
-                 Live
-              </div>
+      {/* 3. Metrics Cards (Principal & Owner Specifics) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* Card 1: Collected Today */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden"
+        >
+          <div className="absolute right-0 top-0 p-4 opacity-5 text-emerald-500">
+             <IndianRupee className="w-24 h-24" />
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner">
+               <TrendingUp className="w-6 h-6" />
             </div>
-            <h3 className="text-foreground opacity-40 font-bold uppercase tracking-widest text-[9px] mb-0.5">{stat.label}</h3>
-            <p className="text-2xl font-black text-foreground tracking-tighter">{stat.value}</p>
-          </motion.div>
-        ))}
+            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Today</span>
+          </div>
+          <h3 className="text-slate-400 font-black uppercase tracking-widest text-[9px] mb-1">Collected Today</h3>
+          <p className="text-3xl font-black text-slate-900 tracking-tighter italic">
+            ₹{stats?.collectedToday?.toLocaleString() || 0}
+          </p>
+        </motion.div>
+
+        {/* Card 2: Total Expected */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden"
+        >
+          <div className="absolute right-0 top-0 p-4 opacity-5 text-indigo-500">
+             <GraduationCap className="w-24 h-24" />
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
+               <Users className="w-6 h-6" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">{stats?.studentCount} Students</span>
+          </div>
+          <h3 className="text-slate-400 font-black uppercase tracking-widest text-[9px] mb-1">Expected Revenue</h3>
+          <p className="text-3xl font-black text-slate-900 tracking-tighter italic">
+            ₹{expectedRevenue?.toLocaleString() || 0}
+          </p>
+        </motion.div>
+
+        {/* Card 3: Lifetime Collected */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden"
+        >
+          <div className="absolute right-0 top-0 p-4 opacity-5 text-sky-500">
+             <Activity className="w-24 h-24" />
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-inner">
+               <CreditCard className="w-6 h-6" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-widest text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">{collectionRate}% Rate</span>
+          </div>
+          <h3 className="text-slate-400 font-black uppercase tracking-widest text-[9px] mb-1">Lifetime Collected</h3>
+          <p className="text-3xl font-black text-slate-900 tracking-tighter italic">
+            ₹{collectedRevenue?.toLocaleString() || 0}
+          </p>
+        </motion.div>
+
+        {/* Card 4: Outstanding Dues */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white p-6 rounded-[2.5rem] border border-rose-100 shadow-xl shadow-slate-200/40 relative overflow-hidden"
+        >
+          <div className="absolute right-0 top-0 p-4 opacity-5 text-rose-500">
+             <ShieldAlert className="w-24 h-24" />
+          </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-inner">
+               <AlertTriangle className="w-6 h-6" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Defaulters Active</span>
+          </div>
+          <h3 className="text-slate-400 font-black uppercase tracking-widest text-[9px] mb-1">Outstanding Dues</h3>
+          <p className="text-3xl font-black text-rose-600 tracking-tighter italic">
+            ₹{outstandingDues?.toLocaleString() || 0}
+          </p>
+        </motion.div>
+
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-between items-center">
-               <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-primary" />
-                  Recent Activity Logs
-               </h3>
-               <button className="text-[10px] font-bold text-primary px-3 py-1.5 bg-primary/5 rounded-full hover:bg-primary/10 transition-colors uppercase tracking-widest">
-                  View Live Stream
-               </button>
+      {/* 4. Lifetime Progress & Payment Splits */}
+      <div className="bg-slate-900 rounded-[3rem] p-8 text-white relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          
+          {/* Progress Section */}
+          <div className="lg:col-span-7 space-y-6">
+            <div>
+              <h3 className="text-2xl font-black tracking-tight">Academic Year Collections Progress</h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Tuition Progress Dashboard &bull; Core Target</p>
             </div>
             
             <div className="space-y-3">
-               {activities.length > 0 ? activities.map((act, i) => (
+              <div className="flex justify-between items-end text-xs font-black uppercase tracking-widest text-slate-400">
+                 <span>Collection Efficiency Rate</span>
+                 <span className="text-primary text-xl font-black italic">{collectionRate}%</span>
+              </div>
+              <div className="w-full bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 border border-slate-700">
                  <motion.div 
-                   key={act.id}
-                   initial={{ opacity: 0, x: -10 }}
-                   animate={{ opacity: 1, x: 0 }}
-                   transition={{ delay: 0.1 + i * 0.05 }}
-                   className="bg-background p-4 rounded-2xl border border-border hover:border-primary/20 transition-all flex items-center gap-4 group cursor-pointer"
-                 >
-                    <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                       <Layout className="w-5 h-5 text-foreground opacity-40 group-hover:text-primary transition-colors" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                       <h4 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">{act.title}</h4>
-                       <p className="text-xs text-foreground opacity-40 font-medium truncate">{act.subtitle}</p>
-                    </div>
-                    <div className="text-right whitespace-nowrap hidden sm:block">
-                       <p className="text-[10px] font-bold text-foreground opacity-50">{act.time}</p>
-                       <p className="text-[9px] font-bold text-foreground opacity-30 uppercase tracking-widest">{act.user}</p>
-                    </div>
-                 </motion.div>
-               )) : (
-                 <div className="p-8 text-center bg-muted rounded-2xl border border-dashed border-border">
-                    <p className="text-xs font-bold text-foreground opacity-40 uppercase tracking-widest">No recent audit logs found</p>
-                 </div>
-               )}
+                   initial={{ width: 0 }}
+                   animate={{ width: `${collectionRate}%` }}
+                   transition={{ duration: 1.5, ease: "easeOut" }}
+                   className="bg-primary h-full rounded-full shadow-[0_0_20px_rgba(var(--primary),0.5)]" 
+                 />
+              </div>
+              <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-500">
+                 <span>₹{collectedRevenue?.toLocaleString()} Collected</span>
+                 <span>₹{outstandingDues?.toLocaleString()} Dues Left</span>
+              </div>
             </div>
-        </div>
+          </div>
 
-        <div className="space-y-6">
-            <div className="bg-muted p-6 lg:p-8 rounded-[32px] text-foreground border border-border shadow-md relative overflow-hidden group">
-               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                   <ShieldCheck className="w-24 h-24" />
-               </div>
-               <h3 className="text-xl font-bold mb-3 relative z-10">Database Status</h3>
-               <p className="text-foreground opacity-60 mb-6 relative z-10 text-sm font-medium italic">
-                 {data.studentCount !== "..." ? "Systems are performing within optimal operational parameters." : "Syncing with school infrastructure..."}
-               </p>
-               
-               <div className="space-y-4 relative z-10">
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-foreground opacity-40">
-                     <span>Registry Integrity</span>
-                     <span className="text-accent text-xs">Healthy</span>
-                  </div>
-                  <div className="w-full bg-background/20 h-2 rounded-full overflow-hidden">
-                     <motion.div 
-                       initial={{ width: 0 }}
-                       animate={{ width: data.studentCount !== "..." ? "100%" : "20%" }}
-                       transition={{ duration: 1.5, ease: "easeOut" }}
-                       className="bg-primary h-full shadow-[0_0_20px_rgba(var(--primary),0.5)]" 
-                     />
-                  </div>
-               </div>
-               
-               <button className="mt-8 w-full py-3 bg-background border border-border text-primary rounded-xl font-bold shadow-xl shadow-black/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs">
-                  Connectivity Audit
-               </button>
-            </div>
+          {/* Mode Splits Section */}
+          <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-slate-800 pt-6 lg:pt-0 lg:pl-8 space-y-4">
+             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 leading-none">Lifetime Collection Channels</h4>
+             
+             <div className="grid grid-cols-2 gap-4">
+                
+                {/* Cash Segment */}
+                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-800 flex items-center gap-3">
+                   <div className="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center shadow-inner">
+                      <Banknote className="w-5 h-5" />
+                   </div>
+                   <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Cash ({cashPct || 0}%)</p>
+                      <p className="text-sm font-black text-white">₹{stats?.cashCollected?.toLocaleString() || 0}</p>
+                   </div>
+                </div>
+
+                {/* Online Segment */}
+                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-800 flex items-center gap-3">
+                   <div className="w-10 h-10 bg-orange-500/10 text-orange-400 rounded-xl flex items-center justify-center shadow-inner">
+                      <Zap className="w-5 h-5" />
+                   </div>
+                   <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Razorpay ({onlinePct || 0}%)</p>
+                      <p className="text-sm font-black text-white">₹{stats?.onlineCollected?.toLocaleString() || 0}</p>
+                   </div>
+                </div>
+
+             </div>
+
+             <div className="text-[9px] font-bold text-slate-500 leading-normal italic">
+                Offline cash deposits are logged immediately. Razorpay settlements process automatically every morning.
+             </div>
+          </div>
+
         </div>
       </div>
+
+      {/* 5. Core Layout Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Column: Class-wise Dues and Collection (7 cols) */}
+        <div className="lg:col-span-8 bg-white border border-slate-100 shadow-xl shadow-slate-200/30 rounded-[3rem] p-6 lg:p-8 space-y-6">
+          <div className="flex justify-between items-center">
+             <div>
+                <h3 className="text-lg font-black tracking-tight text-slate-900">Class-wise Revenue Breakdown</h3>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Click class to collect payments &bull; Dues priority</p>
+             </div>
+             <button 
+               onClick={() => openTab({ id: "fee-manager", title: "Fee Management", icon: Layout, component: "Finance" })}
+               className="text-[9px] font-black text-indigo-600 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 transition-colors uppercase tracking-widest rounded-full"
+             >
+                Fee Settings
+             </button>
+          </div>
+
+          <div className="overflow-x-auto">
+             <table className="w-full text-left border-collapse">
+                <thead>
+                   <tr className="border-b border-slate-100 text-[10px] font-black uppercase text-slate-400 pb-3">
+                      <th className="pb-3">Class Level</th>
+                      <th className="pb-3 text-right">Expected</th>
+                      <th className="pb-3 text-right">Collected</th>
+                      <th className="pb-3 text-right">Pending Dues</th>
+                      <th className="pb-3 text-center">Action</th>
+                   </tr>
+                </thead>
+                <tbody>
+                   {stats?.classStats?.map((cls: any, i: number) => {
+                      const classRate = cls.expected > 0 ? Math.round((cls.collected / cls.expected) * 100) : 0;
+                      return (
+                         <tr key={i} className="border-b border-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-50/50 transition-colors group">
+                            <td className="py-4 font-black text-slate-900">{cls.className}</td>
+                            <td className="py-4 text-right">₹{cls.expected.toLocaleString()}</td>
+                            <td className="py-4 text-right">
+                              <span className="text-emerald-600">₹{cls.collected.toLocaleString()}</span>
+                              <span className="text-[9px] text-slate-400 block font-normal">{classRate}% rate</span>
+                            </td>
+                            <td className={cn("py-4 text-right font-black", cls.dues > 0 ? "text-rose-500" : "text-emerald-500")}>
+                               {cls.dues > 0 ? `₹${cls.dues.toLocaleString()}` : "Cleared"}
+                            </td>
+                            <td className="py-4 text-center">
+                               <button 
+                                 onClick={() => openTab({ 
+                                    id: "fee-collection", 
+                                    title: "Fee Collection", 
+                                    icon: Wallet, 
+                                    component: "Finance", 
+                                    params: { classId: cls.classId } 
+                                 })}
+                                 className="px-3 py-1.5 bg-slate-950 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors"
+                               >
+                                  Collect
+                               </button>
+                            </td>
+                         </tr>
+                      );
+                   })}
+                   {(!stats?.classStats || stats.classStats.length === 0) && (
+                      <tr>
+                         <td colSpan={5} className="py-8 text-center text-slate-400 italic text-xs font-medium">No class structure data available.</td>
+                      </tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
+        </div>
+
+        {/* Right Column: Recent Activity Feed & DB status (4 cols) */}
+        <div className="lg:col-span-4 space-y-8">
+           
+           {/* Recent Collections Feed */}
+           <div className="bg-white border border-slate-100 shadow-xl shadow-slate-200/30 rounded-[3rem] p-6 lg:p-8 space-y-6">
+              <div className="flex justify-between items-center">
+                 <h3 className="text-lg font-black tracking-tight text-slate-900 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-emerald-500" />
+                    Ledger Stream
+                 </h3>
+                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-full">Real-time</span>
+              </div>
+
+              <div className="space-y-4">
+                 {stats?.recentCollections?.map((col: any) => (
+                    <div 
+                      key={col.id}
+                      onClick={() => col.studentId && openTab({
+                         id: `student-profile-${col.studentId}`,
+                         title: col.studentName,
+                         icon: Users,
+                         component: "Students",
+                         params: { studentId: col.studentId }
+                      })}
+                      className="p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 hover:border-slate-200 transition-all border border-transparent cursor-pointer group flex items-start gap-3 justify-between"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", col.paymentMode === "Cash" ? "bg-emerald-50 text-emerald-500" : "bg-orange-50 text-orange-500")}>
+                            {col.paymentMode === "Cash" ? <Banknote className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+                         </div>
+                         <div className="min-w-0">
+                            <h4 className="text-xs font-black text-slate-900 group-hover:text-primary transition-colors truncate">{col.studentName}</h4>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest truncate">{col.receiptNumber}</p>
+                         </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                         <p className="text-sm font-black text-slate-800">₹{col.amountPaid.toLocaleString()}</p>
+                         <p className="text-[8px] font-bold text-slate-400 mt-0.5">{col.time}</p>
+                      </div>
+                    </div>
+                 ))}
+                 {(!stats?.recentCollections || stats.recentCollections.length === 0) && (
+                    <div className="py-10 text-center border border-dashed border-slate-100 rounded-2xl text-slate-400 italic text-xs font-medium">
+                       No recent fee collections recorded.
+                    </div>
+                 )}
+              </div>
+           </div>
+
+           {/* System Integrity & Branch overview */}
+           <div className="bg-slate-900 text-white rounded-[3rem] p-6 lg:p-8 relative overflow-hidden group shadow-xl">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform duration-500">
+                  <ShieldCheck className="w-24 h-24" />
+              </div>
+              <h3 className="text-xl font-black mb-2 relative z-10 italic">Core Registry Audit</h3>
+              <p className="text-slate-400 mb-6 relative z-10 text-xs font-bold uppercase tracking-widest leading-relaxed">
+                 Active Campus: Reddy Colony Branch
+              </p>
+              
+              <div className="space-y-4 relative z-10">
+                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <span>Registry Integrity</span>
+                    <span className="text-emerald-400 text-xs font-black">Healthy</span>
+                 </div>
+                 <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      className="bg-emerald-500 h-full rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" 
+                    />
+                 </div>
+              </div>
+              
+              <button 
+                onClick={() => openTab({ id: "settings-audit", title: "Activity Audit", icon: ShieldCheck, component: "Settings" })}
+                className="mt-8 w-full py-3.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-2xl font-black shadow-xl shadow-black/10 hover:bg-slate-800/80 active:scale-[0.98] transition-all text-xs uppercase tracking-widest"
+              >
+                 System Audit logs
+              </button>
+           </div>
+
+        </div>
+
+      </div>
+
     </div>
   );
 }

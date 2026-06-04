@@ -1,11 +1,16 @@
 [
   {
     "date": "2025-09-01",
-    "name": "K. SAIPRANEETH",
+    "name": "K. SAI PRANEETH",
     "class": "IV",
     "receipt_no": "5678",
-    "payments": [["CASH", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 1
   },
   {
@@ -13,53 +18,83 @@
     "name": "K. BAVISHYA",
     "class": "III",
     "receipt_no": "5679",
-    "payments": [["CASH", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 2
   },
   {
     "date": "2025-09-01",
-    "name": "K. GEETHIKASAI",
+    "name": "K. GEETHIKA SAI",
     "class": "VII",
     "receipt_no": "5680",
-    "payments": [["CASH", 30000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        30000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 3
   },
   {
     "date": "2025-09-01",
-    "name": "C.H. KOMALI",
+    "name": "CH. KOMALI",
     "class": "VI",
     "receipt_no": "5681",
-    "payments": [["ONLINE", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 4
   },
   {
     "date": "2025-09-01",
-    "name": "C.H. SOUKYA",
+    "name": "CH. SOUKYA",
     "class": "III",
     "receipt_no": "5682",
-    "payments": [["ONLINE", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 5
   },
   {
     "date": "2025-09-01",
-    "name": "M. SHASRA",
-    "class": "1ST",
+    "name": "M. SHASTRA",
+    "class": "II",
     "receipt_no": "5683",
-    "payments": [["ONLINE", 15000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        15000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 6
   },
   {
     "date": "2025-09-01",
-    "name": "C. VARNIKAPRIYA",
+    "name": "C. VANIKAPRIYA",
     "class": "3RD",
     "receipt_no": "5684",
-    "payments": [["ONLINE", 11000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        11000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 7
   },
   {
@@ -67,26 +102,41 @@
     "name": "K. THRISHA",
     "class": "2ND",
     "receipt_no": "5685",
-    "payments": [["ONLINE", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 8
   },
   {
     "date": "2025-09-01",
-    "name": "C.H. SHANVITHA",
+    "name": "CH. SHANVITHA",
     "class": "3RD",
     "receipt_no": "5686",
-    "payments": [["CASH", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 9
   },
   {
     "date": "2025-09-01",
-    "name": "C.H. VEDASRI",
+    "name": "CH. VEDA SRI",
     "class": "2ND",
     "receipt_no": "5687",
-    "payments": [["CASH", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 10
   },
   {
@@ -94,17 +144,27 @@
     "name": "M. HARSHITH",
     "class": "5TH",
     "receipt_no": "5688",
-    "payments": [["CASH", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 11
   },
   {
     "date": "2025-09-01",
-    "name": "M. SHASRA",
+    "name": "M. SHASTRA",
     "class": "3RD",
     "receipt_no": "5110",
-    "payments": [["ONLINE", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 12
   },
   {
@@ -112,8 +172,13 @@
     "name": "K. ABHINAV",
     "class": "LKG",
     "receipt_no": "5689",
-    "payments": [["ONLINE", 2500]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        12500
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 13
   },
   {
@@ -121,8 +186,13 @@
     "name": "C. PRAJWALA",
     "class": "2ND",
     "receipt_no": "5690",
-    "payments": [["CASH", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 14
   },
   {
@@ -130,8 +200,13 @@
     "name": "P. SHIVANK",
     "class": "3RD",
     "receipt_no": "5691",
-    "payments": [["ONLINE", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 15
   },
   {
@@ -139,17 +214,27 @@
     "name": "P. KARTHIKEY",
     "class": "8TH",
     "receipt_no": "5692",
-    "payments": [["ONLINE", 10000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 16
   },
   {
     "date": "2025-09-02",
-    "name": "M. ABHINAYSRI",
+    "name": "M. ABHINAY SRI",
     "class": "UKG",
     "receipt_no": "5693",
-    "payments": [["ONLINE", 25000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE",
+        25000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 17
   },
   {
@@ -157,17 +242,27 @@
     "name": "C. PRAJWALA",
     "class": "2ND",
     "receipt_no": "5111",
-    "payments": [["CASH", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 18
   },
   {
     "date": "2025-09-02",
-    "name": "P. KARTHIKEY",
+    "name": "P. KARTHIKEYA",
     "class": "8TH",
     "receipt_no": "5112",
-    "payments": [["ONLINE", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 19
   },
   {
@@ -175,8 +270,13 @@
     "name": "P. SHIVANK",
     "class": "3RD",
     "receipt_no": "5113",
-    "payments": [["ONLINE", 5000]],
-    "sheet": "RCB_Sep_2025_26.pdf",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Sep 2025 26.pdf",
     "row": 20
   }
 ]

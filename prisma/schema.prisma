@@ -28,7 +28,10 @@ model School {
   academicYears         AcademicYear[]
   activityLogs          ActivityLog[]
   Address               Address[]
+  attendancePolicies    AttendancePolicy[]
   BankDetail            BankDetail[]
+  bankStatements        BankStatement[]
+  bankStatementEntries  BankStatementEntry[]
   branches              Branch[]
   accounts              ChartOfAccount[]
   Class                 Class[]
@@ -42,6 +45,7 @@ model School {
   examTypes             ExamType[]
   FamilyDetail          FamilyDetail[]
   feeComponents         FeeComponentMaster[]
+  backboneInvoices      FeeInvoice[]
   feeStructures         FeeStructure[]
   feeTemplateComponents FeeTemplateComponent[]
   financialAuditLogs    FinancialAuditLog[]
@@ -80,14 +84,6 @@ model School {
   TransportDetail       TransportDetail[]
   TransportStop         TransportStop[]
   unlockRequests        UnlockRequest[]
-  attendancePolicies    AttendancePolicy[]
-
-  // 🛡️ Shadow Relation for Enterprise V4
-  backboneInvoices FeeInvoice[]
-
-  // 🏦 Bank Reconciliation Engine
-  bankStatements         BankStatement[]
-  bankStatementEntries   BankStatementEntry[]
 }
 
 model PlatformAdmin {
@@ -152,6 +148,7 @@ model Branch {
   academicRecords      AcademicRecord[]
   activityLogs         ActivityLog[]          @relation("BranchLogs")
   Address              Address[]
+  attendancePolicies   AttendancePolicy[]
   BankDetail           BankDetail[]
   books                Book[]                 @relation("BranchBooks")
   school               School                 @relation(fields: [schoolId], references: [id])
@@ -164,12 +161,13 @@ model Branch {
   examResults          ExamResult[]           @relation("BranchExamResults")
   examTypes            ExamType[]             @relation("BranchExamTypes")
   FamilyDetail         FamilyDetail[]
-  ledgerEntries        LedgerEntry[]
   FeeComponentMaster   FeeComponentMaster[]
   feeStructures        FeeStructure[]
   FeeTemplateComponent FeeTemplateComponent[]
   FinancialRecord      FinancialRecord[]
   libraryIssues        IssueReturn[]          @relation("BranchLibraryIssues")
+  journalEntries       JournalEntry[]
+  ledgerEntries        LedgerEntry[]
   libraryMembers       LibraryMember[]        @relation("BranchLibraryMembers")
   MedicalRecord        MedicalRecord[]
   notifications        Notification[]         @relation("BranchNotifications")
@@ -188,14 +186,12 @@ model Branch {
   StaffProfessional    StaffProfessional[]
   StaffStatutory       StaffStatutory[]
   students             Student[]              @relation("BranchStudents")
+  StudentAttendance    StudentAttendance[]
   StudentFeeComponent  StudentFeeComponent[]
   subjects             Subject[]              @relation("BranchSubjects")
   TransportDetail      TransportDetail[]
   vehicles             Vehicle[]              @relation("BranchVehicles")
   vehicleStops         VehicleStop[]          @relation("BranchStops")
-  attendancePolicies   AttendancePolicy[]
-  journalEntries       JournalEntry[]
-  StudentAttendance    StudentAttendance[]
 
   @@unique([schoolId, code])
 }
@@ -218,30 +214,28 @@ model AcademicYear {
   history       AcademicHistory[]
   school        School            @relation(fields: [schoolId], references: [id])
   feeStructures FeeStructure[]
-  consents      StudentConsent[]
   ledgerEntries LedgerEntry[]
+  consents      StudentConsent[]
 }
 
 model FinancialYear {
-  id            String         @id @default(uuid())
-  name          String
-  startDate     DateTime
-  endDate       DateTime
-  isCurrent     Boolean        @default(false)
-  isLocked      Boolean        @default(false)
-  isGenesis     Boolean        @default(false)
-  dnaVersion    String         @default("v1")
-  source        String?
-  mode          String?
-  triggeredBy   String?
-  metadata      Json?
-  schoolId      String
-  school        School         @relation(fields: [schoolId], references: [id])
-  journals      JournalEntry[]
-  ledgerEntries LedgerEntry[]
-
-  // 🛡️ Shadow Relation for Enterprise V4
+  id               String         @id @default(uuid())
+  name             String
+  startDate        DateTime
+  endDate          DateTime
+  isCurrent        Boolean        @default(false)
+  isLocked         Boolean        @default(false)
+  isGenesis        Boolean        @default(false)
+  dnaVersion       String         @default("v1")
+  source           String?
+  mode             String?
+  triggeredBy      String?
+  metadata         Json?
+  schoolId         String
   backboneInvoices FeeInvoice[]
+  school           School         @relation(fields: [schoolId], references: [id])
+  journals         JournalEntry[]
+  ledgerEntries    LedgerEntry[]
 }
 
 model Class {
@@ -282,8 +276,8 @@ model Section {
   academicRecords AcademicRecord[]
   branch          Branch              @relation(fields: [branchId], references: [id])
   class           Class               @relation(fields: [classId], references: [id])
-  school          School              @relation(fields: [schoolId], references: [id])
   classTeacher    Staff?              @relation("SectionTeacher", fields: [classTeacherId], references: [id])
+  school          School              @relation(fields: [schoolId], references: [id])
   attendance      StudentAttendance[]
 }
 
@@ -327,7 +321,9 @@ model Student {
   documents        Document[]
   examResults      ExamResult[]
   family           FamilyDetail?
+  backboneInvoices FeeInvoice[]
   financial        FinancialRecord?
+  ledgerEntries    LedgerEntry[]
   libraryMember    LibraryMember?
   medical          MedicalRecord?
   previousSchool   PreviousSchool?
@@ -340,10 +336,6 @@ model Student {
   transportHistory TransportCollection[]       @relation("TransportHistory")
   transport        TransportDetail?
   unlockRequests   UnlockRequest[]
-
-  // 🛡️ Shadow Relation for Enterprise V4
-  backboneInvoices FeeInvoice[]
-  ledgerEntries    LedgerEntry[]
 
   @@unique([schoolId, branchId, studentCode])
   @@unique([schoolId, branchId, admissionNumber])
@@ -601,28 +593,26 @@ model DiscountType {
 }
 
 model FeeComponentMaster {
-  id                String                 @id @default(uuid())
-  schoolId          String
-  name              String
-  type              String                 @default("ANCILLARY")
-  amount            Decimal?               @db.Decimal(12, 2)
-  description       String?                @db.Text
-  isOneTime         Boolean                @default(false)
-  isRefundable      Boolean                @default(false)
-  accountCode       String?
-  isGenesis         Boolean                @default(false)
-  dnaVersion        String                 @default("v1")
-  source            String?
-  triggeredBy       String?
-  branchId          String?
-  branch            Branch?                @relation(fields: [branchId], references: [id])
-  school            School                 @relation(fields: [schoolId], references: [id])
-  templateLinks     FeeTemplateComponent[]
-  studentComponents StudentFeeComponent[]
-  isActive          Boolean                @default(true)
-
-  // 🛡️ Shadow Relation for Enterprise V4
+  id                   String                 @id @default(uuid())
+  schoolId             String
+  name                 String
+  type                 String                 @default("ANCILLARY")
+  isOneTime            Boolean                @default(false)
+  isRefundable         Boolean                @default(false)
+  accountCode          String?
+  isGenesis            Boolean                @default(false)
+  dnaVersion           String                 @default("v1")
+  source               String?
+  triggeredBy          String?
+  branchId             String?
+  amount               Decimal?               @db.Decimal(12, 2)
+  description          String?
+  isActive             Boolean                @default(true)
+  branch               Branch?                @relation(fields: [branchId], references: [id])
+  school               School                 @relation(fields: [schoolId], references: [id])
   backboneInvoiceItems FeeInvoiceItem[]
+  templateLinks        FeeTemplateComponent[]
+  studentComponents    StudentFeeComponent[]
 
   @@unique([schoolId, branchId, name])
 }
@@ -641,7 +631,7 @@ model FeeStructure {
   source         String?
   mode           String?
   triggeredBy    String?
-  description    String?                @db.Text
+  description    String?
   isActive       Boolean                @default(true)
   academicYear   AcademicYear           @relation(fields: [academicYearId], references: [id])
   branch         Branch                 @relation(fields: [branchId], references: [id])
@@ -670,56 +660,50 @@ model FeeTemplateComponent {
 }
 
 model StudentFeeComponent {
-  id                 String   @id @default(uuid())
+  id                 String             @id @default(uuid())
   schoolId           String?
   branchId           String?
   studentFinancialId String
   componentId        String
-  baseAmount         Decimal  @db.Decimal(12, 2)
-  waiverAmount       Decimal  @default(0) @db.Decimal(12, 2)
-  discountAmount     Decimal  @default(0) @db.Decimal(12, 2)
-  isApplicable       Boolean  @default(true)
+  baseAmount         Decimal            @db.Decimal(12, 2)
+  waiverAmount       Decimal            @default(0) @db.Decimal(12, 2)
+  discountAmount     Decimal            @default(0) @db.Decimal(12, 2)
+  isApplicable       Boolean            @default(true)
   waiverReason       String?
   authorizerId       String?
-  lastModifiedAt     DateTime @updatedAt
-
-  // 🔒 Sovereign Lockdown Fields (Enterprise V4)
-  isLocked   Boolean   @default(false)
-  lockedAt   DateTime?
-  lockReason String?   @default("ADMISSION")
-  version    Int       @default(1)
-
-  authorizer      Staff?             @relation(fields: [authorizerId], references: [id])
-  branch          Branch?            @relation(fields: [branchId], references: [id])
-  masterComponent FeeComponentMaster @relation(fields: [componentId], references: [id])
-  school          School?            @relation(fields: [schoolId], references: [id])
-  financialRecord FinancialRecord    @relation(fields: [studentFinancialId], references: [id])
+  lastModifiedAt     DateTime           @updatedAt
+  isLocked           Boolean            @default(false)
+  lockReason         String?            @default("ADMISSION")
+  lockedAt           DateTime?
+  version            Int                @default(1)
+  authorizer         Staff?             @relation(fields: [authorizerId], references: [id])
+  branch             Branch?            @relation(fields: [branchId], references: [id])
+  masterComponent    FeeComponentMaster @relation(fields: [componentId], references: [id])
+  school             School?            @relation(fields: [schoolId], references: [id])
+  financialRecord    FinancialRecord    @relation(fields: [studentFinancialId], references: [id])
 }
 
 model LedgerEntry {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   studentId       String
   schoolId        String
   branchId        String?
-  type            String // CHARGE | PAYMENT | DISCOUNT | ADJUSTMENT
-  amount          Decimal  @db.Decimal(12, 2)
+  type            String
+  amount          Decimal        @db.Decimal(12, 2)
   reason          String
-  createdBy       String // The Staff ID/Session ID who performed the action
-  createdAt       DateTime @default(now())
+  createdBy       String
+  createdAt       DateTime       @default(now())
   academicYearId  String?
   financialYearId String?
-
-  student       Student        @relation(fields: [studentId], references: [id])
-  school        School?        @relation(fields: [schoolId], references: [id])
-  branch        Branch?        @relation(fields: [branchId], references: [id])
-  academicYear  AcademicYear?  @relation(fields: [academicYearId], references: [id])
-  financialYear FinancialYear? @relation(fields: [financialYearId], references: [id])
-
-  journalEntryId String?
-  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
-
-  feeStructureId String?
-  feeStructure   FeeStructure? @relation(fields: [feeStructureId], references: [id])
+  journalEntryId  String?
+  feeStructureId  String?
+  academicYear    AcademicYear?  @relation(fields: [academicYearId], references: [id])
+  branch          Branch?        @relation(fields: [branchId], references: [id])
+  feeStructure    FeeStructure?  @relation(fields: [feeStructureId], references: [id])
+  financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
+  journalEntry    JournalEntry?  @relation(fields: [journalEntryId], references: [id])
+  school          School         @relation(fields: [schoolId], references: [id])
+  student         Student        @relation(fields: [studentId], references: [id])
 
   @@index([studentId])
   @@index([schoolId])
@@ -727,62 +711,58 @@ model LedgerEntry {
 }
 
 model FeeInvoice {
-  id              String   @id @default(uuid())
-  invoiceNumber   String?  @unique
+  id              String                 @id @default(uuid())
+  invoiceNumber   String?                @unique
   studentId       String
   academicYearId  String
   financialYearId String
-  totalAmount     Decimal  @db.Decimal(12, 2)
-  paidAmount      Decimal  @default(0) @db.Decimal(12, 2)
-  balance         Decimal  @db.Decimal(12, 2)
+  totalAmount     Decimal                @db.Decimal(12, 2)
+  paidAmount      Decimal                @default(0) @db.Decimal(12, 2)
+  balance         Decimal                @db.Decimal(12, 2)
   dueDate         DateTime
-  status          String   @default("PENDING") // PENDING, PARTIAL, PAID, VOID
-  isLocked        Boolean  @default(false)
-  generatedAt     DateTime @default(now())
+  status          String                 @default("PENDING")
+  isLocked        Boolean                @default(false)
+  generatedAt     DateTime               @default(now())
   schoolId        String
   branchId        String
-
-  items       FeeInvoiceItem[]
-  allocations CollectionAllocation[]
-
-  school        School        @relation(fields: [schoolId], references: [id])
-  financialYear FinancialYear @relation(fields: [financialYearId], references: [id])
-  student       Student       @relation(fields: [studentId], references: [id])
+  allocations     CollectionAllocation[]
+  financialYear   FinancialYear          @relation(fields: [financialYearId], references: [id])
+  school          School                 @relation(fields: [schoolId], references: [id])
+  student         Student                @relation(fields: [studentId], references: [id])
+  items           FeeInvoiceItem[]
 
   @@index([studentId])
   @@index([schoolId])
 }
 
 model FeeInvoiceItem {
-  id            String  @id @default(uuid())
-  invoiceId     String
-  componentId   String?
-  componentName String
-  componentType String  @default("TUTION") // TUTION, TRANSPORT, LATE_FEE, etc.
-  amount        Decimal @db.Decimal(12, 2)
-  paidAmount    Decimal @default(0) @db.Decimal(12, 2)
-  balance       Decimal @db.Decimal(12, 2)
-  priority      Int     @default(100)
-  ledgerCode    String?
-
-  invoice         FeeInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  masterComponent FeeComponentMaster?    @relation(fields: [componentId], references: [id])
+  id              String                 @id @default(uuid())
+  invoiceId       String
+  componentId     String?
+  componentName   String
+  componentType   String                 @default("TUTION")
+  amount          Decimal                @db.Decimal(12, 2)
+  paidAmount      Decimal                @default(0) @db.Decimal(12, 2)
+  balance         Decimal                @db.Decimal(12, 2)
+  priority        Int                    @default(100)
+  ledgerCode      String?
   allocations     CollectionAllocation[]
+  masterComponent FeeComponentMaster?    @relation(fields: [componentId], references: [id])
+  invoice         FeeInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
 
 model CollectionAllocation {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   collectionId  String
   invoiceId     String
   invoiceItemId String
-  amount        Decimal  @db.Decimal(12, 2)
-  createdAt     DateTime @default(now())
-
-  collection  Collection     @relation(fields: [collectionId], references: [id])
-  invoice     FeeInvoice     @relation(fields: [invoiceId], references: [id])
-  invoiceItem FeeInvoiceItem @relation(fields: [invoiceItemId], references: [id])
+  amount        Decimal        @db.Decimal(12, 2)
+  createdAt     DateTime       @default(now())
+  collection    Collection     @relation(fields: [collectionId], references: [id])
+  invoice       FeeInvoice     @relation(fields: [invoiceId], references: [id])
+  invoiceItem   FeeInvoiceItem @relation(fields: [invoiceItemId], references: [id])
 }
 
 model AllocationPriority {
@@ -799,7 +779,7 @@ model LateFeeRule {
   schoolId      String
   componentType String   @default("TUTION")
   graceDays     Int      @default(5)
-  type          String   @default("FIXED") // FIXED or PERCENT
+  type          String   @default("FIXED")
   value         Decimal  @db.Decimal(12, 2)
   maxCap        Decimal? @db.Decimal(12, 2)
 
@@ -818,34 +798,32 @@ model FinancialPeriod {
 }
 
 model Collection {
-  id               String           @id @default(uuid())
-  receiptNumber    String
-  studentId        String
-  admissionId      String?
-  financialYearId  String
-  schoolId         String
-  branchId         String
-  amountPaid       Decimal          @db.Decimal(12, 2)
-  lateFeePaid      Decimal          @default(0) @db.Decimal(12, 2)
-  convenienceFee   Decimal?         @db.Decimal(12, 2)
-  totalPaid        Decimal          @db.Decimal(12, 2)
-  paymentMode      String
-  paymentReference String?
-  allocatedTo      Json?
-  paymentDate      DateTime         @default(now())
-  collectedBy      String
-  journalEntryId   String?          @unique
-  isAutomated      Boolean          @default(false)
-  status           String           @default("Success")
-  isDeleted        Boolean          @default(false)
-  deletedAt        DateTime?
-  admission        AcademicHistory? @relation(fields: [admissionId], references: [id])
-  branch           Branch           @relation(fields: [branchId], references: [id])
-  journalEntry     JournalEntry?    @relation(fields: [journalEntryId], references: [id])
-  school           School           @relation(fields: [schoolId], references: [id])
-  student          Student          @relation(fields: [studentId], references: [id])
-
-  // 🛡️ Shadow Relation for Enterprise V4
+  id                  String                 @id @default(uuid())
+  receiptNumber       String
+  studentId           String
+  admissionId         String?
+  financialYearId     String
+  schoolId            String
+  branchId            String
+  amountPaid          Decimal                @db.Decimal(12, 2)
+  lateFeePaid         Decimal                @default(0) @db.Decimal(12, 2)
+  convenienceFee      Decimal?               @db.Decimal(12, 2)
+  totalPaid           Decimal                @db.Decimal(12, 2)
+  paymentMode         String
+  paymentReference    String?
+  allocatedTo         Json?
+  paymentDate         DateTime               @default(now())
+  collectedBy         String
+  journalEntryId      String?                @unique
+  isAutomated         Boolean                @default(false)
+  status              String                 @default("Success")
+  isDeleted           Boolean                @default(false)
+  deletedAt           DateTime?
+  admission           AcademicHistory?       @relation(fields: [admissionId], references: [id])
+  branch              Branch                 @relation(fields: [branchId], references: [id])
+  journalEntry        JournalEntry?          @relation(fields: [journalEntryId], references: [id])
+  school              School                 @relation(fields: [schoolId], references: [id])
+  student             Student                @relation(fields: [studentId], references: [id])
   backboneAllocations CollectionAllocation[]
 
   @@unique([schoolId, receiptNumber])
@@ -883,9 +861,9 @@ model JournalEntry {
   branchId        String?
   collection      Collection?
   expense         Expense?
+  branch          Branch?       @relation(fields: [branchId], references: [id])
   financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
   school          School        @relation(fields: [schoolId], references: [id])
-  branch          Branch?       @relation(fields: [branchId], references: [id])
   lines           JournalLine[]
   ledgerEntries   LedgerEntry[]
 
@@ -974,10 +952,18 @@ model Staff {
   assignedClassId     String?               @unique
   departmentId        String?
   categoryId          String?
+  attendancePolicyId  String?
+  biometricId         String?               @unique
+  mobilePasswordUsed  Boolean               @default(false)
+  mobileSessionToken  String?
+  exceptions          AttendanceException[]
   Discount            Discount[]            @relation("DiscountAuthorizer")
   documents           Document[]
+  leaveRequests       LeaveRequest[]
   salarySlips         SalarySlip[]
+  assignedSection     Section?              @relation("SectionTeacher")
   assignedClass       Class?                @relation("ClassTeacher", fields: [assignedClassId], references: [id])
+  attendancePolicy    AttendancePolicy?     @relation(fields: [attendancePolicyId], references: [id])
   branch              Branch                @relation(fields: [branchId], references: [id])
   category            StaffCategory?        @relation(fields: [categoryId], references: [id])
   department          StaffDepartment?      @relation(fields: [departmentId], references: [id])
@@ -985,19 +971,11 @@ model Staff {
   advances            StaffAdvance[]
   attendance          StaffAttendance[]
   bank                StaffBank?
+  faceProfile         StaffFaceProfile?
   professional        StaffProfessional?
   statutory           StaffStatutory?
-  exceptions          AttendanceException[]
-  faceProfile         StaffFaceProfile?
-  attendancePolicyId  String?
-  attendancePolicy    AttendancePolicy?     @relation(fields: [attendancePolicyId], references: [id])
   StudentFeeComponent StudentFeeComponent[]
   vehicleAssignments  VehicleStaff[]
-  biometricId         String?               @unique
-  assignedSection     Section?              @relation("SectionTeacher")
-  leaveRequests       LeaveRequest[]
-  mobileSessionToken  String?
-  mobilePasswordUsed  Boolean               @default(false)
 
   @@unique([branchId, staffCode])
   @@unique([branchId, email])
@@ -1086,8 +1064,8 @@ model StaffAttendance {
   checkOut       DateTime?
   schoolId       String?
   branchId       String?
-  lateMinutes    Int?      @default(0)
   isFaceVerified Boolean?  @default(false)
+  lateMinutes    Int?      @default(0)
   isOverridden   Boolean?  @default(false)
   overriddenAt   DateTime?
   overriddenBy   String?
@@ -1103,15 +1081,15 @@ model StudentAttendance {
   date      DateTime  @default(now())
   status    String    @default("Present")
   remarks   String?
-  session   String    @default("Morning")
   schoolId  String
-  branchId  String?
   classId   String?
   entryTime DateTime?
   sectionId String?
+  session   String    @default("Morning")
+  branchId  String?
+  branch    Branch?   @relation(fields: [branchId], references: [id])
   class     Class?    @relation(fields: [classId], references: [id])
   school    School    @relation(fields: [schoolId], references: [id])
-  branch    Branch?   @relation(fields: [branchId], references: [id])
   section   Section?  @relation(fields: [sectionId], references: [id])
   student   Student   @relation(fields: [studentId], references: [id])
 
@@ -1592,6 +1570,552 @@ model StaffCategory {
   @@unique([schoolId, name])
 }
 
+model AttendancePolicy {
+  id             String  @id @default(uuid())
+  branchId       String
+  startMinutes   Int
+  endMinutes     Int
+  gracePeriod    Int
+  halfDayMinutes Int
+  autoHoliday    Boolean @default(true)
+  name           String  @default("Default")
+  weeklyOffs     Int[]   @default([0])
+  schoolId       String
+  branch         Branch  @relation(fields: [branchId], references: [id])
+  school         School  @relation(fields: [schoolId], references: [id])
+  staff          Staff[]
+}
+
+model AttendanceException {
+  id        String   @id @default(uuid())
+  staffId   String
+  date      DateTime
+  type      String
+  meta      Json
+  createdAt DateTime @default(now())
+  staff     Staff    @relation(fields: [staffId], references: [id])
+}
+
+model StaffFaceProfile {
+  id       String @id @default(uuid())
+  staffId  String @unique
+  faceId   String
+  metadata Json?
+  staff    Staff  @relation(fields: [staffId], references: [id])
+}
+
+model BulkPayoutAuditRecord {
+  id            String    @id @default(uuid())
+  schoolId      String
+  branchId      String?
+  month         Int
+  year          Int
+  staffName     String
+  accountNumber String
+  ifscCode      String
+  bankName      String?
+  branchName    String?
+  segment       String?
+  actualSalary  Decimal   @db.Decimal(12, 2)
+  netSalary     Decimal   @db.Decimal(12, 2)
+  totalDays     Int
+  presentDays   Int
+  status        String    @default("Audited")
+  exportedAt    DateTime?
+  processedAt   DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  metadata      Json?
+
+  @@index([schoolId, month, year])
+  @@index([staffName])
+}
+
+model BankStatement {
+  id           String               @id @default(uuid())
+  schoolId     String
+  branchId     String?
+  bankName     String
+  accountCode  String
+  accountNo    String?
+  month        Int
+  year         Int
+  periodFrom   DateTime?
+  periodTo     DateTime?
+  fileName     String
+  uploadedBy   String
+  status       String               @default("PENDING")
+  openingBal   Decimal?             @db.Decimal(15, 2)
+  closingBal   Decimal?             @db.Decimal(15, 2)
+  totalCredits Decimal?             @db.Decimal(15, 2)
+  totalDebits  Decimal?             @db.Decimal(15, 2)
+  uploadedAt   DateTime             @default(now())
+  school       School               @relation(fields: [schoolId], references: [id])
+  entries      BankStatementEntry[]
+
+  @@index([schoolId, month, year])
+  @@index([schoolId, bankName])
+}
+
+model BankStatementEntry {
+  id          String        @id @default(uuid())
+  statementId String
+  txnDate     DateTime
+  valueDate   DateTime?
+  description String
+  reference   String?
+  debit       Decimal?      @db.Decimal(12, 2)
+  credit      Decimal?      @db.Decimal(12, 2)
+  balance     Decimal?      @db.Decimal(15, 2)
+  txnType     String        @default("UNKNOWN")
+  category    String        @default("UNCLASSIFIED")
+  matchStatus String        @default("UNMATCHED")
+  matchedTo   String?
+  matchedType String?
+  confidence  Int           @default(0)
+  notes       String?
+  confirmedAt DateTime?
+  confirmedBy String?
+  branchId    String?       @db.VarChar(36)
+  schoolId    String        @db.VarChar(36)
+  school      School        @relation(fields: [schoolId], references: [id])
+  statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  @@index([statementId])
+  @@index([txnDate])
+  @@index([schoolId])
+}
+
+model LeaveRequest {
+  id         String    @id @default(uuid())
+  staffId    String
+  startDate  DateTime
+  endDate    DateTime
+  type       String
+  reason     String
+  status     String    @default("PENDING")
+  approvedBy String?
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  staff      Staff     @relation(fields: [staffId], references: [id])
+}
+
+model fee_payment_links {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token               String    @unique
+  student_name        String
+  parent_name         String
+  phone               String
+  amount              Decimal   @db.Decimal(12, 2)
+  description         String?
+  pending_items       String?
+  razorpay_link_id    String?
+  razorpay_short_url  String?
+  status              String    @default("PENDING")
+  razorpay_payment_id String?
+  paid_at             DateTime? @db.Timestamptz(6)
+  feedback_rating     String?
+  feedback_note       String?
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+  payment_method      String?
+  payment_details     String?
+  school_id           String?   @db.VarChar(255)
+  branch_id           String?   @db.VarChar(255)
+
+  @@index([phone], map: "idx_fpl_phone")
+  @@index([razorpay_link_id], map: "idx_fpl_rzp_id")
+  @@index([token], map: "idx_fpl_token")
+}
+
+model inventory_adjustments {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id         String          @db.VarChar(255)
+  branch_id         String          @db.VarChar(255)
+  academic_year_id  String          @db.VarChar(255)
+  adjustment_date   DateTime        @db.Date
+  item_id           String          @db.Uuid
+  previous_quantity Int
+  new_quantity      Int
+  adjustment_type   String          @db.VarChar(50)
+  reason            String
+  logged_by         String          @db.VarChar(255)
+  created_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  inventory_items   inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model inventory_audit_logs {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id    String    @db.VarChar(255)
+  branch_id    String    @db.VarChar(255)
+  user_id      String    @db.VarChar(255)
+  username     String    @db.VarChar(255)
+  action_type  String    @db.VarChar(100)
+  target_table String    @db.VarChar(100)
+  target_id    String    @db.VarChar(255)
+  old_values   Json?
+  new_values   Json?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model inventory_damaged_stock {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id        String          @db.VarChar(255)
+  branch_id        String          @db.VarChar(255)
+  academic_year_id String          @db.VarChar(255)
+  log_date         DateTime        @db.Date
+  item_id          String          @db.Uuid
+  quantity         Int
+  reason           String
+  logged_by        String          @db.VarChar(255)
+  created_at       DateTime?       @default(now()) @db.Timestamptz(6)
+  inventory_items  inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model inventory_goods_receipts {
+  id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id                 String                     @db.VarChar(255)
+  branch_id                 String                     @db.VarChar(255)
+  academic_year_id          String                     @db.VarChar(255)
+  grn_number                String                     @db.VarChar(100)
+  po_id                     String?                    @db.Uuid
+  supplier_id               String                     @db.Uuid
+  invoice_number            String                     @db.VarChar(100)
+  receipt_date              DateTime                   @db.Date
+  total_amount              Decimal                    @default(0.00) @db.Decimal(12, 2)
+  status                    String                     @default("Active") @db.VarChar(50)
+  remarks                   String?
+  created_by                String                     @db.VarChar(255)
+  created_at                DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime?                  @default(now()) @db.Timestamptz(6)
+  inventory_purchase_orders inventory_purchase_orders? @relation(fields: [po_id], references: [id], onUpdate: NoAction)
+  inventory_suppliers       inventory_suppliers        @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  inventory_grn_items       inventory_grn_items[]
+
+  @@unique([school_id, grn_number])
+}
+
+model inventory_grn_items {
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grn_id                   String                   @db.Uuid
+  item_id                  String                   @db.Uuid
+  quantity_received        Int
+  rate                     Decimal                  @db.Decimal(12, 2)
+  amount                   Decimal                  @db.Decimal(12, 2)
+  inventory_goods_receipts inventory_goods_receipts @relation(fields: [grn_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_items          inventory_items          @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([grn_id, item_id])
+}
+
+model inventory_issue_items {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  issue_id         String           @db.Uuid
+  item_id          String           @db.Uuid
+  quantity         Int
+  unit_price       Decimal?         @default(0.00) @db.Decimal(12, 2)
+  inventory_issues inventory_issues @relation(fields: [issue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_items  inventory_items  @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([issue_id, item_id])
+}
+
+model inventory_issues {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id             String                  @db.VarChar(255)
+  branch_id             String                  @db.VarChar(255)
+  academic_year_id      String                  @db.VarChar(255)
+  issue_date            DateTime                @db.Date
+  issue_type            String                  @db.VarChar(50)
+  class_id              String?                 @db.VarChar(255)
+  section_id            String?                 @db.VarChar(255)
+  student_id            String?                 @db.VarChar(255)
+  kit_id                String?                 @db.Uuid
+  remarks               String?
+  is_credit_issue       Boolean?                @default(false)
+  charge_amount         Decimal?                @default(0.00) @db.Decimal(12, 2)
+  created_by            String                  @db.VarChar(255)
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  inventory_issue_items inventory_issue_items[]
+  inventory_kits        inventory_kits?         @relation(fields: [kit_id], references: [id], onUpdate: NoAction)
+}
+
+model inventory_items {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id                    String                         @db.VarChar(255)
+  branch_id                    String                         @db.VarChar(255)
+  item_code                    String                         @db.VarChar(100)
+  item_name                    String                         @db.VarChar(255)
+  category                     String                         @db.VarChar(100)
+  item_type                    String?                        @default("Regular") @db.VarChar(100)
+  unit                         String                         @default("Pcs") @db.VarChar(50)
+  reorder_level                Int                            @default(10)
+  barcode                      String?                        @db.VarChar(100)
+  qr_code                      String?                        @db.VarChar(100)
+  status                       String                         @default("Active") @db.VarChar(50)
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
+  inventory_adjustments        inventory_adjustments[]
+  inventory_damaged_stock      inventory_damaged_stock[]
+  inventory_grn_items          inventory_grn_items[]
+  inventory_issue_items        inventory_issue_items[]
+  inventory_kit_items          inventory_kit_items[]
+  inventory_opening_stock      inventory_opening_stock[]
+  inventory_po_items           inventory_po_items[]
+  inventory_reservations       inventory_reservations[]
+  inventory_sale_items         inventory_sale_items[]
+  inventory_transfer_items     inventory_transfer_items[]
+  inventory_year_end_snapshots inventory_year_end_snapshots[]
+  inventory_return_items_returned  inventory_return_items[] @relation("ReturnItem")
+  inventory_return_items_exchanged inventory_return_items[] @relation("ExchangeItem")
+
+  @@unique([school_id, item_code])
+  @@index([school_id, branch_id], map: "idx_inv_items_tenant")
+}
+
+model inventory_kit_items {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kit_id          String          @db.Uuid
+  item_id         String          @db.Uuid
+  quantity        Int             @default(1)
+  inventory_items inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_kits  inventory_kits  @relation(fields: [kit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([kit_id, item_id])
+}
+
+model inventory_kits {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id           String                @db.VarChar(255)
+  branch_id           String                @db.VarChar(255)
+  kit_name            String                @db.VarChar(255)
+  description         String?
+  total_price         Decimal               @default(0.00) @db.Decimal(12, 2)
+  status              String                @default("Active") @db.VarChar(50)
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  inventory_issues    inventory_issues[]
+  inventory_kit_items inventory_kit_items[]
+
+  @@unique([school_id, kit_name])
+}
+
+model inventory_opening_stock {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id        String          @db.VarChar(255)
+  branch_id        String          @db.VarChar(255)
+  item_id          String          @db.Uuid
+  academic_year_id String          @db.VarChar(255)
+  quantity         Int             @default(0)
+  created_at       DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?       @default(now()) @db.Timestamptz(6)
+  inventory_items  inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([school_id, item_id, academic_year_id])
+}
+
+model inventory_po_items {
+  id                        String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  po_id                     String                    @db.Uuid
+  item_id                   String                    @db.Uuid
+  quantity_ordered          Int
+  quantity_received         Int                       @default(0)
+  rate                      Decimal                   @db.Decimal(12, 2)
+  amount                    Decimal                   @db.Decimal(12, 2)
+  inventory_items           inventory_items           @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_purchase_orders inventory_purchase_orders @relation(fields: [po_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([po_id, item_id])
+}
+
+model inventory_purchase_orders {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id                String                     @db.VarChar(255)
+  branch_id                String                     @db.VarChar(255)
+  academic_year_id         String                     @db.VarChar(255)
+  po_number                String                     @db.VarChar(100)
+  supplier_id              String                     @db.Uuid
+  status                   String                     @default("Draft") @db.VarChar(50)
+  total_amount             Decimal                    @default(0.00) @db.Decimal(12, 2)
+  remarks                  String?
+  created_by               String                     @db.VarChar(255)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  inventory_goods_receipts inventory_goods_receipts[]
+  inventory_po_items       inventory_po_items[]
+  inventory_suppliers      inventory_suppliers        @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([school_id, po_number])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model inventory_reservations {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id        String          @db.VarChar(255)
+  branch_id        String          @db.VarChar(255)
+  academic_year_id String          @db.VarChar(255)
+  item_id          String          @db.Uuid
+  quantity         Int
+  source_type      String          @db.VarChar(50)
+  source_id        String          @db.VarChar(255)
+  status           String          @default("Reserved") @db.VarChar(50)
+  created_at       DateTime?       @default(now()) @db.Timestamptz(6)
+  inventory_items  inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model inventory_sale_items {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sale_id         String          @db.Uuid
+  item_id         String          @db.Uuid
+  quantity        Int
+  unit_price      Decimal         @db.Decimal(12, 2)
+  gst_rate        Decimal         @default(0.00) @db.Decimal(5, 2)
+  gst_amount      Decimal         @default(0.00) @db.Decimal(12, 2)
+  discount_amount Decimal         @default(0.00) @db.Decimal(12, 2)
+  net_amount      Decimal         @db.Decimal(12, 2)
+  inventory_items inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_sales inventory_sales @relation(fields: [sale_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([sale_id, item_id])
+}
+
+model inventory_sales {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id            String                 @db.VarChar(255)
+  branch_id            String                 @db.VarChar(255)
+  academic_year_id     String                 @db.VarChar(255)
+  invoice_number       String                 @db.VarChar(100)
+  customer_type        String                 @db.VarChar(50)
+  student_id           String?                @db.VarChar(255)
+  customer_name        String                 @db.VarChar(255)
+  total_taxable        Decimal                @default(0.00) @db.Decimal(12, 2)
+  total_gst            Decimal                @default(0.00) @db.Decimal(12, 2)
+  total_discount       Decimal                @default(0.00) @db.Decimal(12, 2)
+  net_amount           Decimal                @default(0.00) @db.Decimal(12, 2)
+  payment_mode         String                 @db.VarChar(50)
+  payment_status       String                 @default("Paid") @db.VarChar(50)
+  created_by           String                 @db.VarChar(255)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  inventory_sale_items inventory_sale_items[]
+
+  @@unique([school_id, invoice_number])
+}
+
+model inventory_supplier_payments {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id           String              @db.VarChar(255)
+  branch_id           String              @db.VarChar(255)
+  academic_year_id    String              @db.VarChar(255)
+  supplier_id         String              @db.Uuid
+  payment_date        DateTime            @db.Date
+  amount_paid         Decimal             @db.Decimal(12, 2)
+  payment_mode        String              @db.VarChar(50)
+  reference_number    String?             @db.VarChar(100)
+  remarks             String?
+  created_by          String              @db.VarChar(255)
+  created_at          DateTime?           @default(now()) @db.Timestamptz(6)
+  inventory_suppliers inventory_suppliers @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model inventory_suppliers {
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id                   String                        @db.VarChar(255)
+  branch_id                   String                        @db.VarChar(255)
+  supplier_name               String                        @db.VarChar(255)
+  contact_person              String?                       @db.VarChar(255)
+  phone                       String?                       @db.VarChar(50)
+  email                       String?                       @db.VarChar(255)
+  address                     String?
+  bank_details                Json?
+  status                      String                        @default("Active") @db.VarChar(50)
+  created_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
+  inventory_goods_receipts    inventory_goods_receipts[]
+  inventory_purchase_orders   inventory_purchase_orders[]
+  inventory_supplier_payments inventory_supplier_payments[]
+
+  @@unique([school_id, supplier_name])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model inventory_transfer_items {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transfer_id         String              @db.Uuid
+  item_id             String              @db.Uuid
+  quantity_shipped    Int
+  quantity_received   Int?                @default(0)
+  inventory_items     inventory_items     @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_transfers inventory_transfers @relation(fields: [transfer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([transfer_id, item_id])
+}
+
+model inventory_transfers {
+  id                       String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id                String                     @db.VarChar(255)
+  from_branch_id           String                     @db.VarChar(255)
+  to_branch_id             String                     @db.VarChar(255)
+  academic_year_id         String                     @db.VarChar(255)
+  transfer_number          String                     @db.VarChar(100)
+  status                   String                     @default("Pending") @db.VarChar(50)
+  shipment_date            DateTime?                  @db.Date
+  receipt_date             DateTime?                  @db.Date
+  remarks                  String?
+  created_by               String                     @db.VarChar(255)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  inventory_transfer_items inventory_transfer_items[]
+
+  @@unique([school_id, transfer_number])
+}
+
+model inventory_year_end_snapshots {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id         String          @db.VarChar(255)
+  branch_id         String          @db.VarChar(255)
+  academic_year_id  String          @db.VarChar(255)
+  item_id           String          @db.Uuid
+  closing_quantity  Int             @default(0)
+  closing_valuation Decimal         @default(0.00) @db.Decimal(12, 2)
+  is_locked         Boolean         @default(true)
+  created_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  inventory_items   inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([school_id, branch_id, item_id, academic_year_id])
+}
+
+model inventory_returns {
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  school_id        String                 @db.VarChar(255)
+  branch_id        String                 @db.VarChar(255)
+  academic_year_id String                 @db.VarChar(255)
+  return_date      DateTime               @db.Date
+  return_type      String                 @db.VarChar(50)
+  student_id       String?                @db.VarChar(255)
+  remarks          String?
+  created_by       String                 @db.VarChar(255)
+  created_at       DateTime?              @default(now()) @db.Timestamptz(6)
+  inventory_return_items inventory_return_items[]
+}
+
+model inventory_return_items {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  return_id         String            @db.Uuid
+  item_id           String            @db.Uuid
+  quantity          Int
+  status            String            @db.VarChar(50)
+  exchange_item_id  String?           @db.Uuid
+  exchange_quantity Int?
+  inventory_returns inventory_returns @relation(fields: [return_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  inventory_items   inventory_items   @relation("ReturnItem", fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  exchange_item     inventory_items?  @relation("ExchangeItem", fields: [exchange_item_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([return_id, item_id])
+}
+
 enum Role {
   STAFF
   OWNER
@@ -1607,165 +2131,3 @@ enum OwnerScope {
   GLOBAL
   BRANCH_ONLY
 }
-
-model AttendancePolicy {
-  id             String  @id @default(uuid())
-  schoolId       String
-  branchId       String
-  name           String  @default("Default")
-  startMinutes   Int // 8:30 = 510
-  endMinutes     Int // 16:30 = 990
-  gracePeriod    Int
-  halfDayMinutes Int
-  weeklyOffs     Int[]   @default([0]) // 0 = Sunday
-  autoHoliday    Boolean @default(true)
-  branch         Branch  @relation(fields: [branchId], references: [id])
-  school         School  @relation(fields: [schoolId], references: [id])
-  staff          Staff[]
-}
-
-model AttendanceException {
-  id        String   @id @default(uuid())
-  staffId   String
-  date      DateTime
-  type      String // Late-In, Early-Out, Missing-Checkout
-  meta      Json
-  createdAt DateTime @default(now())
-  staff     Staff    @relation(fields: [staffId], references: [id])
-}
-
-model StaffFaceProfile {
-  id       String @id @default(uuid())
-  staffId  String @unique
-  faceId   String
-  metadata Json?
-  staff    Staff  @relation(fields: [staffId], references: [id])
-}
-
-model BulkPayoutAuditRecord {
-  id               String   @id @default(uuid())
-  schoolId         String
-  branchId         String?
-  month            Int
-  year             Int
-  staffName        String
-  accountNumber    String
-  ifscCode         String
-  bankName         String?
-  branchName       String?
-  segment          String?
-  actualSalary     Decimal  @db.Decimal(12, 2)
-  netSalary        Decimal  @db.Decimal(12, 2)
-  totalDays        Int
-  presentDays      Int
-  status           String   @default("Audited")
-  exportedAt       DateTime?
-  processedAt      DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  metadata         Json?
-  
-  @@index([schoolId, month, year])
-  @@index([staffName])
-}
-
-// ─────────────────────────────────────────────────────────
-// 🏦 BANK RECONCILIATION ENGINE
-// ─────────────────────────────────────────────────────────
-
-model BankStatement {
-  id           String               @id @default(uuid())
-  schoolId     String
-  branchId     String?
-  bankName     String               // AXIS | HDFC | BOB
-  accountCode  String               // e.g. "1111" for Axis, "1112" for HDFC
-  accountNo    String?              // Raw account number from statement
-  month        Int
-  year         Int
-  periodFrom   DateTime?
-  periodTo     DateTime?
-  fileName     String
-  uploadedBy   String
-  status       String               @default("PENDING") // PENDING | IN_PROGRESS | RECONCILED
-  openingBal   Decimal?             @db.Decimal(15, 2)
-  closingBal   Decimal?             @db.Decimal(15, 2)
-  totalCredits Decimal?             @db.Decimal(15, 2)
-  totalDebits  Decimal?             @db.Decimal(15, 2)
-  uploadedAt   DateTime             @default(now())
-  entries      BankStatementEntry[]
-  school       School               @relation(fields: [schoolId], references: [id])
-
-  @@index([schoolId, month, year])
-  @@index([schoolId, bankName])
-}
-
-model BankStatementEntry {
-  id            String         @id @default(uuid())
-  statementId   String
-  schoolId      String         @db.VarChar(36)
-  branchId      String?        @db.VarChar(36)
-  txnDate       DateTime
-  valueDate     DateTime?
-  description   String         @db.Text
-  reference     String?
-  debit         Decimal?       @db.Decimal(12, 2)
-  credit        Decimal?       @db.Decimal(12, 2)
-  balance       Decimal?       @db.Decimal(15, 2)
-  txnType       String         @default("UNKNOWN") // CREDIT | DEBIT | UNKNOWN
-  category      String         @default("UNCLASSIFIED") // FEE_COLLECTION | SALARY | EXPENSE | INTERNAL_TRANSFER | UNCLASSIFIED
-  matchStatus   String         @default("UNMATCHED") // UNMATCHED | AUTO_MATCHED | MANUALLY_MATCHED | CONFIRMED | IGNORED
-  matchedTo     String?        // collectionId or salarySlipId or expenseId
-  matchedType   String?        // COLLECTION | SALARY | EXPENSE
-  confidence    Int            @default(0) // 0-100 auto-match confidence
-  notes         String?        // User's manual notes
-  confirmedAt   DateTime?
-  confirmedBy   String?
-  statement     BankStatement  @relation(fields: [statementId], references: [id], onDelete: Cascade)
-  school        School         @relation(fields: [schoolId], references: [id])
-
-  @@index([statementId])
-  @@index([txnDate])
-  @@index([schoolId])
-}
-
-model LeaveRequest {
-  id          String    @id @default(uuid())
-  staffId     String
-  startDate   DateTime
-  endDate     DateTime
-  type        String    // CASUAL | SICK | UNPAID
-  reason      String
-  status      String    @default("PENDING") // PENDING | APPROVED | REJECTED
-  approvedBy  String?
-  approvedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  staff       Staff     @relation(fields: [staffId], references: [id])
-}
-
-// -----------------------------------------------------------------------
-// FEE PAYMENT LINKS — Standalone. Do not modify any fields below.
-// -----------------------------------------------------------------------
-model FeePaymentLink {
-  id                String    @id @default(uuid())
-  token             String    @unique
-  studentName       String
-  parentName        String
-  phone             String
-  amount            Float
-  description       String?
-  pendingItems      String?   // Free text: "Science Book, Lab Manual, ID Card"
-  razorpayLinkId    String?
-  razorpayShortUrl  String?
-  status            String    @default("PENDING") // PENDING | PAID | EXPIRED
-  razorpayPaymentId String?
-  paidAt            DateTime?
-  feedbackRating    String?   // GREAT | OKAY | POOR
-  feedbackNote      String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  @@index([phone])
-  @@index([token])
-  @@index([razorpayLinkId])
-}
-

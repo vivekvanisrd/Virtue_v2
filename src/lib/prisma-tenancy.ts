@@ -36,7 +36,7 @@ function recursiveSanitize(data: any, role?: string, visited = new Set<any>(), d
     // 🏛️ Atomic Structure Guard: Prevent mutation of Dates or Decimals
     const typeTag = Object.prototype.toString.call(data);
     if (typeTag === '[object Date]') return data;
-    if (data?.constructor?.name === 'Decimal' || (data.d && data.e && typeof data.s === 'number')) return data;
+    if (data?.constructor?.name === 'Decimal' || (data && Array.isArray(data.d) && typeof data.e === 'number' && typeof data.s === 'number')) return data;
 
     if (visited.has(data)) return data; 
     visited.add(data);
@@ -58,6 +58,8 @@ function recursiveSanitize(data: any, role?: string, visited = new Set<any>(), d
     // 2. TENANCY GATING: Institutional boundaries
     if (sanitized.schoolId) delete sanitized.schoolId;
     if (sanitized.branchId) delete sanitized.branchId;
+    if (sanitized.school_id) delete sanitized.school_id;
+    if (sanitized.branch_id) delete sanitized.branch_id;
 
     // 3. PII PROTECTION: Role-based field pruning
     const isHighPrivilege = role === 'OWNER' || role === 'PRINCIPAL' || role === 'DEVELOPER' || role === 'PLATFORM_ADMIN';
@@ -148,6 +150,10 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
 
                     // Cast args to any to allow dynamic injection
                     const a = args as any;
+                    
+                    const isSnakeCaseModel = (model as string).startsWith("inventory_") || model === "fee_payment_links";
+                    const schoolIdField = isSnakeCaseModel ? "school_id" : "schoolId";
+                    const branchIdField = isSnakeCaseModel ? "branch_id" : "branchId";
 
                     // 🛡️ LOCK: Surgical Query Intent Validation (Point 11 & 12)
                     if (['findMany', 'updateMany', 'deleteMany', 'count'].includes(operation)) {
@@ -168,23 +174,33 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
 
                         a.where = a.where || {};
 
+                        const incomingSchoolId = a.where[schoolIdField] || (isSnakeCaseModel ? a.where.schoolId : a.where.school_id);
+                        const incomingBranchId = a.where[branchIdField] || (isSnakeCaseModel ? a.where.branchId : a.where.branch_id);
+
                         // 🔍 INTENT VALIDATION: Verify incoming tenancy doesn't conflict with session
-                        if (a.where.schoolId && a.where.schoolId !== tenant.schoolId && tenant.role !== 'PLATFORM_ADMIN') {
-                            throw new Error(`SECURITY_VIOLATION: Institutional conflict. (Request: ${a.where.schoolId}, Active: ${tenant.schoolId})`);
+                        if (incomingSchoolId && incomingSchoolId !== tenant.schoolId && tenant.role !== 'PLATFORM_ADMIN') {
+                            throw new Error(`SECURITY_VIOLATION: Institutional conflict. (Request: ${incomingSchoolId}, Active: ${tenant.schoolId})`);
                         }
 
-                        if (a.where.branchId && (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL') && a.where.branchId !== tenant.branchId) {
-                            throw new Error(`SECURITY_VIOLATION: Branch conflict. (Request: ${a.where.branchId}, Active: ${tenant.branchId})`);
+                        if (incomingBranchId && (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL') && incomingBranchId !== tenant.branchId) {
+                            throw new Error(`SECURITY_VIOLATION: Branch conflict. (Request: ${incomingBranchId}, Active: ${tenant.branchId})`);
                         }
 
                         // 🔒 HARD JAIL: Enforce deterministic filters
-                        a.where.schoolId = tenant.schoolId;
+                        a.where[schoolIdField] = tenant.schoolId;
+                        if (isSnakeCaseModel) {
+                            delete a.where.schoolId;
+                            delete a.where.branchId;
+                        } else {
+                            delete a.where.school_id;
+                            delete a.where.branch_id;
+                        }
                         
                         // 🏛️ UNIVERSAL OVERSIGHT: Principals and Owners see all branches. 
                         // Only STAFF are jailed to their specific branch.
                         if (tenant.role === 'STAFF') {
                              if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
-                                 a.where.branchId = tenant.branchId;
+                                  a.where[branchIdField] = tenant.branchId;
                              }
                         }
                     }
@@ -194,10 +210,12 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                         if (a.data) {
                             // 🔒 ZERO TRUST (Rule 2.5): Never trust tenancy fields from frontend
                             delete (a.data as any).schoolId;
+                            delete (a.data as any).school_id;
                             
                             // 🔒 Strict Jail for Standard Staff and Principals. 
                             if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL') {
                                 delete (a.data as any).branchId;
+                                delete (a.data as any).branch_id;
                             }
                         }
 
@@ -205,24 +223,29 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                            if ((a as any)?.where) {
                                 (a as any).where = {
                                     ...(a as any).where,
-                                    schoolId: (tenant as any).schoolId
+                                    [schoolIdField]: (tenant as any).schoolId
                                 };
+                                if (isSnakeCaseModel) {
+                                    delete (a as any).where.schoolId;
+                                } else {
+                                    delete (a as any).where.school_id;
+                                }
                             }
                             a.data = a.data || {};
-                            a.data.schoolId = tenant.schoolId;
+                            a.data[schoolIdField] = tenant.schoolId;
                             // 🔒 Mandatory Injection
                             if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
-                                if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL' || !a.data.branchId) {
-                                    a.data.branchId = tenant.branchId;
+                                if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL' || !a.data[branchIdField]) {
+                                    a.data[branchIdField] = tenant.branchId;
                                 }
                             }
                         } else if (operation === 'createMany') {
                             if (Array.isArray(a.data)) {
                                 a.data.forEach((item: any) => {
-                                    item.schoolId = tenant.schoolId;
+                                    item[schoolIdField] = tenant.schoolId;
                                     if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
-                                        if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL' || !item.branchId) {
-                                            item.branchId = tenant.branchId;
+                                        if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL' || !item[branchIdField]) {
+                                            item[branchIdField] = tenant.branchId;
                                         }
                                     }
                                 });

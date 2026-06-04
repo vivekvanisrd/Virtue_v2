@@ -332,45 +332,43 @@ export async function applyFeeStructureToClass(structureId: string) {
 
         const totalAmount = Number(structure.totalAmount);
 
-        const result = await prisma.$transaction(async (tx: any) => {
-            let count = 0;
-            for (const student of students) {
-                const financial = await tx.financialRecord.upsert({
-                    where: { studentId: student.id, schoolId: context.schoolId },
-                    update: {
-                        annualTuition: totalAmount,
-                        feeStructureId: structure.id,
-                        netTuition: totalAmount
-                    },
-                    create: {
-                        studentId: student.id,
-                        schoolId: context.schoolId,
-                        annualTuition: totalAmount,
-                        feeStructureId: structure.id,
-                        netTuition: totalAmount
-                    }
-                });
+        let count = 0;
+        for (const student of students) {
+            const financial = await prisma.financialRecord.upsert({
+                where: { studentId: student.id, schoolId: context.schoolId },
+                update: {
+                    annualTuition: totalAmount,
+                    feeStructureId: structure.id,
+                    netTuition: totalAmount
+                },
+                create: {
+                    studentId: student.id,
+                    schoolId: context.schoolId,
+                    annualTuition: totalAmount,
+                    feeStructureId: structure.id,
+                    netTuition: totalAmount
+                }
+            });
 
-                // 🏛️ TENANCY HARDENED: Student Ledger must carry schoolId
-                await tx.studentFeeComponent.deleteMany({ 
-                    where: { studentFinancialId: financial.id, schoolId: context.schoolId } 
-                });
+            // 🏛️ TENANCY HARDENED: Student Ledger must carry schoolId
+            await prisma.studentFeeComponent.deleteMany({ 
+                where: { studentFinancialId: financial.id, schoolId: context.schoolId } 
+            });
 
-                await tx.studentFeeComponent.createMany({
-                    data: structure.components.map((tc: any) => ({
-                        schoolId: context.schoolId, // TENANCY INJECTION
-                        studentFinancialId: financial.id,
-                        componentId: tc.componentId,
-                        baseAmount: tc.amount,
-                        waiverAmount: 0,
-                        discountAmount: 0,
-                        isApplicable: true
-                    }))
-                });
-                count++;
-            }
-            return count;
-        });
+            await prisma.studentFeeComponent.createMany({
+                data: structure.components.map((tc: any) => ({
+                    schoolId: context.schoolId, // TENANCY INJECTION
+                    studentFinancialId: financial.id,
+                    componentId: tc.componentId,
+                    baseAmount: tc.amount,
+                    waiverAmount: 0,
+                    discountAmount: 0,
+                    isApplicable: true
+                }))
+            });
+            count++;
+        }
+        const result = count;
 
         revalidatePath("/admin/fees");
         return { success: true, message: `Synchronized ${result} students with direct tenancy labeling.` };

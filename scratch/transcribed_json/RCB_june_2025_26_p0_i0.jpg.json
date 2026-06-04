@@ -1,0 +1,356 @@
+[
+  {
+    "date": "2025-06-11",
+    "name": "TO DEPOSIT",
+    "class": "UNCLEAR",
+    "receipt_no": "DEPOSIT",
+    "payments": [
+      [
+        "DEPOSIT",
+        50000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-06-06",
+    "name": "B. SIRI PRAVASTHI",
+    "class": "NUR",
+    "receipt_no": "5401",
+    "payments": [
+      [
+        "ONLINE",
+        2500
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-06-10",
+    "name": "M. HAYYAGREVA",
+    "class": "4TH",
+    "receipt_no": "5402",
+    "payments": [
+      [
+        "CASH",
+        28000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-06-10",
+    "name": "M. MANIVARDHAN",
+    "class": "2ND",
+    "receipt_no": "5403",
+    "payments": [
+      [
+        "CASH",
+        22000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-06-10",
+    "name": "K. SARA DINESH",
+    "class": "NUR",
+    "receipt_no": "5404",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-06-11",
+    "name": "AARION PRALOK",
+    "class": "I",
+    "receipt_no": "5405",
+    "payments": [
+      [
+        "ONLINE",
+        24000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-06-12",
+    "name": "S. BHAVANI",
+    "class": "8TH",
+    "receipt_no": "5406",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-06-12",
+    "name": "S. AKHIL REDDY",
+    "class": "4TH",
+    "receipt_no": "5407",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-06-12",
+    "name": "M. HANVIKA",
+    "class": "NUR",
+    "receipt_no": "5408",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-06-12",
+    "name": "M. HARSHIKA",
+    "class": "NUR",
+    "receipt_no": "5409",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-06-12",
+    "name": "P. RAKESH REDDY",
+    "class": "7TH",
+    "receipt_no": "5410",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-06-12",
+    "name": "M. SRIJAN",
+    "class": "LKG",
+    "receipt_no": "5411",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-06-12",
+    "name": "T. ROHAN",
+    "class": "I",
+    "receipt_no": "5412",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-06-12",
+    "name": "T. NIHAN",
+    "class": "3RD",
+    "receipt_no": "5413",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2025-06-12",
+    "name": "B. MOKSHITH",
+    "class": "3RD",
+    "receipt_no": "5414",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2025-06-13",
+    "name": "S. SNEHANSHITHA",
+    "class": "NUR",
+    "receipt_no": "5415",
+    "payments": [
+      [
+        "ONLINE",
+        20000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2025-06-13",
+    "name": "G. PAVAN",
+    "class": "6TH",
+    "receipt_no": "5416",
+    "payments": [
+      [
+        "CASH",
+        3000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 17
+  },
+  {
+    "date": "2025-06-13",
+    "name": "B. MANASVI",
+    "class": "2ND",
+    "receipt_no": "5416",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 18
+  },
+  {
+    "date": "2025-06-13",
+    "name": "M. VEDASH",
+    "class": "3RD",
+    "receipt_no": "5417",
+    "payments": [
+      [
+        "CASH",
+        7500
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 19
+  },
+  {
+    "date": "2025-06-13",
+    "name": "M. JAAGVI SAI",
+    "class": "UKG",
+    "receipt_no": "5418",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ],
+      [
+        "ONLINE (T.F)",
+        2000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 20
+  },
+  {
+    "date": "2025-06-13",
+    "name": "U. SHREYAS",
+    "class": "LKG",
+    "receipt_no": "5419",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 21
+  },
+  {
+    "date": "2025-06-13",
+    "name": "N. SRUJAN",
+    "class": "3RD",
+    "receipt_no": "5420",
+    "payments": [
+      [
+        "ONLINE",
+        22000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 22
+  },
+  {
+    "date": "2025-06-13",
+    "name": "N. SAKETH",
+    "class": "I",
+    "receipt_no": "5421",
+    "payments": [
+      [
+        "ONLINE",
+        13000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 23
+  },
+  {
+    "date": "2025-06-13",
+    "name": "N. MANASREE",
+    "class": "LKG",
+    "receipt_no": "5422",
+    "payments": [
+      [
+        "ONLINE",
+        14000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 24
+  },
+  {
+    "date": "2025-06-13",
+    "name": "N. SHREYANVI",
+    "class": "UKG",
+    "receipt_no": "5423",
+    "payments": [
+      [
+        "ONLINE",
+        6000
+      ]
+    ],
+    "sheet": "RCB june 2025 26.pdf",
+    "row": 25
+  }
+]

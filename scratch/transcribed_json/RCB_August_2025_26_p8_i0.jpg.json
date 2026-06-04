@@ -1,0 +1,142 @@
+[
+  {
+    "date": "2025-08-25",
+    "name": "P. PRADHYA",
+    "class": "II",
+    "receipt_no": "5103",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-25",
+    "name": "P. PREKSHA",
+    "class": "V",
+    "receipt_no": "5104",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-25",
+    "name": "J. KRITHIKA",
+    "class": "I",
+    "receipt_no": "5105",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-28",
+    "name": "S. SRIHITHA",
+    "class": "VI",
+    "receipt_no": "5673",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-28",
+    "name": "J. NIKHIL",
+    "class": "2ND",
+    "receipt_no": "5674",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-29",
+    "name": "A. AVINASH",
+    "class": "2ND",
+    "receipt_no": "5106",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-29",
+    "name": "A. ANKITH",
+    "class": "UKG",
+    "receipt_no": "5107",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-30",
+    "name": "P. SRIVARSHA",
+    "class": "1ST",
+    "receipt_no": "5675",
+    "payments": [
+      [
+        "ONLINE",
+        14000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-30",
+    "name": "K. RISHVIK",
+    "class": "UKG",
+    "receipt_no": "5676",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-08-30",
+    "name": "P. SRIVARSHA",
+    "class": "1ST",
+    "receipt_no": "5108",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 10
+  }
+]

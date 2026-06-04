@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Search, 
   Wallet, 
@@ -84,55 +84,82 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     paymentLink: "",
     linkLoading: false
   });
-  const { setTabDirty } = useTabs();
-
-  useEffect(() => {
-    const isDirty = settlements.some(s => s.selectedTerms.length > 0) || 
-                  paymentDetails.transactionId !== "" || 
-                  paymentDetails.chequeNo !== "";
-    setTabDirty("fee-collection", isDirty);
-    return () => setTabDirty("fee-collection", false);
-  }, [settlements, paymentDetails, setTabDirty]);
-
-  useEffect(() => {
-    async function loadSchool() {
-      const res = await getSchoolInfoAction();
-      if (res.success && res.name) setSchoolName(res.name);
-    }
-    loadSchool();
-  }, []);
-
-  useEffect(() => {
-    if (params?.studentId) {
-      selectStudent(params.studentId);
-    }
-  }, [params?.studentId]);
-
-  const selectStudent = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    setSearchTerm("");
-    setSearchResults([]);
-    setSettlements([]); 
-    try {
-      const result = await getStudentFeeStatus(id);
-      if (result.success && result.data) {
-        setSettlements([{
-          student: result.data,
-          selectedTerms: [],
-          waivedLateFee: false,
-          waiverReason: "",
-          adHocAmounts: {}
-        }]);
-      } else {
-        setError(result.error || "Failed to retrieve student profile.");
-      }
-    } catch (err: any) {
-      setError("An unexpected error occurred.");
-    }
-    setLoading(false);
-  };
+  const { setTabDirty, openTab } = useTabs();
+  const loadedStudentIdRef = useRef<string | null>(null);
+ 
+   useEffect(() => {
+     const isDirty = settlements.some(s => s.selectedTerms.length > 0) || 
+                   paymentDetails.transactionId !== "" || 
+                   paymentDetails.chequeNo !== "";
+     setTabDirty("fee-collection", isDirty);
+     return () => setTabDirty("fee-collection", false);
+   }, [settlements, paymentDetails, setTabDirty]);
+ 
+   useEffect(() => {
+     async function loadSchool() {
+       const res = await getSchoolInfoAction();
+       if (res.success && res.name) setSchoolName(res.name);
+     }
+     loadSchool();
+   }, []);
+ 
+   useEffect(() => {
+     if (params?.studentId) {
+       if (params.studentId !== loadedStudentIdRef.current) {
+         selectStudent(params.studentId);
+       }
+     }
+   }, [params?.studentId]);
+ 
+   const selectStudent = async (id: string) => {
+     loadedStudentIdRef.current = id;
+     setLoading(true);
+     setError(null);
+     setSuccess(null);
+     setSearchTerm("");
+     setSearchResults([]);
+     setSettlements([]); 
+     try {
+       const result = await getStudentFeeStatus(id);
+       if (result.success && result.data) {
+         setSettlements([{
+           student: result.data,
+           selectedTerms: [],
+           waivedLateFee: false,
+           waiverReason: "",
+           adHocAmounts: {}
+         }]);
+         openTab({
+           id: "fee-collection",
+           title: "Fee Collection",
+           icon: Wallet,
+           component: "Finance",
+           params: { studentId: id }
+         });
+       } else {
+         setError(result.error || "Failed to retrieve student profile.");
+         loadedStudentIdRef.current = null;
+         openTab({
+           id: "fee-collection",
+           title: "Fee Collection",
+           icon: Wallet,
+           component: "Finance",
+           params: {}
+         });
+       }
+     } catch (err: any) {
+       setError("An unexpected error occurred.");
+       loadedStudentIdRef.current = null;
+       openTab({
+         id: "fee-collection",
+         title: "Fee Collection",
+         icon: Wallet,
+         component: "Finance",
+         params: {}
+       });
+     }
+     setLoading(false);
+   };
 
   const toggleTermForStudent = (studentId: string, termId: string) => {
     setSettlements(prev => prev.map(s => {
@@ -236,10 +263,37 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                  <CheckCircle2 className="w-10 h-10" />
                  <div><h2 className="text-2xl font-black">Settlement Complete</h2><p className="opacity-80 font-bold uppercase tracking-widest text-[8px] mt-0.5">Success</p></div>
               </div>
-              <button onClick={() => setSuccess(null)} className="px-6 py-2 bg-white text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest">New Payment</button>
+               <button 
+                 onClick={() => {
+                   setSuccess(null);
+                   loadedStudentIdRef.current = null;
+                   openTab({
+                     id: "fee-collection",
+                     title: "Fee Collection",
+                     icon: Wallet,
+                     component: "Finance",
+                     params: {}
+                   });
+                 }} 
+                 className="px-6 py-2 bg-white text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest"
+               >
+                 New Payment
+               </button>
            </div>
            <FeeReceipt student={success[0].student} receipt={success[0].receipt} />
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="py-40 flex flex-col items-center justify-center space-y-4">
+         <div className="relative inline-block">
+            <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
+            <Loader2 className="w-12 h-12 text-primary animate-spin relative z-10" />
+         </div>
+         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">Loading Student Ledger...</p>
       </div>
     );
   }
@@ -250,6 +304,14 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         <div className="w-20 h-20 bg-slate-900 rounded-[2rem] flex items-center justify-center text-primary mb-8 shadow-xl shadow-primary/10"><Wallet className="w-8 h-8" /></div>
         <h2 className="text-3xl font-black tracking-tighter text-slate-900 mb-1">POS Hub V2.5</h2>
         <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-8">Identify student to start collection</p>
+        
+        {error && (
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-bold w-full max-w-lg text-center flex items-center justify-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <form onSubmit={(e) => { e.preventDefault(); selectStudent(searchTerm); }} className="w-full max-w-lg">
            <div className="relative">
               <input type="text" placeholder="Admission No..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border-2 border-white rounded-[2rem] px-8 py-6 text-xl font-black outline-none focus:border-primary shadow-xl shadow-slate-200" />
@@ -260,12 +322,21 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     );
   }
 
+
   const student = settlements[0].student;
   const fb = student.feeBreakdown;
+  const totalPaid = (student.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
+  const paidPercent = fb.annualNet > 0 ? (totalPaid / fb.annualNet) * 100 : 0;
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FB] p-4 animate-in fade-in duration-500">
       <div className="max-w-[1440px] mx-auto w-full space-y-4">
+        {error && (
+          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-bold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
         
         {/* 🏆 COMPACT TOP SECTION */}
         <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-white">
@@ -277,11 +348,26 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   <h2 className="text-xl font-black tracking-tight text-slate-900 leading-none mb-1">{student.firstName} {student.lastName}</h2>
                   <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-full">{student.academic?.class?.name || "8th Grade"}</span>
                 </div>
-                <button onClick={() => setSettlements([])} className="ml-auto w-8 h-8 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all"><X className="w-4 h-4" /></button>
+                <button 
+                  onClick={() => {
+                    setSettlements([]);
+                    loadedStudentIdRef.current = null;
+                    openTab({
+                      id: "fee-collection",
+                      title: "Fee Collection",
+                      icon: Wallet,
+                      component: "Finance",
+                      params: {}
+                    });
+                  }} 
+                  className="ml-auto w-8 h-8 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
               <div className="bg-white rounded-2xl p-4 border border-slate-50 shadow-sm space-y-2">
-                <div className="flex items-center justify-between"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Annual Fee Template</p><p className="text-[10px] font-black text-slate-900">₹0</p></div>
-                <div className="h-2 bg-slate-50 rounded-full overflow-hidden"><div className="h-full bg-primary/40 rounded-full w-[40%]" /></div>
+                <div className="flex items-center justify-between"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Annual Fee Template</p><p className="text-[10px] font-black text-slate-900">₹{(fb.annualNet || 0).toLocaleString()}</p></div>
+                <div className="h-2 bg-slate-50 rounded-full overflow-hidden"><div className="h-full bg-primary/40 rounded-full" style={{ width: `${Math.min(100, Math.max(0, paidPercent))}%` }} /></div>
               </div>
             </div>
             <div className="col-span-8">

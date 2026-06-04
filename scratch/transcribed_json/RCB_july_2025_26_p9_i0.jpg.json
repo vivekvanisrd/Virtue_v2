@@ -1,0 +1,53 @@
+[
+  {
+    "date": "2025-07-22",
+    "name": "P. SHANVIKA",
+    "class": "VII",
+    "receipt_no": "5596",
+    "payments": [
+      [
+        "ONLINE",
+        34000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-07-22",
+    "name": "P. THANVISHA",
+    "class": "III",
+    "receipt_no": "5597",
+    "payments": [
+      [
+        "CASH",
+        3000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-07-22",
+    "name": "P. SHANVIKA",
+    "class": "VII",
+    "receipt_no": "5051",
+    "payments": [
+      [
+        "CASH",
+        11000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-07-22",
+    "name": "P. THANVISHA",
+    "class": "III",
+    "receipt_no": "5052",
+    "payments": [],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 4
+  }
+]

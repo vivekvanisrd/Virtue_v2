@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabase } from "@/lib/supabase/client";
+import { InventoryService } from "@/lib/services/inventory-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,6 +67,12 @@ export async function POST(req: NextRequest) {
           payment_method: method,
           payment_details: details,
         }).eq("token", token);
+
+        try {
+          await InventoryService.reserveInventoryForPayment(token);
+        } catch (resErr: any) {
+          console.error("[WEBHOOK] Reservation trigger failed:", resErr.message);
+        }
       }
     }
 

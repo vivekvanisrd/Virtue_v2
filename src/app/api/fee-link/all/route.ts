@@ -8,10 +8,20 @@ export async function GET(req: NextRequest) {
     const pwd = new URL(req.url).searchParams.get("password");
     if (pwd !== OWNER_PASSWORD) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data, error } = await supabase
-      .from("fee_payment_links")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const schoolId = req.headers.get("x-v2-school-id");
+    const branchId = req.headers.get("x-v2-branch-id");
+    const role = req.headers.get("x-v2-role");
+
+    let queryBuilder = supabase.from("fee_payment_links").select("*");
+
+    if (schoolId) {
+      queryBuilder = queryBuilder.eq("school_id", schoolId);
+    }
+    if (branchId && role !== "PLATFORM_ADMIN" && role !== "DEVELOPER" && role !== "OWNER") {
+      queryBuilder = queryBuilder.eq("branch_id", branchId);
+    }
+
+    const { data, error } = await queryBuilder.order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
 

@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-08-02",
+    "name": "B. ADVIKA",
+    "class": "2ND",
+    "receipt_no": "5084",
+    "payments": [
+      [
+        "ONLINE",
+        2000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-02",
+    "name": "B. ANVIKA",
+    "class": "LKG",
+    "receipt_no": "5085",
+    "payments": [
+      [
+        "ONLINE",
+        2000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-02",
+    "name": "B. AARON PRALOK",
+    "class": "1ST",
+    "receipt_no": "5086",
+    "payments": [
+      [
+        "ONLINE",
+        600
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-02",
+    "name": "G. SAMANVITHA",
+    "class": "4TH",
+    "receipt_no": "5087",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-02",
+    "name": "G. DHANA SRI",
+    "class": "5TH",
+    "receipt_no": "5088",
+    "payments": [
+      [
+        "ONLINE",
+        1000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-02",
+    "name": "G. HANEESH",
+    "class": "4TH",
+    "receipt_no": "5089",
+    "payments": [
+      [
+        "ONLINE",
+        1000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-04",
+    "name": "A. MANIKANTA",
+    "class": "8TH",
+    "receipt_no": "5090",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-04",
+    "name": "A. YASHWANTH",
+    "class": "7TH",
+    "receipt_no": "5091",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-04",
+    "name": "CH. ARYAN TANISHK",
+    "class": "3RD",
+    "receipt_no": "5092",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]

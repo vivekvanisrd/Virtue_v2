@@ -1,0 +1,202 @@
+[
+  {
+    "date": "2025-11-08",
+    "name": "S. SRIKARANI",
+    "class": "II",
+    "receipt_no": "5950",
+    "payments": [
+      [
+        "CASH",
+        6000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-11-10",
+    "name": "N. ANIKA",
+    "class": "III",
+    "receipt_no": "5951",
+    "payments": [
+      [
+        "ONLINE",
+        3000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-11-10",
+    "name": "P. HARSHITHA",
+    "class": "III",
+    "receipt_no": "5952",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-11-10",
+    "name": "N. DEEKSHITH",
+    "class": "IV",
+    "receipt_no": "5953",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-11-10",
+    "name": "N. BHANUCHARAN",
+    "class": "II",
+    "receipt_no": "5954",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-11-10",
+    "name": "G. PAVAN",
+    "class": "VI",
+    "receipt_no": "5955",
+    "payments": [
+      [
+        "ONLINE",
+        3000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-11-10",
+    "name": "B. MANASWINI",
+    "class": "I",
+    "receipt_no": "5956",
+    "payments": [
+      [
+        "ONLINE",
+        2500
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-11-11",
+    "name": "G. PAVAN",
+    "class": "6TH",
+    "receipt_no": "5957",
+    "payments": [
+      [
+        "CASH",
+        3000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-11-11",
+    "name": "B. MANASWINI",
+    "class": "1ST",
+    "receipt_no": "5958",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-11-11",
+    "name": "G. MANASVI",
+    "class": "UKG",
+    "receipt_no": "5959",
+    "payments": [
+      [
+        "CASH",
+        9000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-11-11",
+    "name": "CH. HANSHITH",
+    "class": "IV",
+    "receipt_no": "5960",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-11-11",
+    "name": "K. HARISANKEERTHAN",
+    "class": "IV",
+    "receipt_no": "5961",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-11-12",
+    "name": "M. HAASYAGOURY",
+    "class": "V",
+    "receipt_no": "5962",
+    "payments": [
+      [
+        "CASH",
+        9000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-11-14",
+    "name": "M. HAAYGOURY",
+    "class": "V",
+    "receipt_no": "5192",
+    "payments": [
+      [
+        "CASH (TRANSPORT)",
+        1000
+      ],
+      [
+        "ONLINE (TRANSPORT)",
+        2000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 14
+  }
+]

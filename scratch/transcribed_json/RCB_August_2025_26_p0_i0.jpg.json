@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-08-02",
+    "name": "J. BHARANI",
+    "class": "5TH",
+    "receipt_no": "5618",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        8000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-02",
+    "name": "J. GOUTHAMI",
+    "class": "1ST",
+    "receipt_no": "5619",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        8000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-02",
+    "name": "G. SAMANVITHA",
+    "class": "4TH",
+    "receipt_no": "5620",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-02",
+    "name": "G. DHANA SRI",
+    "class": "5TH",
+    "receipt_no": "5621",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        3300
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-02",
+    "name": "G. HANEESH",
+    "class": "4TH",
+    "receipt_no": "5622",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        3200
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-02",
+    "name": "J. BHARANI",
+    "class": "5TH",
+    "receipt_no": "5080",
+    "payments": [
+      [
+        "ONLINE",
+        12000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-02",
+    "name": "J. GOUTHAMI",
+    "class": "1ST",
+    "receipt_no": "5081",
+    "payments": [
+      [
+        "ONLINE",
+        12000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-02",
+    "name": "K. SAI RISHI",
+    "class": "3RD",
+    "receipt_no": "5082",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-02",
+    "name": "B. MYTHRI",
+    "class": "4TH",
+    "receipt_no": "5083",
+    "payments": [
+      [
+        "ONLINE",
+        2000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]

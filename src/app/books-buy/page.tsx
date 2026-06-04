@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, User, Phone, CheckCircle2, Loader2, Sparkles, ShoppingBag, ArrowRight, ShieldCheck, FileText, HelpCircle } from "lucide-react";
 
 type Kit = {
@@ -10,20 +10,19 @@ type Kit = {
 };
 
 const KITS: Kit[] = [
-  { class: "Test Kit (Live)", price: 1, items: "1 Unit of Bookstore Test Item for Live Payment Verification" },
   { class: "Play Group", price: 1230, items: "Play Group Textbooks, Coloring Book, Activity Kit, Crayons" },
   { class: "Nursery", price: 2700, items: "Nursery Alphabet & Numbers Books, Drawing book, Clay Kit, Activity worksheets" },
-  { class: "PP I (LKG)", price: 3700, items: "PP I Phonics, Math Workbook, General Awareness, Rhymes Book, Writing Notebooks, Pencil Box" },
-  { class: "PP II (UKG)", price: 4700, items: "PP II English Reader, Hindi Varnamala, Math Practice, Cursive writing, Notebooks, Art supplies" },
-  { class: "Class I", price: 8250, items: "Class I Textbooks (English, Hindi, Math, EVS, Comp), Notebooks, Sketch book, Pencil/Crayon kit" },
-  { class: "Class II", price: 8250, items: "Class II Textbooks (English, Hindi, Math, EVS, Comp), Notebooks, Drawing notebook, Art supplies" },
-  { class: "Class III", price: 9000, items: "Class III Textbooks (English, Hindi, Math, Science, Social, Comp), Notebooks, Geometry box" },
-  { class: "Class IV", price: 8650, items: "Class IV Textbooks (English, Hindi, Math, Science, Social, Comp), Notebooks, Art kit, Lab Manual" },
-  { class: "Class V", price: 8650, items: "Class V Textbooks (English, Hindi, Math, Science, Social, Comp), Notebooks, Geometry set" },
-  { class: "Class VI", price: 5100, items: "Class VI Textbooks (NCERT English, Hindi, Math, Science, Social, Sans), Notebooks, Lab guides" },
-  { class: "Class VII", price: 5200, items: "Class VII Textbooks (NCERT English, Hindi, Math, Science, Social, Sans), Notebooks, Graph book" },
-  { class: "Class VIII", price: 5550, items: "Class VIII Textbooks (NCERT English, Hindi, Math, Science, Social, Sans), Notebooks, Practical books" },
-  { class: "Class IX", price: 5550, items: "Class IX NCERT Textbooks, Lab Manuals, Science journals, Graph journals, Register notebooks" },
+  { class: "LKG", price: 3700, items: "LKG Phonics, Math Workbook, General Awareness, Rhymes Book, Writing Notebooks, Pencil Box" },
+  { class: "UKG", price: 4700, items: "UKG English Reader, Hindi Varnamala, Math Practice, Cursive writing, Notebooks, Art supplies" },
+  { class: "1st Class", price: 8650, items: "1st Class Textbooks (English, Hindi, Math, EVS, Comp), Notebooks, Sketch book, Pencil/Crayon kit" },
+  { class: "2nd Class", price: 8250, items: "2nd Class Textbooks (English, Hindi, Math, EVS, Comp), Notebooks, Drawing notebook, Art supplies" },
+  { class: "3rd Class", price: 9000, items: "3rd Class Textbooks (English, Hindi, Math, Science, Social, Comp), Notebooks, Geometry box" },
+  { class: "4th Class", price: 8650, items: "4th Class Textbooks (English, Hindi, Math, Science, Social, Comp), Notebooks, Art kit, Lab Manual" },
+  { class: "5th Class", price: 8650, items: "5th Class Textbooks (English, Hindi, Math, Science, Social, Comp), Notebooks, Geometry set" },
+  { class: "6th Class", price: 5100, items: "6th Class Textbooks (NCERT English, Hindi, Math, Science, Social, Sans), Notebooks, Lab guides" },
+  { class: "7th Class", price: 5330, items: "7th Class Textbooks (NCERT English, Hindi, Math, Science, Social, Sans), Notebooks, Graph book" },
+  { class: "8th Class", price: 5680, items: "8th Class Textbooks (NCERT English, Hindi, Math, Science, Social, Sans), Notebooks, Practical books" },
+  { class: "9th Class", price: 5680, items: "9th Class NCERT Textbooks, Lab Manuals, Science journals, Graph journals, Register notebooks" },
 ];
 
 export default function BookstorePurchasePage() {
@@ -37,8 +36,36 @@ export default function BookstorePurchasePage() {
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [dbKits, setDbKits] = useState<Kit[]>([]);
 
-  const selectedKit = selectedKitIndex !== "" ? KITS[selectedKitIndex] : null;
+  useEffect(() => {
+    async function loadDynamicKits() {
+      try {
+        const res = await fetch("/api/inventory/kits");
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.kits) && data.kits.length > 0) {
+          const mapped: Kit[] = data.kits.map((k: any) => ({
+            class: k.kit_name,
+            price: Number(k.total_price),
+            items: k.inventory_kit_items && k.inventory_kit_items.length > 0
+              ? k.inventory_kit_items.map((ki: any) => `${ki.quantity} x ${ki.inventory_items?.item_name || 'Item'}`).join(", ")
+              : k.description || "School Bookstore Grade Kit"
+          }));
+          setDbKits(mapped);
+        }
+      } catch (err) {
+        console.warn("Failed to load dynamic kits, falling back to static list:", err);
+      }
+    }
+    loadDynamicKits();
+  }, []);
+
+  // Merge dynamic kits from DB into static KITS list to make sure all classes are visible
+  const activeKits = KITS.map(staticKit => {
+    const dbMatch = dbKits.find(dk => dk.class.toLowerCase() === staticKit.class.toLowerCase());
+    return dbMatch ? dbMatch : staticKit;
+  });
+  const selectedKit = selectedKitIndex !== "" ? activeKits[selectedKitIndex] : null;
 
   async function handlePaymentSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +88,7 @@ export default function BookstorePurchasePage() {
 
     setLoading(true);
     try {
-      const kit = KITS[selectedKitIndex as number];
+      const kit = activeKits[selectedKitIndex as number];
       const res = await fetch("/api/fee-link/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -251,7 +278,7 @@ export default function BookstorePurchasePage() {
                     required
                   >
                     <option value="" disabled>Select the student's class</option>
-                    {KITS.map((k, idx) => (
+                    {activeKits.map((k, idx) => (
                       <option key={idx} value={idx}>
                         {k.class} Kit — ₹{k.price.toLocaleString("en-IN")}
                       </option>

@@ -1,0 +1,352 @@
+[
+  {
+    "date": "2026-02-02",
+    "name": "M. HARSHIKA",
+    "class": "NUR",
+    "receipt_no": "001",
+    "payments": [
+      [
+        "ONLINE",
+        7000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2026-02-02",
+    "name": "M. HANVIKA",
+    "class": "NUR",
+    "receipt_no": "002",
+    "payments": [
+      [
+        "ONLINE",
+        7000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2026-02-03",
+    "name": "J. KRITHIKA",
+    "class": "I",
+    "receipt_no": "008",
+    "payments": [
+      [
+        "ONLINE",
+        20000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2026-02-03",
+    "name": "ANUPAM JENA",
+    "class": "3RD",
+    "receipt_no": "009",
+    "payments": [
+      [
+        "ONLINE",
+        8000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2026-02-04",
+    "name": "B. ADVITHA REDDY",
+    "class": "2ND",
+    "receipt_no": "010",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        8000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2026-02-04",
+    "name": "S. VEDANSH",
+    "class": "2ND",
+    "receipt_no": "011",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2026-02-04",
+    "name": "S. HARSHA SREE",
+    "class": "3RD",
+    "receipt_no": "012",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2026-02-04",
+    "name": "C. MALLANNA",
+    "class": "VIII",
+    "receipt_no": "013",
+    "payments": [
+      [
+        "ONLINE",
+        15000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2026-02-04",
+    "name": "G. PAVAN",
+    "class": "VI",
+    "receipt_no": "014",
+    "payments": [
+      [
+        "CASH",
+        3000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2026-02-04",
+    "name": "B. MANASWI",
+    "class": "I",
+    "receipt_no": "015",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2026-02-04",
+    "name": "G. DHANA SRI",
+    "class": "V",
+    "receipt_no": "016",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        3300
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2026-02-04",
+    "name": "G. HANEESH",
+    "class": "IV",
+    "receipt_no": "017",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        3200
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2026-02-04",
+    "name": "A. HARSHINI SREE",
+    "class": "III",
+    "receipt_no": "018",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2026-02-04",
+    "name": "A. ABHIGNYA SREE",
+    "class": "IV",
+    "receipt_no": "019",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2026-02-04",
+    "name": "K. NITYA SREE",
+    "class": "VII",
+    "receipt_no": "020",
+    "payments": [
+      [
+        "ONLINE",
+        15000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2026-02-04",
+    "name": "K. SATHWIK",
+    "class": "UKG",
+    "receipt_no": "021",
+    "payments": [
+      [
+        "ONLINE",
+        3000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2026-02-04",
+    "name": "A. AMULYA",
+    "class": "VII",
+    "receipt_no": "022",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 17
+  },
+  {
+    "date": "2026-02-04",
+    "name": "AYNANYA A",
+    "class": "IV",
+    "receipt_no": "023",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 18
+  },
+  {
+    "date": "2026-02-04",
+    "name": "N. SAKETH",
+    "class": "I",
+    "receipt_no": "024",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 19
+  },
+  {
+    "date": "2026-02-04",
+    "name": "N. MANUSREE",
+    "class": "LKG",
+    "receipt_no": "025",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 20
+  },
+  {
+    "date": "2026-02-04",
+    "name": "K. SAGNIK",
+    "class": "LKG",
+    "receipt_no": "026",
+    "payments": [
+      [
+        "CASH",
+        3000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 21
+  },
+  {
+    "date": "2026-02-04",
+    "name": "B. VARUN",
+    "class": "LKG",
+    "receipt_no": "027",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 22
+  },
+  {
+    "date": "2026-02-04",
+    "name": "CH. SAANVI",
+    "class": "6TH",
+    "receipt_no": "028",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 23
+  },
+  {
+    "date": "2026-02-04",
+    "name": "S. RISHI KUMAR",
+    "class": "3RD",
+    "receipt_no": "029",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 24
+  },
+  {
+    "date": "2026-02-04",
+    "name": "S. SRI VARSHINI",
+    "class": "I",
+    "receipt_no": "030",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB Feb to April 2025 26.pdf",
+    "row": 25
+  }
+]

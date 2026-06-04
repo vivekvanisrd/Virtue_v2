@@ -1,0 +1,156 @@
+[
+  {
+    "date": "2025-11-19",
+    "name": "CH. MAHADEV",
+    "class": "NUR",
+    "receipt_no": "5196",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-11-22",
+    "name": "P. NEHA REDDY",
+    "class": "V",
+    "receipt_no": "5974",
+    "payments": [
+      [
+        "ONLINE",
+        15000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-11-22",
+    "name": "P. MANSI",
+    "class": "II",
+    "receipt_no": "5975",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-11-24",
+    "name": "T. KRITHIKA REDDY",
+    "class": "NUR",
+    "receipt_no": "5976",
+    "payments": [
+      [
+        "ONLINE",
+        3000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-11-25",
+    "name": "D. NIHAVINI",
+    "class": "UKG",
+    "receipt_no": "5977",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-11-25",
+    "name": "M. SHIVAKUMAR",
+    "class": "III",
+    "receipt_no": "5978",
+    "payments": [
+      [
+        "ONLINE",
+        12000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-11-26",
+    "name": "A. AVINASH",
+    "class": "II",
+    "receipt_no": "5979",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-11-26",
+    "name": "A. ANKITH",
+    "class": "UKG",
+    "receipt_no": "5980",
+    "payments": [
+      [
+        "ONLINE",
+        6000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-11-19",
+    "name": "K. PRASHANTH",
+    "class": "IV",
+    "receipt_no": "5981",
+    "payments": [
+      [
+        "ONLINE",
+        33000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-11-29",
+    "name": "V. OMKAR REDDY",
+    "class": "VIII",
+    "receipt_no": "5982",
+    "payments": [
+      [
+        "ONLINE",
+        35000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-11-29",
+    "name": "V. BHARGAV REDDY",
+    "class": "VII",
+    "receipt_no": "5983",
+    "payments": [
+      [
+        "ONLINE",
+        32000
+      ]
+    ],
+    "sheet": "RCB Nov 2025 26.pdf",
+    "row": 11
+  }
+]

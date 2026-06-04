@@ -1,0 +1,282 @@
+[
+  {
+    "date": "2025-07-01",
+    "name": "G. YOGINATH",
+    "class": "UKG",
+    "receipt_no": "5479",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-07-01",
+    "name": "G. HARSHITHA",
+    "class": "3RD",
+    "receipt_no": "5480",
+    "payments": [
+      [
+        "CASH",
+        16000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-07-01",
+    "name": "TO DEPOSIT",
+    "class": "UNCLEAR",
+    "receipt_no": "DEPOSIT",
+    "payments": [
+      [
+        "DEPOSIT",
+        53000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-07-02",
+    "name": "G. SHIVARDHAN",
+    "class": "4TH",
+    "receipt_no": "5481",
+    "payments": [
+      [
+        "CASH (T.F)",
+        30000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-07-02",
+    "name": "G. AADYA (MNB)",
+    "class": "UKG",
+    "receipt_no": "5482",
+    "payments": [
+      [
+        "CASH (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-07-02",
+    "name": "C. NAKSHATRA",
+    "class": "5TH",
+    "receipt_no": "5483",
+    "payments": [
+      [
+        "ONLINE",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-07-02",
+    "name": "A. PRAKESHITHA",
+    "class": "UKG",
+    "receipt_no": "5484",
+    "payments": [
+      [
+        "ONLINE",
+        13000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-07-02",
+    "name": "V. JESWANTH",
+    "class": "4TH",
+    "receipt_no": "5485",
+    "payments": [
+      [
+        "ONLINE",
+        30000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-07-02",
+    "name": "N. TENA",
+    "class": "UKG",
+    "receipt_no": "5486",
+    "payments": [
+      [
+        "ONLINE",
+        22000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-07-02",
+    "name": "C. DIYA SHRAVANI",
+    "class": "3RD",
+    "receipt_no": "5488",
+    "payments": [
+      [
+        "ONLINE",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-07-02",
+    "name": "M. AARABHI",
+    "class": "2ND",
+    "receipt_no": "5001",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        2800
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-07-02",
+    "name": "M. ABHILAAH",
+    "class": "UKG",
+    "receipt_no": "5002",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        2200
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-07-03",
+    "name": "M. ANIKA",
+    "class": "4TH",
+    "receipt_no": "5491",
+    "payments": [
+      [
+        "ONLINE",
+        3000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-07-03",
+    "name": "R. VARNIKA",
+    "class": "5TH",
+    "receipt_no": "5492",
+    "payments": [
+      [
+        "ONLINE",
+        30000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2025-07-03",
+    "name": "K. SAI HRITHI",
+    "class": "4TH",
+    "receipt_no": "5493",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2025-07-03",
+    "name": "P. NITHYA SRI",
+    "class": "6TH",
+    "receipt_no": "5003",
+    "payments": [
+      [
+        "CASH (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2025-07-03",
+    "name": "R. HARSHITH",
+    "class": "5TH",
+    "receipt_no": "5494",
+    "payments": [
+      [
+        "ONLINE",
+        20000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 17
+  },
+  {
+    "date": "2025-07-03",
+    "name": "R. LAKSHITH",
+    "class": "NUR",
+    "receipt_no": "5495",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 18
+  },
+  {
+    "date": "2025-07-03",
+    "name": "R. SUSHANTH",
+    "class": "I",
+    "receipt_no": "5496",
+    "payments": [
+      [
+        "ONLINE",
+        12000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 19
+  },
+  {
+    "date": "2025-07-03",
+    "name": "G. DHANASI",
+    "class": "V",
+    "receipt_no": "5497",
+    "payments": [
+      [
+        "CASH",
+        3300
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 20
+  }
+]

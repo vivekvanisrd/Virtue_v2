@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-08-04",
+    "name": "S. SAIPRADEEP",
+    "class": "VII",
+    "receipt_no": "5623",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-04",
+    "name": "S. RANADEEP GOUD",
+    "class": "III",
+    "receipt_no": "5624",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-04",
+    "name": "A. MANIKANTA",
+    "class": "8TH",
+    "receipt_no": "5625",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-04",
+    "name": "A. YASHWANTH",
+    "class": "7TH",
+    "receipt_no": "5626",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-04",
+    "name": "CH. ARYAN TANISHK",
+    "class": "3RD",
+    "receipt_no": "5627",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-06",
+    "name": "K. DEVANSH",
+    "class": "3RD",
+    "receipt_no": "5628",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-06",
+    "name": "N. AKSHITH",
+    "class": "LKG",
+    "receipt_no": "5629",
+    "payments": [
+      [
+        "CASH",
+        20000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-06",
+    "name": "N. BHANUCHARAN",
+    "class": "2ND",
+    "receipt_no": "5631",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-06",
+    "name": "P. MEGHANSH",
+    "class": "LKG",
+    "receipt_no": "5632",
+    "payments": [
+      [
+        "CASH",
+        20000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]

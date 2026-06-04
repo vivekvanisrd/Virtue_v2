@@ -1,0 +1,352 @@
+[
+  {
+    "date": "2025-07-09",
+    "name": "G. PAVON",
+    "class": "6TH",
+    "receipt_no": "5527",
+    "payments": [
+      [
+        "CASH",
+        3000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-07-09",
+    "name": "B. MANASWI",
+    "class": "I",
+    "receipt_no": "5528",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-07-10",
+    "name": "U. SAI SRINATH",
+    "class": "III",
+    "receipt_no": "5529",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-07-10",
+    "name": "S. NITHYA SRI",
+    "class": "IV",
+    "receipt_no": "5530",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-07-10",
+    "name": "E. SAHASRA",
+    "class": "VI",
+    "receipt_no": "5531",
+    "payments": [
+      [
+        "ONLINE",
+        31000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-07-10",
+    "name": "E. SAI KAUSHIK",
+    "class": "I",
+    "receipt_no": "5532",
+    "payments": [
+      [
+        "ONLINE",
+        27000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-07-10",
+    "name": "V. MANOJITH GOUD",
+    "class": "UKG",
+    "receipt_no": "5533",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-07-10",
+    "name": "V. SHREYANSHI",
+    "class": "I",
+    "receipt_no": "5534",
+    "payments": [
+      [
+        "ONLINE",
+        20000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-07-10",
+    "name": "C. ADITHN",
+    "class": "II",
+    "receipt_no": "5535",
+    "payments": [
+      [
+        "ONLINE",
+        14000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 9
+  },
+  {
+    "date": "2025-07-10",
+    "name": "M. HITHIKA",
+    "class": "V",
+    "receipt_no": "5536",
+    "payments": [
+      [
+        "ONLINE",
+        33000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 10
+  },
+  {
+    "date": "2025-07-10",
+    "name": "M. VINAMYA",
+    "class": "II",
+    "receipt_no": "5537",
+    "payments": [
+      [
+        "ONLINE",
+        28000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 11
+  },
+  {
+    "date": "2025-07-10",
+    "name": "K. VEDANSH",
+    "class": "II",
+    "receipt_no": "5538",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 12
+  },
+  {
+    "date": "2025-07-10",
+    "name": "K. DHRUVANSH",
+    "class": "V",
+    "receipt_no": "5539",
+    "payments": [
+      [
+        "ONLINE",
+        1000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 13
+  },
+  {
+    "date": "2025-07-10",
+    "name": "K. TRISHA",
+    "class": "IV",
+    "receipt_no": "5541",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 14
+  },
+  {
+    "date": "2025-07-10",
+    "name": "M. SAHASRA",
+    "class": "5TH",
+    "receipt_no": "5542",
+    "payments": [
+      [
+        "ONLINE",
+        20000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 15
+  },
+  {
+    "date": "2025-07-10",
+    "name": "CH. VISHNU",
+    "class": "I",
+    "receipt_no": "5543",
+    "payments": [
+      [
+        "ONLINE",
+        20000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 16
+  },
+  {
+    "date": "2025-07-10",
+    "name": "E. ESHAN REDDY",
+    "class": "UKG",
+    "receipt_no": "5544",
+    "payments": [
+      [
+        "CASH",
+        23000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 17
+  },
+  {
+    "date": "2025-07-10",
+    "name": "B. YASHASWI",
+    "class": "IV",
+    "receipt_no": "5545",
+    "payments": [
+      [
+        "CASH",
+        17000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 18
+  },
+  {
+    "date": "2025-07-10",
+    "name": "R. AADHYA",
+    "class": "UKG",
+    "receipt_no": "5546",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 19
+  },
+  {
+    "date": "2025-07-10",
+    "name": "V. AARADHYA",
+    "class": "UKG",
+    "receipt_no": "5547",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 20
+  },
+  {
+    "date": "2025-07-10",
+    "name": "CW. ADWITH (T/F)",
+    "class": "II",
+    "receipt_no": "T/F",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 21
+  },
+  {
+    "date": "2025-07-10",
+    "name": "CH. SAHOSH",
+    "class": "IV",
+    "receipt_no": "5023",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 22
+  },
+  {
+    "date": "2025-07-10",
+    "name": "M. VISHAK",
+    "class": "I",
+    "receipt_no": "5024",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 23
+  },
+  {
+    "date": "2025-07-10",
+    "name": "TO DEPOSIT",
+    "class": "UNCLEAR",
+    "receipt_no": "DEPOSIT",
+    "payments": [
+      [
+        "DEPOSIT",
+        35000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 24
+  },
+  {
+    "date": "2025-07-10",
+    "name": "V. ISHRAYANSHI",
+    "class": "UKG",
+    "receipt_no": "5021",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 25
+  }
+]

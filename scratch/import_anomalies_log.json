@@ -1,0 +1,914 @@
+[
+  {
+    "s_no": 2,
+    "student_name": "BHANU PRIYA GANGA BOINI",
+    "raw_row_num": 3,
+    "class": "NUR",
+    "section": "",
+    "original_admission_no": "VR01283",
+    "final_admission_no": "VR01283",
+    "anomalies": [
+      "invalid_aadhaar_length_13"
+    ],
+    "dob": "15-2-2021",
+    "phone": "8374734471",
+    "aadhar": "7304984497875"
+  },
+  {
+    "s_no": 4,
+    "student_name": "MANNE BAVAGNA",
+    "raw_row_num": 32,
+    "class": "PP1",
+    "section": "A",
+    "original_admission_no": "VR01091",
+    "final_admission_no": "VR01091",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "12/07/21",
+    "phone": "9989753582",
+    "aadhar": "775724542619"
+  },
+  {
+    "s_no": 13,
+    "student_name": "PULLAIAHGARI.MEGHANSH",
+    "raw_row_num": 41,
+    "class": "PP1",
+    "section": "A",
+    "original_admission_no": "VR01284",
+    "final_admission_no": "VR01284",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "04/05/22",
+    "phone": "9000875537",
+    "aadhar": "982556387640"
+  },
+  {
+    "s_no": 16,
+    "student_name": "RATHOD.PALLAVI",
+    "raw_row_num": 44,
+    "class": "PP1",
+    "section": "A",
+    "original_admission_no": "VR01335",
+    "final_admission_no": "VR01335",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "03/06/25",
+    "phone": "9866593162",
+    "aadhar": "724500821769"
+  },
+  {
+    "s_no": 18,
+    "student_name": "AKULA SRYIANSH PATEL",
+    "raw_row_num": 46,
+    "class": "PP1",
+    "section": "A",
+    "original_admission_no": "VR01335",
+    "final_admission_no": "VR01335-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "120/6/2021",
+    "phone": "9030887229",
+    "aadhar": ""
+  },
+  {
+    "s_no": 5,
+    "student_name": "Marjetty Anvith Nandhan",
+    "raw_row_num": 60,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR01218",
+    "final_admission_no": "VR01218",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "27/09/2021",
+    "phone": "9676673762",
+    "aadhar": "527133389124"
+  },
+  {
+    "s_no": 6,
+    "student_name": "Avanthika",
+    "raw_row_num": 61,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR01303",
+    "final_admission_no": "VR01303",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "15/07/2020",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 7,
+    "student_name": "Bandla Eshan Reddy",
+    "raw_row_num": 62,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR00903",
+    "final_admission_no": "VR00903",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "12/05/20",
+    "phone": "9494908666",
+    "aadhar": "399236242112"
+  },
+  {
+    "s_no": 8,
+    "student_name": "K Ishanth chary",
+    "raw_row_num": 63,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR01215",
+    "final_admission_no": "VR01215",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "31/5/2021",
+    "phone": "",
+    "aadhar": "527895803033"
+  },
+  {
+    "s_no": 10,
+    "student_name": "Nakkala Manu sri",
+    "raw_row_num": 65,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR01087",
+    "final_admission_no": "VR01087",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "03/01/20",
+    "phone": "",
+    "aadhar": "846213467675"
+  },
+  {
+    "s_no": 12,
+    "student_name": "CH Nainika Reddy",
+    "raw_row_num": 67,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR01073",
+    "final_admission_no": "VR01073",
+    "anomalies": [
+      "invalid_aadhaar_length_11",
+      "missing_primary_phone"
+    ],
+    "dob": "19/7/2021",
+    "phone": "",
+    "aadhar": "80123167551"
+  },
+  {
+    "s_no": 13,
+    "student_name": "[BLANK RECORD]",
+    "raw_row_num": 68,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR-MISSING-PP1-B-13",
+    "final_admission_no": "VR-MISSING-PP1-B-13",
+    "anomalies": [
+      "blank_record",
+      "missing_admission_number"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 17,
+    "student_name": "[BLANK RECORD]",
+    "raw_row_num": 72,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR-MISSING-PP1-B-17",
+    "final_admission_no": "VR-MISSING-PP1-B-17",
+    "anomalies": [
+      "blank_record",
+      "missing_admission_number"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 19,
+    "student_name": "Y.Srihaan Ganesh",
+    "raw_row_num": 74,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR01284",
+    "final_admission_no": "VR01284-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "13/06/2021",
+    "phone": "9490822383",
+    "aadhar": "820485799419"
+  },
+  {
+    "s_no": 20,
+    "student_name": "sree ganesh",
+    "raw_row_num": 75,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VR00903",
+    "final_admission_no": "VR00903-DUP1",
+    "anomalies": [
+      "missing_parent_names",
+      "missing_primary_phone",
+      "duplicate_admission_number"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 23,
+    "student_name": "Vikas",
+    "raw_row_num": 78,
+    "class": "PP1",
+    "section": "B",
+    "original_admission_no": "VRCB062",
+    "final_admission_no": "VRCB062",
+    "anomalies": [
+      "missing_parent_names",
+      "missing_primary_phone"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 14,
+    "student_name": "Uppari Nithya sri",
+    "raw_row_num": 96,
+    "class": "PP2",
+    "section": "A",
+    "original_admission_no": "VR01075",
+    "final_admission_no": "VR01075",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "20/1/2021",
+    "phone": "9703827740",
+    "aadhar": "301191947475"
+  },
+  {
+    "s_no": 22,
+    "student_name": "Gadila Sreyansh reddy",
+    "raw_row_num": 104,
+    "class": "PP2",
+    "section": "A",
+    "original_admission_no": "VR01075",
+    "final_admission_no": "VR01075-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "04/11/20",
+    "phone": "9676064686",
+    "aadhar": "786019391938"
+  },
+  {
+    "s_no": 2,
+    "student_name": "Usari Aadhya",
+    "raw_row_num": 114,
+    "class": "PP2",
+    "section": "B",
+    "original_admission_no": "VR01099",
+    "final_admission_no": "VR01099",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "07/08/20",
+    "phone": "",
+    "aadhar": "618130115485"
+  },
+  {
+    "s_no": 5,
+    "student_name": "Alige Ankith",
+    "raw_row_num": 117,
+    "class": "PP2",
+    "section": "B",
+    "original_admission_no": "VR0906",
+    "final_admission_no": "VR0906",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "26/8/2020",
+    "phone": "",
+    "aadhar": "620630871583"
+  },
+  {
+    "s_no": 9,
+    "student_name": "Rathod Ashwin",
+    "raw_row_num": 121,
+    "class": "PP2",
+    "section": "B",
+    "original_admission_no": "VRO1257",
+    "final_admission_no": "VRO1257",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "03/08/20",
+    "phone": "968180824",
+    "aadhar": ""
+  },
+  {
+    "s_no": 16,
+    "student_name": "Gaddamidi Manasvi",
+    "raw_row_num": 128,
+    "class": "PP2",
+    "section": "B",
+    "original_admission_no": "VR01342",
+    "final_admission_no": "VR01342",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "23/7/2020",
+    "phone": "",
+    "aadhar": "874304928807"
+  },
+  {
+    "s_no": 24,
+    "student_name": "Lavanam Udit kumar",
+    "raw_row_num": 136,
+    "class": "PP2",
+    "section": "B",
+    "original_admission_no": "VR01286",
+    "final_admission_no": "VR01286",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "24/5/2019",
+    "phone": "",
+    "aadhar": "412538796932"
+  },
+  {
+    "s_no": 25,
+    "student_name": "Rukmapuram Varnika",
+    "raw_row_num": 137,
+    "class": "PP2",
+    "section": "B",
+    "original_admission_no": "VR0985",
+    "final_admission_no": "VR0985",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "05/06/20",
+    "phone": "944124600",
+    "aadhar": "927414597892"
+  },
+  {
+    "s_no": 3,
+    "student_name": "Kummari Harshith",
+    "raw_row_num": 144,
+    "class": "4th",
+    "section": "A",
+    "original_admission_no": "VR0697",
+    "final_admission_no": "VR0697",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "25/6/2016",
+    "phone": "944048841",
+    "aadhar": "825932344806"
+  },
+  {
+    "s_no": 15,
+    "student_name": "Marvelli Mahanth sai",
+    "raw_row_num": 177,
+    "class": "4th",
+    "section": "B",
+    "original_admission_no": "VR01218",
+    "final_admission_no": "VR01218-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "02/06/17",
+    "phone": "9014159694",
+    "aadhar": "552596446802"
+  },
+  {
+    "s_no": 17,
+    "student_name": "Pattolla Neha reddy",
+    "raw_row_num": 179,
+    "class": "4th",
+    "section": "B",
+    "original_admission_no": "VR0927",
+    "final_admission_no": "VR0927",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "11/01/17",
+    "phone": "",
+    "aadhar": "682112383518"
+  },
+  {
+    "s_no": 18,
+    "student_name": "Darwesh Rithu raj",
+    "raw_row_num": 180,
+    "class": "4th",
+    "section": "B",
+    "original_admission_no": "VM0390",
+    "final_admission_no": "VM0390",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "16/8/2016",
+    "phone": "",
+    "aadhar": "780228719519"
+  },
+  {
+    "s_no": 23,
+    "student_name": "Kuntala Sai praneeth",
+    "raw_row_num": 185,
+    "class": "4th",
+    "section": "B",
+    "original_admission_no": "VR0724",
+    "final_admission_no": "VR0724",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "17/7/2016",
+    "phone": "",
+    "aadhar": "513898114727"
+  },
+  {
+    "s_no": 6,
+    "student_name": "M Harshith",
+    "raw_row_num": 198,
+    "class": "5th",
+    "section": "",
+    "original_admission_no": "VRO1314",
+    "final_admission_no": "VRO1314",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "18/11/2015",
+    "phone": "9908123780",
+    "aadhar": "304497143022"
+  },
+  {
+    "s_no": 28,
+    "student_name": "M Hruthik",
+    "raw_row_num": 220,
+    "class": "5th",
+    "section": "",
+    "original_admission_no": "VR01313",
+    "final_admission_no": "VR01313",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "06/10/15",
+    "phone": "",
+    "aadhar": "693667357302"
+  },
+  {
+    "s_no": 5,
+    "student_name": "Vanam Bhargav reddy",
+    "raw_row_num": 226,
+    "class": "6th",
+    "section": "",
+    "original_admission_no": "VS0161",
+    "final_admission_no": "VS0161",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "06/03/14",
+    "phone": "",
+    "aadhar": "617709892154"
+  },
+  {
+    "s_no": 15,
+    "student_name": "Kummari Vyshnavi",
+    "raw_row_num": 236,
+    "class": "6th",
+    "section": "",
+    "original_admission_no": "VR0690",
+    "final_admission_no": "VR0690",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "05/04/14",
+    "phone": "9440488441",
+    "aadhar": "549650192047"
+  },
+  {
+    "s_no": 6,
+    "student_name": "Kemishetti Lohitha kavya sri",
+    "raw_row_num": 245,
+    "class": "7th",
+    "section": "",
+    "original_admission_no": "VS01223",
+    "final_admission_no": "VS01223",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "17/8/2014",
+    "phone": "996373421",
+    "aadhar": "708894586826"
+  },
+  {
+    "s_no": 21,
+    "student_name": "Mupaneni Harshith",
+    "raw_row_num": 260,
+    "class": "7th",
+    "section": "",
+    "original_admission_no": "VRO1314",
+    "final_admission_no": "VRO1314-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "",
+    "phone": "9505345342",
+    "aadhar": "675134267546"
+  },
+  {
+    "s_no": 22,
+    "student_name": "Ponna Rakesh Reddy",
+    "raw_row_num": 261,
+    "class": "7th",
+    "section": "",
+    "original_admission_no": "VRO1289",
+    "final_admission_no": "VRO1289",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": "364117717360"
+  },
+  {
+    "s_no": 23,
+    "student_name": "Sara Sai pradeep",
+    "raw_row_num": 262,
+    "class": "7th",
+    "section": "",
+    "original_admission_no": "VR01297",
+    "final_admission_no": "VR01297",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": "534603194939"
+  },
+  {
+    "s_no": 9,
+    "student_name": "Vanam Omkar",
+    "raw_row_num": 271,
+    "class": "8th",
+    "section": "",
+    "original_admission_no": "VR0010-25",
+    "final_admission_no": "VR0010-25",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "9/14/2012",
+    "phone": "960212836",
+    "aadhar": "402951874320"
+  },
+  {
+    "s_no": 14,
+    "student_name": "MASIDHUKADI DEEKSHITHA",
+    "raw_row_num": 276,
+    "class": "8th",
+    "section": "",
+    "original_admission_no": "VROO5-25",
+    "final_admission_no": "VROO5-25",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "6/13/2012",
+    "phone": "812157501",
+    "aadhar": "933541690168"
+  },
+  {
+    "s_no": 5,
+    "student_name": "GADILA KARUNYA",
+    "raw_row_num": 281,
+    "class": "1st",
+    "section": "A",
+    "original_admission_no": "VRO862",
+    "final_admission_no": "VRO862",
+    "anomalies": [
+      "invalid_phone_length_9"
+    ],
+    "dob": "10/3/2019",
+    "phone": "900347677",
+    "aadhar": ""
+  },
+  {
+    "s_no": 22,
+    "student_name": "VADLA VARSHITH CHARY",
+    "raw_row_num": 298,
+    "class": "1st",
+    "section": "A",
+    "original_admission_no": "VRO699",
+    "final_admission_no": "VRO699",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "11/11/2017",
+    "phone": "",
+    "aadhar": "314576521213"
+  },
+  {
+    "s_no": 23,
+    "student_name": "PUTLA YASHASWI",
+    "raw_row_num": 299,
+    "class": "1st",
+    "section": "A",
+    "original_admission_no": "VRO945",
+    "final_admission_no": "VRO945",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "6/9/2019",
+    "phone": "",
+    "aadhar": "603995404273"
+  },
+  {
+    "s_no": 5,
+    "student_name": "MANGALI CHAITRIKA",
+    "raw_row_num": 304,
+    "class": "1st",
+    "section": "B",
+    "original_admission_no": "VRO1345",
+    "final_admission_no": "VRO1345",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "4/3/2019",
+    "phone": "",
+    "aadhar": "990771936129"
+  },
+  {
+    "s_no": 18,
+    "student_name": "TALARI ROHAN",
+    "raw_row_num": 317,
+    "class": "1st",
+    "section": "B",
+    "original_admission_no": "VRO898",
+    "final_admission_no": "VRO898",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "10/29/2019",
+    "phone": "",
+    "aadhar": "505665887206"
+  },
+  {
+    "s_no": 20,
+    "student_name": "SOUJANYA",
+    "raw_row_num": 319,
+    "class": "1st",
+    "section": "B",
+    "original_admission_no": "VS0876",
+    "final_admission_no": "VS0876",
+    "anomalies": [
+      "missing_parent_names",
+      "missing_primary_phone"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 22,
+    "student_name": "JAI VARSHITH",
+    "raw_row_num": 321,
+    "class": "1st",
+    "section": "B",
+    "original_admission_no": "VS0786",
+    "final_admission_no": "VS0786",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "10/4/2020",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 23,
+    "student_name": "PUTLA YASHWANTH",
+    "raw_row_num": 322,
+    "class": "1st",
+    "section": "B",
+    "original_admission_no": "VRO944",
+    "final_admission_no": "VRO944",
+    "anomalies": [
+      "invalid_aadhaar_length_11",
+      "missing_primary_phone"
+    ],
+    "dob": "6/9/2019",
+    "phone": "",
+    "aadhar": "88282536244"
+  },
+  {
+    "s_no": 24,
+    "student_name": "[BLANK RECORD]",
+    "raw_row_num": 323,
+    "class": "NUR",
+    "section": "",
+    "original_admission_no": "VR-MISSING-CLASS-SEC-24",
+    "final_admission_no": "VR-MISSING-CLASS-SEC-24",
+    "anomalies": [
+      "blank_record",
+      "missing_admission_number"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 1,
+    "student_name": "MANDAGIRI AKASH",
+    "raw_row_num": 324,
+    "class": "2nd",
+    "section": "A",
+    "original_admission_no": "VRO823",
+    "final_admission_no": "VRO823",
+    "anomalies": [
+      "invalid_aadhaar_length_11"
+    ],
+    "dob": "30/03/19",
+    "phone": "9966894539",
+    "aadhar": "52289410577"
+  },
+  {
+    "s_no": 18,
+    "student_name": "YELMETI ROHAN GANESH",
+    "raw_row_num": 341,
+    "class": "2nd",
+    "section": "A",
+    "original_admission_no": "VRO988",
+    "final_admission_no": "VRO988",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "5/8/2018",
+    "phone": "9490447944",
+    "aadhar": "536439819441"
+  },
+  {
+    "s_no": 25,
+    "student_name": "DAMU TANMAY SRI",
+    "raw_row_num": 348,
+    "class": "2nd",
+    "section": "A",
+    "original_admission_no": "VMO578",
+    "final_admission_no": "VMO578",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "3/30/2018",
+    "phone": "",
+    "aadhar": "955198582451"
+  },
+  {
+    "s_no": 29,
+    "student_name": "LAVUDA  VISHWANK",
+    "raw_row_num": 352,
+    "class": "2nd",
+    "section": "A",
+    "original_admission_no": "VRO988",
+    "final_admission_no": "VRO988-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "11/4/2019",
+    "phone": "9284353271",
+    "aadhar": "945173990498"
+  },
+  {
+    "s_no": 31,
+    "student_name": "[BLANK RECORD]",
+    "raw_row_num": 354,
+    "class": "2nd",
+    "section": "A",
+    "original_admission_no": "VR-MISSING-2nd-A-31",
+    "final_admission_no": "VR-MISSING-2nd-A-31",
+    "anomalies": [
+      "blank_record",
+      "missing_admission_number"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 2,
+    "student_name": "ADVIKA",
+    "raw_row_num": 356,
+    "class": "2nd",
+    "section": "B",
+    "original_admission_no": "VR01311",
+    "final_admission_no": "VR01311",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 7,
+    "student_name": "TADUKA KRUTHIKA",
+    "raw_row_num": 361,
+    "class": "2nd",
+    "section": "B",
+    "original_admission_no": "VR0690",
+    "final_admission_no": "VR0690-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "8/8/2018",
+    "phone": "9701070134",
+    "aadhar": "350118361127"
+  },
+  {
+    "s_no": 12,
+    "student_name": "GOLLA NANDA KISHORE",
+    "raw_row_num": 366,
+    "class": "2nd",
+    "section": "B",
+    "original_admission_no": "VR01091",
+    "final_admission_no": "VR01091-DUP1",
+    "anomalies": [
+      "duplicate_admission_number"
+    ],
+    "dob": "10/23/2018",
+    "phone": "9440643147",
+    "aadhar": "482886527806"
+  },
+  {
+    "s_no": 13,
+    "student_name": "[BLANK RECORD]",
+    "raw_row_num": 367,
+    "class": "2nd",
+    "section": "B",
+    "original_admission_no": "VR-MISSING-2nd-B-13",
+    "final_admission_no": "VR-MISSING-2nd-B-13",
+    "anomalies": [
+      "blank_record",
+      "missing_admission_number"
+    ],
+    "dob": "",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 9,
+    "student_name": "Kandi Bhanuteja",
+    "raw_row_num": 421,
+    "class": "3rd",
+    "section": "B",
+    "original_admission_no": "VM00420",
+    "final_admission_no": "VM00420",
+    "anomalies": [
+      "missing_primary_phone"
+    ],
+    "dob": "09/06/17",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 22,
+    "student_name": "J Varun",
+    "raw_row_num": 434,
+    "class": "3rd",
+    "section": "B",
+    "original_admission_no": "VR-MISSING-3rd-B-22",
+    "final_admission_no": "VR-MISSING-3rd-B-22",
+    "anomalies": [
+      "missing_admission_number",
+      "missing_primary_phone"
+    ],
+    "dob": "20/1/2017",
+    "phone": "",
+    "aadhar": ""
+  },
+  {
+    "s_no": 24,
+    "student_name": "CHILVARI.SAHASRA",
+    "raw_row_num": 445,
+    "class": "4th",
+    "section": "A",
+    "original_admission_no": "VR0745",
+    "final_admission_no": "VR0745",
+    "anomalies": [
+      "invalid_aadhaar_length_13"
+    ],
+    "dob": "03/01/17",
+    "phone": "9642803773",
+    "aadhar": "5780857813927"
+  }
+]

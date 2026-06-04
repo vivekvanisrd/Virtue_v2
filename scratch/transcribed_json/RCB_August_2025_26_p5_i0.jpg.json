@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-08-18",
+    "name": "M. NIHAL REDDY",
+    "class": "III",
+    "receipt_no": "5650",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-18",
+    "name": "M. ADVIK REDDY",
+    "class": "LKG",
+    "receipt_no": "5651",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-18",
+    "name": "B. SAANVI",
+    "class": "2ND",
+    "receipt_no": "5652",
+    "payments": [
+      [
+        "CASH",
+        25000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-18",
+    "name": "B. MANVITH",
+    "class": "7ST",
+    "receipt_no": "5653",
+    "payments": [
+      [
+        "CASH",
+        25000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-18",
+    "name": "T. HANISH MOURYA",
+    "class": "II",
+    "receipt_no": "5099",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-20",
+    "name": "L. KRUTHIK",
+    "class": "1ST",
+    "receipt_no": "5654",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-20",
+    "name": "L. VEDANSHI",
+    "class": "UKG",
+    "receipt_no": "5655",
+    "payments": [
+      [
+        "CASH",
+        8000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-20",
+    "name": "M. SOWMYA SRI",
+    "class": "4TH",
+    "receipt_no": "5656",
+    "payments": [
+      [
+        "CASH",
+        2000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-20",
+    "name": "M. CHAITHRIKA",
+    "class": "1ST",
+    "receipt_no": "5657",
+    "payments": [
+      [
+        "CASH",
+        2000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]

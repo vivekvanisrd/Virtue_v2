@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-07-28",
+    "name": "K. VISHALI",
+    "class": "V",
+    "receipt_no": "5607",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-07-28",
+    "name": "G. YESHWANTH",
+    "class": "II",
+    "receipt_no": "5608",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-07-28",
+    "name": "B. ATHVIK",
+    "class": "V",
+    "receipt_no": "5609",
+    "payments": [
+      [
+        "ONLINE (T.F)",
+        4500
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-07-28",
+    "name": "K. VISHALI",
+    "class": "V",
+    "receipt_no": "5067",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-07-28",
+    "name": "G. YESHWANTH",
+    "class": "II",
+    "receipt_no": "5068",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-07-28",
+    "name": "E. AVNI",
+    "class": "3RD",
+    "receipt_no": "5069",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-07-28",
+    "name": "B. ARYSH",
+    "class": "I",
+    "receipt_no": "5070",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-07-28",
+    "name": "B. ARAVH",
+    "class": "4TH",
+    "receipt_no": "5610",
+    "payments": [
+      [
+        "CASH (T.F)",
+        4500
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-07-28",
+    "name": "CASH HANDED OVER TO AKSHITHA MADAM",
+    "class": "UNCLEAR",
+    "receipt_no": "NOTE",
+    "payments": [
+      [
+        "CASH",
+        59000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 9
+  }
+]

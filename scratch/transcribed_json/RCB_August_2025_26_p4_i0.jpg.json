@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-08-11",
+    "name": "B. SHIVANSH REDDY",
+    "class": "UKG",
+    "receipt_no": "5641",
+    "payments": [
+      [
+        "ONLINE",
+        4000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-11",
+    "name": "K. MADHURA",
+    "class": "V",
+    "receipt_no": "5094",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-11",
+    "name": "K. MANSI",
+    "class": "VII",
+    "receipt_no": "5095",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-12",
+    "name": "K. MANVITHA SRI",
+    "class": "UKG",
+    "receipt_no": "5642",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-12",
+    "name": "ANOKH ARUSH",
+    "class": "UKG",
+    "receipt_no": "5643",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-12",
+    "name": "B. VIGNAN",
+    "class": "UKG",
+    "receipt_no": "5644",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-12",
+    "name": "D. ABHISARIKA",
+    "class": "VI",
+    "receipt_no": "5645",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-12",
+    "name": "D. SHIVADITYA",
+    "class": "NUR",
+    "receipt_no": "5646",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-18",
+    "name": "T. HANISH MOURYA",
+    "class": "II",
+    "receipt_no": "5649",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]

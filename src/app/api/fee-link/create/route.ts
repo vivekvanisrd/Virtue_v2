@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { razorpay } from "@/lib/razorpay";
 import { v4 as uuidv4 } from "uuid";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,6 +50,24 @@ export async function POST(req: NextRequest) {
       razorpayShortUrl = `${baseUrl}/fee-pay/mock?token=${token}`;
     }
 
+    // Resolve tenancy context
+    let schoolId = req.headers.get("x-v2-school-id") || body.schoolId;
+    let branchId = req.headers.get("x-v2-branch-id") || body.branchId;
+
+    if (!schoolId || !branchId) {
+      try {
+        const firstBranch = await prisma.branch.findFirst({ select: { id: true, schoolId: true } });
+        if (firstBranch) {
+          schoolId = schoolId || firstBranch.schoolId;
+          branchId = branchId || firstBranch.id;
+        }
+      } catch (err) {
+        console.warn("Fallback tenant lookup failed:", err);
+      }
+      if (!schoolId) schoolId = "VIVES";
+      if (!branchId) branchId = "VIVES-RCB";
+    }
+
     const { error: dbErr } = await supabase.from("fee_payment_links").insert({
       token,
       student_name: studentName.trim(),
@@ -60,6 +79,8 @@ export async function POST(req: NextRequest) {
       razorpay_link_id: razorpayLinkId,
       razorpay_short_url: razorpayShortUrl,
       status: "PENDING",
+      school_id: schoolId,
+      branch_id: branchId,
     });
 
     if (dbErr) throw new Error(dbErr.message);

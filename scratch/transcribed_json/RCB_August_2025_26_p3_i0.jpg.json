@@ -1,0 +1,128 @@
+[
+  {
+    "date": "2025-08-06",
+    "name": "G. PAVAN",
+    "class": "6TH",
+    "receipt_no": "5633",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-06",
+    "name": "B. MANASVI",
+    "class": "1ST",
+    "receipt_no": "5634",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-06",
+    "name": "K. DEVANSH",
+    "class": "3RD",
+    "receipt_no": "5093",
+    "payments": [
+      [
+        "ONLINE (TRANSPORT)",
+        2000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-11",
+    "name": "K. MADHURA",
+    "class": "V",
+    "receipt_no": "5635",
+    "payments": [
+      [
+        "ONLINE",
+        30000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-11",
+    "name": "K. MANSI",
+    "class": "VII",
+    "receipt_no": "5636",
+    "payments": [
+      [
+        "ONLINE",
+        28000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-11",
+    "name": "P. YASHWANTH",
+    "class": "I",
+    "receipt_no": "5637",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-11",
+    "name": "P. YASHASWINI",
+    "class": "I",
+    "receipt_no": "5638",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-11",
+    "name": "B. MANASA",
+    "class": "VI",
+    "receipt_no": "5639",
+    "payments": [
+      [
+        "ONLINE",
+        6000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-11",
+    "name": "B. DAKSHITHA",
+    "class": "V",
+    "receipt_no": "5640",
+    "payments": [
+      [
+        "ONLINE",
+        6000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]

@@ -1,0 +1,86 @@
+[
+  {
+    "date": "2025-07-26",
+    "name": "G. SAIMOUNI",
+    "class": "V",
+    "receipt_no": "5605",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-07-26",
+    "name": "G. VIGNETH",
+    "class": "IV",
+    "receipt_no": "5606",
+    "payments": [
+      [
+        "CASH",
+        15000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-07-26",
+    "name": "G. SAIMOUNI",
+    "class": "V",
+    "receipt_no": "5066",
+    "payments": [
+      [
+        "CASH (T.F)",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-07-26",
+    "name": "G. VIGNETH",
+    "class": "IV",
+    "receipt_no": "5067",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-07-26",
+    "name": "CASH HANDED OVER TO AKSHITHA MADAM",
+    "class": "UNCLEAR",
+    "receipt_no": "NOTE",
+    "payments": [
+      [
+        "CASH",
+        35000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-07-26",
+    "name": "TO DEPOSIT",
+    "class": "UNCLEAR",
+    "receipt_no": "DEPOSIT",
+    "payments": [
+      [
+        "DEPOSIT",
+        65000
+      ]
+    ],
+    "sheet": "RCB july 2025 26.pdf",
+    "row": 6
+  }
+]

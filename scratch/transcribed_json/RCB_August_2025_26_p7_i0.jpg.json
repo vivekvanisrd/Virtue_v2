@@ -1,0 +1,132 @@
+[
+  {
+    "date": "2025-08-25",
+    "name": "P. PREKSHA",
+    "class": "VI",
+    "receipt_no": "5667",
+    "payments": [
+      [
+        "ONLINE",
+        32000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 1
+  },
+  {
+    "date": "2025-08-25",
+    "name": "K. NARENDER",
+    "class": "VIII",
+    "receipt_no": "5668",
+    "payments": [
+      [
+        "ONLINE",
+        35000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 2
+  },
+  {
+    "date": "2025-08-25",
+    "name": "J. KRITHIKA",
+    "class": "I",
+    "receipt_no": "5669",
+    "payments": [
+      [
+        "CASH",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 3
+  },
+  {
+    "date": "2025-08-25",
+    "name": "S. SRIKARANI",
+    "class": "II",
+    "receipt_no": "5670",
+    "payments": [
+      [
+        "CASH",
+        1000
+      ],
+      [
+        "ONLINE",
+        7000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 4
+  },
+  {
+    "date": "2025-08-25",
+    "name": "K. TEJASI",
+    "class": "I",
+    "receipt_no": "5671",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 5
+  },
+  {
+    "date": "2025-08-25",
+    "name": "K. THANUSH",
+    "class": "IV",
+    "receipt_no": "5672",
+    "payments": [
+      [
+        "ONLINE",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 6
+  },
+  {
+    "date": "2025-08-25",
+    "name": "A. ANKUSH GOUD",
+    "class": "III",
+    "receipt_no": "5100",
+    "payments": [
+      [
+        "CASH",
+        5000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 7
+  },
+  {
+    "date": "2025-08-25",
+    "name": "M. TANVISH",
+    "class": "III",
+    "receipt_no": "5101",
+    "payments": [
+      [
+        "ONLINE",
+        10000
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 8
+  },
+  {
+    "date": "2025-08-25",
+    "name": "K. VISHAL",
+    "class": "I",
+    "receipt_no": "5102",
+    "payments": [
+      [
+        "CASH",
+        2500
+      ]
+    ],
+    "sheet": "RCB August 2025 26.pdf",
+    "row": 9
+  }
+]
