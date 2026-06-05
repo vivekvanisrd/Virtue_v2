@@ -82,12 +82,18 @@ export function RoleDefinitionManager() {
       return;
     }
 
+    // Convert selected permission IDs array → capabilities Record<string,boolean>
+    // All available permissions default to false; selected ones are set to true
+    const allPermIds = PERMISSION_GROUPS.flatMap(g => g.permissions.map(p => p.id));
+    const capabilities: Record<string, boolean> = {};
+    allPermIds.forEach(id => { capabilities[id] = selectedPerms.includes(id); });
+
     setIsSubmitting(true);
     const res = await createCustomRole({
       schoolId,
       name: newRoleName,
       description: newRoleDesc,
-      permissions: selectedPerms
+      capabilities,             // ✅ correct field
     });
 
     if (res.success) {
@@ -270,23 +276,43 @@ export function RoleDefinitionManager() {
               </p>
               
               <div className="border-t border-slate-100 pt-4 mt-auto">
-                 <div className="flex flex-wrap gap-1.5">
-                    {Array.isArray(role.permissions) && role.permissions.length > 0 ? (
-                       role.permissions.slice(0, 3).map((perm: string) => (
-                         <span key={perm} className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
-                           {perm.replace(/_/g, ' ')}
-                         </span>
-                       ))
-                    ) : (
-                       <span className="text-[10px] font-bold text-slate-400 italic">No specific permissions</span>
-                    )}
-                    {Array.isArray(role.permissions) && role.permissions.length > 3 && (
-                       <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
-                         +{role.permissions.length - 3} more
-                       </span>
-                    )}
-                 </div>
-              </div>
+                  {/* Branch scope badge */}
+                  {role.branchId && (
+                    <div className="mb-2">
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        📍 Branch-Scoped
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                     {/* Display capabilities from the capabilities JSON object */}
+                     {role.capabilities && typeof role.capabilities === 'object' ? (
+                        (() => {
+                          const caps = Object.entries(role.capabilities as Record<string,boolean>)
+                            .filter(([, v]) => v === true)
+                            .map(([k]) => k);
+                          return caps.length > 0 ? (
+                            <>
+                              {caps.slice(0, 3).map((cap: string) => (
+                                <span key={cap} className="text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
+                                  {cap.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                              {caps.length > 3 && (
+                                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
+                                  +{caps.length - 3} more
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 italic">No capabilities enabled</span>
+                          );
+                        })()
+                     ) : (
+                        <span className="text-[10px] font-bold text-slate-400 italic">No capabilities defined</span>
+                     )}
+                  </div>
+               </div>
            </div>
          ))}
       </div>

@@ -15,6 +15,9 @@ export async function getDashboardStatsAction() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const hasBranchContext = context.branchId && context.branchId !== 'GLOBAL';
+    const branchFilter = hasBranchContext ? { branchId: context.branchId } : {};
+
     // 1-8. Parallel database queries via Promise.all
     const [
       studentCount,
@@ -30,37 +33,40 @@ export async function getDashboardStatsAction() {
       activeYear
     ] = await Promise.all([
       prisma.student.count({
-        where: { schoolId: context.schoolId, status: "Active" }
+        where: { schoolId: context.schoolId, status: "Active", ...branchFilter }
       }),
       prisma.staff.count({
-        where: { schoolId: context.schoolId, role: "TEACHER" }
+        where: { schoolId: context.schoolId, role: "TEACHER", ...branchFilter }
       }),
-      prisma.financialRecord.aggregate({
-        where: { schoolId: context.schoolId },
-        _sum: { annualTuition: true, totalDiscount: true }
+      // BUG-1 FIX: Use StudentFeeComponent as the source of truth (not legacy annualTuition)
+      prisma.studentFeeComponent.aggregate({
+        where: { schoolId: context.schoolId, isApplicable: true, ...branchFilter },
+        _sum: { baseAmount: true, waiverAmount: true, discountAmount: true }
       }),
       prisma.collection.aggregate({
-        where: { schoolId: context.schoolId, status: "Success" },
+        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, ...branchFilter },
         _sum: { amountPaid: true, totalPaid: true }
       }),
       prisma.collection.aggregate({
         where: { 
           schoolId: context.schoolId,
           paymentDate: { gte: today },
-          status: "Success"
+          status: "Success",
+          isDeleted: false,
+          ...branchFilter
         },
         _sum: { totalPaid: true }
       }),
       prisma.collection.aggregate({
-        where: { schoolId: context.schoolId, status: "Success", paymentMode: "Cash" },
+        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, paymentMode: "Cash", ...branchFilter },
         _sum: { amountPaid: true }
       }),
       prisma.collection.aggregate({
-        where: { schoolId: context.schoolId, status: "Success", paymentMode: "Razorpay" },
+        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, paymentMode: "Razorpay", ...branchFilter },
         _sum: { amountPaid: true }
       }),
       prisma.collection.findMany({
-        where: { schoolId: context.schoolId, status: "Success" },
+        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, ...branchFilter },
         include: {
           student: {
             select: {
@@ -73,7 +79,7 @@ export async function getDashboardStatsAction() {
         take: 5
       }),
       prisma.class.findMany({
-        where: { schoolId: context.schoolId },
+        where: { schoolId: context.schoolId, ...branchFilter },
         select: {
           id: true,
           name: true,
@@ -84,12 +90,22 @@ export async function getDashboardStatsAction() {
                   id: true,
                   financial: {
                     select: {
+                      // Legacy fallback fields (used only when components[] is empty)
                       annualTuition: true,
-                      totalDiscount: true
+                      totalDiscount: true,
+                      // BUG-1 FIX: Include component-level sums for accurate per-student expected fee
+                      components: {
+                        where: { isApplicable: true },
+                        select: {
+                          baseAmount: true,
+                          waiverAmount: true,
+                          discountAmount: true
+                        }
+                      }
                     }
                   },
                   collections: {
-                    where: { status: "Success" },
+                    where: { status: "Success", isDeleted: false },
                     select: {
                       amountPaid: true
                     }
@@ -103,7 +119,8 @@ export async function getDashboardStatsAction() {
       prisma.collection.count({
         where: { 
           schoolId: context.schoolId,
-          status: "VoidRequested"
+          status: "VoidRequested",
+          ...branchFilter
         }
       }),
       prisma.academicYear.findFirst({
@@ -112,10 +129,11 @@ export async function getDashboardStatsAction() {
       })
     ]);
 
-    // Financial calculations
-    const expectedTuition = Number(expectationStats._sum.annualTuition || 0);
-    const expectedDiscounts = Number(expectationStats._sum.totalDiscount || 0);
-    const expectedNet = expectedTuition - expectedDiscounts;
+    // Financial calculations — BUG-1 FIX: derived from StudentFeeComponent sums
+    const expectedBase     = Number(expectationStats._sum.baseAmount     || 0);
+    const expectedWaivers  = Number(expectationStats._sum.waiverAmount   || 0);
+    const expectedDiscounts= Number(expectationStats._sum.discountAmount || 0);
+    const expectedNet = expectedBase - expectedWaivers - expectedDiscounts;
     const lifetimeCollected = Number(collectionsStats._sum.amountPaid || 0);
     const collectedToday = Number(dailyRevenue._sum.totalPaid || 0);
     const cashCollected = Number(cashStats._sum.amountPaid || 0);
@@ -134,7 +152,7 @@ export async function getDashboardStatsAction() {
       user: col.collectedBy
     }));
 
-    // Map class-wise collection & dues
+    // Map class-wise collection & dues — BUG-1 FIX: use component sums, legacy fallback when absent
     const classStats = classes.map(cls => {
       let totalExpected = 0;
       let totalPaid = 0;
@@ -142,7 +160,16 @@ export async function getDashboardStatsAction() {
         if (rec.student) {
           const st = rec.student;
           if (st.financial) {
-            totalExpected += Number(st.financial.annualTuition || 0) - Number(st.financial.totalDiscount || 0);
+            const comps = (st.financial as any).components as { baseAmount: any; waiverAmount: any; discountAmount: any }[] | undefined;
+            if (comps && comps.length > 0) {
+              // Authoritative path: sum of per-student fee components
+              totalExpected += comps.reduce((sum, c) =>
+                sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0
+              );
+            } else {
+              // Legacy fallback: for students without components yet
+              totalExpected += Number(st.financial.annualTuition || 0) - Number(st.financial.totalDiscount || 0);
+            }
           }
           totalPaid += st.collections.reduce((sum, c) => sum + Number(c.amountPaid || 0), 0);
         }
@@ -190,8 +217,11 @@ export async function getRecentActivitiesAction() {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     
+    const hasBranchContext = context.branchId && context.branchId !== 'GLOBAL';
+    const branchFilter = hasBranchContext ? { branchId: context.branchId } : {};
+
     const logs = await prisma.activityLog.findMany({
-      where: { schoolId: context.schoolId },
+      where: { schoolId: context.schoolId, ...branchFilter },
       orderBy: { createdAt: "desc" },
       take: 5
     });

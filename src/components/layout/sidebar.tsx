@@ -334,7 +334,7 @@ export function Sidebar({
                 isCollapsed && "hidden"
               )}>System Core</p>
               <Link
-                href="/super-admin"
+                href="/developer"
                 className={cn(
                   "group flex items-center gap-4 w-full text-left rounded-2xl transition-all duration-300 relative px-6 py-4 bg-primary/10 border border-primary/20",
                   isCollapsed && "justify-center px-0"

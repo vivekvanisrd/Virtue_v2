@@ -1,5 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { tenancyExtension } from "./prisma-tenancy";
+import dns from "dns";
+
+// Force Node.js to resolve IPv6 addresses first. This prevents P1001 connection errors 
+// on IPv6-only database hosts like Supabase when running in local Node environments.
+if (dns && typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv6first");
+}
 
 const prismaClientSingleton = () => {
   const databaseUrl = process.env.DATABASE_URL;

@@ -7,11 +7,13 @@ import {
   Calendar,
   Menu,
   Sparkles,
-  LogOut
+  LogOut,
+  EyeOff
 } from "lucide-react";
 import { ThemeCustomizer } from "./theme-customizer";
 import { BranchSwitcher } from "./BranchSwitcher";
 import { signOutAction } from "@/lib/actions/auth-native";
+import { switchSchoolContextAction } from "@/app/developer/actions";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -64,6 +66,28 @@ export function Header({
         
         <div className="h-6 w-px bg-slate-200/60 mx-2" />
 
+        {userRole === "DEVELOPER" && schoolName && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl shadow-sm mr-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
+            <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest leading-none">
+              Impersonating: <span className="text-white">{schoolName}</span>
+            </p>
+            <button
+              onClick={async () => {
+                const res = await switchSchoolContextAction(null, null);
+                if (res.success) {
+                  window.location.href = '/developer';
+                } else {
+                  alert(res.error || "Failed to exit impersonation");
+                }
+              }}
+              className="ml-2 px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
+            >
+              <EyeOff className="w-2.5 h-2.5" /> Exit
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-2xl shadow-sm">
              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_10px_var(--primary)]" />
              <p className="text-[10px] font-black text-header-foreground opacity-60 uppercase tracking-widest leading-none">
@@ -72,7 +96,7 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl shadow-sm">
-             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all" />
+             <div className="w-1.5 h-1.5 rounded-full bg-indigo-50 shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all" />
              <p className="text-[10px] font-black text-indigo-200 opacity-80 uppercase tracking-widest leading-none">
                 Campus: <span className="text-white">{activeBranchName || "Global HQ"}</span>
              </p>

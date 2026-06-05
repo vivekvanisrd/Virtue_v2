@@ -73,12 +73,29 @@ export const getSovereignIdentity = cache(async (): Promise<SovereignIdentity | 
             return null;
         }
 
+        let schoolId = user.schoolId || (user.isPlatformAdmin ? 'PLATFORM' : "");
+        let branchId = user.branchId || "";
+
+        if (user.role === 'DEVELOPER') {
+            const switchedSchool = cookieStore.get('v-active-school')?.value;
+            if (switchedSchool) {
+                schoolId = switchedSchool;
+            }
+        }
+
+        if (user.role === 'OWNER' || user.role === 'DEVELOPER') {
+            const switchedBranch = cookieStore.get('v-active-branch')?.value;
+            if (switchedBranch) {
+                branchId = switchedBranch;
+            }
+        }
+
         console.log(`🏛️ [BACKBONE_TRACE:${traceId}] Identified via COOKIE RECOVERY (Email: ${user.email})`);
         return {
             staffId: user.staffId,
             role: user.role,
-            schoolId: user.schoolId || (user.isPlatformAdmin ? 'PLATFORM' : ""),
-            branchId: user.branchId || "",
+            schoolId,
+            branchId,
             isGlobalDev: !!user.isGlobalDev,
             isPlatformAdmin: !!user.isPlatformAdmin,
             email: user.email,

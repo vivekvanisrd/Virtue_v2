@@ -192,6 +192,7 @@ model Branch {
   TransportDetail      TransportDetail[]
   vehicles             Vehicle[]              @relation("BranchVehicles")
   vehicleStops         VehicleStop[]          @relation("BranchStops")
+  sovereignRoles       SovereignRole[]
 
   @@unique([schoolId, code])
 }
@@ -956,6 +957,8 @@ model Staff {
   biometricId         String?               @unique
   mobilePasswordUsed  Boolean               @default(false)
   mobileSessionToken  String?
+  /// FK to the branch-scoped or school-wide role definition
+  sovereignRoleId     String?
   exceptions          AttendanceException[]
   Discount            Discount[]            @relation("DiscountAuthorizer")
   documents           Document[]
@@ -968,6 +971,7 @@ model Staff {
   category            StaffCategory?        @relation(fields: [categoryId], references: [id])
   department          StaffDepartment?      @relation(fields: [departmentId], references: [id])
   school              School                @relation(fields: [schoolId], references: [id])
+  sovereignRole       SovereignRole?        @relation("StaffSovereignRole", fields: [sovereignRoleId], references: [id])
   advances            StaffAdvance[]
   attendance          StaffAttendance[]
   bank                StaffBank?
@@ -1433,12 +1437,24 @@ model SalarySlip {
 model SovereignRole {
   id           String   @id @default(uuid())
   name         String
+  description  String?
   schoolId     String
+  /// null = school-wide role visible across all branches; set = branch-scoped role
+  branchId     String?
   capabilities Json
+  /// true = built-in system role (cannot be deleted); false = custom/user-created
+  isSystem     Boolean  @default(false)
+  /// kept for backward-compat — mirrors isSystem inverted
   isCustom     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  branch       Branch?  @relation(fields: [branchId], references: [id])
   school       School   @relation(fields: [schoolId], references: [id])
+  staff        Staff[]  @relation("StaffSovereignRole")
+
+  /// Composite unique: one role name per school (school-wide roles have null branchId)
+  @@unique([schoolId, name])
+  @@index([schoolId, branchId])
 }
 
 model SovereignEvent {

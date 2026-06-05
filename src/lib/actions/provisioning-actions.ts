@@ -5,15 +5,26 @@ import { getSovereignIdentity } from "@/lib/auth/backbone";
 import { revalidatePath } from "next/cache";
 
 /**
- * 🏛️ PROVISIONING: Clones Platform Class Templates into School Scope
- * Allows Owners/Principals to skip manual grade setup by copying standard definitions.
+ * 🏛️ PROVISIONING: Clones Platform Class Templates into School + Branch Scope
+ * 
+ * @param targetBranchId - The branch to provision classes for.
+ *   REQUIRED: Classes are branch-scoped. Do not call without a valid branchId.
  */
-export async function provisionInstitutionalTemplatesAction() {
+export async function provisionInstitutionalTemplatesAction(targetBranchId?: string) {
     try {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
         
         const schoolId = identity.schoolId;
+        
+        // Resolve branchId: param > session > error
+        const branchId = targetBranchId || identity.branchId;
+        if (!branchId || branchId.trim() === "") {
+            return { 
+                success: false, 
+                error: "BRANCH_REQUIRED: Please select a branch before provisioning class templates. Classes must belong to a specific campus branch." 
+            };
+        }
 
         // 1. Fetch Platform Masters
         const [pClasses, pSections] = await Promise.all([
@@ -30,10 +41,11 @@ export async function provisionInstitutionalTemplatesAction() {
             let clonedCount = 0;
 
             for (const pc of pClasses) {
-                // Check if already exists in this school
+                // Check if already exists in this school + branch
                 const exists = await tx.class.findFirst({
                     where: { 
                         schoolId,
+                        branchId,
                         name: pc.name
                     }
                 });
@@ -41,10 +53,11 @@ export async function provisionInstitutionalTemplatesAction() {
                 if (!exists) {
                     const newClass = await tx.class.create({
                         data: {
-                            id: `CLS-${schoolId}-${pc.name.replace(/\s+/g, '-')}`,
+                            id: `CLS-${schoolId}-${branchId}-${pc.name.replace(/\s+/g, '-')}`,
                             name: pc.name,
                             level: pc.level,
-                            schoolId
+                            schoolId,
+                            branchId,   // ✅ branch-scoped
                         }
                     });
 
@@ -53,10 +66,11 @@ export async function provisionInstitutionalTemplatesAction() {
                         for (const ps of pc.sections) {
                             await tx.section.create({
                                 data: {
-                                    id: `SEC-${schoolId}-${pc.name}-${ps.name}`,
+                                    id: `SEC-${schoolId}-${branchId}-${pc.name}-${ps.name}`,
                                     name: ps.name,
                                     classId: newClass.id,
-                                    schoolId
+                                    schoolId,
+                                    branchId,  // ✅ branch-scoped
                                 }
                             });
                         }
@@ -76,6 +90,7 @@ export async function provisionInstitutionalTemplatesAction() {
         return { success: false, error: "Failed to clone platform templates. " + e.message };
     }
 }
+
 
 /**
  * 📅 PROVISIONING: Clones Platform Year Templates

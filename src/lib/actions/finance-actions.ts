@@ -110,6 +110,7 @@ export async function recordFeeCollection(params: {
   customerContact?: string;
   customerEmail?: string;
   waiveAdmissionFee?: boolean; // Rule: One-time fee can be waived or collected
+  ancillaryItems?: { key: string; amount: number; label?: string }[]; // BUG-4 FIX: Ancillary fees settled in this collection (e.g. admissionFee, transportFee)
 }) {
   try {
     const identity = await getSovereignIdentity();
@@ -264,6 +265,7 @@ export async function recordFeeCollection(params: {
           status: "Success",
           allocatedTo: {
             terms: params.selectedTerms,
+            ancillaryPaid: params.ancillaryItems || [], // BUG-4 FIX: Persist which ancillary fees were settled
             lateFeeWaived: params.lateFeeWaived,
             waiverReason: params.waiverReason,
             admissionWaived: params.waiveAdmissionFee || false, // Rule: Track waivers for audit
@@ -557,7 +559,7 @@ export async function recordBulkFeeCollection(params: {
       const components = student.financial.components || [];
       const netAnnual = components.length > 0 
           ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
-          : Number(student.financial.tuitionFee || student.financial.annualTuition || 0) - Number(student.financial.totalDiscount || 0);
+          : Number(student.financial.annualTuition || student.financial.tuitionFee || 0) - Number(student.financial.totalDiscount || 0);
       const prevTotalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid), 0);
       const newTotalPaid = prevTotalPaid + s.amountPaid;
 
@@ -732,8 +734,12 @@ export async function getStudentFeeStatus(studentId: string) {
       
       const termsFromList = allocated.terms || [];
       const legacyTerms = ["term1", "term2", "term3"].filter(t => (allocated as any)[t] > 0);
+      // BUG-4 FIX: Extract ancillary payment keys so ancillary fees correctly reflect as paid
+      const ancillaryPaid = Array.isArray(allocated.ancillaryPaid)
+        ? allocated.ancillaryPaid.map((a: any) => (typeof a === "string" ? a : a.key)).filter(Boolean)
+        : [];
       
-      return [...new Set([...termsFromList, ...legacyTerms])];
+      return [...new Set([...termsFromList, ...legacyTerms, ...ancillaryPaid])];
     });
 
     breakdown.term1.isPaid = paidTerms.includes("term1");
@@ -1125,7 +1131,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
           collectedBy: "PARENT_PORTAL",
           isAutomated: true,
           status: "Success",
-          collectionDate: new Date(),
+          paymentDate: new Date(),
           allocatedTo: {
             terms: params.selectedTerms,
             lateFeeWaived: false,
@@ -1455,10 +1461,10 @@ export async function approveReceiptVoid(collectionId: string) {
     if (!collection || collection.status !== "VoidRequested") throw new Error("Invalid request.");
 
     await prisma.$transaction(async (tx: any) => {
-      // 1. Mark as Voided
+      // 1. Mark as VOIDED (BUG-3 FIX: Standardized casing to match voidPaymentAction)
       await tx.collection.update({
         where: { id: collectionId },
-        data: { status: "Voided" }
+        data: { status: "VOIDED" }
       });
 
       // 2. Reverse Ledger Posting (Double-Entry Parity)
@@ -1854,6 +1860,25 @@ export async function applyDiscountAction(params: {
         }
       });
 
+      // 4b. BUG-5 FIX: Sync discount to StudentFeeComponent so both calculation paths agree.
+      // Previously, applyDiscountAction updated FinancialRecord.totalDiscount (legacy path)
+      // but left StudentFeeComponent.discountAmount = 0, causing the component-sum path
+      // to return a higher netAnnual than the legacy path, breaking milestone validation.
+      const allComponents = await tx.studentFeeComponent.findMany({
+        where: { studentFinancialId: financial.id },
+        include: { masterComponent: { select: { name: true, type: true } } }
+      });
+      const tuitionComp = allComponents.find((c: any) =>
+        c.masterComponent.type === "CORE" ||
+        c.masterComponent.name.toLowerCase().includes("tuition")
+      );
+      if (tuitionComp) {
+        await tx.studentFeeComponent.update({
+          where: { id: tuitionComp.id },
+          data: { discountAmount: { increment: discountAmount } }
+        });
+      }
+
       // 5. Post to Ledger
       const [activeFY, activeAY] = await Promise.all([
         tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
@@ -1994,7 +2019,7 @@ export async function updateStudentFeeComponentAction(params: {
     });
 
     revalidatePath("/dashboard/finance");
- revalidatePath("/admin/students/${params.studentId}");
+    revalidatePath(`/admin/students/${params.studentId}`);
     return { success: true, data: serialize(result) };
   } catch (error: any) {
     return { success: false, error: error.message };

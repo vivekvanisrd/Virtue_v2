@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { 
-  Users, Search, Edit, Eye, Filter, Loader2, ShieldCheck, FileText, BadgeCheck, ArrowRightLeft, Mail
+  Users, Search, Edit, Eye, Filter, Loader2, ShieldCheck, FileText, BadgeCheck, ArrowRightLeft, Mail, UserX, UserCheck
 } from "lucide-react";
-import { getStaffDirectoryAction } from "@/lib/actions/staff-actions";
+import { getStaffDirectoryAction, toggleStaffStatusAction } from "@/lib/actions/staff-actions";
 import { cn } from "@/lib/utils";
 import { StaffTransferModal } from "./StaffTransferModal";
 import { useTabs } from "@/context/tab-context";
+import { useTenant } from "@/context/tenant-context";
 
 interface StaffDirectoryProps {
     onEdit?: (staff: any) => void;
@@ -15,11 +16,31 @@ interface StaffDirectoryProps {
 
 export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
   const { openTab } = useTabs();
+  const { userRole } = useTenant();
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDept, setFilterDept] = useState("");
   const [transferStaff, setTransferStaff] = useState<any>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const handleToggleStatus = async (employeeId: string, currentStatus: string) => {
+    const actionName = currentStatus?.toUpperCase() === "ACTIVE" ? "deactivate" : "activate";
+    if (!confirm(`Are you sure you want to ${actionName} this staff member/partner?`)) {
+      return;
+    }
+    
+    setTogglingId(employeeId);
+    const res = await toggleStaffStatusAction(employeeId);
+    setTogglingId(null);
+
+    if (res.success) {
+      alert(`User status successfully changed to ${res.status}.`);
+      fetchStaff();
+    } else {
+      alert(res.error || "Failed to toggle status.");
+    }
+  };
 
   useEffect(() => {
     fetchStaff();
@@ -206,11 +227,11 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                       <td className="px-4 py-5">
                         <div className={cn(
                           "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[9px] font-black shadow-sm border uppercase tracking-widest",
-                          employee.status === "Active" 
+                          employee.status?.toUpperCase() === "ACTIVE" 
                             ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
                             : "bg-slate-100 text-slate-500 border-slate-200"
                         )}>
-                          <div className={cn("w-1.5 h-1.5 rounded-full", employee.status === "Active" ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+                          <div className={cn("w-1.5 h-1.5 rounded-full", employee.status?.toUpperCase() === "ACTIVE" ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
                           {employee.status}
                         </div>
                       </td>
@@ -233,6 +254,27 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                           >
                             <ArrowRightLeft className="w-4 h-4" />
                           </button>
+                          {(userRole === "OWNER" || userRole === "DEVELOPER") && (
+                            <button 
+                              disabled={togglingId === employee.id}
+                              onClick={() => handleToggleStatus(employee.id, employee.status)}
+                              className={cn(
+                                "w-9 h-9 flex items-center justify-center rounded-xl border border-transparent transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200",
+                                employee.status?.toUpperCase() === "ACTIVE" 
+                                  ? "text-rose-500 hover:text-rose-600 hover:border-rose-100" 
+                                  : "text-emerald-500 hover:text-emerald-600 hover:border-emerald-100"
+                              )}
+                              title={employee.status?.toUpperCase() === "ACTIVE" ? "Deactivate User" : "Activate User"}
+                            >
+                              {togglingId === employee.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                              ) : employee.status?.toUpperCase() === "ACTIVE" ? (
+                                <UserX className="w-4 h-4" />
+                              ) : (
+                                <UserCheck className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -655,3 +655,54 @@ export async function getStaffFinancialSummaryAction(staffId: string) {
         return { success: false, error: e.message || "INTERNAL_DATA_ERROR" };
     }
 }
+
+/**
+ * 🔒 TOGGLE STAFF STATUS
+ * Deactivates or activates a staff member or partner.
+ * Blocks deactivated users from logging in or querying data.
+ */
+export async function toggleStaffStatusAction(staffId: string) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity || (identity.role !== "OWNER" && identity.role !== "DEVELOPER")) {
+            throw new Error("ACCESS_DENIED: Only Owners and Developers can toggle active status.");
+        }
+
+        const staff = await prisma.staff.findUnique({
+            where: { id: staffId, schoolId: identity.schoolId }
+        });
+
+        if (!staff) throw new Error("STAFF_NOT_FOUND: Staff member not found in your institution.");
+
+        // Safety check: Prevent self-deactivation
+        if (staff.id === identity.staffId) {
+            throw new Error("OPERATION_DENIED: You cannot deactivate your own account.");
+        }
+
+        const newStatus = staff.status?.toUpperCase() === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+        const updated = await prisma.staff.update({
+            where: { id: staffId },
+            data: { 
+                status: newStatus,
+                mobileSessionToken: null
+            }
+        });
+
+        await logActivity({
+            schoolId: staff.schoolId,
+            userId: identity.staffId,
+            branchId: staff.branchId,
+            entityType: "STAFF",
+            entityId: staff.id,
+            action: newStatus === "INACTIVE" ? "STAFF_DEACTIVATED" : "STAFF_ACTIVATED",
+            details: `Staff member ${staff.firstName} ${staff.lastName} (${staff.staffCode}) status changed to ${newStatus}`
+        });
+
+        revalidatePath("/", "layout");
+        return { success: true, status: newStatus };
+    } catch (e: any) {
+        console.error("❌ [TOGGLE_STATUS_ERROR]", e.message);
+        return { success: false, error: e.message };
+    }
+}

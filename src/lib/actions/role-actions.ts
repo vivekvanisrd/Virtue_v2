@@ -50,12 +50,20 @@ export async function updateStaffRole(targetStaffId: string, newRole: Role) {
     const actingUserRole = identity.role;
     
     // 1. Fetch the target staff member
-    const targetStaff = await prisma.staff.findUnique({
+    const targetStaff = await prisma.staff.findFirst({
       where: { id: targetStaffId }
     });
 
     if (!targetStaff) {
       return { success: false, error: "Staff member not found" };
+    }
+
+    // 🛡️ BRANCH GUARD: PRINCIPAL can only manage staff within their own branch
+    if (identity.role === 'PRINCIPAL' && targetStaff.branchId !== identity.branchId) {
+      return {
+        success: false,
+        error: `SECURITY_VIOLATION: As a Principal, you can only manage staff within your own branch (${identity.branchId}). The target staff belongs to branch ${targetStaff.branchId}.`
+      };
     }
 
     const { checkCapability } = await import("@/lib/auth/rbac");
@@ -69,24 +77,28 @@ export async function updateStaffRole(targetStaffId: string, newRole: Role) {
       };
     }
 
-    // 3. Handle Static vs Custom Role Update
-    const isStatic = false; // We treat all roles as dynamic now, but the schema allows strings
-    
+    // 3. Resolve the new role — prefer branch-scoped first, then school-wide
+    //    This ensures branch-specific custom roles take precedence over school defaults
     let dbUpdateData: any = { role: newRole };
-    
-    if (!isStatic) {
-      // Find the custom role by name
-      const customRole = await prisma.sovereignRole.findFirst({
-        where: { schoolId: targetStaff.schoolId, name: newRole }
+
+    // Try branch-scoped role first (role created specifically for target staff's branch)
+    let customRole = await prisma.sovereignRole.findFirst({
+      where: { schoolId: targetStaff.schoolId, name: newRole, branchId: targetStaff.branchId }
+    });
+
+    // Fallback: school-wide role
+    if (!customRole) {
+      customRole = await prisma.sovereignRole.findFirst({
+        where: { schoolId: targetStaff.schoolId, name: newRole, branchId: null }
       });
-      if (!customRole) return { success: false, error: "Role definition not found." };
-      
-      dbUpdateData.role = customRole.name;
-      dbUpdateData.sovereignRoleId = customRole.id;
-    } else {
-      dbUpdateData.role = newRole;
-      dbUpdateData.sovereignRoleId = null;
     }
+
+    if (!customRole) {
+      return { success: false, error: `Role '${newRole}' not found for this school. Please create the role first.` };
+    }
+
+    dbUpdateData.role = customRole.name;
+    dbUpdateData.sovereignRoleId = customRole.id;
 
     const updated = await prisma.staff.update({
       where: { id: targetStaffId },

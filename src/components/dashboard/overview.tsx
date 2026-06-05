@@ -33,12 +33,67 @@ import { getDashboardStatsAction } from "@/lib/actions/dashboard-actions";
 import { useTenant } from "@/context/tenant-context";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 
+const getTasksForRole = (role: string) => {
+  switch (role?.toUpperCase()) {
+    case "DEVELOPER":
+      return [
+        { id: "dev-1", text: "Audit system-wide school tenancy isolation", done: false },
+        { id: "dev-2", text: "Review new school & branch provisioning logs", done: false },
+        { id: "dev-3", text: "Verify API integration health status", done: false },
+      ];
+    case "OWNER":
+      return [
+        { id: "owner-1", text: "Verify today's collection vs outstanding dues", done: false },
+        { id: "owner-2", text: "Deactivate departed partners/staff members if any", done: false },
+        { id: "owner-3", text: "Audit security RBAC roles and permissions", done: false },
+        { id: "owner-4", text: "Review campus-wide operational metrics", done: false },
+      ];
+    case "PRINCIPAL":
+      return [
+        { id: "prin-1", text: "Monitor student & staff daily attendance", done: false },
+        { id: "prin-2", text: "Approve pending leaves and transport requests", done: false },
+        { id: "prin-3", text: "Review fee collections and class updates", done: false },
+        { id: "prin-4", text: "Coordinate teacher lesson planning", done: false },
+      ];
+    default:
+      return [
+        { id: "staff-1", text: "Take student daily attendance", done: false },
+        { id: "staff-2", text: "Verify class lesson plans and timetables", done: false },
+        { id: "staff-3", text: "Complete professional profile onboarding", done: false },
+      ];
+  }
+};
+
 export function OverviewContent() {
   const { openTab } = useTabs();
-  const { schoolName, isOperationalReady } = useTenant();
+  const { schoolName, isOperationalReady, userName, userRole } = useTenant();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [tasks, setTasks] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (userName && userRole) {
+      const dismissed = localStorage.getItem(`pava_dismiss_welcome_${userName}_${userRole}`);
+      if (!dismissed) {
+        setTasks(getTasksForRole(userRole));
+        setShowWelcome(true);
+      }
+    }
+  }, [userName, userRole]);
+
+  const handleCloseWelcome = () => {
+    if (dontShowAgain) {
+      localStorage.setItem(`pava_dismiss_welcome_${userName}_${userRole}`, "true");
+    }
+    setShowWelcome(false);
+  };
+
+  const handleToggleTask = (taskId: string) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, done: !t.done } : t));
+  };
 
   const fetchStats = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -394,7 +449,18 @@ export function OverviewContent() {
                       const classRate = cls.expected > 0 ? Math.round((cls.collected / cls.expected) * 100) : 0;
                       return (
                          <tr key={i} className="border-b border-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-50/50 transition-colors group">
-                            <td className="py-4 font-black text-slate-900">{cls.className}</td>
+                            <td 
+                              onClick={() => openTab({
+                                 id: `class-profile-${cls.classId}`,
+                                 title: `${cls.className}`,
+                                 icon: GraduationCap,
+                                 component: "ClassProfile",
+                                 params: { classId: cls.classId }
+                              })}
+                              className="py-4 font-black text-slate-900 hover:text-primary transition-colors cursor-pointer"
+                            >
+                               {cls.className}
+                            </td>
                             <td className="py-4 text-right">₹{cls.expected.toLocaleString()}</td>
                             <td className="py-4 text-right">
                               <span className="text-emerald-600">₹{cls.collected.toLocaleString()}</span>
@@ -510,11 +576,99 @@ export function OverviewContent() {
               >
                  System Audit logs
               </button>
-           </div>
+            </div>
 
-        </div>
+         </div>
 
       </div>
+
+      {/* 6. Welcome & Daily Tasks Modal Overlay */}
+      {showWelcome && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/60 backdrop-blur-md">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl p-8 max-w-lg w-full mx-4 relative overflow-hidden"
+          >
+            {/* Background design accents */}
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none" />
+            
+            {/* Header info */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                <Zap className="fill-indigo-600 w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100">
+                    {userRole || "User"}
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mt-1">
+                  Welcome back, {userName || "Administrator"}!
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 font-semibold leading-relaxed mb-6">
+              Establish your target checklist for today to ensure operational excellence across {schoolName || "your institution"}.
+            </p>
+
+            {/* Checklist Section */}
+            <div className="space-y-3 mb-8">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Today's Focus Tasks</h4>
+              <div className="space-y-2">
+                {tasks.map(task => (
+                  <label 
+                    key={task.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-slate-100/70 border border-slate-100 rounded-xl cursor-pointer transition-all active:scale-[0.99]",
+                      task.done && "opacity-50"
+                    )}
+                  >
+                    <input 
+                      type="checkbox"
+                      checked={task.done}
+                      onChange={() => handleToggleTask(task.id)}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className={cn(
+                      "text-xs font-bold text-slate-700 select-none",
+                      task.done && "line-through text-slate-400 font-medium"
+                    )}>
+                      {task.text}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Row */}
+            <div className="flex flex-col gap-4 border-t border-slate-100 pt-5">
+              <label className="flex items-center gap-2.5 cursor-pointer self-start">
+                <input 
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 select-none">
+                  Don't show this screen again on next login
+                </span>
+              </label>
+              
+              <button 
+                onClick={handleCloseWelcome}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-indigo-600/10 flex items-center justify-center gap-2"
+              >
+                Let's Get Started <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </motion.div>
+        </div>
+      )}
 
     </div>
   );

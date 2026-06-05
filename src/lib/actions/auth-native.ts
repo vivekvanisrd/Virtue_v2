@@ -59,7 +59,12 @@ export async function signInAction(data: { identifier: string; password: string 
         // mutating the global process.env.SKIP_TENANCY which causes race conditions.
         const staffRecords = await prisma.$queryRaw<any[]>`
             SELECT * FROM "Staff" 
-            WHERE (LOWER("email") = LOWER(${identifier}) OR LOWER("username") = LOWER(${identifier})) 
+            WHERE (
+                LOWER("email") = LOWER(${identifier}) OR 
+                LOWER("username") = LOWER(${identifier}) OR
+                "phone" = ${identifier} OR
+                LOWER("staffCode") = LOWER(${identifier})
+            ) 
             AND UPPER("status") = 'ACTIVE' 
             LIMIT 1
         `;
@@ -229,7 +234,8 @@ export async function getSessionUserAction() {
         let lateCount = 0;
         try {
             const records = await prisma.staffAttendance.findMany({
-                where: { staffId: staff.id, date: { gte: startOfMonth } }
+                // 🔒 Include schoolId as defence-in-depth (staffId is unique but tenancy is belt-and-suspenders)
+                where: { staffId: staff.id, schoolId: staff.schoolId, date: { gte: startOfMonth } }
             });
             presentCount = records.filter((r: any) => r.status?.toUpperCase() === "PRESENT").length;
             lateCount = records.filter((r: any) => {
@@ -291,25 +297,32 @@ export async function getSessionUserAction() {
 
 /**
  * GET RECENT KIOSK ATTENDANCE: Fetches today's last 5 successful punch-ins
+ * 🔒 SECURITY FIX: Now scoped to the active branch to prevent cross-school data leak
  */
 export async function getRecentKioskAttendanceAction() {
     try {
+        // 🛡️ Resolve session to get schoolId + branchId for scoping
+        const session = await verifySession();
+        const schoolId = (session as any)?.schoolId;
+        const branchId = (session as any)?.branchId;
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
+        // Build tenant-scoped where clause
+        const scopeFilter: any = {
+            date: { gte: today, lt: tomorrow },
+            status: "Present"
+        };
+        // Only apply school/branch filter if session exists (kiosk may be pre-authenticated)
+        if (schoolId) scopeFilter.schoolId = schoolId;
+        if (branchId) scopeFilter.branchId = branchId;
+
         const records = await prisma.staffAttendance.findMany({
-            where: {
-                date: {
-                    gte: today,
-                    lt: tomorrow
-                },
-                status: "Present"
-            },
-            orderBy: {
-                checkIn: "desc"
-            },
+            where: scopeFilter,
+            orderBy: { checkIn: "desc" },
             take: 5,
             include: {
                 staff: {

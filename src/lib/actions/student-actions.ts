@@ -51,6 +51,16 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
     const validatedData = studentAdmissionSchema.parse(cleanedData);
     const branchId = validatedData.branchId || context.branchId;
 
+    // 🛡️ BRANCH GUARD: Never admit a student without a valid branch assignment.
+    // This protects against OWNER in "Global" context (no v-active-branch cookie set).
+    if (!branchId || branchId.trim() === "") {
+      return {
+        success: false,
+        error: "BRANCH_REQUIRED: Please select an active branch before admitting a student. " +
+               "If you are the School Owner, switch to a specific branch using the branch selector in the top navigation."
+      };
+    }
+
     // NEW: Aadhaar Uniqueness Check
     if (validatedData.aadhaarNumber) {
       const existing = await prisma.student.findFirst({

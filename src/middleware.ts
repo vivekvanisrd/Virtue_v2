@@ -103,8 +103,17 @@ export async function middleware(request: NextRequest) {
   const traceId = `mid_${Math.random().toString(36).substring(7)}`;
   const requestHeaders = new Headers(request.headers);
   if (user) {
-    // Determine target branch (Only Owners/Devs can switch campus)
+    // Determine target school & branch (Only Owners/Devs can switch campus/school)
+    let activeSchoolId = user.schoolId || '';
     let activeBranchId = user.branchId || '';
+
+    if (user.role === 'DEVELOPER') {
+        const switchedSchool = request.cookies.get('v-active-school')?.value;
+        if (switchedSchool) {
+            activeSchoolId = switchedSchool;
+        }
+    }
+
     if (user.role === 'OWNER' || user.role === 'DEVELOPER') {
         const switchedBranch = request.cookies.get('v-active-branch')?.value;
         if (switchedBranch) {
@@ -114,7 +123,7 @@ export async function middleware(request: NextRequest) {
 
     requestHeaders.set('x-v2-staff-id', user.staffId);
     requestHeaders.set('x-v2-role', user.role);
-    requestHeaders.set('x-v2-school-id', user.schoolId || '');
+    requestHeaders.set('x-v2-school-id', activeSchoolId);
     requestHeaders.set('x-v2-branch-id', activeBranchId);
     requestHeaders.set('x-v2-name', user.name || '');
     requestHeaders.set('x-v2-email', user.email || '');

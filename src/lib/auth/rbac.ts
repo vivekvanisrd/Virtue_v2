@@ -4,10 +4,15 @@ import { Capability, STANDARD_ROLES } from "@/types/auth";
 
 /**
  * 🛡️ checkCapability
- * 
+ *
  * FAIL-SHUT Governance Engine.
- * Verifies if the current user has the required capacity for an action.
- * 
+ * Verifies if the current user has the required capability for an action.
+ *
+ * Role resolution order:
+ *  1. Branch-scoped role (branchId matches)  — most specific
+ *  2. School-wide role   (branchId = null)   — fallback
+ *  3. STANDARD_ROLES in-memory               — safety net / self-healing
+ *
  * @param requiredCapability The atomic action being attempted
  * @throws Error INSUFFICIENT_PERMISSION if check fails
  */
@@ -17,43 +22,23 @@ export async function checkCapability(requiredCapability: Capability) {
     throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
   }
 
-  // 1. 🏅 OWNER/GLOBAL_DEV OVERRIDE
-  // Owners and Developers bypass granular checks for institutional survival.
-  if (identity.role === 'OWNER' || identity.role === 'DEVELOPER' || identity.isGlobalDev) {
+  // 1. 🏅 OWNER / GLOBAL_DEV OVERRIDE
+  if (identity.role === "OWNER" || identity.role === "DEVELOPER" || identity.isGlobalDev) {
     return true;
   }
 
-  // 2. 🏛️ RESOLVE INSTITUTIONAL ROLE
-  // We look up the 'SovereignRole' record for this specific school and role name.
-  let sovereignRole = await prisma.sovereignRole.findFirst({
-    where: {
-      schoolId: identity.schoolId,
-      name: identity.role
-    }
-  });
+  // 2. 🏛️ RESOLVE SOVEREIGN ROLE — branch-scoped first, then school-wide
+  let sovereignRole = await _resolveSovereignRole(identity.schoolId, identity.role, identity.branchId);
 
-  // 🛡️ AGGRESSIVE SELF-HEALING ARCHITECTURE
-  // If the role is a Standard Role and not custom, we ensure it matches the current System Registry.
-  if (STANDARD_ROLES[identity.role] && !sovereignRole?.isCustom) {
-      const currentCapabilities = (sovereignRole?.capabilities as Record<string, any>) || {};
-      
-      // If missing the specific required capability, or record doesn't exist, we force a sync
-      if (!sovereignRole || currentCapabilities[requiredCapability] !== true) {
-          console.log(`📡 [RBAC_SYNC] Synchronizing Standard Role '${identity.role}' for School ${identity.schoolId}...`);
-          
-          sovereignRole = await prisma.sovereignRole.upsert({
-            where: {
-              id: (await prisma.sovereignRole.findFirst({ where: { schoolId: identity.schoolId, name: identity.role } }))?.id || "NEW"
-            },
-            update: { capabilities: STANDARD_ROLES[identity.role] },
-            create: {
-              name: identity.role,
-              schoolId: identity.schoolId,
-              capabilities: STANDARD_ROLES[identity.role],
-              isCustom: false
-            }
-          });
-      }
+  // 3. 🛡️ SELF-HEALING: If standard role not found or capabilities stale, sync it
+  if (STANDARD_ROLES[identity.role] && (!sovereignRole || !sovereignRole.isSystem)) {
+    const existingCapabilities = (sovereignRole?.capabilities as Record<string, any>) || {};
+    const needsSync = !sovereignRole || existingCapabilities[requiredCapability] !== true;
+
+    if (needsSync) {
+      console.log(`📡 [RBAC_SYNC] Synchronizing Standard Role '${identity.role}' for School ${identity.schoolId}...`);
+      sovereignRole = await _upsertStandardRole(identity.schoolId, identity.role);
+    }
   }
 
   if (!sovereignRole) {
@@ -62,8 +47,8 @@ export async function checkCapability(requiredCapability: Capability) {
   }
 
   const capabilities = sovereignRole.capabilities as Record<string, any>;
-  
-  // 3. 🎯 TARGETED CAPABILITY CHECK
+
+  // 4. 🎯 TARGETED CAPABILITY CHECK
   if (capabilities[requiredCapability] === true) {
     return true;
   }
@@ -73,34 +58,91 @@ export async function checkCapability(requiredCapability: Capability) {
 }
 
 /**
+ * _resolveSovereignRole
+ *
+ * Priority: branch-scoped role > school-wide role
+ * This ensures branch heads can have custom permissions that differ from school defaults.
+ */
+async function _resolveSovereignRole(schoolId: string, roleName: string, branchId?: string) {
+  // Try branch-scoped role first
+  if (branchId) {
+    const branchRole = await prisma.sovereignRole.findFirst({
+      where: { schoolId, name: roleName, branchId }
+    });
+    if (branchRole) return branchRole;
+  }
+
+  // Fallback: school-wide role (branchId = null)
+  return prisma.sovereignRole.findFirst({
+    where: { schoolId, name: roleName, branchId: null }
+  });
+}
+
+/**
+ * _upsertStandardRole
+ *
+ * Safe upsert using @@unique([schoolId, name]) — no "NEW" id hack.
+ * Uses update-or-create pattern to avoid ID collision issues.
+ */
+async function _upsertStandardRole(schoolId: string, roleName: string) {
+  const existing = await prisma.sovereignRole.findFirst({
+    where: { schoolId, name: roleName, branchId: null }
+  });
+
+  if (existing) {
+    return prisma.sovereignRole.update({
+      where: { id: existing.id },
+      data: {
+        capabilities: STANDARD_ROLES[roleName] as any,
+        isSystem: true,
+        isCustom: false,
+      }
+    });
+  }
+
+  return prisma.sovereignRole.create({
+    data: {
+      name: roleName,
+      schoolId,
+      branchId: null,      // School-wide standard role
+      capabilities: STANDARD_ROLES[roleName] as any,
+      isSystem: true,
+      isCustom: false,
+    }
+  });
+}
+
+/**
  * 🛰️ seedSovereignRolesAction
- * 
- * INTERNAL UTILITY: Populates the SovereignRole table with the 15-role industry standards.
- * Typically run after branch/school creation.
+ *
+ * INTERNAL UTILITY: Populates the SovereignRole table with 15-role industry standards.
+ * Typically called after school/branch creation.
+ * Uses safe find+create (no fragile id:"NEW" upsert).
  */
 export async function seedSovereignRolesAction(schoolId: string) {
   const roles = Object.keys(STANDARD_ROLES);
-  
-  const results = await Promise.all(roles.map(async (roleName) => {
-    return prisma.sovereignRole.upsert({
-      where: {
-        // Since schoolId + name is not a unique index in schema but conceptually unique, 
-        // we use findFirst + create/update or a composite check if existing.
-        // For now, identity by name + schoolId as logical key.
-        id: (await prisma.sovereignRole.findFirst({ where: { schoolId, name: roleName } }))?.id || "NEW"
-      },
-      update: {
-        capabilities: STANDARD_ROLES[roleName]
-      },
-      create: {
-        name: roleName,
-        schoolId: schoolId,
-        capabilities: STANDARD_ROLES[roleName],
-        isCustom: false
-      }
-    });
-  }));
 
-  console.log(`✅ [RBAC_SEED] Seeded ${results.length} standard roles for School ${schoolId}`);
-  return { success: true, count: results.length };
+  let seeded = 0;
+  for (const roleName of roles) {
+    const existing = await prisma.sovereignRole.findFirst({
+      where: { schoolId, name: roleName, branchId: null }
+    });
+
+    if (!existing) {
+      await prisma.sovereignRole.create({
+        data: {
+          name: roleName,
+          schoolId,
+          branchId: null,
+          capabilities: STANDARD_ROLES[roleName] as any,
+          isSystem: true,
+          isCustom: false,
+        }
+      });
+      seeded++;
+    }
+  }
+
+  console.log(`✅ [RBAC_SEED] Seeded ${seeded} standard roles for School ${schoolId} (${roles.length - seeded} already existed)`);
+  return { success: true, count: seeded };
 }

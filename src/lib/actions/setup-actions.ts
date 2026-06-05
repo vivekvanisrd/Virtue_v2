@@ -171,29 +171,84 @@ export async function createPhysicalBranchAction(data: { name: string; code: str
             return { success: false, error: "SECURITY_VIOLATION" };
         }
 
+        const schoolId = identity.schoolId;
+
         const hqId = await IdGenerator.generateBranchId({
-            schoolId: identity.schoolId,
-            schoolCode: identity.schoolId, // Placeholder logic
+            schoolId,
+            schoolCode: identity.schoolId,
             branchCode: data.code
         });
 
-        const branch = await prisma.branch.create({
-            data: {
-                id: hqId,
-                schoolId: identity.schoolId,
-                name: data.name,
-                code: data.code,
-                address: data.address,
-                isGenesis: false
+        // ─── ATOMIC TRANSACTION: Create branch + CoA + Roles + Audit ──────────
+        const branch = await prisma.$transaction(async (tx) => {
+            // 1. Create Branch
+            const newBranch = await tx.branch.create({
+                data: {
+                    id: hqId,
+                    schoolId,
+                    name: data.name,
+                    code: data.code.toUpperCase(),
+                    address: data.address,
+                    isGenesis: false,
+                    mode: "MANUAL_PROVISIONING",
+                    triggeredBy: identity.staffId,
+                }
+            });
+
+            // 2. 💰 Initialize Chart of Accounts (Rule 16: Branch Financial Independence)
+            //    Without CoA, fee collection and salary processing will throw FK errors
+            const initialAccounts = [
+                { code: "1001", name: "Main Cash Account",     type: "ASSET"   },
+                { code: "1002", name: "Campus Bank Account",   type: "ASSET"   },
+                { code: "4001", name: "Tuition Fee Income",    type: "INCOME"  },
+                { code: "4002", name: "Admission Fee Income",  type: "INCOME"  },
+                { code: "4003", name: "Transport Fee Income",  type: "INCOME"  },
+                { code: "5001", name: "Operating Expenses",    type: "EXPENSE" },
+                { code: "5002", name: "Staff Salary Expense",  type: "EXPENSE" },
+            ];
+            for (const acc of initialAccounts) {
+                await tx.chartOfAccount.create({
+                    data: {
+                        schoolId,
+                        branchId: newBranch.id,
+                        accountCode: `${newBranch.id}-${acc.code}`,
+                        accountName: acc.name,
+                        accountType: acc.type,
+                        currentBalance: 0
+                    }
+                });
             }
-        });
+
+            // 3. 📋 Audit Log
+            await tx.activityLog.create({
+                data: {
+                    schoolId,
+                    branchId: newBranch.id,
+                    action: "BRANCH_CREATED",
+                    entityType: "Branch",
+                    entityId: newBranch.id,
+                    details: `New operational branch provisioned: ${data.name} (${data.code.toUpperCase()})`,
+                    payload: { name: data.name, code: data.code, mode: "MANUAL_PROVISIONING" },
+                    userId: identity.staffId
+                }
+            });
+
+            return newBranch;
+        }, { timeout: 30000 });
+
+        // 4. 🌱 Seed Standard Roles for the new branch (outside tx — these are school-wide)
+        //    This ensures RBAC works immediately for staff assigned to this branch
+        const { seedSovereignRolesAction } = await import("@/lib/auth/rbac");
+        await seedSovereignRolesAction(schoolId);
 
         revalidatePath('/dashboard');
-        return { success: true, branchId: branch.id };
+        return { success: true, branchId: branch.id, branchName: branch.name };
     } catch (error: any) {
+        console.error("❌ [CREATE_PHYSICAL_BRANCH]", error.message);
         return { success: false, error: error.message };
     }
 }
+
 
 /**
  * LINK ACADEMIC YEAR
