@@ -682,7 +682,7 @@ export default function DeveloperCommandCenter() {
                                                     <Field label="Last Name" value={branchForm.adminLastName} onChange={v => setBranchForm(p => ({ ...p, adminLastName: v }))} />
                                                 </div>
                                                 <Field label="Admin Email" type="email" value={branchForm.adminEmail} onChange={v => setBranchForm(p => ({ ...p, adminEmail: v }))} placeholder="principal@school.edu" required />
-                                                <Field label="Admin Phone" type="tel" value={branchForm.adminPhone} onChange={v => setBranchForm(p => ({ ...p, adminPhone: v }))} placeholder="+91" required />
+                                                <Field label="Admin Phone" type="tel" value={branchForm.adminPhone} onChange={v => setBranchForm(p => ({ ...p, adminPhone: v.replace(/\s+/g, "") }))} placeholder="+91" required />
                                             </div>
                                         )}
                                     </div>
@@ -736,7 +736,7 @@ export default function DeveloperCommandCenter() {
                                             <Field label="Last Name" value={ownerForm.lastName} onChange={v => setOwnerForm(p => ({ ...p, lastName: v }))} required />
                                         </div>
                                         <Field label="Email" type="email" value={ownerForm.email} onChange={v => setOwnerForm(p => ({ ...p, email: v }))} required placeholder="admin@school.edu" />
-                                        <Field label="Phone" type="tel" value={ownerForm.phone} onChange={v => setOwnerForm(p => ({ ...p, phone: v }))} required placeholder="+91" />
+                                        <Field label="Phone" type="tel" value={ownerForm.phone} onChange={v => setOwnerForm(p => ({ ...p, phone: v.replace(/\s+/g, "") }))} required placeholder="+91" />
                                     </div>
 
                                     <button

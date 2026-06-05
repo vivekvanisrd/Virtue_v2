@@ -6,6 +6,7 @@ import { StaffForm } from "../staff/staff-form";
 import { StaffOnboardingElite } from "../staff/staff-onboarding-elite";
 import { StaffAttendanceSheet } from "../staff/StaffAttendanceSheet"; // Keeping import for legacy ref
 import { AttendanceCommandCenter } from "../attendance/v2-1/AttendanceCommandCenter";
+import { formatToISODateString } from "@/lib/utils/validations";
 import { StaffRolesHub } from "./staff-roles-hub";
 import { StaffBulkPortal } from "../staff/staff-bulk-portal";
 import { StaffFinancialVault } from "../staff/StaffFinancialVault";
@@ -51,20 +52,7 @@ export function StaffContent({ tabId, params }: StaffContentProps) {
         const staff = result.data;
         
         // Mapping DB model to Form structure
-        const formatDate = (date: any) => {
-            if (!date) return "";
-            try {
-                const d = new Date(date);
-                if (isNaN(d.getTime())) return "";
-                // Zero-Drift Strategy: Use UTC components to build YYYY-MM-DD
-                const yyyy = d.getUTCFullYear();
-                const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-                const dd = String(d.getUTCDate()).padStart(2, '0');
-                return `${yyyy}-${mm}-${dd}`;
-            } catch (e) {
-                return "";
-            }
-        };
+        const formatDate = (date: any) => formatToISODateString(date);
 
         // Absolute Truth Mapping
         const formData = {
@@ -193,6 +181,11 @@ export function StaffContent({ tabId, params }: StaffContentProps) {
                     setActiveView("directory");
                     setEditingStaff(null);
                 }} 
+                onSuccess={() => {
+                    alert(editingStaff ? "Staff details updated successfully!" : "Staff member enrolled successfully!");
+                    setActiveView("directory");
+                    setEditingStaff(null);
+                }}
             />
          ) : activeView === "pro-onboard" ? (
             <StaffOnboardingElite 
@@ -204,7 +197,7 @@ export function StaffContent({ tabId, params }: StaffContentProps) {
                 setEditingStaff(null);
               }}
               onSuccess={() => {
-                // Re-verification will happen on redirect
+                alert(editingStaff ? "Staff details updated successfully!" : "Staff member enrolled successfully!");
               }}
             />
          ) : activeView === "financial-vault" ? (

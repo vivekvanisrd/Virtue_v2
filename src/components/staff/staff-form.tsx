@@ -142,12 +142,14 @@ export function StaffForm({ mode = "onboard", staffId, initialData, onSuccess }:
         if (onSuccess) onSuccess();
       } else {
         setFormError(result.error);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err: any) {
       setFormError({ 
         error: "Connectivity Interference: Our secure pool is in high demand. Please try again.",
         code: "UNEXPECTED_SYSTEM_ERROR"
       });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsSubmitting(false);
     }
@@ -344,7 +346,14 @@ export function StaffForm({ mode = "onboard", staffId, initialData, onSuccess }:
                         <input {...register("email")} type="email" className={inputCls} placeholder="john@example.com" />
                       </Field>
                       <Field label="PHONE NUMBER" error={errors.phone?.message}>
-                        <input {...register("phone")} className={inputCls} placeholder="9876543210" />
+                        <input 
+                          {...register("phone")} 
+                          className={inputCls} 
+                          placeholder="9876543210" 
+                          onInput={(e: any) => {
+                            e.target.value = e.target.value.replace(/[^\d]/g, "");
+                          }}
+                        />
                       </Field>
                     </div>
 

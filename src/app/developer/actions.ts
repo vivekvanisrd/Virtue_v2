@@ -5,6 +5,7 @@ import { getSovereignIdentity } from '@/lib/auth/backbone';
 import { GenesisService } from '@/lib/services/genesis-service';
 import { seedSovereignRolesAction } from '@/lib/auth/rbac';
 import { IdGenerator } from '@/lib/id-generator';
+import { sanitizePhone } from '@/lib/utils/validations';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
@@ -233,6 +234,7 @@ export async function createBranchAction(data: {
                 if (!data.adminPhone) {
                     throw new Error("Principal phone number is required.");
                 }
+                const cleanPhone = sanitizePhone(data.adminPhone) || data.adminPhone.replace(/[^\d]/g, "");
 
                 const staffCode = await IdGenerator.generateStaffCode({
                     schoolId: data.schoolId,
@@ -242,8 +244,8 @@ export async function createBranchAction(data: {
                     role: 'PRINCIPAL',
                 }, tx);
                 
-                const username = data.adminPhone.trim();
-                const rawPassword = data.adminPhone.trim();
+                const username = cleanPhone;
+                const rawPassword = cleanPhone;
                 const passwordHash = await bcrypt.hash(rawPassword, 10);
                 
                 const adminStaff = await tx.staff.create({
@@ -252,7 +254,7 @@ export async function createBranchAction(data: {
                         firstName: data.adminFirstName || 'Branch',
                         lastName: data.adminLastName || 'Principal',
                         email: data.adminEmail,
-                        phone: username,
+                        phone: cleanPhone,
                         username,
                         passwordHash,
                         role: 'PRINCIPAL',
@@ -316,8 +318,9 @@ export async function createOwnerAction(data: {
         });
         if (emailTaken) return { success: false, error: `Email "${data.email}" already registered in this branch.` };
 
-        const username = data.phone.trim();
-        const rawPassword = data.phone.trim();
+        const cleanPhone = sanitizePhone(data.phone) || data.phone.replace(/[^\d]/g, "");
+        const username = cleanPhone;
+        const rawPassword = cleanPhone;
         const passwordHash = await bcrypt.hash(rawPassword, 10);
 
         const staff = await prisma.$transaction(async (tx) => {
@@ -335,7 +338,7 @@ export async function createOwnerAction(data: {
                     firstName: data.firstName,
                     lastName: data.lastName,
                     email: data.email,
-                    phone: username,
+                    phone: cleanPhone,
                     username,
                     passwordHash,
                     role: data.role,

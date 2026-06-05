@@ -144,6 +144,7 @@ export function StaffOnboardingElite({
   const validateStep = (stepNum: number) => {
     let schema: z.ZodObject<any>;
     const dataToValidate = formData;
+    console.log(`🔍 [EliteForm:validateStep] Validating Step ${stepNum}. Data:`, JSON.stringify(dataToValidate));
 
     switch (stepNum) {
       case 1: schema = staffBasicSchema; break;
@@ -161,17 +162,24 @@ export function StaffOnboardingElite({
       (result.error.issues || []).forEach((err) => {
         if (err.path[0]) errors[err.path[0] as string] = err.message;
       });
+      console.error(`❌ [EliteForm:validateStep] Step ${stepNum} FAILED:`, errors);
       setValidationErrors(errors);
       return false;
     }
+    console.log(`✅ [EliteForm:validateStep] Step ${stepNum} PASSED`);
     setValidationErrors({});
     return true;
   };
 
   const handleNext = () => {
+    console.log(`▶️ [EliteForm:handleNext] Attempting to advance from Step ${step}`);
     if (validateStep(step)) {
+      const nextStep = Math.min(step + 1, 4);
+      console.log(`✅ [EliteForm:handleNext] Advancing to Step ${nextStep}`);
       setStep(prev => Math.min(prev + 1, 4));
       window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      console.warn(`🛑 [EliteForm:handleNext] Blocked at Step ${step} due to validation errors`);
     }
   };
   const handleBack = () => {
@@ -180,21 +188,31 @@ export function StaffOnboardingElite({
   };
 
   const handleSubmit = async () => {
+    console.log(`🚀 [EliteForm:handleSubmit] SUBMIT TRIGGERED! Mode: ${mode}, StaffId: ${staffId}`);
+    console.log(`🚀 [EliteForm:handleSubmit] FormData being sent:`, JSON.stringify(formData));
     setIsSubmitting(true);
     setError(null);
     try {
+      console.log(`🚀 [EliteForm:handleSubmit] Calling ${mode === "edit" ? "updateStaffAction" : "createStaffAction"}...`);
       const result = mode === "edit" 
         ? await updateStaffAction(staffId!, formData)
         : await createStaffAction(formData);
 
+      console.log(`🚀 [EliteForm:handleSubmit] Server response:`, JSON.stringify(result));
       if (result.success) {
+        console.log(`✅ [EliteForm:handleSubmit] SUCCESS! Calling onSuccess + onCancel`);
         if (onSuccess) onSuccess();
         onCancel();
       } else {
-        setError((result as any).error || "A secure protocol error occurred during institutional commit.");
+        const errMsg = (result as any).error || "A secure protocol error occurred during institutional commit.";
+        console.error(`❌ [EliteForm:handleSubmit] Server returned failure:`, errMsg);
+        setError(errMsg);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (e: any) {
+      console.error(`💥 [EliteForm:handleSubmit] Exception caught:`, e.message, e);
       setError(e.message);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsSubmitting(false);
     }
@@ -346,7 +364,7 @@ export function StaffOnboardingElite({
                      <input 
                        type="tel" 
                        value={formData.phone}
-                       onChange={(e) => updateField("phone", e.target.value)}
+                       onChange={(e) => updateField("phone", e.target.value.replace(/[^\d]/g, ""))}
                        className={cn(
                           "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 transition-all outline-none",
                           validationErrors.phone ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200',

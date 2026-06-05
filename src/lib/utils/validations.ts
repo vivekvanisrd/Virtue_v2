@@ -76,6 +76,49 @@ export function sanitizeEmail(val: string | null | undefined): string | null {
 }
 
 /**
+ * Formats a Date or ISO string into YYYY-MM-DD under Asia/Kolkata timezone.
+ * Enforces Zero-Drift local Indian Standard Time.
+ */
+export function formatToISODateString(date: Date | string | null | undefined): string {
+    if (!date) return "";
+    try {
+        const d = typeof date === "string" ? new Date(date) : date;
+        if (isNaN(d.getTime())) return "";
+        const formatted = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(d);
+        const [mm, dd, yyyy] = formatted.split('/');
+        return `${yyyy}-${mm}-${dd}`;
+    } catch {
+        return "";
+    }
+}
+
+/**
+ * Formats a Date or ISO string into DD-MM-YYYY under Asia/Kolkata timezone.
+ */
+export function formatToDDMMYYYY(date: Date | string | null | undefined): string {
+    if (!date) return "";
+    try {
+        const d = typeof date === "string" ? new Date(date) : date;
+        if (isNaN(d.getTime())) return "";
+        const formatted = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(d);
+        const [mm, dd, yyyy] = formatted.split('/');
+        return `${dd}-${mm}-${yyyy}`;
+    } catch {
+        return "";
+    }
+}
+
+/**
  * Global Zod Validation Blueprints
  */
 export const globalPhoneSchema = z.string()

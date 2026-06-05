@@ -1,23 +1,30 @@
-# Walkthrough - PWA Gate QR & GPS Attendance Scanner
+# Developer Command Center v4.7 — Walkthrough
 
-We have built and verified a mobile-first Progressive Web App (PWA) gate scanner module at `/mobile/attendance` to replicate the native mobile app attendance flow.
+This update globalizes the date formatting and timezone utilities, removing duplicate formatting logic and standardizing India Timezone (`Asia/Kolkata`) operations.
 
-## Key Deliverables Implemented
+---
 
-### 1. Installed Scanner Dependency
-- Installed `html5-qrcode` to query and decode camera frames inside standard web browsers.
+## What Was Built
 
-### 2. Created `/mobile/attendance/page.tsx`
-- **Login screen**: Prompts teachers for their Staff Code and validates it using `/api/auth/mobile-login`. Identity and monthly stats are saved locally to `localStorage` for auto-login persistence.
-- **Dashboard screen**: Displays real-time stats (Presents, Lates, Attendance Ratio) in dark-themed cards matching the mobile design. Includes a large, active "Tap to Scan" button.
-- **QR Viewport Overlay**: Starts the camera via `html5-qrcode` facing the environment. Decodes the gate kiosk QR token, queries GPS location using `navigator.geolocation`, and calls `/api/attendance/scan` to record punch-in.
+### 1. Centralized Date Formatting Utilities
+* **Global Helpers:** Added `formatToISODateString` and `formatToDDMMYYYY` to the central validation utility file [validations.ts](file:///J:/virtue_fb/virtue-v2/src/lib/utils/validations.ts). These helpers format dates (Date objects or ISO strings) in the **`Asia/Kolkata` (India)** timezone to avoid UTC offset drifts.
+* **Schema Refactoring:** Refactored [staff.ts](file:///J:/virtue_fb/virtue-v2/src/types/staff.ts) schemas (`dob` and `dateOfJoining`) to use the centralized global date preprocessor `formatToISODateString`.
+* **Component Refactoring:** Updated the staff dashboard [staff.tsx](file:///J:/virtue_fb/virtue-v2/src/components/dashboard/staff.tsx) to leverage the global `formatToISODateString` formatter.
 
-### 3. Updated PWA Manifest (`manifest.json`)
-- Updated the `"start_url"` to `/mobile/attendance` so installed shortcuts boot directly into the scanner application.
-- Appended a new shortcut `"Scan Gate QR"` directing to the mobile scanner.
+---
+
+## Files Changed
+
+| File | Description |
+|------|-------------|
+| [validations.ts](file:///J:/virtue_fb/virtue-v2/src/lib/utils/validations.ts) | Exported global helper methods `formatToISODateString` and `formatToDDMMYYYY` bound to `Asia/Kolkata`. |
+| [staff.ts](file:///J:/virtue_fb/virtue-v2/src/types/staff.ts) | Refactored schema date preprocessing to consume the global date helper. |
+| [staff.tsx](file:///J:/virtue_fb/virtue-v2/src/components/dashboard/staff.tsx) | Replaced local formatting functions with the global timezone helper. |
 
 ---
 
 ## Verification Results
-- **TypeScript compilation (`npx tsc --noEmit`)**: Completed with **0 errors**.
-- **Next.js production build (`npm run build`)**: Compiled successfully, packaging `/mobile/attendance` (113 kB) into static-page output.
+
+### 1. Compile Verification
+* Ran `npx tsc --noEmit` to verify type safety and compilation success.
+* **Result:** Successful compile with zero errors.

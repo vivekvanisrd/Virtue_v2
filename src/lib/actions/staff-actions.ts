@@ -392,45 +392,50 @@ export async function transferStaffBranchAction(staffId: string, targetBranchId:
     } catch(e: any) { return { success: false, error: e.message }; }
 }
 export async function updateStaffAction(staffId: string, data: any) {
+    console.log(`🧬 [StaffActions:updateStaffAction] Request initiated for staffId: ${staffId}`);
     try {
         const identity = await getSovereignIdentity();
+        console.log(`🧬 [StaffActions:updateStaffAction] Sovereign Identity:`, JSON.stringify(identity));
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
 
+        console.log(`🧬 [StaffActions:updateStaffAction] Incoming Form Data:`, JSON.stringify(data));
+
         // 1. Validate Schema Fidelity (Partial Update Mode)
-        // Note: For updates, we use partial() to allow sparse data objects from UI steps
         const validated = staffOnboardingSchema.partial().safeParse(data);
         if (!validated.success) {
             const errorMsg = validated.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+            console.error(`❌ [StaffActions:updateStaffAction] Validation Failed: ${errorMsg}`, JSON.stringify(validated.error.issues));
             return { success: false, error: `VALIDATION_FAILED: ${errorMsg}` };
         }
+        console.log(`🧬 [StaffActions:updateStaffAction] Validation Succeeded.`);
 
-        const updateData: any = validated.data;
         const schoolId = identity.schoolId;
 
         // 1. Verify record existence and tenancy context
         const currentStaff = await prisma.staff.findUnique({
             where: { id: staffId, schoolId } // Rule 2.1: Always jail by schoolId
         });
+        console.log(`🧬 [StaffActions:updateStaffAction] Current DB record:`, currentStaff ? `Found (${currentStaff.firstName} ${currentStaff.lastName}, Role: ${currentStaff.role})` : "NOT FOUND");
 
         if (!currentStaff) throw new Error("STAFF_NOT_FOUND: Record does not exist in your institution.");
 
         // 2. Enforce Branch Jailing (Rule 5.3)
-        // 1A. Enforce Tenancy Bounds (Zero-Trust Identity Lock)
         if (identity.role !== "OWNER" && identity.role !== "DEVELOPER") {
             if (!data.branchId || data.branchId !== identity.branchId) {
-                console.log(`🛡️ [StaffActions] Identity sentinel: Force-lining branch ${identity.branchId} for update`);
+                console.log(`🛡️ [StaffActions:updateStaffAction] Identity sentinel: Force-lining branch ${identity.branchId} for update`);
                 data.branchId = identity.branchId;
             }
         }
 
         // 3. Prevent Executive Role Escalation via standard form
         if (data.role && (data.role === "PRINCIPAL" || data.role === "OWNER") && currentStaff.role !== data.role) {
+             console.log(`🛡️ [StaffActions:updateStaffAction] Checking escalation from ${currentStaff.role} to ${data.role}`);
              if (identity.role !== "OWNER") {
                 throw new Error("ACCESS_DENIED: Only Owners can appoint or modify Executive roles.");
              }
         }
 
-        // 4. Atomic Multi-Layer Update
+        console.log(`🧬 [StaffActions:updateStaffAction] Starting multi-layer transaction...`);
         const result = await prisma.$transaction(async (tx: any) => {
             // A. Base Record Update (ID & School remain immutable)
             const staff = await tx.staff.update({
@@ -536,14 +541,18 @@ export async function updateStaffAction(staffId: string, data: any) {
                 }
             });
 
+            console.log(`🧬 [StaffActions:updateStaffAction] Transaction nested operations completed successfully.`);
             return staff;
         }, { timeout: 20000 });
 
+        console.log(`🧬 [StaffActions:updateStaffAction] Transaction committed successfully to DB. Result ID: ${result.id}`);
+        console.log(`🧬 [StaffActions:updateStaffAction] Calling revalidatePath...`);
         revalidatePath("/", "layout");
+        console.log(`🧬 [StaffActions:updateStaffAction] revalidatePath completed. Returning success.`);
         return { success: true, data: JSON.parse(JSON.stringify(result)) };
 
     } catch (e: any) {
-        console.error("❌ [UPDATE_STAFF_ERROR]", e.message);
+        console.error("❌ [StaffActions:updateStaffAction:UPDATE_STAFF_ERROR]", e);
         return { success: false, error: e.message };
     }
 }
