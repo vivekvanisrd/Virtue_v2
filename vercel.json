@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "**/*": {
-      "region": "hnd1"
-    }
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["hnd1"]
 }
