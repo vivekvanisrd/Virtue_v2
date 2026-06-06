@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
 import { revalidatePath } from "next/cache";
 
-export async function changePasswordAction(data: { newPassword: string; confirmPassword: string }) {
+export async function changePasswordAction(data: { oldPassword?: string; newPassword: string; confirmPassword: string }) {
     try {
         // 1. Verify session exists
         const identity = await getSovereignIdentity();
@@ -22,22 +22,89 @@ export async function changePasswordAction(data: { newPassword: string; confirmP
             return { success: false, error: "Password must be at least 8 characters." };
         }
 
-        // 3. Hash new password
+        const isDev = identity.isPlatformAdmin || identity.role === 'DEVELOPER';
+
+        // 3. Verify old password if provided
+        if (data.oldPassword) {
+            let currentPasswordHash = "";
+            if (isDev) {
+                const admin = await prisma.platformAdmin.findUnique({
+                    where: { id: identity.staffId }
+                });
+                if (!admin) {
+                    return { success: false, error: "Developer profile not found." };
+                }
+                currentPasswordHash = admin.passwordHash;
+            } else {
+                const originalSkip = process.env.SKIP_TENANCY;
+                process.env.SKIP_TENANCY = 'true';
+                try {
+                    const staff = await prisma.staff.findUnique({
+                        where: { id: identity.staffId }
+                    });
+                    if (!staff) {
+                        return { success: false, error: "User profile not found." };
+                    }
+                    currentPasswordHash = staff.passwordHash || "";
+                } finally {
+                    process.env.SKIP_TENANCY = originalSkip;
+                }
+            }
+
+            if (currentPasswordHash) {
+                const isOldValid = await bcrypt.compare(data.oldPassword, currentPasswordHash);
+                if (!isOldValid) {
+                    return { success: false, error: "Incorrect old password." };
+                }
+            }
+        } else {
+            // Allow skipping old password ONLY if staff is in PASSWORD_CHANGE_REQUIRED onboarding status
+            if (!isDev) {
+                const originalSkip = process.env.SKIP_TENANCY;
+                process.env.SKIP_TENANCY = 'true';
+                let needsOldPassword = true;
+                try {
+                    const staff = await prisma.staff.findUnique({
+                        where: { id: identity.staffId }
+                    });
+                    if (staff && staff.onboardingStatus === "PASSWORD_CHANGE_REQUIRED") {
+                        needsOldPassword = false;
+                    }
+                } finally {
+                    process.env.SKIP_TENANCY = originalSkip;
+                }
+                
+                if (needsOldPassword) {
+                    return { success: false, error: "Old password is required." };
+                }
+            } else {
+                return { success: false, error: "Old password is required." };
+            }
+        }
+
+        // 4. Hash new password
         const newHash = await bcrypt.hash(data.newPassword, 10);
 
-        // 4. Update Staff record — clear the forced-change flag
-        const originalSkip = process.env.SKIP_TENANCY;
-        process.env.SKIP_TENANCY = 'true';
-        try {
-            await prisma.staff.update({
-                where: { id: identity.staffId as string },
-                data: {
-                    passwordHash: newHash,
-                    onboardingStatus: "JOINED",  // ✅ Clear the forced-change gate
-                }
+        // 5. Update password in database
+        if (isDev) {
+            await prisma.platformAdmin.update({
+                where: { id: identity.staffId },
+                data: { passwordHash: newHash }
             });
-        } finally {
-            process.env.SKIP_TENANCY = originalSkip;
+        } else {
+            const originalSkip = process.env.SKIP_TENANCY;
+            process.env.SKIP_TENANCY = 'true';
+            try {
+                await prisma.staff.update({
+                    where: { id: identity.staffId as string },
+                    data: {
+                        passwordHash: newHash,
+                        onboardingStatus: "JOINED",  // ✅ Clear forced-change gate
+                    }
+                });
+            } finally {
+                process.env.SKIP_TENANCY = originalSkip;
+            }
         }
 
         revalidatePath("/");

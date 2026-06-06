@@ -357,8 +357,7 @@ export async function createOwnerAction(data: {
                     action: 'OWNER_PROVISIONED',
                     entityType: 'Staff',
                     entityId: newStaff.id,
-                    details: `Developer provisioned ${data.role}: ${data.email}`,
-                    payload: { role: data.role, email: data.email },
+                    details: `Developer provisioned ${data.role}: ${data.email} [Metadata: ${JSON.stringify({ role: data.role, email: data.email })}]`,
                     userId: identity.staffId,
                 }
             });

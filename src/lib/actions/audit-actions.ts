@@ -125,11 +125,11 @@ export async function archiveStudentAction(studentId: string, reason: string) {
     await prisma.activityLog.create({
       data: {
         schoolId: identity!.schoolId,
-        staffId: identity!.staffId,
+        userId: identity!.staffId,
         action: "STUDENT_ARCHIVED",
         entityType: "STUDENT",
         entityId: studentId,
-        metadata: { reason, timestamp: new Date().toISOString() }
+        details: `Student archived. Reason: ${reason} [Metadata: ${JSON.stringify({ reason, timestamp: new Date().toISOString() })}]`
       }
     });
 

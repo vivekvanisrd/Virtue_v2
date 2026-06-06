@@ -84,8 +84,7 @@ export async function createBranchAction(data: {
                     action: "BRANCH_CREATED",
                     entityType: "Branch",
                     entityId: branch.id,
-                    details: `Created new campus branch: ${data.name}`,
-                    payload: { name: data.name, code: data.code, category: "GOVERNANCE", mode: "MANUAL_PROVISIONING" },
+                    details: `Created new campus branch: ${data.name} [Metadata: ${JSON.stringify({ name: data.name, code: data.code, category: "GOVERNANCE", mode: "MANUAL_PROVISIONING" })}]`,
                     userId: identity.staffId
                 }
             });

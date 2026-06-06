@@ -387,17 +387,17 @@ export async function recordFeeCollection(params: {
             await tx.activityLog.create({
                 data: {
                     schoolId: context.schoolId,
-                    staffId: context.staffId,
+                    userId: context.staffId,
                     action: "STATUS_PROMOTION",
                     entityType: "STUDENT",
                     entityId: student.id,
-                    metadata: {
+                    details: `Status promoted from ${ST_PROVISIONAL} to ${ST_CONFIRMED} [Metadata: ${JSON.stringify({
                         oldStatus: ST_PROVISIONAL,
                         newStatus: ST_CONFIRMED,
                         trigger: "THRESHOLD_REACHED",
                         threshold: threshold,
                         totalPaid: newTotalPaid
-                    }
+                    })}]`
                 }
             });
         }

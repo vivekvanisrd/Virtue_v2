@@ -117,7 +117,7 @@ export async function signInAction(data: { identifier: string; password: string 
 export async function signOutAction() {
     try {
         const session = await verifySession();
-        if (session && session.staffId) {
+        if (session && session.staffId && !session.isPlatformAdmin && session.role !== 'DEVELOPER') {
             await prisma.staff.update({
                 where: { id: session.staffId as string },
                 data: { mobileSessionToken: null }
@@ -126,7 +126,10 @@ export async function signOutAction() {
     } catch (err) {
         console.error("Error clearing mobile session token on sign out:", err);
     }
-    (await cookies()).delete("v-session");
+    const cookieStore = await cookies();
+    cookieStore.delete("v-session");
+    cookieStore.delete("v-active-school");
+    cookieStore.delete("v-active-branch");
     revalidatePath("/");
     return { success: true };
 }

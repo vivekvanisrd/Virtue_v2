@@ -227,8 +227,7 @@ export async function createPhysicalBranchAction(data: { name: string; code: str
                     action: "BRANCH_CREATED",
                     entityType: "Branch",
                     entityId: newBranch.id,
-                    details: `New operational branch provisioned: ${data.name} (${data.code.toUpperCase()})`,
-                    payload: { name: data.name, code: data.code, mode: "MANUAL_PROVISIONING" },
+                    details: `New operational branch provisioned: ${data.name} (${data.code.toUpperCase()}) [Metadata: ${JSON.stringify({ name: data.name, code: data.code, mode: "MANUAL_PROVISIONING" })}]`,
                     userId: identity.staffId
                 }
             });

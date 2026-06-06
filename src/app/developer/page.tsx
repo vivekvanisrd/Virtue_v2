@@ -15,7 +15,7 @@ import {
     Building2, Plus, RefreshCcw, ShieldCheck, Users, ChevronDown,
     ChevronUp, Loader2, CheckCircle2, X, AlertCircle, Copy,
     Key, GitBranch, UserPlus, School, Activity, Eye, EyeOff,
-    ArrowRight, Lock, Sparkles, Command, ClipboardCheck
+    ArrowRight, Lock, Sparkles, Command, ClipboardCheck, LogOut
 } from "lucide-react";
 import {
     getFullRegistryAction,
@@ -26,6 +26,7 @@ import {
     auditTenancyIsolationAction,
     switchSchoolContextAction,
 } from "./actions";
+import { signOutAction } from "@/lib/actions/auth-native";
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -316,6 +317,19 @@ export default function DeveloperCommandCenter() {
                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                             <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Tenancy Active</span>
                         </div>
+                        <button
+                            onClick={async () => {
+                                const res = await signOutAction();
+                                if (res.success) {
+                                    window.location.href = "/login";
+                                }
+                            }}
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl border border-rose-100 hover:border-transparent transition-all font-black text-[10px] uppercase tracking-wider"
+                            title="Sign Out"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Sign Out
+                        </button>
                     </div>
                 </div>
             </header>
