@@ -53,7 +53,7 @@ export function sanitizeAadhaar(val: string | null | undefined): string | null {
     return val.replace(/\s/g, ''); 
 }
 
-export function sanitizePhone(val: string | null | undefined): string | null {
+export function cleanPhone(val: string | null | undefined): string | null {
     if (!val || val.trim() === '') return null;
     let cleaned = val.replace(/[^\d]/g, '');
     
@@ -63,7 +63,12 @@ export function sanitizePhone(val: string | null | undefined): string | null {
         cleaned = cleaned.slice(1);
     }
     
-    return cleaned.length === 10 ? cleaned : null;
+    return cleaned;
+}
+
+export function sanitizePhone(val: string | null | undefined): string | null {
+    const cleaned = cleanPhone(val);
+    return cleaned && cleaned.length === 10 ? cleaned : null;
 }
 
 /**
@@ -122,7 +127,12 @@ export function formatToDDMMYYYY(date: Date | string | null | undefined): string
  * Global Zod Validation Blueprints
  */
 export const globalPhoneSchema = z.string()
-  .regex(/^[6-9]\d{9}$/, "Phone number must be exactly 10 digits and start with 6-9");
+  .transform((val) => {
+    if (val.trim() === "") return val;
+    const cleaned = cleanPhone(val);
+    return cleaned || val;
+  })
+  .pipe(z.string().regex(/^[6-9]\d{9}$/, "Phone number must be exactly 10 digits and start with 6-9"));
 
 export const globalEmailSchema = z.string()
   .email("Invalid email format");

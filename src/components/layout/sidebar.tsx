@@ -52,11 +52,11 @@ const menuItems: MenuItem[] = [
     component: "Students",
     subItems: [
       { id: "students-all", name: "All Students", component: "Students" },
-      { id: "students-add", name: "Add Student", component: "Students" },
-      { id: "students-enquiries", name: "Enquiries", component: "Students" },
-      { id: "students-promotion", name: "Student Promotion", component: "Students" },
-      { id: "students-attendance", name: "Daily Attendance", component: "Students" },
-      { id: "students-reports", name: "Reports", component: "Students" },
+      { id: "students-add", name: "Add Student", component: "Students", requiredCapability: "ADMISSION_CREATE" },
+      { id: "students-enquiries", name: "Enquiries", component: "Students", requiredCapability: "ADMISSION_CREATE" },
+      { id: "students-promotion", name: "Student Promotion", component: "Students", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "students-attendance", name: "Daily Attendance", component: "Students", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "students-reports", name: "Reports", component: "Students", requiredCapability: "ACADEMIC_CONFIG" },
     ]
   },
   { 
@@ -64,6 +64,7 @@ const menuItems: MenuItem[] = [
     name: "Salaries", 
     icon: Briefcase,
     component: "Salaries",
+    requiredCapability: "HR_PAYROLL",
     subItems: [
       { id: "salary-quick-view", name: "Principal Quick-Pay", component: "Salaries" },
       { id: "salary-simple", name: "Staff Payroll Entry", component: "Salaries" },
@@ -79,15 +80,15 @@ const menuItems: MenuItem[] = [
     name: "Finance", 
     icon: Wallet,
     component: "Finance",
-    requiredCapability: "VIEW_FINANCIALS",
     subItems: [
-      { id: "fee-collection", name: "Fee Collection", component: "Finance" },
-      { id: "fee-manager", name: "Fee Management", component: "Finance" },
+      { id: "fee-collection", name: "Fee Collection", component: "Finance", requiredCapability: "RECORD_PAYMENT" },
+      { id: "fee-manager", name: "Fee Management", component: "Finance", requiredCapability: "VIEW_FINANCIALS" },
       { id: "fee-master-registry", name: "Institutional Fee Registry", component: "Finance", requiredCapability: "ACADEMIC_CONFIG" },
-      { id: "finance-oversight", name: "Financial Oversight", component: "Finance" },
-      { id: "finance-discounts", name: "Discount Vault", component: "Finance" },
-      { id: "payment-requests", name: "Payment Requests", component: "Finance" },
-      { id: "razorpay-audit", name: "Razorpay Audit", component: "Finance" },
+      { id: "finance-oversight", name: "Financial Oversight", component: "Finance", requiredCapability: "VIEW_FINANCIALS" },
+      { id: "finance-discounts", name: "Discount Vault", component: "Finance", requiredCapability: "VIEW_FINANCIALS" },
+      { id: "payment-requests", name: "Payment Requests", component: "Finance", requiredCapability: "VIEW_FINANCIALS" },
+      { id: "razorpay-audit", name: "Razorpay Audit", component: "Finance", requiredCapability: "VIEW_FINANCIALS" },
+      { id: "bank-reconciliation", name: "Bank Reconciliation", component: "Finance", requiredCapability: "VIEW_FINANCIALS" },
     ]
   },
   { id: "accounting", name: "Accounting", icon: Calculator, component: "Accounting", requiredCapability: "VIEW_FINANCIALS" },
@@ -112,8 +113,8 @@ const menuItems: MenuItem[] = [
     subItems: [
       { id: "acad-config", name: "Configuration", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
       { id: "acad-genesis", name: "Institutional Genesis", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
-      { id: "acad-timetable", name: "Timetables", component: "Academics" },
-      { id: "acad-exams", name: "Examinations", component: "Academics" },
+      { id: "acad-timetable", name: "Timetables", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "acad-exams", name: "Examinations", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
     ]
   },
   { 
@@ -121,9 +122,9 @@ const menuItems: MenuItem[] = [
     name: "Attendance", 
     icon: CalendarCheck, 
     subItems: [
-      { id: "attendance-student", name: "Velocity Run (Students)", component: "Attendance" },
+      { id: "attendance-student", name: "Velocity Run (Students)", component: "Attendance", requiredCapability: "ACADEMIC_CONFIG" },
       { id: "attendance-staff", name: "Payroll Ledger (Staff)", component: "Attendance", requiredCapability: "HR_PAYROLL" },
-      { id: "attendance-kiosk", name: "Dynamic QR Kiosk", component: "Attendance" },
+      { id: "attendance-kiosk", name: "Dynamic QR Kiosk", component: "Attendance", requiredCapability: "ACADEMIC_CONFIG" },
     ]
   },
   { 
@@ -131,9 +132,9 @@ const menuItems: MenuItem[] = [
     name: "Settings", 
     icon: Settings, 
     subItems: [
-      { id: "settings-general", name: "General Settings", component: "Settings" },
-      { id: "settings-banking", name: "Banking Integration", component: "Settings" },
-      { id: "settings-audit", name: "System Audit Log", component: "Settings" }
+      { id: "settings-general", name: "General Settings", component: "Settings", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "settings-banking", name: "Banking Integration", component: "Settings", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "settings-audit", name: "System Audit Log", component: "Settings", requiredCapability: "ACADEMIC_CONFIG" }
     ]
   },
   { 
@@ -177,9 +178,18 @@ export function Sidebar({
   const visibleMenuItems = React.useMemo(() => {
     return menuItems.filter(item => {
       if (item.id === "developer") return userRole === "DEVELOPER";
-      if (!item.requiredCapability) return true;
-      if (userRole === "OWNER" || userRole === "DEVELOPER") return true;
-      return !!capabilities[item.requiredCapability];
+      if (item.requiredCapability && userRole !== "OWNER" && userRole !== "DEVELOPER" && !capabilities[item.requiredCapability]) {
+        return false;
+      }
+      if (item.subItems?.length) {
+        const visibleSubs = item.subItems.filter(sub => {
+          if (!sub.requiredCapability) return true;
+          if (userRole === "OWNER" || userRole === "DEVELOPER") return true;
+          return !!capabilities[sub.requiredCapability];
+        });
+        return visibleSubs.length > 0;
+      }
+      return true;
     });
   }, [userRole, capabilities]);
 

@@ -22,6 +22,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, error: "Phone number does not match. Please check and try again." });
     }
 
+    const isUPI = data.razorpay_link_id?.startsWith("UPI_QR_") ?? false;
+    let upiVpa = "";
+    let upiMerchantName = "";
+
+    if (isUPI) {
+      try {
+        const prisma = (await import("@/lib/prisma")).default;
+        const schoolId = data.school_id || "VIVES";
+        const branchId = data.branch_id || "VIVES-RCB";
+        
+        const vpaSetting = await prisma.globalSetting.findFirst({
+          where: { schoolId, key: { in: [`BRANCH_${branchId}_UPI_VPA`, `BRANCH_${branchId}_UPIVPA`] } }
+        });
+        const nameSetting = await prisma.globalSetting.findFirst({
+          where: { schoolId, key: { in: [`BRANCH_${branchId}_UPI_MERCHANT_NAME`, `BRANCH_${branchId}_UPIMERCHANTNAME`] } }
+        });
+        
+        upiVpa = vpaSetting?.value || "paytmqr6z0l99@ptys";
+        upiMerchantName = nameSetting?.value || "VIVEK VANI EDUCATION";
+      } catch (dbErr) {
+        console.warn("Failed to load VPA configuration:", dbErr);
+        upiVpa = "paytmqr6z0l99@ptys";
+        upiMerchantName = "VIVEK VANI EDUCATION";
+      }
+    }
+
     return NextResponse.json({
       valid: true,
       studentName: data.student_name,
@@ -32,6 +58,9 @@ export async function POST(req: NextRequest) {
       razorpayShortUrl: data.razorpay_short_url,
       status: data.status,
       isMock: data.razorpay_link_id?.startsWith("MOCK_") ?? false,
+      isUPI,
+      upiVpa,
+      upiMerchantName
     });
   } catch (err: any) {
     return NextResponse.json({ error: "Server error." }, { status: 500 });

@@ -31,6 +31,7 @@ import {
   Shirt,
   Package
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 import { 
   getStudentFeeStatus, 
@@ -51,6 +52,11 @@ import { FeeReceipt } from "./FeeReceipt";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
+const ANCILLARY_KEYS = [
+  "admissionFee", "cautionDeposit", "transportFee", "examFee", "computerFee",
+  "libraryFee", "sportsFee", "activityFee", "booksFee", "uniformFee", "miscellaneousFee"
+];
+
 export function FeeCollectionForm({ params }: { params?: any }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -67,6 +73,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const [collectionLoading, setCollectionLoading] = useState(false);
   const [success, setSuccess] = useState<any[] | null>(null); 
   const [error, setError] = useState<string | null>(null);
+  const [branchUpiConfig, setBranchUpiConfig] = useState<{ vpa: string; merchantName: string } | null>(null);
   
   const [step, setStep] = useState<"selection" | "denomination">("selection");
   const [denominations, setDenominations] = useState<Record<number, number>>({
@@ -75,6 +82,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const [showParentMsg, setShowParentMsg] = useState(false);
   const [schoolName, setSchoolName] = useState("PaVa-EDUX Institution");
   const [paymentMode, setPaymentMode] = useState("Cash");
+  const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [paymentDetails, setPaymentDetails] = useState({
     bankName: "",
     accountNo: "",
@@ -87,79 +95,113 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const { setTabDirty, openTab } = useTabs();
   const loadedStudentIdRef = useRef<string | null>(null);
  
-   useEffect(() => {
-     const isDirty = settlements.some(s => s.selectedTerms.length > 0) || 
-                   paymentDetails.transactionId !== "" || 
-                   paymentDetails.chequeNo !== "";
-     setTabDirty("fee-collection", isDirty);
-     return () => setTabDirty("fee-collection", false);
-   }, [settlements, paymentDetails, setTabDirty]);
- 
-   useEffect(() => {
-     async function loadSchool() {
-       const res = await getSchoolInfoAction();
-       if (res.success && res.name) setSchoolName(res.name);
-     }
-     loadSchool();
-   }, []);
- 
-   useEffect(() => {
-     if (params?.studentId) {
-       if (params.studentId !== loadedStudentIdRef.current) {
-         selectStudent(params.studentId);
-       }
-     }
-   }, [params?.studentId]);
- 
-   const selectStudent = async (id: string) => {
-     loadedStudentIdRef.current = id;
-     setLoading(true);
-     setError(null);
-     setSuccess(null);
-     setSearchTerm("");
-     setSearchResults([]);
-     setSettlements([]); 
-     try {
-       const result = await getStudentFeeStatus(id);
-       if (result.success && result.data) {
-         setSettlements([{
-           student: result.data,
-           selectedTerms: [],
-           waivedLateFee: false,
-           waiverReason: "",
-           adHocAmounts: {}
-         }]);
-         openTab({
-           id: "fee-collection",
-           title: "Fee Collection",
-           icon: Wallet,
-           component: "Finance",
-           params: { studentId: id }
-         });
-       } else {
-         setError(result.error || "Failed to retrieve student profile.");
-         loadedStudentIdRef.current = null;
-         openTab({
-           id: "fee-collection",
-           title: "Fee Collection",
-           icon: Wallet,
-           component: "Finance",
-           params: {}
-         });
-       }
-     } catch (err: any) {
-       setError("An unexpected error occurred.");
-       loadedStudentIdRef.current = null;
-       openTab({
-         id: "fee-collection",
-         title: "Fee Collection",
-         icon: Wallet,
-         component: "Finance",
-         params: {}
-       });
-     }
-     setLoading(false);
-   };
+  useEffect(() => {
+    const isDirty = settlements.some(s => s.selectedTerms.length > 0) || 
+                  paymentDetails.transactionId !== "" || 
+                  paymentDetails.chequeNo !== "" ||
+                  customAmount !== null;
+    setTabDirty("fee-collection", isDirty);
+    return () => setTabDirty("fee-collection", false);
+  }, [settlements, paymentDetails, customAmount, setTabDirty]);
+
+  useEffect(() => {
+    const student = settlements[0]?.student;
+    if (!student?.branchId) {
+      setBranchUpiConfig(null);
+      return;
+    }
+    
+    async function fetchBranchUpi() {
+      try {
+        const { getBranchGatewayConfigAction } = await import("@/lib/actions/banking-actions");
+        const res = await getBranchGatewayConfigAction(student.branchId);
+        if (res.success && res.config?.upiVpa) {
+          setBranchUpiConfig({
+            vpa: res.config.upiVpa,
+            merchantName: res.config.upiMerchantName || schoolName
+          });
+        } else {
+          setBranchUpiConfig(null);
+        }
+      } catch (err) {
+        console.warn("Failed to load branch UPI QR config in POS form:", err);
+        setBranchUpiConfig(null);
+      }
+    }
+    
+    fetchBranchUpi();
+  }, [settlements[0]?.student?.branchId, schoolName]);
+
+  useEffect(() => {
+    async function loadSchool() {
+      const res = await getSchoolInfoAction();
+      if (res.success && res.name) setSchoolName(res.name);
+    }
+    loadSchool();
+  }, []);
+
+  useEffect(() => {
+    if (params?.studentId) {
+      if (params.studentId !== loadedStudentIdRef.current) {
+        selectStudent(params.studentId);
+      }
+    }
+  }, [params?.studentId]);
+
+  // Reset custom amount whenever selected terms or late fee options change
+  useEffect(() => {
+    setCustomAmount(null);
+  }, [settlements]);
+
+  const selectStudent = async (id: string) => {
+    loadedStudentIdRef.current = id;
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    setSearchTerm("");
+    setSearchResults([]);
+    setSettlements([]); 
+    try {
+      const result = await getStudentFeeStatus(id);
+      if (result.success && result.data) {
+        setSettlements([{
+          student: result.data,
+          selectedTerms: [],
+          waivedLateFee: false,
+          waiverReason: "",
+          adHocAmounts: {}
+        }]);
+        openTab({
+          id: "fee-collection",
+          title: "Fee Collection",
+          icon: Wallet,
+          component: "Finance",
+          params: { studentId: id }
+        });
+      } else {
+        setError(result.error || "Failed to retrieve student profile.");
+        loadedStudentIdRef.current = null;
+        openTab({
+          id: "fee-collection",
+          title: "Fee Collection",
+          icon: Wallet,
+          component: "Finance",
+          params: {}
+        });
+      }
+    } catch (err: any) {
+      setError("An unexpected error occurred.");
+      loadedStudentIdRef.current = null;
+      openTab({
+        id: "fee-collection",
+        title: "Fee Collection",
+        icon: Wallet,
+        component: "Finance",
+        params: {}
+      });
+    }
+    setLoading(false);
+  };
 
   const toggleTermForStudent = (studentId: string, termId: string) => {
     setSettlements(prev => prev.map(s => {
@@ -167,18 +209,29 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       const isSelected = s.selectedTerms.includes(termId);
       let newTerms = [...s.selectedTerms];
       const fb = s.student.feeBreakdown;
-      if (isSelected) {
-        if (termId === "term1") newTerms = newTerms.filter(t => t !== "term1" && t !== "term2" && t !== "term3");
-        else if (termId === "term2") newTerms = newTerms.filter(t => t !== "term2" && t !== "term3");
-        else newTerms = newTerms.filter(t => t !== termId);
-      } else {
-        if (termId === "term3") {
-          if (!fb.term1.isPaid && !newTerms.includes("term1")) newTerms.push("term1");
-          if (!fb.term2.isPaid && !newTerms.includes("term2")) newTerms.push("term2");
-        } else if (termId === "term2") {
-          if (!fb.term1.isPaid && !newTerms.includes("term1")) newTerms.push("term1");
+      const insts = fb.installments || [];
+      
+      const targetIndex = insts.findIndex((inst: any) => inst.key === termId);
+      if (targetIndex === -1) {
+        // Ancillary fees (non-sequential)
+        if (isSelected) {
+          newTerms = newTerms.filter(t => t !== termId);
+        } else {
+          newTerms.push(termId);
         }
-        newTerms.push(termId);
+        return { ...s, selectedTerms: Array.from(new Set(newTerms)) };
+      }
+      
+      if (isSelected) {
+        // Deselect installment and all subsequent ones
+        const keysToDeselect = insts.slice(targetIndex).map((inst: any) => inst.key);
+        newTerms = newTerms.filter(t => !keysToDeselect.includes(t));
+      } else {
+        // Select installment and all prior unpaid ones
+        const keysToSelect = insts.slice(0, targetIndex + 1)
+          .filter((inst: any) => !inst.isPaid)
+          .map((inst: any) => inst.key);
+        newTerms = [...newTerms, ...keysToSelect];
       }
       return { ...s, selectedTerms: Array.from(new Set(newTerms)) };
     }));
@@ -186,13 +239,14 @@ export function FeeCollectionForm({ params }: { params?: any }) {
 
   const totals = (() => {
     return settlements.reduce((acc, s) => {
+      const fb = s.student.feeBreakdown;
       const termTotal = s.selectedTerms.reduce((sum, t) => {
-        const detail = s.student.feeBreakdown[t] || s.student.feeBreakdown.ancillary?.[t];
+        const detail = fb.installments?.find((inst: any) => inst.key === t) || fb[t] || fb.ancillary?.[t];
         const val = (detail?.amount === 0 && s.adHocAmounts[t]) ? s.adHocAmounts[t] : (detail?.amount || 0);
         return sum + val;
       }, 0);
       const lateTotal = s.waivedLateFee ? 0 : s.selectedTerms.reduce((sum, t) => {
-        const detail = s.student.feeBreakdown[t];
+        const detail = fb.installments?.find((inst: any) => inst.key === t) || fb[t];
         if (detail && detail.dueDate && !detail.isPaid) return sum + calculateLateFee(detail.dueDate).amount;
         return sum;
       }, 0);
@@ -201,20 +255,21 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   })();
 
   const grandTotal = totals.terms + totals.lateFees;
+  const targetTotal = customAmount !== null ? customAmount : grandTotal;
   const tallyTotal = Object.entries(denominations).reduce((sum, [val, count]) => sum + (Number(val) * count), 0);
-  const isTallyValid = tallyTotal === grandTotal;
+  const isTallyValid = Math.abs(targetTotal - tallyTotal) <= 49;
 
   const getParentMessage = () => {
     if (!settlements[0]) return "";
     const s = settlements[0].student;
     const selectedLabels = settlements[0].selectedTerms.map(t => {
-      const fee = fb[t] || fb.ancillary?.[t];
+      const installmentDetail = fb.installments?.find((inst: any) => inst.key === t);
+      const fee = installmentDetail || fb[t] || fb.ancillary?.[t];
       return `${fee?.label || t}`;
     }).join(", ");
     
     let message = `Hi Parent,\n\nGreetings from ${schoolName}.\nThe school fee for ${s.firstName} regarding ${selectedLabels} is due.\n\n`;
     
-    // 📊 SHOW TOTAL VS FINAL (Sovereign Rule 5.1)
     if (fb.totalDiscount > 0) {
        message += `Original Fee: ${formatCurrency(Number(fb.annualNet) + Number(fb.totalDiscount))}\n`;
        message += `Discount Applied: ${formatCurrency(fb.totalDiscount)}\n`;
@@ -222,7 +277,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
        message += `Note: Discount is applied on total fee but adjusted in the final installment.\n\n`;
     }
     
-    message += `Total Amount Due Now: ${formatCurrency(grandTotal)}\n\n`;
+    message += `Total Amount Due Now: ${formatCurrency(targetTotal)}\n\n`;
     message += `Please pay securely using the link below:\n${paymentDetails.paymentLink}\n\nThank you.`;
     
     return message;
@@ -231,23 +286,96 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const processPayment = async () => {
     if (settlements.length === 0 || settlements.every(s => s.selectedTerms.length === 0)) return;
     setCollectionLoading(true);
+    setError(null);
+
+    // Form validation based on payment modes
     if (paymentMode === "Razorpay" && !paymentDetails.transactionId) {
       setError("Please enter the Razorpay Payment ID to proceed.");
       setCollectionLoading(false);
       return;
     }
+    if (paymentMode === "Bank QR" && !paymentDetails.transactionId) {
+      setError("Please enter the Transaction ID / UTR Number to proceed.");
+      setCollectionLoading(false);
+      return;
+    }
+    if (paymentMode === "Bank Transfer") {
+      if (!paymentDetails.bankName) {
+        setError("Please enter the Sender Bank Name.");
+        setCollectionLoading(false);
+        return;
+      }
+      if (!paymentDetails.transactionId) {
+        setError("Please enter the Transaction Ref / UTR number.");
+        setCollectionLoading(false);
+        return;
+      }
+    }
+    if (paymentMode === "Cheque/DD") {
+      if (!paymentDetails.bankName) {
+        setError("Please enter the Drawn Bank Name.");
+        setCollectionLoading(false);
+        return;
+      }
+      if (!paymentDetails.chequeNo) {
+        setError("Please enter the Cheque / DD Number.");
+        setCollectionLoading(false);
+        return;
+      }
+    }
+    if (paymentMode === "Card Swipe" && !paymentDetails.transactionId) {
+      setError("Please enter the Terminal Transaction ID / Approval Code.");
+      setCollectionLoading(false);
+      return;
+    }
+
+    // Determine target total
+    let finalTargetTotal = targetTotal;
+    if (paymentMode === "Cash") {
+      // Collect the actual physical cash note tally total
+      finalTargetTotal = tallyTotal;
+    }
+
+    const lateFeePaid = settlements[0].waivedLateFee ? 0 : Math.min(totals.lateFees, finalTargetTotal);
+    const amountPaid = Math.max(0, finalTargetTotal - lateFeePaid);
+
+    // Format payment reference mapping
+    let reference = "";
+    if (paymentMode === "Razorpay" || paymentMode === "Bank QR" || paymentMode === "Card Swipe") {
+      reference = paymentDetails.transactionId;
+    } else if (paymentMode === "Bank Transfer") {
+      reference = `${paymentDetails.bankName} - Ref: ${paymentDetails.transactionId}`;
+    } else if (paymentMode === "Cheque/DD") {
+      reference = `${paymentDetails.bankName} - Chq: ${paymentDetails.chequeNo}`;
+    }
+
+    // Build ancillary items list
+    const selectedAncillaryKeys = settlements[0].selectedTerms.filter(t => ANCILLARY_KEYS.includes(t));
+    const ancillaryItems = selectedAncillaryKeys.map(key => {
+      const fee = fb.ancillary?.[key];
+      const amount = (fee?.amount === 0 && settlements[0].adHocAmounts[key])
+        ? settlements[0].adHocAmounts[key]
+        : (fee?.amount || 0);
+      return { key, amount, label: fee?.label || key };
+    });
+
     const result = await recordFeeCollection({
       studentId: settlements[0].student.id,
       selectedTerms: settlements[0].selectedTerms,
-      amountPaid: totals.terms,
-      lateFeePaid: totals.lateFees,
+      amountPaid: amountPaid,
+      lateFeePaid: lateFeePaid,
       lateFeeWaived: settlements[0].waivedLateFee,
+      waiverReason: settlements[0].waivedLateFee ? (settlements[0].waiverReason || "Waived by cashier") : undefined,
       paymentMode,
-      paymentReference: paymentMode === "Cash" ? "" : paymentDetails.transactionId
+      paymentReference: reference,
+      ancillaryItems
     });
+
     if (result.success) {
       setSuccess([{ student: settlements[0].student, receipt: result.data }]);
-      setSettlements([]); setStep("selection");
+      setSettlements([]); 
+      setStep("selection");
+      setCustomAmount(null);
     } else {
       setError(result.error || "Settlement failed.");
     }
@@ -260,8 +388,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         <div className="max-w-4xl mx-auto w-full space-y-6">
            <div className="p-6 bg-emerald-500 rounded-[2.5rem] text-white flex items-center justify-between shadow-xl">
               <div className="flex items-center gap-4">
-                 <CheckCircle2 className="w-10 h-10" />
-                 <div><h2 className="text-2xl font-black">Settlement Complete</h2><p className="opacity-80 font-bold uppercase tracking-widest text-[8px] mt-0.5">Success</p></div>
+                  <CheckCircle2 className="w-10 h-10" />
+                  <div><h2 className="text-2xl font-black">Settlement Complete</h2><p className="opacity-80 font-bold uppercase tracking-widest text-[8px] mt-0.5">Success</p></div>
               </div>
                <button 
                  onClick={() => {
@@ -322,11 +450,27 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     );
   }
 
-
   const student = settlements[0].student;
   const fb = student.feeBreakdown;
   const totalPaid = (student.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
   const paidPercent = fb.annualNet > 0 ? (totalPaid / fb.annualNet) * 100 : 0;
+
+  // Generate QR VPA string for Bank QR mode
+  const upiString = (() => {
+    if (paymentMode !== "Bank QR") return "";
+    
+    const studentClass = student.academic?.class?.name || "N/A";
+    const noteText = `${student.firstName} ${student.lastName} | Class: ${studentClass} | School Fee`;
+
+    return generateUPIString({
+      vpa: branchUpiConfig?.vpa || "paytmqr6z0l99@ptys",
+      name: branchUpiConfig?.merchantName || "VIVEK VANI EDUCATION",
+      amount: targetTotal,
+      note: noteText.substring(0, 50)
+    });
+  })();
+
+  const paymentModes = ["Cash", "Bank QR", "Card Swipe", "Razorpay"];
 
   return (
     <div className="flex flex-col h-full bg-[#F8F9FB] p-4 animate-in fade-in duration-500">
@@ -372,26 +516,43 @@ export function FeeCollectionForm({ params }: { params?: any }) {
             </div>
             <div className="col-span-8">
               <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-3">Tuition Installments (Sequential)</p>
-              <div className="grid grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => {
-                  const key = `term${i}`;
-                  const term = fb[key];
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {(fb.installments || []).map((inst: any, idx: number) => {
+                  const key = inst.key;
                   const isSelected = settlements[0].selectedTerms.includes(key);
-                  const canSelect = i === 1 || (fb[`term${i-1}`]?.isPaid || settlements[0].selectedTerms.includes(`term${i-1}`));
+                  const canSelect = idx === 0 || (fb.installments[idx - 1].isPaid || settlements[0].selectedTerms.includes(fb.installments[idx - 1].key));
+                  const isThirdTermOfTermWise = key === "term3" && fb.totalDiscount > 0;
+                  
                   return (
-                      <button key={key} disabled={term.isPaid || !canSelect} onClick={() => toggleTermForStudent(student.id, key)} className={cn("p-4 rounded-3xl border-2 text-left relative h-28 flex flex-col justify-center transition-all", term.isPaid ? "bg-white border-slate-50 opacity-40" : isSelected ? "bg-white border-primary shadow-lg ring-4 ring-primary/5 scale-[1.02]" : !canSelect ? "bg-slate-50 border-slate-50 opacity-40" : "bg-white border-slate-50 hover:border-slate-100")}>
-                        {isSelected && <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-primary animate-in zoom-in" />}
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{term.label || `Term ${i}`}</p>
+                      <button 
+                        key={key} 
+                        disabled={inst.isPaid || !canSelect} 
+                        onClick={() => toggleTermForStudent(student.id, key)} 
+                        className={cn(
+                          "p-3 rounded-2xl border-2 text-left relative h-24 flex flex-col justify-center transition-all", 
+                          inst.isPaid 
+                            ? "bg-white border-slate-50 opacity-40 cursor-not-allowed" 
+                            : isSelected 
+                              ? "bg-white border-primary shadow-lg ring-4 ring-primary/5 scale-[1.02]" 
+                              : !canSelect 
+                                ? "bg-slate-50 border-slate-50 opacity-40 cursor-not-allowed" 
+                                : "bg-white border-slate-50 hover:border-slate-100 hover:shadow-sm"
+                        )}
+                      >
+                        {isSelected && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary animate-in zoom-in" />}
+                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 leading-none">{inst.label}</p>
                         
-                        {key === "term3" && fb.totalDiscount > 0 ? (
+                        {isThirdTermOfTermWise ? (
                            <div className="space-y-0.5">
-                              <p className="text-[10px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{( (term.amount || 0) + (fb.totalDiscount || 0) ).toLocaleString()}</p>
-                              <p className="text-xl font-black text-emerald-600 tracking-tighter leading-none">₹{(term.amount || 0).toLocaleString()}</p>
+                              <p className="text-[9px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{((inst.amount || 0) + (fb.totalDiscount || 0)).toLocaleString()}</p>
+                              <p className="text-lg font-black text-emerald-600 tracking-tighter leading-none">₹{(inst.amount || 0).toLocaleString()}</p>
                            </div>
                         ) : (
-                           <p className="text-xl font-black text-slate-900 tracking-tighter">₹{(term.amount || 0).toLocaleString()}</p>
+                           <p className="text-lg font-black text-slate-900 tracking-tighter">₹{(inst.amount || 0).toLocaleString()}</p>
                         )}
-                        <p className="text-[7px] font-black uppercase text-slate-300 mt-1">10/06/2026</p>
+                        <p className="text-[7px] font-black uppercase text-slate-300 mt-1 leading-none">
+                          {inst.dueDate ? new Date(inst.dueDate).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "N/A"}
+                        </p>
                       </button>
                     );
                 })}
@@ -409,7 +570,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         {/* 🚀 COMPACT POS EXTENSIONS */}
         <div className="space-y-4 pt-2">
           <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 ml-2 italic">Point-of-Sale (POS) Extensions</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {Object.entries(fb.ancillary).map(([key, fee]: [string, any]) => {
                const isSelected = settlements[0].selectedTerms.includes(key);
                const Icon = key === "transportFee" ? Bus : key === "libraryFee" ? BookOpen : key === "sportsFee" ? Dribbble : key === "booksFee" ? Package : key === "uniformFee" ? Shirt : Activity;
@@ -427,44 +588,252 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         <div className="grid grid-cols-12 gap-8 items-start pt-2 pb-8">
           <div className="col-span-6 space-y-4">
             <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</p>
-            <div className="flex gap-4">
-              {["Cash", "Razorpay"].map(m => (
-                <button key={m} onClick={() => setPaymentMode(m)} className={cn("flex-1 px-4 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all flex flex-col items-center gap-2 border-2", paymentMode === m ? (m === "Cash" ? "bg-white border-slate-100 text-slate-900 shadow-lg" : "bg-orange-500 border-orange-500 text-white shadow-xl shadow-orange-500/20") : "bg-slate-50 border-slate-50 text-slate-300 hover:bg-white")}>{m === "Cash" ? <Banknote className="w-6 h-6 opacity-40" /> : <Zap className="w-6 h-6" />}{m}</button>
-              ))}
+            <div className="grid grid-cols-3 gap-3">
+              {paymentModes.map(m => {
+                const isSelected = paymentMode === m;
+                const Icon = m === "Cash" ? Banknote 
+                           : m === m && m === "Bank QR" ? QrCode 
+                           : m === "Bank Transfer" ? Monitor 
+                           : m === "Cheque/DD" ? FileText 
+                           : m === "Card Swipe" ? CreditCard 
+                           : Zap;
+                
+                let selectedStyle = "";
+                if (m === "Cash") selectedStyle = "bg-emerald-500 border-emerald-500 text-white shadow-xl shadow-emerald-500/20";
+                else if (m === "Razorpay") selectedStyle = "bg-orange-500 border-orange-500 text-white shadow-xl shadow-orange-500/20";
+                else selectedStyle = "bg-primary border-primary text-white shadow-xl shadow-primary/20";
+                
+                return (
+                  <button 
+                    key={m} 
+                    onClick={() => {
+                      setPaymentMode(m);
+                      setError(null);
+                      setPaymentDetails(p => ({
+                        ...p,
+                        bankName: "",
+                        accountNo: "",
+                        chequeNo: "",
+                        upiId: "",
+                        transactionId: "",
+                        paymentLink: ""
+                      }));
+                    }} 
+                    className={cn(
+                      "px-3 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all flex flex-col items-center gap-1.5 border-2", 
+                      isSelected 
+                        ? selectedStyle 
+                        : "bg-slate-50 border-slate-50 text-slate-400 hover:bg-white hover:border-slate-100 hover:text-slate-600 hover:shadow-sm"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{m}</span>
+                  </button>
+                );
+              })}
             </div>
             
-            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 italic text-[9px] text-slate-400 leading-relaxed animate-in fade-in">
-              Click 'Generate Link' to create a unique Razorpay invoice for this batch.
-            </div>
+            {/* Dynamic Metadata Inputs based on Payment Mode */}
+            {paymentMode === "Cash" && (
+              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 italic text-[9px] text-emerald-700 leading-relaxed animate-in fade-in">
+                A denomination tally popup will verify physical currency notes. Dynamic rounding tolerance up to ₹49 is supported.
+              </div>
+            )}
 
-            {paymentMode === "Razorpay" && paymentDetails.paymentLink && (
-              <div className="animate-in fade-in slide-in-from-top-4 space-y-2">
-                <div className="bg-white rounded-3xl p-6 border border-orange-100 space-y-3 shadow-sm">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-orange-600">Active Payment Link Generated</p>
-                  <div className="flex gap-2">
-                    <input readOnly value={paymentDetails.paymentLink} className="flex-1 bg-white border border-orange-100 rounded-xl px-4 py-3 text-[10px] font-black text-orange-700 outline-none" />
-                    <button onClick={() => { navigator.clipboard.writeText(paymentDetails.paymentLink); alert("Link Copied!"); }} className="bg-orange-500 text-white px-6 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-orange-500/10">Copy</button>
+            {paymentMode === "Bank QR" && (
+              <div className="animate-in fade-in slide-in-from-top-4 space-y-4">
+                <div className="bg-white rounded-3xl p-6 border border-slate-100 space-y-4 shadow-sm flex flex-col items-center">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-primary">Scan QR to Pay (Bypasses Gateway Fee)</p>
+                  
+                  {targetTotal <= 0 ? (
+                    <div className="text-center py-6 px-4 space-y-2">
+                      <p className="text-xs font-bold text-slate-400">Awaiting Selection</p>
+                      <p className="text-[10px] text-slate-400 max-w-xs leading-normal">Select installment terms or add ancillary fees from the inventory list to generate the dynamic payment QR Code.</p>
+                    </div>
+                  ) : branchUpiConfig?.vpa ? (
+                    <>
+                      <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-inner">
+                        <QRCodeSVG value={upiString} size={160} level="M" />
+                      </div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        Payable: <span className="text-slate-900 font-extrabold text-sm">₹{targetTotal.toLocaleString()}</span>
+                      </p>
+                      <p className="text-[8px] font-bold text-emerald-600">✓ Using Branch Custom UPI QR ({branchUpiConfig.vpa})</p>
+                    </>
+                  ) : (
+                    <div className="text-center space-y-3 w-full">
+                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[10px] text-amber-700 font-bold leading-normal">
+                        ⚠️ Branch UPI configuration missing. Defaulting to general gateway address.
+                      </div>
+                      <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-inner inline-block">
+                        <QRCodeSVG value={upiString} size={160} level="M" />
+                      </div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        Payable: <span className="text-slate-900 font-extrabold text-sm">₹{targetTotal.toLocaleString()}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-white rounded-3xl p-5 border border-slate-100 space-y-3 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Transaction ID / UTR Number (Required)</p>
+                  <input 
+                    type="text" 
+                    value={paymentDetails.transactionId}
+                    onChange={(e) => setPaymentDetails(p => ({ ...p, transactionId: e.target.value }))}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black text-slate-800 outline-none focus:border-primary focus:bg-white transition-all uppercase placeholder:normal-case"
+                    placeholder="Enter 12-digit UTR or Txn ID..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {paymentMode === "Bank Transfer" && (
+              <div className="animate-in fade-in slide-in-from-top-4 space-y-3">
+                <div className="bg-white rounded-3xl p-5 border border-slate-100 space-y-4 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-primary">Direct Bank Transfer (NEFT/IMPS/RTGS)</p>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Sender Bank Name (Required)</p>
+                      <input 
+                        type="text" 
+                        value={paymentDetails.bankName}
+                        onChange={(e) => setPaymentDetails(p => ({ ...p, bankName: e.target.value }))}
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black text-slate-800 outline-none focus:border-primary focus:bg-white transition-all"
+                        placeholder="e.g. HDFC Bank, SBI, ICICI..."
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Transaction Ref / UTR (Required)</p>
+                      <input 
+                        type="text" 
+                        value={paymentDetails.transactionId}
+                        onChange={(e) => setPaymentDetails(p => ({ ...p, transactionId: e.target.value }))}
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black text-slate-800 outline-none focus:border-primary focus:bg-white transition-all uppercase placeholder:normal-case"
+                        placeholder="Enter Reference Number..."
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
             )}
+
+            {paymentMode === "Cheque/DD" && (
+              <div className="animate-in fade-in slide-in-from-top-4 space-y-3">
+                <div className="bg-white rounded-3xl p-5 border border-slate-100 space-y-4 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-primary">Cheque or Demand Draft Settlement</p>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Drawn Bank Name (Required)</p>
+                      <input 
+                        type="text" 
+                        value={paymentDetails.bankName}
+                        onChange={(e) => setPaymentDetails(p => ({ ...p, bankName: e.target.value }))}
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black text-slate-800 outline-none focus:border-primary focus:bg-white transition-all"
+                        placeholder="e.g. ICICI Bank, Axis Bank..."
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Cheque / DD Number (Required)</p>
+                      <input 
+                        type="text" 
+                        value={paymentDetails.chequeNo}
+                        onChange={(e) => setPaymentDetails(p => ({ ...p, chequeNo: e.target.value }))}
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black text-slate-800 outline-none focus:border-primary focus:bg-white transition-all"
+                        placeholder="Enter 6-digit Cheque Number..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {paymentMode === "Card Swipe" && (
+              <div className="animate-in fade-in slide-in-from-top-4 space-y-3">
+                <div className="bg-white rounded-3xl p-5 border border-slate-100 space-y-4 shadow-sm">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-primary">Card Terminal Swipe (Credit/Debit)</p>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">Terminal Transaction ID / Approval Code (Required)</p>
+                    <input 
+                      type="text" 
+                      value={paymentDetails.transactionId}
+                      onChange={(e) => setPaymentDetails(p => ({ ...p, transactionId: e.target.value }))}
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-xs font-black text-slate-800 outline-none focus:border-primary focus:bg-white transition-all uppercase placeholder:normal-case"
+                      placeholder="Enter approval/transaction code..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {paymentMode === "Razorpay" && (
+              <div className="space-y-4 animate-in fade-in">
+                <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 italic text-[9px] text-orange-700 leading-relaxed">
+                  Click 'GENERATE RAZORPAY LINK' below to create a payment invoice link. (Includes 2% gateway convenience charges)
+                </div>
+                {paymentDetails.paymentLink && (
+                  <div className="animate-in fade-in slide-in-from-top-4 space-y-2">
+                    <div className="bg-white rounded-3xl p-6 border border-orange-100 space-y-3 shadow-sm">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-orange-600">Active Payment Link Generated</p>
+                      <div className="flex gap-2">
+                        <input readOnly value={paymentDetails.paymentLink} className="flex-1 bg-white border border-orange-100 rounded-xl px-4 py-3 text-[10px] font-black text-orange-700 outline-none" />
+                        <button onClick={() => { navigator.clipboard.writeText(paymentDetails.paymentLink); alert("Link Copied!"); }} className="bg-orange-500 text-white px-6 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-orange-500/10">Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+          
           <div className="col-span-6 space-y-4">
+            {/* Amount to Pay Input */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-3">
+              <div className="flex justify-between items-center">
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Amount to Pay (Partial override allowed)</p>
+                {customAmount !== null && (
+                  <button 
+                    onClick={() => setCustomAmount(null)}
+                    className="text-[8px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-widest"
+                  >
+                    Reset to Default
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">₹</span>
+                <input 
+                  type="number" 
+                  value={customAmount !== null ? customAmount : grandTotal} 
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setCustomAmount(isNaN(val) ? null : val);
+                  }}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-8 pr-4 py-4 text-xl font-black outline-none focus:border-primary focus:bg-white transition-all text-slate-900"
+                  placeholder="Enter custom amount..."
+                  min="0"
+                />
+              </div>
+            </div>
+
+            {/* Total Balance Sheet Card */}
             <div className="bg-[#101420] rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 blur-3xl rounded-full -mr-24 -mt-24 group-hover:scale-125 transition-transform duration-1000" />
               <div className="flex items-center justify-between mb-8 opacity-40"><p className="text-[8px] font-black uppercase tracking-widest">Net Account Balance</p><p className="text-[9px] font-black">₹{(grandTotal || 0).toLocaleString()}</p></div>
-              <div className="flex items-end justify-between relative z-10"><p className="text-[8px] font-black uppercase tracking-widest text-primary italic">Student Settlement Total</p><p className="text-5xl font-black tracking-tighter">₹{(grandTotal || 0).toLocaleString()}</p></div>
+              <div className="flex items-end justify-between relative z-10"><p className="text-[8px] font-black uppercase tracking-widest text-primary italic">Student Settlement Total</p><p className="text-5xl font-black tracking-tighter">₹{(targetTotal || 0).toLocaleString()}</p></div>
             </div>
+
+            {/* Confirmation Button */}
             <button 
               onClick={async () => {
-                if (paymentMode === "Razorpay") {
-                  console.log("🚀 INITIALIZING RAZORPAY LINK GENERATION:", { studentId: student.id, amount: grandTotal });
+                if (paymentMode === "Razorpay" && !paymentDetails.paymentLink) {
+                  console.log("🚀 INITIALIZING RAZORPAY LINK GENERATION:", { studentId: student.id, amount: targetTotal });
                   setPaymentDetails(p => ({ ...p, linkLoading: true }));
                   try {
                     const result = await createPaymentLinkAction({ 
                       studentId: student.id, 
                       studentName: `${student.firstName} ${student.lastName}`,
-                      amount: grandTotal, 
+                      amount: targetTotal, 
                       terms: settlements[0].selectedTerms,
                       notes: `Fee Settlement for ${student.firstName}`,
                       email: student.parentEmail || undefined,
@@ -484,12 +853,26 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     setError("Critical failure in payment gateway.");
                     setPaymentDetails(p => ({ ...p, linkLoading: false }));
                   }
-                } else setStep("denomination");
+                } else if (paymentMode === "Cash") {
+                  setError(null);
+                  setStep("denomination");
+                } else {
+                  // Direct manual confirmation for other offline bank/digital methods
+                  await processPayment();
+                }
               }} 
-              disabled={grandTotal === 0 || collectionLoading} 
+              disabled={targetTotal === 0 || collectionLoading || paymentDetails.linkLoading} 
               className="w-full py-6 bg-orange-500 text-white rounded-[2.5rem] font-black text-lg uppercase tracking-widest shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              {collectionLoading || paymentDetails.linkLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : (paymentMode === "Cash" ? "Process Cash Settlement" : "GENERATE RAZORPAY LINK")}
+              {collectionLoading || paymentDetails.linkLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : paymentMode === "Cash" ? (
+                "Process Cash Settlement"
+              ) : paymentMode === "Razorpay" && !paymentDetails.paymentLink ? (
+                "GENERATE RAZORPAY LINK"
+              ) : (
+                `Record ${paymentMode} Payment`
+              )}
             </button>
           </div>
         </div>
@@ -551,9 +934,15 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                     ))}
                  </div>
                  <div className="grid grid-cols-2 gap-6 mb-8">
-                    <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100"><p className="text-[8px] font-black uppercase text-slate-400 mb-1">Fee Due</p><p className="text-3xl font-black text-slate-900 tracking-tighter">₹{(grandTotal || 0).toLocaleString()}</p></div>
+                    <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100"><p className="text-[8px] font-black uppercase text-slate-400 mb-1">Fee Due</p><p className="text-3xl font-black text-slate-900 tracking-tighter">₹{(targetTotal || 0).toLocaleString()}</p></div>
                     <div className={cn("p-6 rounded-[2rem] border-2 transition-all flex flex-col justify-center", isTallyValid ? "bg-emerald-50 border-emerald-500/20" : "bg-rose-50 border-rose-500/20")}><p className="text-[8px] font-black uppercase opacity-40 mb-1">Tally</p><p className={cn("text-3xl font-black tracking-tighter", isTallyValid ? "text-emerald-500" : "text-rose-500")}>₹{(tallyTotal || 0).toLocaleString()}</p></div>
                  </div>
+                 {error && (
+                    <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs font-bold text-center flex items-center justify-center gap-2">
+                       <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                       <span>{error}</span>
+                    </div>
+                 )}
                  <button disabled={!isTallyValid || collectionLoading} onClick={processPayment} className="w-full py-8 bg-slate-900 text-white rounded-[2.5rem] font-black text-2xl uppercase tracking-widest shadow-2xl disabled:opacity-50 transition-all active:scale-95">{collectionLoading ? <Loader2 className="w-8 h-8 animate-spin mx-auto" /> : "Confirm & Receive"}</button>
               </motion.div>
            </div>

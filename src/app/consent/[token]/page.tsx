@@ -6,9 +6,10 @@ export const metadata = {
   title: "Student Re-admission Consent | Virtue Modern School",
 };
 
-export default async function ConsentPage({ params }: { params: { token: string } }) {
+export default async function ConsentPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
   // Fetch consent data server-side
-  const result = await getConsentByTokenAction(params.token);
+  const result = await getConsentByTokenAction(token);
 
   if (!result.success || !result.data) {
     return (
@@ -39,7 +40,7 @@ export default async function ConsentPage({ params }: { params: { token: string 
       </div>
 
       <div className="relative z-10 pt-10">
-        <ConsentForm token={params.token} consentData={result.data} />
+        <ConsentForm token={token} consentData={result.data} />
       </div>
     </div>
   );

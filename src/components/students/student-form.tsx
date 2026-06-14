@@ -903,13 +903,27 @@ export function StudentForm() {
                   <Field label="Father Phone *" error={errors.fatherPhone?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("fatherPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
+                      <input 
+                        {...register("fatherPhone")} 
+                        placeholder="Phone" 
+                        className={`${inputCls} pl-10`} 
+                        onInput={(e: any) => {
+                          e.target.value = e.target.value.replace(/[^\d]/g, "");
+                        }}
+                      />
                     </div>
                   </Field>
                   <Field label="Alternate Phone" error={errors.fatherAlternatePhone?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("fatherAlternatePhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
+                      <input 
+                        {...register("fatherAlternatePhone")} 
+                        placeholder="Phone" 
+                        className={`${inputCls} pl-10`} 
+                        onInput={(e: any) => {
+                          e.target.value = e.target.value.replace(/[^\d]/g, "");
+                        }}
+                      />
                     </div>
                   </Field>
                   <Field label="Father Email" error={errors.fatherEmail?.message}>
@@ -933,13 +947,27 @@ export function StudentForm() {
                   <Field label="Mother Phone" error={errors.motherPhone?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("motherPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
+                      <input 
+                        {...register("motherPhone")} 
+                        placeholder="Phone" 
+                        className={`${inputCls} pl-10`} 
+                        onInput={(e: any) => {
+                          e.target.value = e.target.value.replace(/[^\d]/g, "");
+                        }}
+                      />
                     </div>
                   </Field>
                   <Field label="Alternate Phone" error={errors.motherAlternatePhone?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("motherAlternatePhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
+                      <input 
+                        {...register("motherAlternatePhone")} 
+                        placeholder="Phone" 
+                        className={`${inputCls} pl-10`} 
+                        onInput={(e: any) => {
+                          e.target.value = e.target.value.replace(/[^\d]/g, "");
+                        }}
+                      />
                     </div>
                   </Field>
                   <Field label="Mother Email" error={errors.motherEmail?.message}>
@@ -963,7 +991,14 @@ export function StudentForm() {
                   <Field label="Contact Phone" error={errors.emergencyContactPhone?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("emergencyContactPhone")} placeholder="Phone" className={`${inputCls} pl-10`} />
+                      <input 
+                        {...register("emergencyContactPhone")} 
+                        placeholder="Phone" 
+                        className={`${inputCls} pl-10`} 
+                        onInput={(e: any) => {
+                          e.target.value = e.target.value.replace(/[^\d]/g, "");
+                        }}
+                      />
                     </div>
                   </Field>
                   <Field label="Relation" error={errors.emergencyContactRelation?.message}>
@@ -972,7 +1007,14 @@ export function StudentForm() {
                   <Field label="WhatsApp Number" error={errors.whatsappNumber?.message}>
                     <div className="relative flex items-center">
                       <span className="absolute left-2.5 text-foreground/50 text-sm font-medium">+91</span>
-                      <input {...register("whatsappNumber")} placeholder="Phone" className={`${inputCls} pl-10`} />
+                      <input 
+                        {...register("whatsappNumber")} 
+                        placeholder="Phone" 
+                        className={`${inputCls} pl-10`} 
+                        onInput={(e: any) => {
+                          e.target.value = e.target.value.replace(/[^\d]/g, "");
+                        }}
+                      />
                     </div>
                   </Field>
                 </div>

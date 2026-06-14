@@ -150,7 +150,16 @@ export default function LoginPage() {
                   <User className="w-5 h-5" />
                 </div>
                 <input
-                  {...register("identifier")}
+                  {...register("identifier", {
+                    onChange: (e) => {
+                      const val = e.target.value;
+                      if (/^[0-9+\s()-]*$/.test(val)) {
+                        e.target.value = val.replace(/[^\d]/g, "");
+                      } else {
+                        e.target.value = val.replace(/\s/g, "");
+                      }
+                    }
+                  })}
                   type="text"
                   placeholder="your.email@school.com"
                   autoCapitalize="none"

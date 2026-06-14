@@ -27,6 +27,7 @@ function ThankYouContent() {
   const isPaid      = status === "success";
   const isCancelled = status === "cancelled";
   const isError     = status === "error";
+  const isPending   = status === "pending_verification";
 
   // Auto-fetch paid link details to compile receipt off-screen
   useEffect(() => {
@@ -84,6 +85,23 @@ function ThankYouContent() {
             <p className="text-slate-400 text-sm">
               {isCancelled ? "The payment was not completed. You can close this page and try again." : "There was an issue processing your payment. Please contact the school."}
             </p>
+          </div>
+        )}
+
+        {/* ── Pending Verification ── */}
+        {isPending && (
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center animate-scale-in space-y-6">
+            <div className="w-20 h-20 rounded-full bg-amber-50 border-2 border-amber-100 flex items-center justify-center mx-auto mb-5">
+              <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 mb-2">Verification Pending</h1>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              We have received your UPI transaction UTR details. Our accounts team will match this with our daily bank statements, and your receipt will download automatically once confirmed.
+            </p>
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-xs font-bold text-indigo-950 flex flex-col items-center gap-1.5 leading-normal">
+              <span>Receipt Download Status / రశీదు డౌన్‌లోడ్ సమాచారం</span>
+              <span className="text-slate-500 font-semibold italic text-[11px]">📥 Downloads automatically upon accountant statement confirmation.</span>
+            </div>
           </div>
         )}
 

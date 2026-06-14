@@ -116,7 +116,7 @@ export async function provisionYearTemplateAction(templateId: string) {
 
         const created = await prisma.academicYear.create({
             data: {
-                id: `AY-${schoolId}-${yearName}`,
+                id: `${schoolId}-HQ-AY-${yearName}`,
                 name: yearName,
                 startDate: new Date(startYear, template.startMonth - 1, 1),
                 endDate: new Date(endYear, template.endMonth, 0), // Last day of endMonth

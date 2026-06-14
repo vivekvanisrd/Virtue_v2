@@ -6,6 +6,7 @@ import { getSovereignIdentity } from "../auth/backbone";
 import { logActivity } from "@/lib/utils/audit-logger";
 import { revalidatePath } from "next/cache";
 import { IdGenerator } from "@/lib/id-generator";
+import { cleanPhone } from "@/lib/utils/validations";
 
 export type BulkImportResult = {
   success: boolean;
@@ -74,7 +75,7 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
             lastName: lName,
             middleName: deepSanitize(raw.middleName) || "",
             email: (raw.email && raw.email.includes("@")) ? raw.email.toLowerCase() : `imported.${fName.toLowerCase()}@pending.com`,
-            phone: (raw.phone && raw.phone.length >= 10) ? raw.phone : "0000000000",
+            phone: cleanPhone(raw.phone) || "0000000000",
             dob: raw.dob || "2000-01-01",
             gender: raw.gender || "Other",
             address: placeholderIfEmpty(raw.address, "[REQ_VERIFY]"),
@@ -148,6 +149,14 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
     const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { code: true } });
     if (!school || !branch) throw new Error("METADATA_MISSING: School/Branch records are invalid.");
 
+    // Fetch all branch codes to support multi-branch onboarding mapping
+    const allBranches = await prisma.branch.findMany({
+        where: { schoolId },
+        select: { id: true, code: true }
+    });
+    const branchCodeMap = new Map<string, string>();
+    allBranches.forEach(b => branchCodeMap.set(b.id, b.code));
+
     // 3. Resilient Micro-Transaction Execution (Pillar 3: Non-Blocking Cluster Onboarding)
     for (const data of validData) {
         const rowId = validData.indexOf(data) + 1; // Logical row reference
@@ -170,17 +179,38 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
                 let staffCode = data.staffCode?.trim();
                 
                 if (!staffCode || staffCode === "") {
+                    const targetBranchId = data.branchId || branchId;
+                    const targetBranchCode = branchCodeMap.get(targetBranchId) || branch.code;
                     staffCode = await IdGenerator.generateStaffCode({
                         schoolId,
                         schoolCode: school.code,
-                        branchId: data.branchId || branchId,
-                        branchCode: branch.code,
+                        branchId: targetBranchId,
+                        branchCode: targetBranchCode,
                         role: data.role || "STAFF"
                     }, tx);
                 }
 
                 if (conflictSet.codes.has(staffCode.toUpperCase())) {
                     throw new Error(`DUPLICATE_CODE: Staff ID ${staffCode} already exists in the registry.`);
+                }
+
+                // Compute employeeCategory based on input or role mapping
+                let category = data.employeeCategory;
+                if (!category) {
+                    const r = (data.role || "STAFF").toUpperCase();
+                    if (r === "OWNER" || r === "FOUNDER" || r === "CO-FOUNDER") {
+                        category = "OWNER";
+                    } else if (r === "PRINCIPAL" || r === "VICE_PRINCIPAL" || r === "DIRECTOR") {
+                        category = "MANAGEMENT";
+                    } else if (r === "TEACHER" || r.includes("TEAC") || r === "HOD") {
+                        category = "TEACHING";
+                    } else if (r === "DRIVER" || r === "CONDUCTOR" || r.includes("DRIV")) {
+                        category = "TRANSPORT";
+                    } else if (r === "ATTENDANT" || r === "SUPPORT" || r === "AAYA") {
+                        category = "SUPPORT";
+                    } else {
+                        category = "NON_TEACHING";
+                    }
                 }
 
                 // Create Base Staff
@@ -191,7 +221,7 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
                         lastName: data.lastName.trim(),
                         middleName: data.middleName?.trim() || null,
                         email: data.email?.trim().toLowerCase() || null,
-                        phone: data.phone?.trim() || null,
+                        phone: cleanPhone(data.phone),
                         gender: data.gender || "Other",
                         dob: data.dob ? new Date(data.dob) : null,
                         address: data.address?.trim() || null,
@@ -199,6 +229,9 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
                         role: data.role || "STAFF",
                         branchId: data.branchId || branchId,
                         schoolId: schoolId,
+                        employeeCategory: category,
+                        employmentType: data.employmentType || null,
+                        identityVersion: data.identityVersion || (data.staffCode ? "V1" : "V2")
                     }
                 });
 
@@ -276,7 +309,9 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
         details: `Cluster Import Event: ${result.insertedCount} Personnel Onboarded, ${result.skippedCount} Skipped/Failed.`
     });
 
-    revalidatePath("/", "layout");
+    try {
+        revalidatePath("/", "layout");
+    } catch (e) {}
     return result;
 
   } catch (e: any) {

@@ -639,7 +639,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                         {isEditing ? (
                           <input 
                             value={student.family?.fatherPhone || ""}
-                            onChange={(e) => setStudent({...student, family: {...student.family, fatherPhone: e.target.value}})}
+                            onChange={(e) => setStudent({...student, family: {...student.family, fatherPhone: e.target.value.replace(/[^\d]/g, "")}})}
                             className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
                           />
                         ) : (
@@ -691,7 +691,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                         {isEditing ? (
                           <input 
                             value={student.family?.motherPhone || ""}
-                            onChange={(e) => setStudent({...student, family: {...student.family, motherPhone: e.target.value}})}
+                            onChange={(e) => setStudent({...student, family: {...student.family, motherPhone: e.target.value.replace(/[^\d]/g, "")}})}
                             className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
                           />
                         ) : (

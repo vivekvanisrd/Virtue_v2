@@ -55,6 +55,26 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
     setLoading(false);
   };
 
+  const filteredStaff = staff.filter((employee) => {
+    const searchLower = searchTerm.toLowerCase().trim();
+    
+    let matchesSearch = true;
+    if (searchLower) {
+      const firstNameMatch = employee.firstName ? employee.firstName.toLowerCase().includes(searchLower) : false;
+      const lastNameMatch = employee.lastName ? employee.lastName.toLowerCase().includes(searchLower) : false;
+      const staffCodeMatch = employee.staffCode ? employee.staffCode.toLowerCase().includes(searchLower) : false;
+      const emailMatch = employee.email ? employee.email.toLowerCase().includes(searchLower) : false;
+      const phoneMatch = employee.phone ? employee.phone.toLowerCase().includes(searchLower) : false;
+      const designationMatch = employee.professional?.designation ? employee.professional.designation.toLowerCase().includes(searchLower) : false;
+      
+      matchesSearch = !!(firstNameMatch || lastNameMatch || staffCodeMatch || emailMatch || phoneMatch || designationMatch);
+    }
+
+    const matchesDept = !filterDept || employee.professional?.department?.toLowerCase() === filterDept.toLowerCase();
+
+    return matchesSearch && matchesDept;
+  });
+
   const isVerificationRequired = (emp: any) => {
     const checkObj = (obj: any) => {
         if (!obj) return false;
@@ -129,7 +149,7 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Syncing Personnel Registry...</p>
                   </td>
                 </tr>
-              ) : staff.length === 0 ? (
+              ) : filteredStaff.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-24 text-center">
                     <div className="bg-slate-50 w-20 h-20 rounded-[28px] flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
@@ -140,7 +160,7 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                   </td>
                 </tr>
               ) : (
-                staff.map((employee) => {
+                filteredStaff.map((employee) => {
                   const needsVerify = isVerificationRequired(employee);
                   return (
                     <tr key={employee.id} className="hover:bg-slate-50/80 transition-all duration-300 group cursor-default">
@@ -286,9 +306,9 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
         </div>
         
         {/* Simple Footer */}
-        {!loading && staff.length > 0 && (
+        {!loading && filteredStaff.length > 0 && (
           <div className="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-            <span>Total Operational Personnel: <span className="text-primary font-black ml-1 bg-primary/10 px-2 py-0.5 rounded-full">{staff.length}</span></span>
+            <span>Total Operational Personnel: <span className="text-primary font-black ml-1 bg-primary/10 px-2 py-0.5 rounded-full">{filteredStaff.length}</span></span>
             <div className="flex gap-2">
                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                <div className="w-2 h-2 rounded-full bg-primary/30"></div>

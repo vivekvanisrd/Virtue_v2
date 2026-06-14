@@ -20,6 +20,24 @@ function encrypt(text: string) {
 }
 
 /**
+ * Decrypt sensitive banking data
+ */
+function decrypt(text: string) {
+  try {
+    const textParts = text.split(":");
+    const iv = Buffer.from(textParts.shift()!, "hex");
+    const encryptedText = Buffer.from(textParts.join(":"), "hex");
+    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (err) {
+    console.error("Decryption failed:", err);
+    return "";
+  }
+}
+
+/**
  * Save Axis Bank Configuration securely
  */
 export async function saveAxisConfigAction(formData: {
@@ -101,5 +119,126 @@ export async function testAxisConnectionAction(schoolId: string) {
     };
   } catch (error: any) {
     return { success: false, message: "Connection Failed: " + error.message };
+  }
+}
+
+/**
+ * Save Branch Specific Gateway Settings
+ */
+export async function saveBranchGatewayConfigAction(params: {
+  branchId: string;
+  provider: string; // "Razorpay" | "PhonePe" | "Cashfree" | "Paytm" | "UPI_QR" | "NONE"
+  config: Record<string, string>;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    
+    // Gated to Principal and Owner roles
+    if (identity.role !== "OWNER" && identity.role !== "PRINCIPAL" && !identity.isGlobalDev) {
+      throw new Error("ACCESS_DENIED: Only Owners and Principals can manage payment gateways.");
+    }
+    
+    const schoolId = identity.schoolId;
+    const { branchId, provider, config } = params;
+
+    const branchExists = await prisma.branch.findFirst({
+      where: { id: branchId, schoolId }
+    });
+    if (!branchExists) throw new Error("INVALID_BRANCH: Branch does not exist under your school.");
+
+    // Define keys to save
+    const settingsToSave: { key: string; value: string; isSecret: boolean }[] = [
+      { key: `BRANCH_${branchId}_GATEWAY_PROVIDER`, value: provider, isSecret: false }
+    ];
+
+    // Add provider specific configs
+    for (const [rawKey, rawValue] of Object.entries(config)) {
+      // Convert camelCase rawKey (e.g. upiVpa) to uppercase snake_case (e.g. UPI_VPA)
+      const keySuffix = rawKey.replace(/([A-Z])/g, "_$1").toUpperCase().replace(/\s+/g, '_');
+      const isSecret = ["KEY_SECRET", "WEBHOOK_SECRET", "SALT_KEY", "CLIENT_SECRET", "SECRET"].some(s => keySuffix.includes(s));
+      
+      const val = isSecret && rawValue ? encrypt(rawValue) : rawValue;
+      settingsToSave.push({
+        key: `BRANCH_${branchId}_${keySuffix}`,
+        value: val,
+        isSecret
+      });
+    }
+
+    // Upsert all settings in prisma
+    for (const setting of settingsToSave) {
+      await prisma.globalSetting.upsert({
+        where: {
+          schoolId_key: { schoolId, key: setting.key }
+        },
+        update: { value: setting.value, isSecret: setting.isSecret },
+        create: {
+          schoolId,
+          key: setting.key,
+          value: setting.value,
+          isSecret: setting.isSecret
+        }
+      });
+    }
+
+    try {
+      revalidatePath("/", "layout");
+    } catch (e) {}
+    
+    return { success: true, message: "Gateway configuration saved successfully." };
+  } catch (error: any) {
+    console.error("[SAVE_BRANCH_GATEWAY_CONFIG_ERROR]", error);
+    return { success: false, message: error.message || "Failed to save gateway configuration." };
+  }
+}
+
+/**
+ * Get Branch Specific Gateway Settings
+ */
+export async function getBranchGatewayConfigAction(branchId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    
+    const schoolId = identity.schoolId;
+
+    const settings = await prisma.globalSetting.findMany({
+      where: {
+        schoolId,
+        key: { startsWith: `BRANCH_${branchId}_` }
+      }
+    });
+
+    const config: Record<string, any> = {};
+    let provider = "NONE";
+
+    for (const s of settings) {
+      const suffix = s.key.replace(`BRANCH_${branchId}_`, "");
+      if (suffix === "GATEWAY_PROVIDER") {
+        provider = s.value;
+      } else {
+        const val = s.isSecret && s.value ? decrypt(s.value) : s.value;
+        const camelKey = suffix.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+        config[camelKey] = val;
+        
+        // Backward compatibility fallback for non-underscored keys
+        if (camelKey === "upivpa") config.upiVpa = val;
+        if (camelKey === "upimerchantname") config.upiMerchantName = val;
+        if (camelKey === "keyid") config.keyId = val;
+        if (camelKey === "keysecret") config.keySecret = val;
+        if (camelKey === "webhooksecret") config.webhookSecret = val;
+        if (camelKey === "clientid") config.clientId = val;
+        if (camelKey === "clientsecret") config.clientSecret = val;
+        if (camelKey === "merchantid") config.merchantId = val;
+        if (camelKey === "saltkey") config.saltKey = val;
+        if (camelKey === "saltindex") config.saltIndex = val;
+      }
+    }
+
+    return { success: true, provider, config };
+  } catch (error: any) {
+    console.error("[GET_BRANCH_GATEWAY_CONFIG_ERROR]", error);
+    return { success: false, error: error.message || "Failed to fetch gateway configuration." };
   }
 }

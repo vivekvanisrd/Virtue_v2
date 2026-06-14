@@ -43,7 +43,11 @@ export function StudentDirectory() {
   const [filters, setFilters] = useState({
     classId: "",
     sectionId: "",
-    branchId: ""
+    branchId: "",
+    aadhaarStatus: "all",
+    apaarStatus: "all",
+    siblingStatus: "all",
+    feeStatus: "all"
   });
   const [viewMode, setViewMode] = useState<"grid" | "list" | "detailed">("grid");
   const [refData, setRefData] = useState<{
@@ -181,6 +185,46 @@ export function StudentDirectory() {
                <option key={c.id} value={c.id}>{c.name}</option>
             ))}
          </select>
+
+         <select 
+            value={filters.aadhaarStatus}
+            onChange={(e) => setFilters(prev => ({ ...prev, aadhaarStatus: e.target.value }))}
+            className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+         >
+            <option value="all">Aadhaar: All</option>
+            <option value="submitted">Aadhaar: Submitted</option>
+            <option value="not_submitted">Aadhaar: Pending</option>
+         </select>
+
+         <select 
+            value={filters.apaarStatus}
+            onChange={(e) => setFilters(prev => ({ ...prev, apaarStatus: e.target.value }))}
+            className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+         >
+            <option value="all">APAAR ID: All</option>
+            <option value="submitted">APAAR ID: Submitted</option>
+            <option value="not_submitted">APAAR ID: Pending</option>
+         </select>
+
+         <select 
+            value={filters.siblingStatus}
+            onChange={(e) => setFilters(prev => ({ ...prev, siblingStatus: e.target.value }))}
+            className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+         >
+            <option value="all">Siblings: All</option>
+            <option value="has_siblings">Has Siblings</option>
+            <option value="single_child">Single Child</option>
+         </select>
+
+         <select 
+            value={filters.feeStatus}
+            onChange={(e) => setFilters(prev => ({ ...prev, feeStatus: e.target.value }))}
+            className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+         >
+            <option value="all">Fees: All</option>
+            <option value="fully_paid">Fees: Fully Paid</option>
+            <option value="dues_pending">Fees: Dues Pending</option>
+         </select>
       </div>
 
       {/* ─── Main Content ─── */}
@@ -201,7 +245,7 @@ export function StudentDirectory() {
            <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Results Found</h3>
            <p className="text-sm text-slate-400 mt-2 max-w-xs font-medium">Refine your search parameters or initiate a new admission request from the hub.</p>
            <button 
-              onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "" }); setSearchTerm(""); }}
+              onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "", aadhaarStatus: "all", apaarStatus: "all", siblingStatus: "all", feeStatus: "all" }); setSearchTerm(""); }}
               className="mt-8 px-8 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all"
             >
               Reset Registry Filters
@@ -285,13 +329,44 @@ export function StudentDirectory() {
                          <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Enrollment</p>
                          <p className="text-xs font-black text-slate-700 tracking-tight">{student.history?.[0]?.admissionNumber || student.admissionNumber || "N/A"}</p>
                       </div>
-                      <div className="space-y-1.5 text-right">
-                         <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Financials</p>
-                         <div className="flex items-center justify-end gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-black text-emerald-600 tracking-widest uppercase italic shadow-emerald-100 drop-shadow-sm">VIVA-CLEAR</span>
-                         </div>
-                      </div>
+                       <div className="space-y-1.5 text-right">
+                          <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Financials</p>
+                          {(() => {
+                            const components = student.financial?.components || [];
+                            const tuition = components.length > 0 
+                                ? components
+                                    .filter((c: any) => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                                                 !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                                                 !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                                                 !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+                                    .reduce((sum: number, c: any) => sum + Number(c.baseAmount || 0), 0)
+                                : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
+                            const discount = components.length > 0 
+                                ? components
+                                    .filter((c: any) => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                                                 !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                                                 !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                                                 !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+                                    .reduce((sum: number, c: any) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+                                : Number(student.financial?.totalDiscount || 0);
+                            
+                            const expectedTuition = tuition - discount;
+                            const totalPaid = (student.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
+                            
+                            const isFullyPaid = totalPaid >= expectedTuition;
+                            return isFullyPaid ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                 <span className="text-[10px] font-black text-emerald-600 tracking-widest uppercase italic shadow-emerald-100 drop-shadow-sm">VIVA-CLEAR</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1.5">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                 <span className="text-[10px] font-black text-amber-600 tracking-widest uppercase italic shadow-amber-100 drop-shadow-sm">₹{(expectedTuition - totalPaid).toLocaleString()} DUE</span>
+                              </div>
+                            );
+                          })()}
+                       </div>
                    </div>
 
                    <div className="flex items-center gap-3 pt-6 border-t border-slate-50">

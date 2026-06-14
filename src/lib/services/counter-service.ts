@@ -50,12 +50,12 @@ export const CounterService = {
    * Example: VIVES + VIVESRCB -> RCB -> VIVES-RCB
    */
   sanitizeBranchCode(schoolCode: string, branchCode: string): string {
-    const s = schoolCode.toUpperCase();
-    const b = branchCode.toUpperCase();
+    const s = schoolCode.toUpperCase().trim();
+    let b = branchCode.toUpperCase().trim();
     if (b.startsWith(s)) {
-        return b.substring(s.length);
+        b = b.substring(s.length);
     }
-    return b;
+    return b.replace(/^[-_]+|[-_]+$/g, '');
   },
 
   /**
@@ -129,27 +129,17 @@ export const CounterService = {
     schoolCode: string;
     branchId: string;
     branchCode: string;
-    role: string;
+    role?: string;
   }, tx?: any): Promise<string> {
-    const roleMap: Record<string, string> = {
-        'TEACHER': 'TEAC',
-        'ADMIN': 'ADMN',
-        'MANAGEMENT': 'MGMT',
-        'STAFF': 'STAF',
-        'OWNER': 'OWNR',
-        'DEVELOPER': 'DEVP'
-    };
-    const shortRole = roleMap[params.role.toUpperCase()] || params.role.substring(0, 4).toUpperCase();
-    
     const seq = await this.getNextSequence({
       schoolId: params.schoolId,
       branchId: params.branchId,
-      type: `STAFF_${shortRole}`, 
+      type: "STAFF_UNIFIED", 
       year: "GLOBAL" 
     }, tx);
 
     const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
-    return `${params.schoolCode}-${shortBranch}-${shortRole}-${seq.toString().padStart(4, '0')}`;
+    return `${params.schoolCode}-${shortBranch}-STF-${seq.toString().padStart(6, '0')}`;
   },
 
   /**

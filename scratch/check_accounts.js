@@ -8,7 +8,7 @@ async function main() {
       orderBy: { accountCode: "asc" }
     });
     console.log("ACCOUNTS_START");
-    console.log(JSON.stringify(accounts.map(a => ({ id: a.id, code: a.accountCode, name: a.name, type: a.type })), null, 2));
+    console.log(JSON.stringify(accounts.map(a => ({ id: a.id, code: a.accountCode, name: a.accountName, type: a.accountType })), null, 2));
     console.log("ACCOUNTS_END");
   } catch (error) {
     console.error("Error querying accounts:", error);
@@ -18,3 +18,4 @@ async function main() {
 }
 
 main();
+

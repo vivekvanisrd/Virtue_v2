@@ -9,6 +9,7 @@ import { sanitizePhone } from '@/lib/utils/validations';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+import * as crypto from 'crypto';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 🛡️ GUARD: Only DEVELOPER can call these actions
@@ -116,7 +117,9 @@ export async function createSchoolAction(data: {
         // Seed standard RBAC roles for this school
         await seedSovereignRolesAction(cleanCode);
 
-        revalidatePath('/developer');
+        try {
+            revalidatePath('/developer');
+        } catch (e) {}
         return {
             success: true,
             data: result,
@@ -262,6 +265,8 @@ export async function createBranchAction(data: {
                         branchId: branch.id,
                         status: 'ACTIVE',
                         onboardingStatus: 'PASSWORD_CHANGE_REQUIRED',
+                        employeeCategory: 'MANAGEMENT',
+                        identityVersion: 'V2',
                     }
                 });
                 adminResult = {
@@ -275,7 +280,9 @@ export async function createBranchAction(data: {
             return { branch, adminResult };
         }, { timeout: 30000 });
 
-        revalidatePath('/developer');
+        try {
+            revalidatePath('/developer');
+        } catch (e) {}
         return { success: true, data: result };
     } catch (e: any) {
         console.error('[CREATE_BRANCH]', e.message);
@@ -332,6 +339,13 @@ export async function createOwnerAction(data: {
                 role: data.role,
             }, tx);
 
+            let employeeCategory: 'OWNER' | 'MANAGEMENT' | 'NON_TEACHING' = 'NON_TEACHING';
+            if (data.role === 'OWNER') {
+                employeeCategory = 'OWNER';
+            } else if (data.role === 'PRINCIPAL') {
+                employeeCategory = 'MANAGEMENT';
+            }
+
             const newStaff = await tx.staff.create({
                 data: {
                     staffCode,
@@ -346,6 +360,8 @@ export async function createOwnerAction(data: {
                     branchId: data.branchId,
                     status: 'ACTIVE',
                     onboardingStatus: 'PASSWORD_CHANGE_REQUIRED',
+                    employeeCategory,
+                    identityVersion: 'V2',
                 }
             });
 
@@ -365,7 +381,9 @@ export async function createOwnerAction(data: {
             return newStaff;
         });
 
-        revalidatePath('/developer');
+        try {
+            revalidatePath('/developer');
+        } catch (e) {}
         return {
             success: true,
             data: {
@@ -459,6 +477,121 @@ export async function switchSchoolContextAction(schoolId: string | null, branchI
         return { success: true };
     } catch (e: any) {
         console.error('[SWITCH_CONTEXT_ERR]', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔍 STAFF USERS SEARCH: Search any user across all schools and branches
+// ─────────────────────────────────────────────────────────────────────────────
+export async function searchStaffUsersAction(query: string) {
+    try {
+        await guardDeveloper();
+        if (!query || query.trim().length < 2) {
+            return { success: true, data: [] };
+        }
+        const cleanQuery = query.trim();
+        const staffList = await prisma.staff.findMany({
+            where: {
+                OR: [
+                    { username: { contains: cleanQuery, mode: 'insensitive' } },
+                    { email: { contains: cleanQuery, mode: 'insensitive' } },
+                    { phone: { contains: cleanQuery, mode: 'insensitive' } },
+                    { staffCode: { contains: cleanQuery, mode: 'insensitive' } },
+                    { firstName: { contains: cleanQuery, mode: 'insensitive' } },
+                    { lastName: { contains: cleanQuery, mode: 'insensitive' } },
+                ]
+            },
+            select: {
+                id: true,
+                staffCode: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                username: true,
+                role: true,
+                school: { select: { name: true, code: true } },
+                branch: { select: { name: true, code: true } },
+                onboardingStatus: true,
+                status: true,
+            },
+            take: 20
+        });
+        return { success: true, data: staffList };
+    } catch (e: any) {
+        console.error('[SEARCH_STAFF_USERS]', e.message);
+        return { success: false, error: e.message, data: [] };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔑 RESET PASSWORD: Secure industrial standard password reset for any user
+// ─────────────────────────────────────────────────────────────────────────────
+export async function resetUserPasswordAction(staffId: string, customPassword?: string) {
+    try {
+        const identity = await guardDeveloper();
+
+        const staff = await prisma.staff.findUnique({
+            where: { id: staffId },
+            include: { school: true, branch: true }
+        });
+
+        if (!staff) {
+            return { success: false, error: 'Staff user not found.' };
+        }
+
+        // Generate temporary password if not provided
+        let tempPassword = customPassword?.trim();
+        if (!tempPassword) {
+            // Generate a secure high-entropy random password
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+=";
+            const length = 14;
+            tempPassword = "";
+            const bytes = crypto.randomBytes(length);
+            for (let i = 0; i < length; i++) {
+                tempPassword += charset[bytes[i] % charset.length];
+            }
+        }
+
+        const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+        await prisma.$transaction(async (tx) => {
+            // Update password and force onboarding status to password change required
+            await tx.staff.update({
+                where: { id: staffId },
+                data: {
+                    passwordHash,
+                    onboardingStatus: 'PASSWORD_CHANGE_REQUIRED',
+                    mobilePasswordUsed: false,
+                    mobileSessionToken: null
+                }
+            });
+
+            // Log activity
+            await tx.activityLog.create({
+                data: {
+                    schoolId: staff.schoolId,
+                    branchId: staff.branchId,
+                    action: 'STAFF_PASSWORD_RESET_BY_DEV',
+                    entityType: 'Staff',
+                    entityId: staff.id,
+                    details: `Developer reset password for ${staff.role}: ${staff.username || staff.email} (${staff.staffCode})`,
+                    userId: identity.staffId,
+                }
+            });
+        });
+
+        return {
+            success: true,
+            credentials: {
+                username: staff.username || staff.phone || staff.email || staff.staffCode,
+                password: tempPassword,
+                note: 'User must change their password on first login.'
+            }
+        };
+    } catch (e: any) {
+        console.error('[RESET_PASSWORD]', e.message);
         return { success: false, error: e.message };
     }
 }

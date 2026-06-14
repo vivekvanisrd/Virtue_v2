@@ -46,7 +46,7 @@ export const STANDARD_ROLES: Record<string, Record<Capability, boolean>> = {
   },
   FEE_COLLECTOR: {
     ADMISSION_CREATE: true, ADMISSION_UPDATE: false, STUDENT_DELETE: false,
-    RECORD_PAYMENT: true, REVERSE_LEDGER: false, VIEW_FINANCIALS: true,
+    RECORD_PAYMENT: true, REVERSE_LEDGER: false, VIEW_FINANCIALS: false,
     VIEW_AUDIT_BIN: false, ARCHIVE_STUDENT: false, RESTORE_STUDENT: false,
     ACADEMIC_CONFIG: false, HR_PAYROLL: false, INVENTORY_MANAGE: false,
     TRANSPORT_MANAGE: false, STAFF_MANAGE: false

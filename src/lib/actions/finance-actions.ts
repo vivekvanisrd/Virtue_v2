@@ -38,20 +38,47 @@ export async function findPotentialSiblings(studentId: string) {
     
     const target = await prisma.student.findUnique({
       where: { id: studentId },
-      include: { family: true, address: true }
+      include: { family: true }
     });
     if (!target) throw new Error("Student not found.");
+
+    const conditions: any[] = [];
+    
+    // 1. Aadhaar Match (Authority check)
+    if (target.family?.fatherAadhaar && target.family.fatherAadhaar.trim() !== "") {
+      conditions.push({ family: { fatherAadhaar: target.family.fatherAadhaar.trim() } });
+    }
+    if (target.family?.motherAadhaar && target.family.motherAadhaar.trim() !== "") {
+      conditions.push({ family: { motherAadhaar: target.family.motherAadhaar.trim() } });
+    }
+
+    // 2. Fallback: Double-Phone Check & Last Name Match
+    if (conditions.length === 0) {
+      const fatherPhone = target.family?.fatherPhone?.trim();
+      const motherPhone = target.family?.motherPhone?.trim();
+      if (fatherPhone && motherPhone) {
+        const nameFilter = target.lastName 
+          ? { lastName: { equals: target.lastName.trim(), mode: 'insensitive' as const } } 
+          : {};
+        conditions.push({
+          AND: [
+            { family: { fatherPhone } },
+            { family: { motherPhone } },
+            nameFilter
+          ]
+        });
+      }
+    }
+
+    if (conditions.length === 0) {
+      return { success: true, data: [] };
+    }
 
     const siblings = await prisma.student.findMany({
       where: {
         schoolId: context.schoolId,
         id: { not: studentId },
-        OR: [
-          { family: { fatherPhone: target.family?.fatherPhone } },
-          { family: { motherPhone: target.family?.motherPhone } },
-          { phone: target.phone },
-          { address: { permanentAddress: target.address?.permanentAddress } }
-        ]
+        OR: conditions
       },
       include: { academic: { include: { class: true } }, financial: true }
     });
@@ -121,7 +148,7 @@ export async function recordFeeCollection(params: {
     await checkCapability('RECORD_PAYMENT');
 
     // 🛡️ CRITICAL FIX: Import helpers and resolve activeFY in this function's scope
-    const { validateMilestone, canPayAdvance } = await import("../utils/fee-utils");
+    const { validateMilestone, canPayAdvance, calculateTermBreakdown } = await import("../utils/fee-utils");
     const activeFY = await prisma.financialYear.findFirst({
       where: { schoolId: context.schoolId, isCurrent: true }
     });
@@ -146,7 +173,17 @@ export async function recordFeeCollection(params: {
     const student = await prisma.student.findUnique({
       where: { id: params.studentId },
       include: { 
-        financial: { include: { components: true } }, 
+        financial: { 
+          include: { 
+            components: { 
+              include: { 
+                masterComponent: { 
+                  select: { id: true, name: true, type: true, accountCode: true } 
+                } 
+              } 
+            } 
+          } 
+        }, 
         collections: { where: { status: "Success" } } 
       }
     });
@@ -154,7 +191,12 @@ export async function recordFeeCollection(params: {
 
     const components = student.financial.components || [];
     const netAnnual = components.length > 0 
-        ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
+        ? components
+            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+            .reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
         // ✅ Bug 4 fixed: use annualTuition (true full total) not tuitionFee (partial)
         : Number(student.financial.annualTuition || student.financial.tuitionFee || 0) - Number(student.financial.totalDiscount || 0);
 
@@ -189,30 +231,56 @@ export async function recordFeeCollection(params: {
       throw new Error("Cannot collect Advance payment. All current year dues must be 100% cleared first.");
     }
 
-    // 4. ENFORCEMENT: Sequential Selection (No-Skip Policy)
-    const isAnnual = student.financial.paymentType === "Annual";
-    if (!isAnnual) {
-      if (params.selectedTerms.includes("term2") && !student.collections.some((c: any) => (c.allocatedTo as any)?.terms?.includes("term1")) && !params.selectedTerms.includes("term1")) {
-        throw new Error("Sequential Violation: Term 1 must be paid or selected to collect Term 2.");
+    // 4. ENFORCEMENT: Sequential Selection & Milestone Check based on Cumulative Balance
+    const plan = student.financial.paymentType || "Term-wise";
+    const tuition = components.length > 0 
+        ? components
+            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+            .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
+        : Number(student.financial.annualTuition || student.financial.tuitionFee || 0);
+    const discount = components.length > 0 
+        ? components
+            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+            .reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+        : Number(student.financial.totalDiscount || 0);
+
+    const breakdown = calculateTermBreakdown(tuition, discount, plan);
+
+    // Find the index of the highest selected installment
+    let maxSelectedIndex = -1;
+    breakdown.installments.forEach((inst, index) => {
+      if (params.selectedTerms.includes(inst.key)) {
+        maxSelectedIndex = Math.max(maxSelectedIndex, index);
       }
-      if (params.selectedTerms.includes("term3") && 
-          (!student.collections.some((c: any) => (c.allocatedTo as any)?.terms?.includes("term2")) && !params.selectedTerms.includes("term2")) ||
-          (!student.collections.some((c: any) => (c.allocatedTo as any)?.terms?.includes("term1")) && !params.selectedTerms.includes("term1"))) {
-        throw new Error("Sequential Violation: Previous terms must be paid or selected to collect Term 3.");
+    });
+
+    if (maxSelectedIndex > 0) {
+      // The sum of all prior installments must be fully paid
+      let requiredPriorSum = 0;
+      for (let i = 0; i < maxSelectedIndex; i++) {
+        requiredPriorSum += breakdown.installments[i].amount;
+      }
+      if (prevTotalPaid < (requiredPriorSum - 1)) {
+        const unfinishedInst = breakdown.installments.find((inst, idx) => idx < maxSelectedIndex && prevTotalPaid < (requiredPriorSum - inst.amount));
+        throw new Error(`Sequential Violation: The installment '${unfinishedInst?.label || "previous"}' must be fully paid before you can collect payments for '${breakdown.installments[maxSelectedIndex].label}'.`);
       }
     }
 
-    // 5. ENFORCEMENT: Milestone Milestone (50/75/100)
-    for (const term of params.selectedTerms) {
-      // For Annual, term1 is 100%
-      const termToValidate = (isAnnual && term === "term1") ? "term3" : term; 
-      const milestone = validateMilestone(termToValidate, newTotalPaid, netAnnual);
-      if (!milestone.success) {
-        throw new Error(
-          `Validation Failed: By collecting ${term.toUpperCase()}, the cumulative payment must be at least ${milestone.percent}% (` +
-          `₹${milestone.required.toLocaleString()}). New cumulative total would only be ₹${newTotalPaid.toLocaleString()}.`
-        );
+    // Max allowed total to prevent overpaying selected terms without selecting subsequent ones
+    let maxAllowedTotal = 0;
+    breakdown.installments.forEach((inst, index) => {
+      if (index <= maxSelectedIndex) {
+        maxAllowedTotal += inst.amount;
       }
+    });
+    if (newTotalPaid > (maxAllowedTotal + 49)) { // Allow up to 49 rupees tolerance for overpayment/rounding!
+      throw new Error(`Overpayment Violation: The new cumulative total (₹${newTotalPaid.toLocaleString()}) exceeds the maximum amount due for the selected installments (₹${maxAllowedTotal.toLocaleString()}). Please select additional installments to credit the extra amount.`);
     }
 
     // 6. RESOLVE ENROLLMENT IDENTITY & CODES (FOR 2026-27 BRANDING)
@@ -299,11 +367,13 @@ export async function recordFeeCollection(params: {
       });
 
       // 2. Double-Entry Journal
-      // Debit: Bank (1110) | Credit 1: AR (1200) | Credit 2: Service Charge (4200) | Credit 3: Admission Income (4100)
-      const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1110" } });
+      // Debit: Cash/Bank | Credit 1: AR (1200) | Credit 2: Service Charge (4200) | Credit 3: Admission Income (4100)
+      const isOnlineOrBank = ["Razorpay", "Bank QR", "Bank Transfer", "Cheque", "Card"].includes(params.paymentMode);
+      const debitAccountCode = isOnlineOrBank ? "1120" : "1110";
+      const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: debitAccountCode } });
       const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
-      const admissionAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } });
-      const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4200" } });
+      const admissionAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4200" } });
+      const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4500" } });
 
       if (cashAcc && arAcc) {
         // Journal Entry with split credit lines
@@ -519,159 +589,7 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
   }
 }
 
-/**
- * recordBulkFeeCollection
- * 
- * ATOMIC MULTI-STUDENT SETTLEMENT: Processes multiple siblings in one transaction.
- * If any student fails validation, the entire family payment is rolled back.
- */
-export async function recordBulkFeeCollection(params: {
-  settlements: {
-    studentId: string;
-    selectedTerms: string[];
-    amountPaid: number;
-    lateFeePaid: number;
-    lateFeeWaived: boolean;
-    waiverReason?: string;
-  }[];
-  paymentMode: string;
-  paymentReference?: string;
-}) {
-  try {
-    const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
-    const { validateMilestone, canPayAdvance } = await import("../utils/fee-utils");
-    
-    const activeFY = await prisma.financialYear.findFirst({
-      where: { schoolId: context.schoolId, isCurrent: true }
-    });
-    if (!activeFY) throw new Error("Active Financial Year not found.");
 
-    // 1. PRE-VALIDATION: Check all students before starting transaction
-    for (const s of params.settlements) {
-      const student = await prisma.student.findUnique({
-        where: { id: s.studentId },
-        include: { financial: { include: { components: true } }, collections: { where: { status: "Success" } } }
-      });
-      if (!student || !student.financial) throw new Error(`Financial record missing for student ${s.studentId}`);
-
-      const components = student.financial.components || [];
-      const netAnnual = components.length > 0 
-          ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0)
-          : Number(student.financial.annualTuition || student.financial.tuitionFee || 0) - Number(student.financial.totalDiscount || 0);
-      const prevTotalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid), 0);
-      const newTotalPaid = prevTotalPaid + s.amountPaid;
-
-      // Sequential check
-      if (s.selectedTerms.includes("term2") && !student.collections.some((c: any) => (c.allocatedTo as any)?.terms?.includes("term1")) && !s.selectedTerms.includes("term1")) {
-        throw new Error(`Sequential Violation (${student.firstName}): Term 1 required for Term 2.`);
-      }
-      
-      // Milestone checks
-      for (const term of s.selectedTerms) {
-        const milestone = validateMilestone(term, newTotalPaid, netAnnual);
-        if (!milestone.success) throw new Error(`Milestone Failure (${student.firstName}): Cumulative payment must be at least ${milestone.percent}%`);
-      }
-    }
-
-    // 1B. RESOLVE SCHOOL & BRANCH CODES (Required for correct receipt number format)
-    const schoolRecord = await prisma.school.findUnique({
-      where: { id: context.schoolId },
-      select: { code: true }
-    });
-    const branchRecord = context.branchId && context.branchId !== 'GLOBAL'
-      ? await prisma.branch.findUnique({ where: { id: context.branchId }, select: { code: true } })
-      : null;
-    const resolvedSchoolCode = schoolRecord?.code || context.schoolId;
-    const resolvedBranchCode = branchRecord?.code || "MAIN";
-
-    // 2. ATOMIC TRANSACTION
-    const result = await prisma.$transaction(async (tx: any) => {
-      const batchResults = [];
-      let batchTotal = 0;
-
-      for (const s of params.settlements) {
-        const activeAdmission = await tx.academicHistory.findFirst({
-            where: { studentId: s.studentId, schoolId: context.schoolId },
-            orderBy: { createdAt: 'desc' }
-        });
-
-        if (!activeAdmission) throw new Error(`Active enrollment missing for student ${s.studentId}`);
-
-        const receiptNumber = await CounterService.generateReceiptNumber({
-          schoolId: context.schoolId,
-          schoolCode: resolvedSchoolCode,
-          branchId: context.branchId,
-          branchCode: resolvedBranchCode,
-          year: new Date().getFullYear().toString()
-        }, tx);
-
-        const collection = await tx.collection.create({
-          data: {
-            receiptNumber,
-            studentId: s.studentId,
-            admissionId: activeAdmission.id,
-            financialYearId: activeFY.id,
-            schoolId: context.schoolId,
-            branchId: context.branchId,
-            amountPaid: s.amountPaid,
-            lateFeePaid: s.lateFeePaid,
-            totalPaid: s.amountPaid + s.lateFeePaid,
-            paymentMode: params.paymentMode,
-            paymentReference: params.paymentReference,
-            collectedBy: context.name || context.role,
-            status: "Success",
-            allocatedTo: {
-              terms: s.selectedTerms,
-              lateFeeWaived: s.lateFeeWaived,
-              waiverReason: s.waiverReason,
-              isBulk: true
-            }
-          }
-        });
-        
-        batchTotal += (s.amountPaid + s.lateFeePaid);
-        batchResults.push(collection);
-      }
-
-      // 3. CONSOLIDATED LEDGER POSTING
-      const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1110" } });
-      const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1200" } });
-
-      if (cashAcc && arAcc) {
-        await tx.journalEntry.create({
-          data: {
-            schoolId: context.schoolId,
-            branchId: context.branchId,
-            financialYearId: activeFY.id,
-            entryType: "RECEIPT",
-            totalDebit: batchTotal,
-            totalCredit: batchTotal,
-            description: `Bulk Sibling Fee Collection (${params.settlements.length} Students) - Mode: ${params.paymentMode}`,
-            lines: {
-              create: [
-                { accountId: cashAcc.id, debit: batchTotal, credit: 0 },
-                { accountId: arAcc.id, debit: 0, credit: batchTotal }
-              ]
-            }
-          }
-        });
-
-        await tx.chartOfAccount.update({ where: { id: cashAcc.id }, data: { currentBalance: { increment: batchTotal } } });
-        await tx.chartOfAccount.update({ where: { id: arAcc.id }, data: { currentBalance: { decrement: batchTotal } } });
-      }
-
-      return batchResults;
-    }, { maxWait: 10000, timeout: 30000 });
-
-    revalidatePath("/admin/fees");
-    revalidatePath("/dashboard/finance");
-    return { success: true, data: serialize(result) };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
 
 /**
  * getStudentFeeStatus with Tenancy Guard & Term Isolation
@@ -713,10 +631,20 @@ export async function getStudentFeeStatus(studentId: string) {
     // TENANCY HARDENED: Resolve financial data with fallback to ledger charges if profile is missing
     const components = student.financial?.components || [];
     const tuition = components.length > 0 
-        ? components.reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
+        ? components
+            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+            .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
         : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
     const discount = components.length > 0 
-        ? components.reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+        ? components
+            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+            .reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
         : Number(student.financial?.totalDiscount || 0);
     const paymentType = student.financial?.paymentType || "Term-wise";
     
@@ -727,7 +655,30 @@ export async function getStudentFeeStatus(studentId: string) {
 
     const breakdown = calculateTermBreakdown(ledgerTuition, discount, paymentType);
 
-    // Sync isPaid status from history
+    // Sync isPaid status and calculate dynamic balances from cumulative payments
+    const totalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
+    let remainingPaid = totalPaid;
+
+    breakdown.installments.forEach(inst => {
+      const amt = Number(inst.amount);
+      if (remainingPaid >= amt) {
+        inst.isPaid = true;
+        (inst as any).balance = 0;
+        remainingPaid -= amt;
+      } else if (remainingPaid > 0) {
+        inst.isPaid = false;
+        (inst as any).balance = amt - remainingPaid;
+        remainingPaid = 0;
+      } else {
+        inst.isPaid = false;
+        (inst as any).balance = amt;
+      }
+    });
+
+    breakdown.term1.isPaid = breakdown.installments.find(i => i.key === "term1")?.isPaid || false;
+    breakdown.term2.isPaid = breakdown.installments.find(i => i.key === "term2")?.isPaid || false;
+    breakdown.term3.isPaid = breakdown.installments.find(i => i.key === "term3")?.isPaid || false;
+
     const paidTerms = student.collections.flatMap((c: any) => {
       const allocated = c.allocatedTo as any;
       if (!allocated) return [];
@@ -741,10 +692,6 @@ export async function getStudentFeeStatus(studentId: string) {
       
       return [...new Set([...termsFromList, ...legacyTerms, ...ancillaryPaid])];
     });
-
-    breakdown.term1.isPaid = paidTerms.includes("term1");
-    breakdown.term2.isPaid = paidTerms.includes("term2");
-    breakdown.term3.isPaid = paidTerms.includes("term3");
 
     // 4. MAP ANCILLARY FEES (Multi-Source Resilience)
     const ancillary: Record<string, any> = {};
@@ -1099,6 +1046,10 @@ export async function verifyPublicRazorpayPaymentAction(params: {
       // Resolve enrollment for ID linking
       const enrollment = await tx.academicHistory.findFirst({
         where: { studentId: params.studentId, schoolId },
+        include: {
+          branch: { include: { school: true } },
+          academicYear: true
+        },
         orderBy: { createdAt: 'desc' }
       });
 
@@ -1148,7 +1099,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
       // Journal Entry
       const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1110" } });
       const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1200" } });
-      const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4200" } });
+      const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4500" } });
 
       if (cashAcc && arAcc) {
         const lines: any[] = [
@@ -1170,6 +1121,65 @@ export async function verifyPublicRazorpayPaymentAction(params: {
         await tx.chartOfAccount.update({ where: { id: arAcc.id }, data: { currentBalance: { decrement: params.amountPaid + lateFee } } });
         if (convenience > 0 && serviceAcc) {
           await tx.chartOfAccount.update({ where: { id: serviceAcc.id }, data: { currentBalance: { increment: convenience } } });
+        }
+      }
+
+      // 🚀 THE CONFIRMATION ENGINE (Elite ERP Promotion Hook)
+      // Check if student is still Provisional and has now cleared their chosen milestone
+      if (student.status === ST_PROVISIONAL && student.financial && enrollment) {
+        // Fetch snapshot value based on parent's opted payment plan
+        const plan = student.financial.paymentType || "Term-wise";
+        const threshold = plan === "Yearly" 
+          ? Number(student.financial.annualTuition || 0)
+          : Number(student.financial.term1Amount || 0);
+        
+        const prevTotalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid), 0);
+        const newTotalPaid = prevTotalPaid + params.amountPaid;
+
+        if (newTotalPaid >= threshold && threshold > 0) {
+            console.log(`✅ [PROMOTION_ENGINE] Student ${student.firstName} ${student.lastName} cleared ${plan} threshold (${threshold}). Promoting to ST_CONFIRMED.`);
+            
+            const schoolCode = enrollment.branch.school.code || schoolId;
+            const branchCode = enrollment.branch.code || "MAIN";
+            const ayName = enrollment.academicYear.name;
+
+            // 🆔 IDENTITY ELEVATION: Generate Actual Admission & Student IDs
+            const admissionNumber = await CounterService.generateAdmissionNumber({
+                schoolId, schoolCode, branchId, branchCode, year: ayName
+            }, tx);
+
+            const studentCode = await CounterService.generateStudentCode({
+                schoolId, schoolCode, branchId, branchCode, year: ayName
+            }, tx);
+
+            console.log(`✨ [IDENTITY_ELEVATION] Allocated New Admission ID: ${admissionNumber}`);
+
+            await tx.student.update({
+                where: { id: student.id },
+                data: { 
+                  status: ST_CONFIRMED,
+                  admissionNumber,
+                  studentCode
+                }
+            });
+
+            // 📝 AUDIT LOG: Lifecycle Transition
+            await tx.activityLog.create({
+                data: {
+                    schoolId,
+                    userId: "PARENT_PORTAL",
+                    action: "STATUS_PROMOTION",
+                    entityType: "STUDENT",
+                    entityId: student.id,
+                    details: `Status promoted from ${ST_PROVISIONAL} to ${ST_CONFIRMED} [Metadata: ${JSON.stringify({
+                        oldStatus: ST_PROVISIONAL,
+                        newStatus: ST_CONFIRMED,
+                        trigger: "THRESHOLD_REACHED",
+                        threshold: threshold,
+                        totalPaid: newTotalPaid
+                    })}]`
+                }
+            });
         }
       }
 

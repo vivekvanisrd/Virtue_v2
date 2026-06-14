@@ -256,6 +256,63 @@ export async function runAutoReconciliationAction(statementId: string) {
         const dateTo = new Date(entry.txnDate);
         dateTo.setDate(dateTo.getDate() + 4);
 
+        // Check custom UPI QR parent-submitted UTR payments first
+        const pendingLinks = await prisma.fee_payment_links.findMany({
+          where: {
+            school_id: identity.schoolId,
+            status: "PENDING_VERIFICATION",
+            amount: { gte: creditAmt - 1, lte: creditAmt + 1 }
+          }
+        });
+
+        const matchedLink = pendingLinks.find(link => {
+          const utr = link.payment_details;
+          if (!utr) return false;
+          const desc = (entry.description || "").toLowerCase();
+          const ref = (entry.reference || "").toLowerCase();
+          const utrLower = utr.toLowerCase();
+          return desc.includes(utrLower) || ref.includes(utrLower);
+        });
+
+        if (matchedLink) {
+          await prisma.fee_payment_links.update({
+            where: { id: matchedLink.id },
+            data: {
+              status: "PAID",
+              paid_at: entry.txnDate,
+              payment_method: "UPI_QR",
+              payment_details: `Auto-reconciled: UTR ${matchedLink.payment_details} matched with statement transaction`
+            }
+          });
+
+          await prisma.bankStatementEntry.update({
+            where: { id: entry.id },
+            data: {
+              matchStatus: "CONFIRMED",
+              matchedTo: matchedLink.id,
+              matchedType: "OTHER",
+              confidence: 100,
+              notes: `Auto-reconciled direct UPI QR: token ${matchedLink.token}, UTR ${matchedLink.payment_details}`,
+              confirmedAt: new Date(),
+              confirmedBy: identity.name || identity.staffId || "System"
+            }
+          });
+
+          // Update ChartOfAccount balance for the bank account
+          const bankAccount = await prisma.chartOfAccount.findFirst({
+            where: { schoolId: identity.schoolId, accountCode: entry.statement.accountCode }
+          });
+          if (bankAccount) {
+            await prisma.chartOfAccount.update({
+              where: { id: bankAccount.id },
+              data: { currentBalance: { increment: creditAmt } }
+            });
+          }
+
+          autoMatchedCount++;
+          continue; // Match confirmed, proceed to next statement entry
+        }
+
         const matchingCollections = await prisma.collection.findMany({
           where: {
             schoolId: identity.schoolId,

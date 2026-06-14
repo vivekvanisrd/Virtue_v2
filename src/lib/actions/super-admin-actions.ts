@@ -72,6 +72,8 @@ export async function createSchoolAction(formData: {
           schoolId: school.id,
           branchId: branch.id,
           status: "Active",
+          employeeCategory: "OWNER",
+          identityVersion: "V2",
         },
       });
 

@@ -4,6 +4,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { studentAdmissionSchema } from "@/types/student";
 import { revalidatePath } from "next/cache";
+import { cleanPhone } from "@/lib/utils/validations";
 import { getSovereignIdentity } from "../auth/backbone";
 import { serializeDecimal } from "../utils/serialization";
 import { getTenancyFilters } from "../utils/tenancy";
@@ -188,7 +189,7 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
           middleName: validatedData.middleName || null,
           lastName: validatedData.lastName,
           email: (validatedData as any).email || null,
-          phone: validatedData.phone || null,
+          phone: cleanPhone(validatedData.phone),
           dob: validatedData.dateOfBirth ? new Date(validatedData.dateOfBirth) : null,
           gender: validatedData.gender,
           bloodGroup: validatedData.bloodGroup,
@@ -244,22 +245,22 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
           family: {
             create: {
               fatherName: validatedData.fatherName,
-              fatherPhone: validatedData.fatherPhone,
-              fatherAltPhone: validatedData.fatherAlternatePhone,
+              fatherPhone: cleanPhone(validatedData.fatherPhone),
+              fatherAltPhone: cleanPhone(validatedData.fatherAlternatePhone),
               fatherEmail: validatedData.fatherEmail,
               fatherOccupation: validatedData.fatherOccupation,
               fatherQualification: validatedData.fatherQualification,
               fatherAadhaar: validatedData.fatherAadhaar,
               motherName: validatedData.motherName,
-              motherPhone: validatedData.motherPhone,
-              motherAltPhone: validatedData.motherAlternatePhone,
+              motherPhone: cleanPhone(validatedData.motherPhone),
+              motherAltPhone: cleanPhone(validatedData.motherAlternatePhone),
               motherEmail: validatedData.motherEmail,
               motherOccupation: validatedData.motherOccupation,
               motherQualification: validatedData.motherQualification,
               motherAadhaar: validatedData.motherAadhaar,
-              whatsappNumber: validatedData.whatsappNumber,
+              whatsappNumber: cleanPhone(validatedData.whatsappNumber),
               emergencyName: validatedData.emergencyContactName,
-              emergencyPhone: validatedData.emergencyContactPhone,
+              emergencyPhone: cleanPhone(validatedData.emergencyContactPhone),
               emergencyRelation: validatedData.emergencyContactRelation,
             }
           },
@@ -319,7 +320,7 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
                 medicalConditions: validatedData.medicalConditions,
                 allergies: validatedData.allergies,
                 doctorName: validatedData.doctorName,
-                doctorPhone: validatedData.doctorPhone
+                doctorPhone: cleanPhone(validatedData.doctorPhone)
               }
             }
           } : {}),
@@ -615,14 +616,19 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
               
               // 🧪 GRANULAR COMPONENTS (Architect-First)
               components: {
-                create: resolvedComponents.map(comp => ({
-                  schoolId: context.schoolId,
-                  branchId,
-                  componentId: comp.componentId,
-                  baseAmount: comp.amount,
-                  isApplicable: true,
-                  lockReason: "ADMISSION_SYNC"
-                }))
+                create: resolvedComponents.map(comp => {
+                  const isTuition = comp.masterComponent?.name?.toLowerCase().includes("tuition") || 
+                                    comp.masterComponent?.type === "CORE";
+                  return {
+                    schoolId: context.schoolId,
+                    branchId,
+                    componentId: comp.componentId,
+                    baseAmount: comp.amount,
+                    discountAmount: isTuition ? totalDiscountAmount : 0,
+                    isApplicable: true,
+                    lockReason: "ADMISSION_SYNC"
+                  };
+                })
               }
             }
           },
@@ -648,22 +654,22 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
                schoolId: context.schoolId,
                branchId,
                fatherName: validatedData.fatherName,
-               fatherPhone: validatedData.fatherPhone,
-               fatherAltPhone: validatedData.fatherAlternatePhone,
+               fatherPhone: cleanPhone(validatedData.fatherPhone),
+               fatherAltPhone: cleanPhone(validatedData.fatherAlternatePhone),
                fatherEmail: validatedData.fatherEmail,
                fatherOccupation: validatedData.fatherOccupation,
                fatherQualification: validatedData.fatherQualification,
                fatherAadhaar: validatedData.fatherAadhaar,
                motherName: validatedData.motherName,
-               motherPhone: validatedData.motherPhone,
-               motherAltPhone: validatedData.motherAlternatePhone,
+               motherPhone: cleanPhone(validatedData.motherPhone),
+               motherAltPhone: cleanPhone(validatedData.motherAlternatePhone),
                motherEmail: validatedData.motherEmail,
                motherOccupation: validatedData.motherOccupation,
                motherQualification: validatedData.motherQualification,
                motherAadhaar: validatedData.motherAadhaar,
-               whatsappNumber: validatedData.whatsappNumber,
+               whatsappNumber: cleanPhone(validatedData.whatsappNumber),
                emergencyName: validatedData.emergencyContactName,
-               emergencyPhone: validatedData.emergencyContactPhone,
+               emergencyPhone: cleanPhone(validatedData.emergencyContactPhone),
                emergencyRelation: validatedData.emergencyContactRelation,
             } 
           },
@@ -928,6 +934,10 @@ export async function getStudentListAction(filters?: {
   classId?: string;
   sectionId?: string;
   branchId?: string;
+  aadhaarStatus?: string;
+  apaarStatus?: string;
+  siblingStatus?: string;
+  feeStatus?: string;
 }) {
   try {
     const identity = await getSovereignIdentity();
@@ -938,7 +948,7 @@ export async function getStudentListAction(filters?: {
     
     const tenancy = getTenancyFilters(context);
     
-    const students = await prisma.student.findMany({
+    let students = await prisma.student.findMany({
       where: {
         ...tenancy,
         AND: [
@@ -963,7 +973,21 @@ export async function getStudentListAction(filters?: {
             branch: true
           }
         },
-        financial: true,
+        family: true,
+        collections: {
+          where: { status: "Success" }
+        },
+        financial: {
+          include: {
+            components: {
+              include: {
+                masterComponent: {
+                  select: { id: true, name: true, type: true, accountCode: true }
+                }
+              }
+            }
+          }
+        },
         attendance: {
           where: {
             date: today,
@@ -976,6 +1000,109 @@ export async function getStudentListAction(filters?: {
         createdAt: 'desc'
       }
     });
+
+    // 1. Sibling Mapping Preparation
+    const aadhaarMap = new Map<string, string[]>();
+    const phoneMap = new Map<string, string[]>();
+
+    students.forEach(s => {
+      const f = s.family;
+      const lastName = s.lastName?.trim().toLowerCase() || "";
+      if (f) {
+        if (f.fatherAadhaar?.trim()) {
+          const val = f.fatherAadhaar.trim();
+          if (!aadhaarMap.has(val)) aadhaarMap.set(val, []);
+          aadhaarMap.get(val)!.push(s.id);
+        }
+        if (f.motherAadhaar?.trim()) {
+          const val = f.motherAadhaar.trim();
+          if (!aadhaarMap.has(val)) aadhaarMap.set(val, []);
+          aadhaarMap.get(val)!.push(s.id);
+        }
+        const fatherPhone = f.fatherPhone?.trim();
+        const motherPhone = f.motherPhone?.trim();
+        if (fatherPhone && motherPhone) {
+          const key = `${fatherPhone}_${motherPhone}_${lastName}`;
+          if (!phoneMap.has(key)) phoneMap.set(key, []);
+          phoneMap.get(key)!.push(s.id);
+        }
+      }
+    });
+
+    const hasPotentialSiblings = (s: any) => {
+      const f = s.family;
+      const lastName = s.lastName?.trim().toLowerCase() || "";
+      if (f) {
+        if (f.fatherAadhaar?.trim()) {
+          const ids = aadhaarMap.get(f.fatherAadhaar.trim());
+          if (ids && ids.length > 1) return true;
+        }
+        if (f.motherAadhaar?.trim()) {
+          const ids = aadhaarMap.get(f.motherAadhaar.trim());
+          if (ids && ids.length > 1) return true;
+        }
+        const fatherPhone = f.fatherPhone?.trim();
+        const motherPhone = f.motherPhone?.trim();
+        if (fatherPhone && motherPhone) {
+          const key = `${fatherPhone}_${motherPhone}_${lastName}`;
+          const ids = phoneMap.get(key);
+          if (ids && ids.length > 1) return true;
+        }
+      }
+      return false;
+    };
+
+    // 2. Perform Javascript Filters
+    if (filters) {
+      if (filters.aadhaarStatus && filters.aadhaarStatus !== "all") {
+        students = students.filter(s => {
+          const hasAadhaar = !!s.aadhaarNumber?.trim();
+          return filters.aadhaarStatus === "submitted" ? hasAadhaar : !hasAadhaar;
+        });
+      }
+
+      if (filters.apaarStatus && filters.apaarStatus !== "all") {
+        students = students.filter(s => {
+          const hasApaar = !!s.academic?.apaarId?.trim();
+          return filters.apaarStatus === "submitted" ? hasApaar : !hasApaar;
+        });
+      }
+
+      if (filters.siblingStatus && filters.siblingStatus !== "all") {
+        students = students.filter(s => {
+          const sib = hasPotentialSiblings(s);
+          return filters.siblingStatus === "has_siblings" ? sib : !sib;
+        });
+      }
+
+      if (filters.feeStatus && filters.feeStatus !== "all") {
+        students = students.filter(s => {
+          const components = s.financial?.components || [];
+          const tuition = components.length > 0 
+              ? components
+                  .filter((c: any) => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                               !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                               !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                               !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+                  .reduce((sum: number, c: any) => sum + Number(c.baseAmount || 0), 0)
+              : Number(s.financial?.tuitionFee || s.financial?.annualTuition || 0);
+          const discount = components.length > 0 
+              ? components
+                  .filter((c: any) => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                               !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                               !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                               !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+                  .reduce((sum: number, c: any) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+              : Number(s.financial?.totalDiscount || 0);
+          
+          const expectedTuition = tuition - discount;
+          const totalPaid = (s.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
+          
+          const isFullyPaid = totalPaid >= expectedTuition;
+          return filters.feeStatus === "fully_paid" ? isFullyPaid : !isFullyPaid;
+        });
+      }
+    }
 
     return { success: true, data: serializeDecimal(students) };
   } catch (error: any) {
@@ -1081,7 +1208,7 @@ export async function updateStudentProfile(studentId: string, data: any) {
           middleName: data.middleName,
           dob: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
           gender: data.gender,
-          phone: data.phone,
+          phone: cleanPhone(data.phone),
           email: data.email,
           bloodGroup: data.bloodGroup,
           category: data.category,
@@ -1093,7 +1220,15 @@ export async function updateStudentProfile(studentId: string, data: any) {
       if (data.family) {
         await tx.familyDetail.update({
           where: { studentId },
-          data: data.family
+          data: {
+            ...data.family,
+            fatherPhone: data.family.fatherPhone ? cleanPhone(data.family.fatherPhone) : undefined,
+            fatherAltPhone: data.family.fatherAltPhone ? cleanPhone(data.family.fatherAltPhone) : undefined,
+            motherPhone: data.family.motherPhone ? cleanPhone(data.family.motherPhone) : undefined,
+            motherAltPhone: data.family.motherAltPhone ? cleanPhone(data.family.motherAltPhone) : undefined,
+            whatsappNumber: data.family.whatsappNumber ? cleanPhone(data.family.whatsappNumber) : undefined,
+            emergencyPhone: data.family.emergencyPhone ? cleanPhone(data.family.emergencyPhone) : undefined,
+          }
         });
       }
 

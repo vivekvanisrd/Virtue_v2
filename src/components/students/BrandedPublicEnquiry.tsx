@@ -276,7 +276,14 @@ export function BrandedPublicEnquiry({ branchId }: BrandedPublicEnquiryProps) {
                     </div>
                     <div>
                         <label className="text-[11px] font-bold text-slate-500 mb-2 block uppercase tracking-tight">Primary Phone Number *</label>
-                        <input {...register("fatherPhone")} placeholder="10 Digit Phone" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20" />
+                        <input 
+                          {...register("fatherPhone")} 
+                          placeholder="10 Digit Phone" 
+                          className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20" 
+                          onInput={(e: any) => {
+                            e.target.value = e.target.value.replace(/[^\d]/g, "");
+                          }}
+                        />
                         {errors.fatherPhone && <p className="text-[10px] text-rose-500 mt-1 font-bold">{errors.fatherPhone.message}</p>}
                         
                         {/* Redirection Alert */}

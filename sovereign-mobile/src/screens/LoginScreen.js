@@ -9,6 +9,14 @@ export function LoginScreen({ onLoginSuccess }) {
   const [staffCode, setStaffCode] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const handleStaffCodeChange = (val) => {
+    let cleaned = val;
+    if (/^[0-9+\s()-]*$/.test(val)) {
+      cleaned = val.replace(/[^\d]/g, "");
+    }
+    setStaffCode(cleaned);
+  };
+
   const handleLogin = async () => {
     if (!staffCode.trim()) return Alert.alert('Required', 'Please enter your Staff Code.');
     setLoading(true);
@@ -51,7 +59,7 @@ export function LoginScreen({ onLoginSuccess }) {
                 placeholder="e.g. VIVES-RCB-PR-001"
                 placeholderTextColor="#94a3b8"
                 value={staffCode}
-                onChangeText={setStaffCode}
+                onChangeText={handleStaffCodeChange}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />

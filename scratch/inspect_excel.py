@@ -1,40 +1,29 @@
 import os
-import re
+import openpyxl
 
-src_dir = r"J:\virtue_fb\virtue-v2\src"
+file_path = r"C:\Users\SriKriations\Favorites\Downloads\DAILY ACCOUNTS.xlsx"
 
-patterns = [
-    r'"Class 1"',
-    r'"Class 2"',
-    r'"1st Grade"',
-    r'"Play Group"',
-    r'"Nursery"',
-    r'"LKG"',
-    r'"UKG"',
-    r'MOCK_CLASSES'
-]
+def inspect():
+    if not os.path.exists(file_path):
+        print(f"File not found at: {file_path}")
+        return
 
-print("Scanning files for specific class nomenclatures...")
+    print(f"File found! Size: {os.path.getsize(file_path)} bytes")
+    wb = openpyxl.load_workbook(file_path, read_only=True)
+    print("Sheets in workbook:", wb.sheetnames)
+    
+    for sheet_name in wb.sheetnames[:5]:
+        print(f"\n--- Sheet: {sheet_name} ---")
+        sheet = wb[sheet_name]
+        # print first 10 rows
+        row_count = 0
+        for row in sheet.iter_rows(values_only=True):
+            if row_count >= 15:
+                break
+            # print non-empty rows
+            if any(cell is not None for cell in row):
+                print(row[:12])
+                row_count += 1
 
-matching_files = {}
-
-for root, dirs, files in os.walk(src_dir):
-    for file in files:
-        if file.endswith(('.ts', '.tsx', '.js', '.jsx')):
-            filepath = os.path.join(root, file)
-            try:
-                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                    
-                found = []
-                for p in patterns:
-                    if re.search(p, content):
-                        found.append(p)
-                if found:
-                    rel_path = os.path.relpath(filepath, src_dir)
-                    matching_files[rel_path] = found
-            except Exception as e:
-                pass
-
-for f, matches in sorted(matching_files.items()):
-    print(f"File: {f} | Matches: {matches}")
+if __name__ == "__main__":
+    inspect()

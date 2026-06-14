@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { logActivity } from "@/lib/utils/audit-logger";
 import { getSovereignIdentity } from "../auth/backbone";
+import { cleanPhone } from "@/lib/utils/validations";
 
 // Expected schema for a single CSV row
 const csvRowSchema = z.object({
@@ -11,7 +12,16 @@ const csvRowSchema = z.object({
   lastName: z.string().min(1, "Last Name required"),
   staffCode: z.string().min(2, "Employee ID required"),
   email: z.string().email("Valid email required").optional().or(z.literal("")),
-  phone: z.string().min(10, "Phone must be at least 10 chars").optional().or(z.literal("")),
+  phone: z.preprocess(
+    (val) => {
+      if (typeof val === "string" && val.trim() !== "") {
+        const cleaned = cleanPhone(val);
+        return cleaned || val;
+      }
+      return val;
+    },
+    z.string().min(10, "Phone must be at least 10 chars").optional().or(z.literal(""))
+  ),
   role: z.string().min(2, "Role is required"),
   
   // Optional columns mapping to Staff model
@@ -115,6 +125,23 @@ export async function importStaffCSV(records: any[], targetSchoolId: string, tar
       if (phone) csvPhones.add(phone);
       csvEmployeeIds.add(empId);
 
+      // Compute employeeCategory based on role mapping
+      let employeeCategory = undefined;
+      const r = row.role.toUpperCase();
+      if (r === "OWNER" || r === "FOUNDER" || r === "CO-FOUNDER") {
+          employeeCategory = "OWNER";
+      } else if (r === "PRINCIPAL" || r === "VICE_PRINCIPAL" || r === "DIRECTOR") {
+          employeeCategory = "MANAGEMENT";
+      } else if (r === "TEACHER" || r.includes("TEAC") || r === "HOD") {
+          employeeCategory = "TEACHING";
+      } else if (r === "DRIVER" || r === "CONDUCTOR" || r.includes("DRIV")) {
+          employeeCategory = "TRANSPORT";
+      } else if (r === "ATTENDANT" || r === "SUPPORT" || r === "AAYA") {
+          employeeCategory = "SUPPORT";
+      } else {
+          employeeCategory = "NON_TEACHING";
+      }
+
       // Add to valid insert batch
       validRecordsToInsert.push({
         firstName: row.firstName,
@@ -122,12 +149,14 @@ export async function importStaffCSV(records: any[], targetSchoolId: string, tar
         middleName: row.middleName || null,
         staffCode: empId,
         email: email || null,
-        phone: phone || null,
+        phone: cleanPhone(phone),
         role: row.role.toUpperCase(), // Ensure we cast role securely
         gender: row.gender || null,
         status: row.status,
         schoolId,
-        branchId
+        branchId,
+        employeeCategory,
+        identityVersion: "V1",
       });
 
     } catch (err: any) {

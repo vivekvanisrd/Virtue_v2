@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { sanitizeError } from "@/lib/utils/error-handler";
 import { logActivity } from "@/lib/utils/audit-logger";
 import { staffOnboardingSchema } from "@/types/staff";
+import { cleanPhone } from "@/lib/utils/validations";
 
 /**
  * 🏛️ STAFF ACTION: Appoint a new Principal to a branch
@@ -60,7 +61,9 @@ export async function appointPrincipalAction(data: {
                     role: "PRINCIPAL",
                     schoolId,
                     branchId: branch.id,
-                    status: "ACTIVE"
+                    status: "ACTIVE",
+                    employeeCategory: "MANAGEMENT",
+                    identityVersion: "V2"
                 }
             });
 
@@ -80,7 +83,9 @@ export async function appointPrincipalAction(data: {
             return principal;
         });
 
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         return { 
             success: true, 
             data: JSON.parse(JSON.stringify({
@@ -131,7 +136,7 @@ export async function createStaffAction(data: any) {
         }
 
         // 1B. Prevent Role Escalation
-        const requestedRole = data.role?.toUpperCase() || "STAFF";
+        const requestedRole = data.role?.toUpperCase().replace(/\s+/g, '_') || "STAFF";
         if (requestedRole === "PRINCIPAL" || requestedRole === "OWNER" || requestedRole === "DEVELOPER") {
             throw new Error("ACCESS_DENIED: Executive roles cannot be appointed through standard onboarding.");
         }
@@ -171,6 +176,25 @@ export async function createStaffAction(data: any) {
         const tempPasswordHash = await bcrypt.hash(`Virtue@${branch.code}2026`, 10);
         const username = `${data.firstName.trim().toLowerCase()}_${Math.floor(Math.random() * 10000)}`;
 
+        // Compute employeeCategory based on input or role mapping to guarantee strict enum
+        let category = data.employeeCategory;
+        if (!category) {
+            const r = requestedRole.toUpperCase();
+            if (r === "OWNER" || r === "FOUNDER" || r === "CO-FOUNDER") {
+                category = "OWNER";
+            } else if (r === "PRINCIPAL" || r === "VICE_PRINCIPAL" || r === "DIRECTOR") {
+                category = "MANAGEMENT";
+            } else if (r === "TEACHER" || r.includes("TEAC") || r === "HOD") {
+                category = "TEACHING";
+            } else if (r === "DRIVER" || r === "CONDUCTOR" || r.includes("DRIV")) {
+                category = "TRANSPORT";
+            } else if (r === "ATTENDANT" || r === "SUPPORT" || r === "AAYA") {
+                category = "SUPPORT";
+            } else {
+                category = "NON_TEACHING";
+            }
+        }
+
         // 4. Atomic Onboarding
         const result = await prisma.$transaction(async (tx: any) => {
             // A. Base Record
@@ -182,7 +206,7 @@ export async function createStaffAction(data: any) {
                     // 🔒 Nullable fields: null if empty, value if filled
                     middleName: data.middleName?.trim() || null,
                     email: data.email?.trim().toLowerCase() || null,
-                    phone: data.phone?.trim() || null,
+                    phone: cleanPhone(data.phone),
                     gender: data.gender || null,
                     dob: data.dob ? new Date(data.dob) : null,
                     address: data.address?.trim() || null,
@@ -192,7 +216,10 @@ export async function createStaffAction(data: any) {
                     schoolId,
                     username,
                     passwordHash: tempPasswordHash,
-                    status: "ACTIVE"
+                    status: "ACTIVE",
+                    employeeCategory: category,
+                    employmentType: data.employmentType || null,
+                    identityVersion: "V2"
                 }
             });
 
@@ -256,7 +283,9 @@ export async function createStaffAction(data: any) {
             return staff;
         }, { timeout: 20000 });
 
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         return { success: true, data: JSON.parse(JSON.stringify(result)) };
 
     } catch (e: any) {
@@ -264,16 +293,38 @@ export async function createStaffAction(data: any) {
     }
 }
 
-export async function getStaffDirectoryAction() {
+export async function getStaffDirectoryAction(filters?: {
+    employeeCategory?: any;
+    employmentType?: any;
+    role?: string;
+    branchId?: string;
+}) {
     try {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
+        const whereClause: any = {
+            schoolId: identity.schoolId,
+            ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
+        };
+
+        if (filters) {
+            if (filters.employeeCategory) {
+                whereClause.employeeCategory = filters.employeeCategory;
+            }
+            if (filters.employmentType) {
+                whereClause.employmentType = filters.employmentType;
+            }
+            if (filters.role) {
+                whereClause.role = filters.role;
+            }
+            if (filters.branchId && (!identity.branchId || identity.branchId === 'GLOBAL')) {
+                whereClause.branchId = filters.branchId;
+            }
+        }
+
         const staff = await prisma.staff.findMany({
-            where: { 
-                schoolId: identity.schoolId,
-                ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
-            },
+            where: whereClause,
             include: {
                 professional: true,
                 statutory: true,
@@ -373,7 +424,9 @@ export async function updateStaffProfessionalAction(staffId: string, data: any) 
                 department: data.department
             }
         });
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         return { success: true, data: res };
     } catch(e: any) { return { success: false, error: e.message }; }
 }
@@ -387,7 +440,9 @@ export async function transferStaffBranchAction(staffId: string, targetBranchId:
              where: { id: staffId, schoolId: identity.schoolId }, // Jail condition
              data: { branchId: targetBranchId }
         });
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         return { success: true, data: res };
     } catch(e: any) { return { success: false, error: e.message }; }
 }
@@ -399,6 +454,10 @@ export async function updateStaffAction(staffId: string, data: any) {
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
 
         console.log(`🧬 [StaffActions:updateStaffAction] Incoming Form Data:`, JSON.stringify(data));
+
+        if (data && data.role) {
+            data.role = data.role.toUpperCase().replace(/\s+/g, '_');
+        }
 
         // 1. Validate Schema Fidelity (Partial Update Mode)
         const validated = staffOnboardingSchema.partial().safeParse(data);
@@ -448,11 +507,13 @@ export async function updateStaffAction(staffId: string, data: any) {
                     // 🔒 Nullable fields: null if empty (user cleared), value if filled
                     middleName: data.middleName?.trim() || null,
                     email: data.email?.trim().toLowerCase() || null,
-                    phone: data.phone?.trim() || null,
+                    phone: cleanPhone(data.phone),
                     gender: data.gender || null,
                     dob: data.dob ? new Date(data.dob) : null,
                     address: data.address?.trim() || null,
                     onboardingStatus: data.onboardingStatus || null,
+                    ...(data.employeeCategory && { employeeCategory: data.employeeCategory }),
+                    employmentType: data.employmentType !== undefined ? (data.employmentType || null) : undefined,
                 }
             });
 
@@ -547,7 +608,9 @@ export async function updateStaffAction(staffId: string, data: any) {
 
         console.log(`🧬 [StaffActions:updateStaffAction] Transaction committed successfully to DB. Result ID: ${result.id}`);
         console.log(`🧬 [StaffActions:updateStaffAction] Calling revalidatePath...`);
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         console.log(`🧬 [StaffActions:updateStaffAction] revalidatePath completed. Returning success.`);
         return { success: true, data: JSON.parse(JSON.stringify(result)) };
 
@@ -583,7 +646,9 @@ export async function updateStaffRoleAction(staffId: string, newRole: string) {
             details: `Staff member ${staff.firstName} role changed to ${newRole}`
         });
 
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         return { success: true, data: JSON.parse(JSON.stringify(staff)) };
     } catch (e: any) {
         console.error("❌ [ROLE_UPDATE_ERROR]", e.message);
@@ -708,7 +773,9 @@ export async function toggleStaffStatusAction(staffId: string) {
             details: `Staff member ${staff.firstName} ${staff.lastName} (${staff.staffCode}) status changed to ${newStatus}`
         });
 
-        revalidatePath("/", "layout");
+        try {
+            revalidatePath("/", "layout");
+        } catch (e) {}
         return { success: true, status: newStatus };
     } catch (e: any) {
         console.error("❌ [TOGGLE_STATUS_ERROR]", e.message);

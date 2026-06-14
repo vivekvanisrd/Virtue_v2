@@ -448,39 +448,153 @@ export async function applyComponentWaiver(data: {
 }) {
     try {
         const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+        const context = identity;
         
         if (!data.reason || data.reason.trim().length < 3) {
             throw new Error("A valid reason is mandatory for auditing waivers.");
         }
 
-        const component = await prisma.studentFeeComponent.update({
-            where: {
-                id: data.componentId,
-                schoolId: context.schoolId // TENANCY LOCK
-            },
-            data: {
-                waiverAmount: data.waiverAmount || 0,
-                discountAmount: data.discountAmount || 0,
-                waiverReason: data.reason
+        const result = await prisma.$transaction(async (tx: any) => {
+            // 1. Fetch old component details to calculate delta
+            const oldComponent = await tx.studentFeeComponent.findUnique({
+                where: {
+                    id: data.componentId,
+                    schoolId: context.schoolId
+                },
+                include: {
+                    masterComponent: true
+                }
+            });
+            if (!oldComponent) throw new Error("Component not found.");
+
+            const oldWaiver = Number(oldComponent.waiverAmount || 0);
+            const oldDiscount = Number(oldComponent.discountAmount || 0);
+
+            const newWaiver = Number(data.waiverAmount || 0);
+            const newDiscount = Number(data.discountAmount || 0);
+
+            const deltaWaiver = newWaiver - oldWaiver;
+            const deltaDiscount = newDiscount - oldDiscount;
+            const deltaTotal = deltaWaiver + deltaDiscount;
+
+            // 2. Update StudentFeeComponent
+            const updatedComponent = await tx.studentFeeComponent.update({
+                where: { id: data.componentId },
+                data: {
+                    waiverAmount: newWaiver,
+                    discountAmount: newDiscount,
+                    waiverReason: data.reason
+                }
+            });
+
+            // 3. Update FinancialRecord netTuition
+            const allComponents = await tx.studentFeeComponent.findMany({
+                where: { studentFinancialId: data.studentFinancialId, schoolId: context.schoolId }
+            });
+
+            const newNetTotal = allComponents.reduce((sum: number, c: any) => 
+                sum + (Number(c.baseAmount) - Number(c.waiverAmount) - Number(c.discountAmount)), 0);
+
+            const financial = await tx.financialRecord.update({
+                where: { id: data.studentFinancialId, schoolId: context.schoolId },
+                data: { netTuition: newNetTotal }
+            });
+
+            // 4. Resolve Student and Active FY
+            const student = await tx.student.findUnique({
+                where: { id: financial.studentId },
+                include: {
+                    academic: true
+                }
+            });
+            if (!student) throw new Error("Associated student profile not found.");
+
+            const activeFY = await tx.financialYear.findFirst({
+                where: { schoolId: context.schoolId, isCurrent: true }
+            });
+            if (!activeFY) throw new Error("Active Financial Year not found.");
+
+            // 5. Post delta to student Statement Ledger and Double-Entry Journal
+            if (deltaTotal !== 0) {
+                const isWaiverIncrement = deltaTotal > 0;
+                const absoluteAmount = Math.abs(deltaTotal);
+
+                // Student Ledger Entry
+                await tx.ledgerEntry.create({
+                    data: {
+                        studentId: student.id,
+                        schoolId: context.schoolId,
+                        branchId: context.branchId,
+                        financialYearId: activeFY.id,
+                        academicYearId: student.academic?.academicYear || null,
+                        type: isWaiverIncrement ? "DISCOUNT" : "CHARGE",
+                        amount: absoluteAmount,
+                        reason: `${isWaiverIncrement ? "Waiver Applied" : "Waiver Reduced"} on ${oldComponent.masterComponent.name} - Reason: ${data.reason}`,
+                        createdBy: context.name || context.role
+                    }
+                });
+
+                // Double-Entry Journal Posting
+                const arAcc = await tx.chartOfAccount.findFirst({
+                    where: { schoolId: context.schoolId, accountCode: "1200" }
+                });
+
+                // Query for discount account
+                const discountAccount = await tx.chartOfAccount.findFirst({
+                    where: {
+                        schoolId: context.schoolId,
+                        OR: [
+                            { accountCode: "4400" },
+                            { accountName: { contains: "Discount", mode: "insensitive" } },
+                            { accountName: { contains: "Waiver", mode: "insensitive" } },
+                            { accountName: { contains: "Concession", mode: "insensitive" } },
+                            { accountName: { contains: "Scholarship", mode: "insensitive" } }
+                        ]
+                    }
+                }) || await tx.chartOfAccount.findFirst({
+                    where: { schoolId: context.schoolId, accountCode: "4100" }
+                });
+
+                if (arAcc && discountAccount) {
+                    const debitAccountId = isWaiverIncrement ? discountAccount.id : arAcc.id;
+                    const creditAccountId = isWaiverIncrement ? arAcc.id : discountAccount.id;
+
+                    await tx.journalEntry.create({
+                        data: {
+                            schoolId: context.schoolId,
+                            branchId: context.branchId || student.branchId || null,
+                            financialYearId: activeFY.id,
+                            entryType: isWaiverIncrement ? "WAIVER" : "WAIVER_REVERSAL",
+                            totalDebit: absoluteAmount,
+                            totalCredit: absoluteAmount,
+                            description: `Component Waiver ${isWaiverIncrement ? "Concession" : "Adjustment"} - Student: ${student.studentCode || student.id} - ${data.reason}`,
+                            lines: {
+                                create: [
+                                    { accountId: debitAccountId, debit: absoluteAmount, credit: 0, description: isWaiverIncrement ? "Waiver Expense" : "Receivable Restored" },
+                                    { accountId: creditAccountId, debit: 0, credit: absoluteAmount, description: isWaiverIncrement ? "Receivable Offset" : "Waiver Expense Offset" }
+                                ]
+                            }
+                        }
+                    });
+
+                    // Update account balances
+                    await tx.chartOfAccount.update({
+                        where: { id: debitAccountId },
+                        data: { currentBalance: { increment: absoluteAmount } }
+                    });
+                    await tx.chartOfAccount.update({
+                        where: { id: creditAccountId },
+                        data: { currentBalance: { decrement: absoluteAmount } }
+                    });
+                }
             }
-        });
-        
-        const allComponents = await prisma.studentFeeComponent.findMany({
-            where: { studentFinancialId: data.studentFinancialId, schoolId: context.schoolId }
-        });
 
-        const newNetTotal = allComponents.reduce((sum: number, c: any) => 
-            sum + (Number(c.baseAmount) - Number(c.waiverAmount) - Number(c.discountAmount)), 0);
-
-        await prisma.financialRecord.update({
-            where: { id: data.studentFinancialId, schoolId: context.schoolId },
-            data: { netTuition: newNetTotal }
-        });
+            return updatedComponent;
+        }, { timeout: 30000 });
 
         revalidatePath("/admin/fees");
-        return { success: true, data: serializeDecimal(component) };
+        return { success: true, data: serializeDecimal(result) };
     } catch (error: any) {
         return { success: false, error: error.message };
     }

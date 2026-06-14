@@ -177,7 +177,7 @@ export async function provisionInstance(data: {
 
             const password = data.adminPassword || "PaVa@2026";
             const passwordHash = await bcrypt.hash(password, 10);
-            const username = data.adminEmail.split('@')[0];
+            const username = `${data.adminEmail.split('@')[0]}_${school.code.toLowerCase()}`;
 
             const ownerId = await IdGenerator.generateStaffCode({
                 schoolId: school.id,
@@ -202,7 +202,8 @@ export async function provisionInstance(data: {
                     status: "Active",
                     passwordHash,
                     username,
-                    isDeleted: false
+                    employeeCategory: "OWNER",
+                    identityVersion: "V2"
                 }
             });
 
@@ -220,12 +221,14 @@ export async function provisionInstance(data: {
                     hqBranchId,
                     dnaVersion: "v1"
                 }
-            });
+            }, tx);
 
             return { schoolId: school.id, ownerId, hqBranchId };
         });
 
-        revalidatePath("/developer/dashboard");
+        try {
+            revalidatePath("/developer/dashboard");
+        } catch (e) {}
         return {
             success: true,
             message: `Skeleton created for ${data.schoolName}. OWNER: ${result.ownerId}.`,
@@ -435,20 +438,68 @@ export async function runDiagnostics() {
  */
 export async function resetUserPassword(identifier: string, newPassword?: string) {
     try {
-        await ensureDeveloperAccess();
-        const password = newPassword || "Virtue@2026";
+        const identity = await ensureDeveloperAccess();
+        
+        // Resolve staff member using any identifier (ID, username, email, phone, or staffCode)
+        const staff = await prisma.staff.findFirst({
+            where: {
+                OR: [
+                    { id: identifier },
+                    { username: identifier },
+                    { email: identifier },
+                    { phone: identifier },
+                    { staffCode: identifier }
+                ]
+            }
+        });
+
+        if (!staff) {
+            return { success: false, error: `Staff member not found with identifier: ${identifier}` };
+        }
+
+        let password = newPassword?.trim();
+        if (!password) {
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+=";
+            const length = 14;
+            const crypto = require('crypto');
+            const bytes = crypto.randomBytes(length);
+            password = "";
+            for (let i = 0; i < length; i++) {
+                password += charset[bytes[i] % charset.length];
+            }
+        }
+
         const passwordHash = await bcrypt.hash(password, 10);
 
         await prisma.staff.update({
-            where: identifier.includes('@') ? { email: identifier } : { id: identifier },
+            where: { id: staff.id },
             data: { 
                 passwordHash,
+                onboardingStatus: 'PASSWORD_CHANGE_REQUIRED',
                 mobilePasswordUsed: false,
                 mobileSessionToken: null
             }
         });
 
-        return { success: true, message: `Password reset to: ${password}` };
+        // Log the reset activity
+        await logPlatformActivity({
+            schoolId: staff.schoolId,
+            userId: identity.staffId,
+            action: "STAFF_PASSWORD_RESET_BY_DEV",
+            entityType: "Staff",
+            entityId: staff.id,
+            details: `Developer reset password for ${staff.role}: ${staff.username || staff.email} (${staff.staffCode})`,
+            payload: { staffCode: staff.staffCode }
+        });
+
+        return { 
+            success: true, 
+            credentials: {
+                username: staff.username || staff.phone || staff.email || staff.staffCode,
+                password,
+                note: 'User must change their password on next login.'
+            }
+        };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -528,3 +579,66 @@ export async function getDocContent(filename: string) {
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * getActivityLogsAction
+ * Fetches activity logs from the ActivityLog table with safety caps and filters.
+ */
+export async function getActivityLogsAction(params: {
+    schoolId?: string;
+    actionType?: string;
+    search?: string;
+    limit?: number;
+} = {}) {
+    try {
+        await ensureDeveloperAccess();
+
+        const limit = params.limit || 200;
+        const whereClause: any = {};
+
+        if (params.schoolId) {
+            whereClause.schoolId = params.schoolId;
+        }
+
+        if (params.actionType) {
+            whereClause.action = params.actionType;
+        }
+
+        if (params.search) {
+            const search = params.search.trim();
+            whereClause.OR = [
+                { userId: { contains: search, mode: 'insensitive' } },
+                { entityType: { contains: search, mode: 'insensitive' } },
+                { entityId: { contains: search, mode: 'insensitive' } },
+                { details: { contains: search, mode: 'insensitive' } },
+                { action: { contains: search, mode: 'insensitive' } }
+            ];
+        }
+
+        const logs = await prisma.activityLog.findMany({
+            where: whereClause,
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            include: {
+                school: {
+                    select: { name: true }
+                }
+            }
+        });
+
+        // Get unique action types for filter dropdown
+        const actionTypes = await prisma.activityLog.findMany({
+            select: { action: true },
+            distinct: ['action'],
+        });
+
+        return {
+            success: true,
+            logs: JSON.parse(JSON.stringify(logs)),
+            actionTypes: actionTypes.map((a: any) => a.action)
+        };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+

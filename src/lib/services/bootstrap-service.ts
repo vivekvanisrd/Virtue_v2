@@ -65,7 +65,7 @@ export class BootstrapService {
     if (!ay) {
       const newAY = await prisma.academicYear.create({
         data: {
-          id: `AY-${schoolId}-2026-27`,
+          id: `${schoolId}-HQ-AY-2026-27`,
           schoolId,
           name: "2026-27",
           startDate: new Date("2026-06-01"),
@@ -84,7 +84,7 @@ export class BootstrapService {
     if (!fy) {
       const newFY = await prisma.financialYear.create({
         data: {
-          id: `FY-${schoolId}-2026-27`,
+          id: `${schoolId}-HQ-FY-2026-27`,
           schoolId,
           name: "FY 2026-27",
           startDate: new Date("2026-04-01"),

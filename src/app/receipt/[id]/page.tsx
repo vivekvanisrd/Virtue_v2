@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-// Next.js 14/15 Page
-export default async function ReceiptViewerPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+// Next.js 15 Page
+export default async function ReceiptViewerPage({ params }: { params: Promise<{ id: string }> }) {
   // Extract and clean the array of receipt IDs passed in via the URL params
   // Handles strings produced by `.join(", ")` returning `VIVA-REC-01%2C%20VIVA-REC-02`
   const { id } = await params;

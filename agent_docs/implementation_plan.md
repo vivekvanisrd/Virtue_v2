@@ -1,43 +1,71 @@
-# Developer Impersonation, Branch Principal Credentials, and Staff Onboarding Correction Implementation Plan
+# Staff Identity Architecture Refactor Implementation Plan
 
-This plan outlines the technical changes needed to:
-1. Fix the syntax/compilation error in `src/middleware.ts` by wrapping header injection in `if (user)`.
-2. Implement Developer context-switching (school/branch impersonation) using `v-active-school` and `v-active-branch` cookies.
-3. Update `src/lib/auth/backbone.ts` to support fallback cookie context resolution for the Developer role.
-4. Add "Impersonate" / "Switch Context" buttons in `/developer` and an "Exit Impersonation" option in the dashboard header.
-5. Add an "Admin Phone" field to the Add Branch form in `/developer` and set the Principal's login credentials to default to their phone number.
-6. Correct ID generation inside [createBranchAction](file:///J:/virtue_fb/virtue-v2/src/app/developer/actions.ts#L137) and [createOwnerAction](file:///J:/virtue_fb/virtue-v2/src/app/developer/actions.ts#L277) using transaction-safe [IdGenerator.generateStaffCode](file:///J:/virtue_fb/virtue-v2/src/lib/id-generator.ts#L58) to enforce sequential nomenclature rules.
-7. Mandate phone number validation on all admin and staff onboarding forms, stripping out spaces, symbols, and letters in real-time.
-8. Integrate Indian Standard Time (`Asia/Kolkata` timezone) globally into date utility formatting and schema preprocessing to eliminate client-browser timezone date drifts.
+Refactor the existing staff identity system to use a unified, permanent employee numbering scheme instead of role-specific staff codes. This ensures staff codes remain permanent across designation changes, promotions, transfers, and categories.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Database Schema Update**: This refactor introduces a new `employeeCategory` field on the `Staff` table. We will perform a `npx prisma db push` to add this column to the database without dropping existing records.
+> 
+> **Sequence Reset/Migration**: For existing counters, any new staff created after the push will generate codes under the new `STAFF_UNIFIED` sequence. Previous staff records will retain their existing codes to preserve historical login/reference stability, or we can run a backfill migration if you want to rewrite all past codes.
+
+## Open Questions
+
+> [!WARNING]
+> Do you want us to write a backfill script to migrate all existing staff records to the new `-STF-` format? Or should we leave historical records as-is and only apply the new format to future hires? (Both options are supported).
 
 ---
 
 ## Proposed Changes
 
-### Core Security & Authentication
+### 1. Database Schema
 
-#### [MODIFY] [middleware.ts](file:///J:/virtue_fb/virtue-v2/src/middleware.ts)
-- Wrap the Sovereign Backbone header injection in `if (user)` to fix the compilation/syntax error and prevent guest request crashes.
-- Read `v-active-school` and `v-active-branch` cookies to override the active context for `DEVELOPER` and `OWNER` users.
+#### [MODIFY] [schema.prisma](file:///j:/virtue_fb/virtue-v2/prisma/schema.prisma)
+* Add `employeeCategory String?` to the `Staff` model.
 
-#### [MODIFY] [backbone.ts](file:///J:/virtue_fb/virtue-v2/src/lib/auth/backbone.ts)
-- Update Mode B (cookie recovery) fallback so that if `user.role === 'DEVELOPER'`, it reads `v-active-school` and `v-active-branch` cookies to set the target context.
-- Update `user.role === 'OWNER'` to also read the `v-active-branch` cookie fallback if present.
+---
 
-#### [MODIFY] [auth-native.ts](file:///J:/virtue_fb/virtue-v2/src/lib/actions/auth-native.ts)
-- Expand database sign-in queries to match login identifiers on email, username, phone, or staff code.
+### 2. Core ID Generation Layer
 
-### Date & Timezone Utilities
+#### [MODIFY] [counter-service.ts](file:///j:/virtue_fb/virtue-v2/src/lib/services/counter-service.ts)
+* Refactor `generateStaffCode` to ignore the role prefix and generate:
+  `${schoolCode}-${branchCode}-STF-${seq_6}`
+* Use the single counter type `"STAFF_UNIFIED"` (global scope per branch) to drive sequences.
+* Keep the `role` parameter optional in the function signature for backwards compatibility with existing actions.
 
-#### [MODIFY] [validations.ts](file:///J:/virtue_fb/virtue-v2/src/lib/utils/validations.ts)
-- Export global helpers `formatToISODateString` and `formatToDDMMYYYY` bound strictly to `Asia/Kolkata` timezone.
+#### [MODIFY] [id-generator.ts](file:///j:/virtue_fb/virtue-v2/src/lib/id-generator.ts)
+* Update `generateStaffCode` to match the updated counter-service signature.
 
-#### [MODIFY] [staff.ts](file:///J:/virtue_fb/virtue-v2/src/types/staff.ts)
-- Refactor schemas to use global timezone date formatting and handle DB `null` values.
+---
+
+### 3. Staff Schemas and Types
+
+#### [MODIFY] [staff.ts](file:///j:/virtue_fb/virtue-v2/src/types/staff.ts)
+* Add `employeeCategory` to `staffOnboardingSchema` (Zod string validator).
+* Add `employeeCategory` to `flexibleStaffBulkSchema` (Zod string validator).
+
+---
+
+### 4. Server Actions
+
+#### [MODIFY] [staff-actions.ts](file:///j:/virtue_fb/virtue-v2/src/lib/actions/staff-actions.ts)
+* Persist `employeeCategory` inside `createStaffAction` and `updateStaffAction` database queries.
+* Update filtering/search inside directory actions to support querying on `employeeCategory`.
+
+#### [MODIFY] [dev-actions.ts](file:///j:/virtue_fb/virtue-v2/src/lib/actions/dev-actions.ts)
+* Update `provisionInstance` to create the Genesis Owner with `employeeCategory: "OWNER"` and `role: "Owner"`.
+
+#### [MODIFY] [actions.ts](file:///j:/virtue_fb/virtue-v2/src/app/developer/actions.ts)
+* Update `createBranchAction` to create the principal with `employeeCategory: "MANAGEMENT"` and `role: "Principal"`.
+* Update `createOwnerAction` to set `employeeCategory` based on selected role (e.g. `"OWNER"`, `"MANAGEMENT"`).
 
 ---
 
 ## Verification Plan
 
-### Automated Verification
-- Run TypeScript check: `npx tsc --noEmit` to ensure there are no syntax or type errors.
+### Automated Tests
+* Run `npx tsc --noEmit` to verify type safety.
+* Run a custom test script to verify that provisioning a new school and adding staff creates the unified `-STF-` code structure.
+
+### Manual Verification
+* Deploy the dev server and test creating a teacher/principal on the onboarding UI to verify the code is assigned correctly.

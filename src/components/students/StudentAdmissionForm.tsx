@@ -18,10 +18,12 @@ import {
   ShieldCheck,
   Zap,
   Phone,
-  MessageSquare
+  MessageSquare,
+  Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useFormDraft } from "@/hooks/use-form-draft";
 
 // 🏛️ SOVEREIGN UI INLINE: Replacing missing UI components with native Tailwind standards
 const Button = ({ children, className, ...props }: any) => (
@@ -78,14 +80,7 @@ export default function StudentAdmissionForm() {
     const [feeStructures, setFeeStructures] = useState<any[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const {
-        register,
-        handleSubmit,
-        watch,
-        setValue,
-        formState: { errors },
-        trigger
-    } = useForm<StudentAdmissionData>({
+    const form = useForm<StudentAdmissionData>({
         resolver: zodResolver(studentAdmissionSchema) as any,
         defaultValues: {
             admissionDate: new Date().toISOString().split('T')[0],
@@ -107,6 +102,20 @@ export default function StudentAdmissionForm() {
             academicYearId: "2026-27"
         }
     });
+
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        formState: { errors },
+        trigger
+    } = form;
+
+    const { hasDraft, restoreDraft, clearDraft, draftData } = useFormDraft(
+        form,
+        "virtue_student_admission_draft"
+    );
 
     const watchedClassId = watch("classId");
     const watchedFees = watch([
@@ -161,7 +170,7 @@ export default function StudentAdmissionForm() {
             const res = await submitAdmissionAction(data);
             if (res.success) {
                 alert(`Student Admitted Successfully! Admission #: ${res.data.admissionNumber}`);
-                // Redirect or reset
+                clearDraft();
             } else {
                 alert(res.error || "Admission failed");
             }
@@ -224,6 +233,46 @@ export default function StudentAdmissionForm() {
                             <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/10 blur-[120px] rounded-full" />
                             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 blur-[120px] rounded-full" />
 
+                            {/* Premium Draft Recovery Banner */}
+                            <AnimatePresence>
+                                {hasDraft && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                        animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+                                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="p-5 rounded-2xl bg-violet-950/40 border border-violet-500/20 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
+                                                    <Sparkles className="w-5 h-5 animate-pulse" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">Unsaved Progress Detected</h4>
+                                                    <p className="text-xs text-zinc-400">We found a draft from your last session. Would you like to restore it?</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={clearDraft}
+                                                    className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors"
+                                                >
+                                                    Start Fresh
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={restoreDraft}
+                                                    className="bg-violet-600 hover:bg-violet-500 text-white font-bold px-4 py-2 text-xs rounded-xl shadow-lg shadow-violet-600/20 active:scale-95 transition-all"
+                                                >
+                                                    Restore Draft
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
                             {/* Step Content */}
                             {currentStep === 0 && (
                                 <div className="space-y-8">
@@ -250,6 +299,7 @@ export default function StudentAdmissionForm() {
                                             <select 
                                                 className="w-full h-12 rounded-xl bg-zinc-900/50 border border-zinc-700 text-white px-4 outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                                                 onChange={(e) => setValue("gender", e.target.value)}
+                                                value={watch("gender") || ""}
                                             >
                                                 <option value="">Select Gender</option>
                                                 <option value="Male">Male</option>
@@ -282,7 +332,13 @@ export default function StudentAdmissionForm() {
                                             <Label className="text-zinc-300">Father's Phone <span className="text-red-500">*</span></Label>
                                             <div className="relative">
                                                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                                <Input {...register("fatherPhone")} className="bg-zinc-900/50 border-zinc-700 h-12 pl-12 text-white" />
+                                                <Input 
+                                                    {...register("fatherPhone")} 
+                                                    className="bg-zinc-900/50 border-zinc-700 h-12 pl-12 text-white" 
+                                                    onInput={(e: any) => {
+                                                        e.target.value = e.target.value.replace(/[^\d]/g, "");
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                         <div className="space-y-2 md:col-span-2 p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
@@ -290,7 +346,14 @@ export default function StudentAdmissionForm() {
                                                 <MessageSquare className="w-5 h-5 fill-current" />
                                                 <Label className="text-sm font-bold uppercase tracking-wider">Preferred WhatsApp Number</Label>
                                             </div>
-                                            <Input {...register("whatsappNumber")} className="bg-zinc-900 border-emerald-500/20 h-12 text-emerald-400 font-bold" placeholder="Primary notification number" />
+                                            <Input 
+                                                {...register("whatsappNumber")} 
+                                                className="bg-zinc-900 border-emerald-500/20 h-12 text-emerald-400 font-bold" 
+                                                placeholder="Primary notification number" 
+                                                onInput={(e: any) => {
+                                                    e.target.value = e.target.value.replace(/[^\d]/g, "");
+                                                }}
+                                            />
                                             <p className="text-[10px] text-emerald-500/60 mt-2 italic">Standard: Digital receipts, absence alerts, and fee reminders will be directed here.</p>
                                         </div>
                                         <div className="space-y-2">
@@ -299,7 +362,13 @@ export default function StudentAdmissionForm() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-zinc-300">Emergency Contact Phone</Label>
-                                            <Input {...register("emergencyContactPhone")} className="bg-zinc-900/50 border-zinc-700 h-12 text-white" />
+                                            <Input 
+                                                {...register("emergencyContactPhone")} 
+                                                className="bg-zinc-900/50 border-zinc-700 h-12 text-white" 
+                                                onInput={(e: any) => {
+                                                    e.target.value = e.target.value.replace(/[^\d]/g, "");
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -317,6 +386,7 @@ export default function StudentAdmissionForm() {
                                             <select 
                                                 className="w-full h-12 rounded-xl bg-zinc-900/50 border border-zinc-700 text-white px-4 outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                                                 onChange={(e) => setValue("classId", e.target.value)}
+                                                value={watch("classId") || ""}
                                             >
                                                 <option value="">Select Grade</option>
                                                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -327,6 +397,7 @@ export default function StudentAdmissionForm() {
                                             <select 
                                                 className="w-full h-12 rounded-xl bg-zinc-900/50 border border-zinc-700 text-white px-4 outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                                                 onChange={(e) => setValue("sectionId", e.target.value)}
+                                                value={watch("sectionId") || ""}
                                             >
                                                 <option value="">Select Section</option>
                                                 {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -341,7 +412,7 @@ export default function StudentAdmissionForm() {
                                             <select 
                                                 className="w-full h-12 rounded-xl bg-zinc-900/50 border border-zinc-700 text-white px-4 outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                                                 onChange={(e) => setValue("admissionType", e.target.value)}
-                                                defaultValue="New"
+                                                value={watch("admissionType") || ""}
                                             >
                                                 <option value="New">New Admission</option>
                                                 <option value="Re-Admission">Re-Admission</option>
@@ -468,15 +539,28 @@ export default function StudentAdmissionForm() {
                             {/* Form Footer / Navigation */}
                             <Separator className="my-8 bg-zinc-800/50" />
                             <div className="flex justify-between items-center">
-                                <Button 
-                                    type="button"
-                                    onClick={prevStep} 
-                                    disabled={currentStep === 0 || isSubmitting}
-                                    variant="ghost"
-                                    className="text-zinc-500 font-bold hover:text-white"
-                                >
-                                    <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-                                </Button>
+                                <div className="flex items-center gap-4">
+                                    <Button 
+                                        type="button"
+                                        onClick={prevStep} 
+                                        disabled={currentStep === 0 || isSubmitting}
+                                        variant="ghost"
+                                        className="text-zinc-500 font-bold hover:text-white"
+                                    >
+                                        <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+                                    </Button>
+
+                                    {/* Explicit Reset Form button */}
+                                    {(form.formState.isDirty || draftData) && (
+                                        <Button
+                                            type="button"
+                                            onClick={clearDraft}
+                                            className="text-rose-500 hover:text-rose-400 font-bold text-sm px-4 py-2 hover:bg-rose-500/10 rounded-xl transition-all"
+                                        >
+                                            Reset Form
+                                        </Button>
+                                    )}
+                                </div>
 
                                 {currentStep === STEPS.length - 1 ? (
                                     <Button 

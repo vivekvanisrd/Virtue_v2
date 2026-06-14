@@ -1,19 +1,19 @@
-# Task List
+# Task List: Staff Identity Architecture Refactor
 
-- [x] Fix middleware syntax error & support impersonation cookies in [middleware.ts](file:///J:/virtue_fb/virtue-v2/src/middleware.ts)
-- [x] Support context cookie resolution fallbacks in [backbone.ts](file:///J:/virtue_fb/virtue-v2/src/lib/auth/backbone.ts)
-- [x] Update `createBranchAction` to support phone number credentials in [actions.ts](file:///J:/virtue_fb/virtue-v2/src/app/developer/actions.ts)
-- [x] Add `switchSchoolContextAction` in [actions.ts](file:///J:/virtue_fb/virtue-v2/src/app/developer/actions.ts)
-- [x] Update the branch creation form and add impersonation buttons in [page.tsx](file:///J:/virtue_fb/virtue-v2/src/app/developer/page.tsx)
-- [x] Display impersonation status and "Exit Impersonation" in [header.tsx](file:///J:/virtue_fb/virtue-v2/src/components/layout/header.tsx)
-- [x] Correct staff code generation in branch principal & owner creation to enforce sequential ID rules (`VIVES-SNB-PRIN-0001`)
-- [x] Migrate existing database records for `Swetha Jangampet` and `Vibhushree Sambayagari` to sequential IDs
-- [x] Mandate phone number input fields for owner/staff forms and enforce validation checks
-- [x] Map default usernames & passwords to phone numbers in the database
-- [x] Expand native sign-in routine in [auth-native.ts](file:///J:/virtue_fb/virtue-v2/src/lib/actions/auth-native.ts) to accept Phone Numbers and Staff IDs
-- [x] Fix silent validation blocker on staff profile edit screen by handling `null` database states and `'PASSWORD_CHANGE_REQUIRED'` onboarding status in [staff.ts](file:///J:/virtue_fb/virtue-v2/src/types/staff.ts)
-- [x] Preprocess date objects (dob, dateOfJoining) to standard `YYYY-MM-DD` strings for HTML date inputs in [staff.ts](file:///J:/virtue_fb/virtue-v2/src/types/staff.ts)
-- [x] Enforce real-time space removal on phone fields during typing or pasting in [staff-onboarding-elite.tsx](file:///J:/virtue_fb/virtue-v2/src/components/staff/staff-onboarding-elite.tsx) and [page.tsx](file:///J:/virtue_fb/virtue-v2/src/app/developer/page.tsx)
-- [x] Implement database-backed [globalPhoneSchema](file:///J:/virtue_fb/virtue-v2/src/lib/utils/validations.ts#L81) verification for staff phone numbers in [staff.ts](file:///J:/virtue_fb/virtue-v2/src/types/staff.ts)
-- [x] Implement India Timezone (Asia/Kolkata) formatting in global validators and component helpers to prevent date drifts
-- [x] Verify everything compiles and test the functionality
+- [x] Update Prisma schema to add enums and new fields
+  - [x] Add `EmployeeCategory` enum to [schema.prisma](file:///j:/virtue_fb/virtue-v2/prisma/schema.prisma)
+  - [x] Add `EmploymentType` enum to [schema.prisma](file:///j:/virtue_fb/virtue-v2/prisma/schema.prisma)
+  - [x] Add `employeeCategory`, `employmentType`, and `identityVersion` fields to the `Staff` model
+  - [x] Run `npx prisma db push` to sync the database schema
+- [x] Refactor ID Generator and Counter Service
+  - [x] Update `generateStaffCode` in [counter-service.ts](file:///j:/virtue_fb/virtue-v2/src/lib/services/counter-service.ts) to ignore the role prefix, use the `STAFF_UNIFIED` counter, and format as `${schoolCode}-${branchCode}-STF-${seq_6}` (with `identityVersion` defaults/attributes if applicable)
+  - [x] Make function signatures in [id-generator.ts](file:///j:/virtue_fb/virtue-v2/src/lib/id-generator.ts) backwards-compatible by keeping `role` optional/ignored
+- [x] Refactor Zod Schemas and Type Definitions
+  - [x] Add `employeeCategory`, `employmentType`, and `identityVersion` validation rules in [staff.ts](file:///j:/virtue_fb/virtue-v2/src/types/staff.ts)
+- [x] Update Server Actions
+  - [x] In `createStaffAction` and `updateStaffAction` in [staff-actions.ts](file:///j:/virtue_fb/virtue-v2/src/lib/actions/staff-actions.ts), process and save `employeeCategory`, `employmentType`, and `identityVersion = 'V2'` (default) to database
+  - [x] In `provisionInstance` in [dev-actions.ts](file:///j:/virtue_fb/virtue-v2/src/lib/actions/dev-actions.ts), set Genesis Owner fields: `employeeCategory: 'OWNER'`, `role: 'Owner'`, `identityVersion: 'V2'`
+  - [x] In `createBranchAction` and `createOwnerAction` in [actions.ts](file:///j:/virtue_fb/virtue-v2/src/app/developer/actions.ts), populate category and type enums correctly for new branches/owners, setting `identityVersion: 'V2'`
+- [x] Verify
+  - [x] Run TypeScript typecheck: `npx tsc --noEmit`
+  - [x] Run backend verification scripts to test provisioning flow

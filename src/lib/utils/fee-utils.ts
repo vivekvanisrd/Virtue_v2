@@ -14,6 +14,7 @@ export interface FeeBreakdown {
   totalDiscount: number;
   annualNet: number;
   paymentType: string;
+  installments: (TermDetail & { key: string })[];
   ancillary?: Record<string, TermDetail>;
 }
 
@@ -21,10 +22,11 @@ export interface FeeBreakdown {
  * Calculates the breakdown for annual tuition fees.
  * Term-wise: 50% / 25% / 25%
  * Annual: 100% / 0% / 0%
+ * Monthly: 10 equal installments (June to March) - No discounts allowed.
  * 
  * @param annualTuition Total annual amount (Gross)
  * @param totalDiscount Sum of all applied discounts
- * @param paymentType "Term-wise" or "Annual"
+ * @param paymentType "Term-wise", "Annual", or "Monthly"
  */
 export const calculateTermBreakdown = (
   annualTuition: number | Decimal,
@@ -32,14 +34,44 @@ export const calculateTermBreakdown = (
   paymentType: string = "Term-wise"
 ): FeeBreakdown => {
   const tuition = typeof annualTuition === 'number' ? annualTuition : Number(annualTuition);
-  const discount = typeof totalDiscount === 'number' ? totalDiscount : Number(totalDiscount);
+  const discount = paymentType === "Monthly" ? 0 : (typeof totalDiscount === 'number' ? totalDiscount : Number(totalDiscount));
   
-  let t1Amt, t2Amt, t3Amt;
+  let t1Amt = 0, t2Amt = 0, t3Amt = 0;
+  const currentYear = new Date().getFullYear();
+  const installments: (TermDetail & { key: string })[] = [];
 
   if (paymentType === "Annual") {
     t1Amt = Math.max(0, tuition - discount);
     t2Amt = 0;
     t3Amt = 0;
+    installments.push({
+      key: "term1",
+      amount: t1Amt,
+      dueDate: new Date(currentYear, 5, 10), // June 10
+      isPaid: false,
+      label: "Annual Settlement"
+    });
+  } else if (paymentType === "Monthly") {
+    const netTuition = Math.max(0, tuition); // Forced 0 discount above
+    const baseAmt = Math.floor(netTuition / 10);
+    const remainder = netTuition - (baseAmt * 10);
+
+    for (let m = 0; m < 10; m++) {
+      const monthIndex = (5 + m) % 12; // June is index 5
+      const yearOffset = Math.floor((5 + m) / 12);
+      const dueDate = new Date(currentYear + yearOffset, monthIndex, 10);
+      const label = `Month ${m + 1} (${dueDate.toLocaleString('en-US', { month: 'short' })})`;
+      const amount = m === 9 ? (baseAmt + remainder) : baseAmt;
+      
+      installments.push({
+        key: `month${m + 1}`,
+        amount,
+        dueDate,
+        isPaid: false,
+        label
+      });
+    }
+    t1Amt = installments[0]?.amount || 0;
   } else {
     // Strict legacy split: 50% / 25% / 25% with recursive discount handling
     let remainingDiscount = discount;
@@ -56,32 +88,40 @@ export const calculateTermBreakdown = (
     remainingDiscount = Math.max(0, remainingDiscount - t2Base);
 
     t1Amt = Math.max(0, t1Base - remainingDiscount);
+
+    installments.push(
+      {
+        key: "term1",
+        amount: t1Amt,
+        dueDate: new Date(currentYear, 5, 10),
+        isPaid: false,
+        label: "Term 1 (50%)"
+      },
+      {
+        key: "term2",
+        amount: t2Amt,
+        dueDate: new Date(currentYear, 9, 10),
+        isPaid: false,
+        label: "Term 2 (25%)"
+      },
+      {
+        key: "term3",
+        amount: t3Amt,
+        dueDate: new Date(currentYear + 1, 0, 10),
+        isPaid: false,
+        label: "Term 3 (Settlement)"
+      }
+    );
   }
 
-  const currentYear = new Date().getFullYear();
-  
   return {
-    term1: { 
-        amount: t1Amt, 
-        dueDate: new Date(currentYear, 5, 10), // June 10
-        isPaid: false, 
-        label: paymentType === "Annual" ? "Annual Settlement" : "Term 1 (50%)" 
-    },
-    term2: { 
-        amount: t2Amt, 
-        dueDate: new Date(currentYear, 9, 10), // Oct 10
-        isPaid: false, 
-        label: "Term 2 (25%)" 
-    },
-    term3: { 
-        amount: t3Amt, 
-        dueDate: new Date(currentYear + 1, 0, 10), // Jan 10
-        isPaid: false, 
-        label: "Term 3 (Settlement)" 
-    },
+    term1: installments.find(inst => inst.key === "term1") || installments[0] || { amount: 0, dueDate: new Date(), isPaid: false, label: "" },
+    term2: installments.find(inst => inst.key === "term2") || { amount: 0, dueDate: new Date(), isPaid: false, label: "" },
+    term3: installments.find(inst => inst.key === "term3") || { amount: 0, dueDate: new Date(), isPaid: false, label: "" },
     totalDiscount: discount,
-    annualNet: t1Amt + t2Amt + t3Amt,
-    paymentType
+    annualNet: installments.reduce((sum, inst) => sum + inst.amount, 0),
+    paymentType,
+    installments
   };
 };
 
@@ -151,11 +191,11 @@ export const generateUPIString = (params: {
   vpa: string;
   name: string;
   amount: number;
-  reference: string;
   note: string;
 }) => {
-  const { vpa, name, amount, reference, note } = params;
-  return `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${amount}&tr=${encodeURIComponent(reference)}&tn=${encodeURIComponent(note)}&cu=INR`;
+  const { vpa, name, amount, note } = params;
+  const formattedAmount = Number(amount).toFixed(2);
+  return `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${formattedAmount}&tn=${encodeURIComponent(note)}&cu=INR`;
 };
 
 /**

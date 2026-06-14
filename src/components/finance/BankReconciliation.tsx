@@ -196,6 +196,12 @@ export function BankReconciliation() {
                    <div className="col-span-full py-20 flex flex-col items-center gap-4 text-slate-300">
                       <Landmark className="w-16 h-16 grayscale opacity-20" />
                       <p className="text-xs font-black uppercase tracking-widest">No statements uploaded</p>
+                      <button
+                        onClick={() => setView("UPLOAD")}
+                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:scale-105 transition-all flex items-center gap-2 mt-4"
+                      >
+                         <Upload className="w-4 h-4" /> Import Statement
+                      </button>
                    </div>
                 ) : statements.map((stmt) => (
                   <div key={stmt.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all group flex flex-col">

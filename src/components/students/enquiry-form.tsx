@@ -7,8 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { DefaultValues } from "react-hook-form";
 import { submitEnquiryAction } from "@/lib/actions/enquiry-actions";
-import { User, Phone, Mail, School, CheckCircle2, ChevronRight, Loader2, Users } from "lucide-react";
+import { User, Phone, Mail, School, CheckCircle2, ChevronRight, Loader2, Users, Sparkles } from "lucide-react";
 import { globalPhoneSchema, globalEmailSchema } from "@/lib/utils/validations";
+import { useFormDraft } from "@/hooks/use-form-draft";
 import { useOptionalTenant } from "@/context/tenant-context";
 
 const inputCls = "w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground placeholder-foreground opacity-30 focus:outline-none focus:border-primary focus:bg-muted transition-all";
@@ -33,13 +34,20 @@ export function EnquiryForm() {
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<EnquiryFormData>({
+  const form = useForm<EnquiryFormData>({
     resolver: zodResolver(enquirySchema),
     mode: "onBlur",
     defaultValues: {
       requestedClass: ""
     }
   });
+
+  const { register, handleSubmit, formState: { errors }, reset } = form;
+
+  const { hasDraft, restoreDraft, clearDraft, draftData } = useFormDraft(
+    form,
+    "virtue_admission_enquiry_draft"
+  );
 
   const context = useOptionalTenant();
   const schoolId = context?.schoolId || "VGA-MNB01";
@@ -52,6 +60,7 @@ export function EnquiryForm() {
     const submitData = {
       schoolId: schoolId,
       ...data,
+      parentPhone: data.parentPhone || "",
       academicYear: academicYear || "2026-27"
     };
 
@@ -59,7 +68,7 @@ export function EnquiryForm() {
     
     if (result.success) {
       setSuccess(true);
-      reset();
+      clearDraft();
     } else {
       setServerError(result.error || "Failed to submit enquiry.");
     }
@@ -104,6 +113,45 @@ export function EnquiryForm() {
         <h2 className="text-3xl font-black text-white tracking-tight mb-2">Admissions Enquiry</h2>
         <p className="text-foreground opacity-60 font-medium text-sm">Fill out the form below to register your interest for the upcoming 2026-27 academic year.</p>
       </div>
+
+      <AnimatePresence>
+        {hasDraft && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="p-5 rounded-2xl bg-violet-950/40 border border-violet-500/20 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm">Unsaved Progress Detected</h4>
+                  <p className="text-xs text-zinc-400">We found a draft from your last session. Would you like to restore it?</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button 
+                  type="button" 
+                  onClick={clearDraft}
+                  className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors"
+                >
+                  Start Fresh
+                </button>
+                <button 
+                  type="button" 
+                  onClick={restoreDraft}
+                  className="bg-violet-600 hover:bg-violet-500 text-white font-bold px-4 py-2 text-xs rounded-xl shadow-lg shadow-violet-600/20 active:scale-95 transition-all"
+                >
+                  Restore Draft
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {serverError && (
@@ -153,7 +201,15 @@ export function EnquiryForm() {
             <div className="flex flex-col gap-1">
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-white/50 text-sm font-medium">+91</span>
-                <input {...register("parentPhone")} type="tel" placeholder="Phone Number *" className={`${inputCls} pl-12`} />
+                <input 
+                  {...register("parentPhone")} 
+                  type="tel" 
+                  placeholder="Phone Number *" 
+                  className={`${inputCls} pl-12`} 
+                  onInput={(e: any) => {
+                    e.target.value = e.target.value.replace(/[^\d]/g, "");
+                  }}
+                />
               </div>
               {errors.parentPhone && <span className="text-[10px] text-rose-400 font-bold px-1">{errors.parentPhone.message}</span>}
             </div>
@@ -188,24 +244,43 @@ export function EnquiryForm() {
             <div className="flex flex-col gap-1">
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-white/50 text-sm font-medium">+91</span>
-                <input {...register("referrerPhone")} type="tel" placeholder="Referrer Phone (Optional)" className={`${inputCls} pl-12`} />
+                <input 
+                  {...register("referrerPhone")} 
+                  type="tel" 
+                  placeholder="Referrer Phone (Optional)" 
+                  className={`${inputCls} pl-12`} 
+                  onInput={(e: any) => {
+                    e.target.value = e.target.value.replace(/[^\d]/g, "");
+                  }}
+                />
               </div>
               {errors.referrerPhone && <span className="text-[10px] text-rose-400 font-bold px-1">{errors.referrerPhone.message}</span>}
             </div>
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 text-white font-black text-sm py-4 rounded-xl transition-all shadow-xl shadow-fuchsia-500/20 flex items-center justify-center gap-2 disabled:opacity-50 group"
-        >
-          {loading ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
-          ) : (
-            <>Submit Enquiry Request <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {(form.formState.isDirty || draftData) && (
+            <button 
+              type="button" 
+              onClick={clearDraft}
+              className="sm:w-1/3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-sm py-4 rounded-xl transition-all border border-rose-500/20 flex items-center justify-center gap-2"
+            >
+              Reset Form
+            </button>
           )}
-        </button>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={`${(form.formState.isDirty || draftData) ? "sm:w-2/3" : "w-full"} bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 text-white font-black text-sm py-4 rounded-xl transition-all shadow-xl shadow-fuchsia-500/20 flex items-center justify-center gap-2 disabled:opacity-50 group`}
+          >
+            {loading ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
+            ) : (
+              <>Submit Enquiry Request <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></>
+            )}
+          </button>
+        </div>
       </div>
     </motion.form>
   );

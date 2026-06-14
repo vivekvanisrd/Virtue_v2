@@ -163,7 +163,7 @@ export const PaymentSettlementService = {
         // H. Journal Entry (Accrual Clearance)
         const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1110" } });
         const arAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1200" } });
-        const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4200" } });
+        const serviceAcc = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4500" } });
 
         if (cashAcc && arAcc) {
           const lines = [

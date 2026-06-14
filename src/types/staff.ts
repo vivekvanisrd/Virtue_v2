@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { globalPhoneSchema, sanitizePhone, formatToISODateString } from "@/lib/utils/validations";
+import { EmployeeCategory, EmploymentType } from "@prisma/client";
 
 export const staffBasicSchema = z.object({
   firstName: z.string().min(2, "First name is required").trim(),
@@ -39,6 +40,9 @@ export const staffProfessionalSchema = z.object({
   basicSalary: z.coerce.number().min(1, "Basic salary is required"),
   hraFormula: z.string().nullable().optional(),
   daFormula: z.string().nullable().optional(),
+  employeeCategory: z.nativeEnum(EmployeeCategory).nullable().optional(),
+  employmentType: z.nativeEnum(EmploymentType).nullable().optional(),
+  identityVersion: z.string().nullable().optional().default("V2"),
 });
 
 export const staffStatutorySchema = z.object({
@@ -98,6 +102,9 @@ export const flexibleStaffBulkSchema = z.object({
     onboardingStatus: z.string().optional(),
     branchId: z.string().optional(),
     schoolId: z.string().optional(),
+    employeeCategory: z.nativeEnum(EmployeeCategory).optional(),
+    employmentType: z.nativeEnum(EmploymentType).optional(),
+    identityVersion: z.string().optional(),
 });
 
 export type StaffBasicData = z.infer<typeof staffBasicSchema>;

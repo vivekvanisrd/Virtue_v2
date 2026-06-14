@@ -100,6 +100,7 @@ export async function changePasswordAction(data: { oldPassword?: string; newPass
                     data: {
                         passwordHash: newHash,
                         onboardingStatus: "JOINED",  // ✅ Clear forced-change gate
+                        mobilePasswordUsed: false,   // ✅ Reset mobile lockout flag
                     }
                 });
             } finally {

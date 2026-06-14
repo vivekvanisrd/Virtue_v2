@@ -8,19 +8,21 @@ if (!fs.existsSync(logPath)) {
   process.exit(1);
 }
 
-console.log("Searching transcript for developer credentials...");
 const data = fs.readFileSync(logPath, 'utf8');
-const lines = data.split('\n');
+const lines = data.trim().split('\n');
 
-let found = [];
-for (let i = 0; i < lines.length; i++) {
-  const line = lines[i];
-  if (line.includes("developer@pava-edux.com") || line.includes("platformDev") || line.includes("credentials")) {
-    found.push({ lineNum: i + 1, content: line.substring(0, 500) });
-  }
-}
-
-console.log(`Found ${found.length} matching lines.`);
-found.slice(-10).forEach(f => {
-  console.log(`Line ${f.lineNum}: ${f.content}`);
+const userInputs = [];
+lines.forEach((line, idx) => {
+  try {
+    const parsed = JSON.parse(line);
+    if (parsed.type === 'USER_INPUT') {
+      userInputs.push({ index: idx, content: parsed.content });
+    }
+  } catch (e) {}
 });
+
+console.log(`Found ${userInputs.length} user inputs.`);
+userInputs.slice(-30).forEach(u => {
+  console.log(`[Step ${u.index + 1}] ${u.content}`);
+});
+

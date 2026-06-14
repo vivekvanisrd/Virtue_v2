@@ -149,6 +149,9 @@ export function ConsentForm({ token, consentData }: ConsentFormProps) {
                 <input 
                   {...register("updatedPhone")}
                   className={`${inputCls} pl-12`} 
+                  onInput={(e: any) => {
+                    e.target.value = e.target.value.replace(/[^\d]/g, "");
+                  }}
                 />
               </div>
               {errors.updatedPhone && <p className="text-[10px] text-rose-400 font-bold mt-1 px-1">{errors.updatedPhone.message}</p>}

@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "../auth/backbone";
 import { revalidatePath } from "next/cache";
-import { sanitizeEmail, sanitizePhone } from "../utils/validations";
+import { sanitizeEmail, sanitizePhone, cleanPhone } from "../utils/validations";
 import { CounterService } from "@/lib/services/counter-service";
 
 
@@ -348,7 +348,7 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
                     firstName: enquiry.studentFirstName,
                     lastName: enquiry.studentLastName,
                     middleName: enquiry.studentLastName ? "" : undefined, // Safety
-                    phone: enquiry.parentPhone,
+                    phone: cleanPhone(enquiry.parentPhone),
                     email: enquiry.parentEmail,
                     
                     family: {
@@ -356,9 +356,9 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
                         schoolId: context.schoolId,
                         branchId: enquiry.branchId,
                         fatherName: enquiry.parentName,
-                        fatherPhone: enquiry.parentPhone,
+                        fatherPhone: cleanPhone(enquiry.parentPhone),
                         fatherEmail: enquiry.parentEmail,
-                        whatsappNumber: enquiry.parentPhone
+                        whatsappNumber: cleanPhone(enquiry.parentPhone)
                       }
                     },
                     

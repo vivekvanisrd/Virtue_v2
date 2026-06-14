@@ -3,6 +3,7 @@ import { prismaBypass } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { encrypt } from "@/lib/auth/session";
 import { cookies } from "next/headers";
+import { cleanPhone } from "@/lib/utils/validations";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,21 +15,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Staff Code and Password are required" }, { status: 400 });
     }
 
-    // 1. Find staff by staffCode
+    const cleanPhoneInput = cleanPhone(staffCode) || staffCode;
+
+    // 1. Find staff by staffCode, username, phone, or email
     const staff = await prismaBypass.staff.findFirst({
-      where: { staffCode }
+      where: {
+        OR: [
+          { staffCode: { equals: staffCode, mode: "insensitive" } },
+          { username: { equals: staffCode, mode: "insensitive" } },
+          { email: { equals: staffCode, mode: "insensitive" } },
+          { phone: staffCode },
+          { phone: cleanPhoneInput }
+        ]
+      }
     });
 
     if (!staff) {
-      return NextResponse.json({ success: false, error: "Invalid Staff Code. Please check and try again." }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Invalid credentials. Please check and try again." }, { status: 404 });
     }
 
     if (staff.status?.toUpperCase() !== "ACTIVE") {
       return NextResponse.json({ success: false, error: "Account is inactive. Contact HR." }, { status: 403 });
     }
 
-    // 2. Enforce mobile one-time password security
-    if (staff.mobilePasswordUsed) {
+    // 2. Enforce mobile one-time password security ONLY for temporary password users
+    if (staff.onboardingStatus === "PASSWORD_CHANGE_REQUIRED" && staff.mobilePasswordUsed) {
       return NextResponse.json({ 
         success: false, 
         error: "This temporary password has already been used once. Please request a new password from your administrator." 
@@ -42,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     const isValid = await bcrypt.compare(password, staff.passwordHash);
     if (!isValid) {
-      return NextResponse.json({ success: false, error: "Invalid password. Please check and try again." }, { status: 401 });
+      return NextResponse.json({ success: false, error: "Invalid credentials. Please check and try again." }, { status: 401 });
     }
 
     // 4. Generate random mobileSessionToken

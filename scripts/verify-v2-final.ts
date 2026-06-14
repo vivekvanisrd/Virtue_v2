@@ -6,7 +6,7 @@ import { resetUserPassword } from "../src/lib/actions/dev-actions";
 async function verify() {
     console.log("🚀 STARTING V2 ARCHITECTURE VERIFICATION (BACKEND)...");
 
-    const testSchoolCode = "VRTX"; // Unique for this test
+    const testSchoolCode = "VR" + Math.floor(Math.random() * 9000 + 1000); // Unique for this test
     const testEmail = `admin@${testSchoolCode.toLowerCase()}.com`;
 
     try {
@@ -22,21 +22,22 @@ async function verify() {
         });
 
         if (factoryResult.success) {
-            console.log(`✅ FACTORY SUCCESS: School ${factoryResult.schoolId} provisioned.`);
+            const data = (factoryResult as any).data;
+            console.log(`✅ FACTORY SUCCESS: School ${data.schoolId} provisioned.`);
             
             // Re-fetch to verify Branch ID format
             const branch = await prisma.branch.findFirst({
-                where: { schoolId: factoryResult.schoolId }
+                where: { schoolId: data.schoolId }
             });
             console.log(`✅ BRANCH ID CHECK: ${branch?.id} (Expected: ${testSchoolCode}-BR-RCB)`);
             
             // Verify Staff Code format
             const staff = await prisma.staff.findFirst({
-                where: { schoolId: factoryResult.schoolId }
+                where: { schoolId: data.schoolId }
             });
             console.log(`✅ STAFF CODE CHECK: ${staff?.staffCode} (Expected: ${testSchoolCode}-USR-OWN-0001)`);
         } else {
-            console.error("❌ FACTORY FAILED:", factoryResult.error);
+            console.error("❌ FACTORY FAILED:", (factoryResult as any).error);
         }
 
         // 2. Test Student Admission (ID Formatting)

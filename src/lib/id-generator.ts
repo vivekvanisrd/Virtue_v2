@@ -8,16 +8,7 @@ import prisma from "./prisma";
  * Enforces the "Double-Sentinel" Vacancy Check (Rule 2.3)
  */
 
-const ROLE_CODES: Record<string, string> = {
-  'Developer': 'DEVP',
-  'Owner/Partner': 'OWNR',
-  'Super User': 'SU',
-  'Principal': 'PRIN',
-  'Accountant': 'ACC',
-  'Teacher': 'TEAC',
-  'Librarian': 'LIBR',
-  'Admin Staff': 'ADMN'
-};
+
 
 export class IdGenerator {
   /**
@@ -60,7 +51,7 @@ export class IdGenerator {
     schoolCode: string;
     branchId: string;
     branchCode: string;
-    role: string;
+    role?: string;
   }, tx?: any): Promise<string> {
     const id = await CounterService.generateStaffCode(params, tx);
     

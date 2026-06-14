@@ -6,6 +6,7 @@ import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { decrypt, JWT_SECRET } from "../auth/session";
+import { cleanPhone } from "../utils/validations";
 
 /**
  * NATIVE SIGN IN: Authenticates against the internal Staff table
@@ -57,12 +58,14 @@ export async function signInAction(data: { identifier: string; password: string 
         // 2. FALLBACK: STAFF LOOKUP (Institutional Tenancy)
         // Using $queryRaw directly to bypass the Tenancy Interceptor safely without
         // mutating the global process.env.SKIP_TENANCY which causes race conditions.
+        const cleanedPhone = cleanPhone(identifier);
         const staffRecords = await prisma.$queryRaw<any[]>`
             SELECT * FROM "Staff" 
             WHERE (
                 LOWER("email") = LOWER(${identifier}) OR 
                 LOWER("username") = LOWER(${identifier}) OR
                 "phone" = ${identifier} OR
+                "phone" = ${cleanedPhone || ""} OR
                 LOWER("staffCode") = LOWER(${identifier})
             ) 
             AND UPPER("status") = 'ACTIVE' 

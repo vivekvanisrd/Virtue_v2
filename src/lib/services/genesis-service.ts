@@ -1,6 +1,7 @@
 import prisma from "../prisma";
 import { TEMPLATE_REGISTRY } from "../events/genesis-templates";
 import bcrypt from "bcryptjs";
+import { CounterService } from "./counter-service";
 
 /**
  * 🏛️ SOVEREIGN GENESIS FACTORY: PROVISIONING SERVICE (v8.0)
@@ -111,9 +112,15 @@ export class GenesisService {
                 // onboardingStatus = "PASSWORD_CHANGE_REQUIRED" → forced change on first login
                 currentStep = "STEP_3_OWNER";
                 console.log(`- Creating owner: ${finalOwnerData.email}`);
+                const staffCode = await CounterService.generateStaffCode({
+                    schoolId,
+                    schoolCode: schoolId,
+                    branchId: rootBranchId,
+                    branchCode: setupData?.branchCode || "MAIN",
+                }, tx);
                 const createdOwner = await tx.staff.create({
                     data: {
-                        staffCode: `OWNR-${schoolId}`,
+                        staffCode,
                         firstName: finalOwnerData.firstName,
                         lastName: finalOwnerData.lastName,
                         email: finalOwnerData.email,
@@ -124,6 +131,8 @@ export class GenesisService {
                         branchId: rootBranchId,   // Anchored to HQ (Rule 3.2)
                         status: "ACTIVE",
                         onboardingStatus: "PASSWORD_CHANGE_REQUIRED",  // 🔐 Forced change
+                        employeeCategory: "OWNER",
+                        identityVersion: "V2"
                     }
                 });
                 console.log(`- ✅ Owner created: ${createdOwner.id}`);

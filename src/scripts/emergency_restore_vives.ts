@@ -42,10 +42,10 @@ async function main() {
 
         // 3. Restore Academic Year
         const ay = await prisma.academicYear.upsert({
-            where: { id: "AY-2026-27-VIVES" },
+            where: { id: "VIVES-HQ-AY-2026-27" },
             update: {},
             create: {
-                id: "AY-2026-27-VIVES",
+                id: "VIVES-HQ-AY-2026-27",
                 name: "2026-27",
                 startDate: new Date("2026-04-01"),
                 endDate: new Date("2027-03-31"),
@@ -57,10 +57,10 @@ async function main() {
 
         // 4. Restore Financial Year
         const fy = await prisma.financialYear.upsert({
-            where: { id: "FY-2026-27-VIVES" },
+            where: { id: "VIVES-HQ-FY-2026-27" },
             update: {},
             create: {
-                id: "FY-2026-27-VIVES",
+                id: "VIVES-HQ-FY-2026-27",
                 name: "FY 2026-27",
                 startDate: new Date("2026-04-01"),
                 endDate: new Date("2027-03-31"),
@@ -82,7 +82,7 @@ async function main() {
                 passwordHash
             },
             create: {
-                staffCode: "VIVES-RCB-PR-001",
+                staffCode: "VIVES-RCB-PRIN-0001",
                 firstName: "Akshitha",
                 lastName: "Reddy",
                 email: "virtuehighsrd@gmail.com",

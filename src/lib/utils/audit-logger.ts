@@ -44,14 +44,15 @@ export async function logPlatformActivity({
   details,
   payload,
   ipAddress
-}: AuditLogParams) {
+}: AuditLogParams, tx?: any) {
   try {
     // Law 9: Serialize payload into details if details is empty, or append it
     const finalDetails = payload 
       ? `${details || ''} [Metadata: ${JSON.stringify(payload)}]`.trim()
       : details;
 
-    return await prisma.activityLog.create({
+    const p = tx || prisma;
+    return await p.activityLog.create({
       data: {
         schoolId,
         branchId,
