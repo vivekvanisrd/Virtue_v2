@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Mail, Send, History, Search, Filter, CheckCircle, XCircle, Info, Loader2, Users, Bell, DollarSign } from "lucide-react";
+import { Mail, Send, History, Search, Filter, CheckCircle, XCircle, Info, Loader2, Users, Bell, DollarSign, Eye } from "lucide-react";
 import { getCommunicationLogsAction, sendCustomEmailAction, sendBulkRemindersAction } from "@/lib/actions/communication-actions";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 
@@ -200,7 +200,7 @@ export function MailboxHub() {
           }`}
         >
           <Send className="w-4 h-4" />
-          Compose & Broadcast Notices
+          Compose & Live Preview
         </button>
       </div>
 
@@ -350,165 +350,264 @@ export function MailboxHub() {
             </div>
           </div>
         ) : (
-          /* COMPOSE EMAIL VIEW */
-          <form onSubmit={handleSend} className="p-6 space-y-6 max-w-2xl overflow-y-auto">
-            {/* Feedback Alerts */}
-            {feedback && (
-              <div className={`p-4 rounded-xl border flex gap-3 ${
-                feedback.success
-                  ? "bg-emerald-50 border-emerald-100 text-emerald-800"
-                  : "bg-rose-50 border-rose-100 text-rose-800"
-              }`}>
-                {feedback.success ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <XCircle className="w-5 h-5 flex-shrink-0" />}
-                <p className="text-sm font-semibold">{feedback.message}</p>
-              </div>
-            )}
+          /* COMPOSE EMAIL VIEW WITH LIVE PREVIEW SIDE-BY-SIDE */
+          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 flex-1 overflow-hidden">
+            {/* Left Column: Editor Form */}
+            <form onSubmit={handleSend} className="p-6 space-y-5 overflow-y-auto max-h-[600px] scrollbar-thin">
+              {/* Feedback Alerts */}
+              {feedback && (
+                <div className={`p-4 rounded-xl border flex gap-3 ${
+                  feedback.success
+                    ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                    : "bg-rose-50 border-rose-100 text-rose-800"
+                }`}>
+                  {feedback.success ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <XCircle className="w-5 h-5 flex-shrink-0" />}
+                  <p className="text-sm font-semibold">{feedback.message}</p>
+                </div>
+              )}
 
-            {/* Connection Channel Selector */}
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-slate-700">Communication Channel</label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setIsInternalOnly(true)}
-                  className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all ${
-                    isInternalOnly 
-                      ? "border-indigo-600 bg-indigo-50/20 text-indigo-900" 
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <span className="font-bold text-sm flex items-center gap-1.5">
-                    <Bell className="w-4 h-4 text-indigo-600" />
-                    Internal Portal Notice (Free)
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1">Delivers instantly to dashboard notification lists</span>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setIsInternalOnly(false)}
-                  className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all ${
-                    !isInternalOnly 
-                      ? "border-indigo-600 bg-indigo-50/20 text-indigo-900" 
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <span className="font-bold text-sm flex items-center gap-1.5">
-                    <Mail className="w-4 h-4 text-indigo-600" />
-                    Hostinger SMTP Email
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-1">Sends external email alerts to parent/staff inboxes</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Target Audience Group Selector */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">Target Audience Group</label>
-              <select
-                value={targetGroup}
-                onChange={(e: any) => {
-                  setTargetGroup(e.target.value);
-                  setRecipient("");
-                  setSelectedStudentId("");
-                }}
-                className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-              >
-                <option value="MANUAL">Manual Type Email Address</option>
-                <option value="STUDENT">Select from Student Directory</option>
-                <option value="ALL_PARENTS">All Active Parents</option>
-                <option value="ALL_STAFF">All Active Staff</option>
-                <option value="ALL">All (Both Parents & Staff)</option>
-              </select>
-            </div>
-
-            {/* Student Directory selector */}
-            {targetGroup === "STUDENT" && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-bold text-slate-700">Select Student</label>
-                {loadingStudents ? (
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                    Loading student list...
-                  </div>
-                ) : (
-                  <select
-                    value={selectedStudentId}
-                    onChange={(e) => handleStudentChange(e.target.value)}
-                    required
-                    className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              {/* Connection Channel Selector */}
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-700">Communication Channel</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsInternalOnly(true)}
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all ${
+                      isInternalOnly 
+                        ? "border-indigo-600 bg-indigo-50/20 text-indigo-900" 
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
                   >
-                    <option value="">-- Choose student --</option>
-                    {studentsList.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.firstName} {s.lastName || ""} ({s.admissionNumber || s.studentCode || "No ID"})
-                      </option>
-                    ))}
-                  </select>
-                )}
+                    <span className="font-bold text-sm flex items-center gap-1.5">
+                      <Bell className="w-4 h-4 text-indigo-600" />
+                      Internal Portal Notice (Free)
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-1">Delivers instantly to dashboard notification lists</span>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setIsInternalOnly(false)}
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all ${
+                      !isInternalOnly 
+                        ? "border-indigo-600 bg-indigo-50/20 text-indigo-900" 
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <span className="font-bold text-sm flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-indigo-600" />
+                      Hostinger SMTP Email
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-1">Sends external email alerts to parent/staff inboxes</span>
+                  </button>
+                </div>
               </div>
-            )}
 
-            {/* Recipient Input (Shown if MANUAL or student selected) */}
-            {(targetGroup === "MANUAL" || targetGroup === "STUDENT") && (
+              {/* Target Audience Group Selector */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-bold text-slate-700">Recipient Address</label>
+                <label className="block text-sm font-bold text-slate-700">Target Audience Group</label>
+                <select
+                  value={targetGroup}
+                  onChange={(e: any) => {
+                    setTargetGroup(e.target.value);
+                    setRecipient("");
+                    setSelectedStudentId("");
+                  }}
+                  className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+                >
+                  <option value="MANUAL">Manual Type Email Address</option>
+                  <option value="STUDENT">Select from Student Directory</option>
+                  <option value="ALL_PARENTS">All Active Parents</option>
+                  <option value="ALL_STAFF">All Active Staff</option>
+                  <option value="ALL">All (Both Parents & Staff)</option>
+                </select>
+              </div>
+
+              {/* Student Directory selector */}
+              {targetGroup === "STUDENT" && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-bold text-slate-700">Select Student</label>
+                  {loadingStudents ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                      Loading student list...
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedStudentId}
+                      onChange={(e) => handleStudentChange(e.target.value)}
+                      required
+                      className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+                    >
+                      <option value="">-- Choose student --</option>
+                      {studentsList.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.firstName} {s.lastName || ""} ({s.admissionNumber || s.studentCode || "No ID"})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* Recipient Input (Shown if MANUAL or student selected) */}
+              {(targetGroup === "MANUAL" || targetGroup === "STUDENT") && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-bold text-slate-700">Recipient Address</label>
+                  <input
+                    type="text"
+                    required
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    placeholder="e.g. parent@gmail.com"
+                    className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
+                  />
+                </div>
+              )}
+
+              {/* Subject */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-bold text-slate-700">Subject Line</label>
                 <input
                   type="text"
                   required
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
-                  placeholder="e.g. parent@gmail.com"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="e.g. Official Update: Term fee details"
                   className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
                 />
               </div>
-            )}
 
-            {/* Subject */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">Subject Line</label>
-              <input
-                type="text"
-                required
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Official Update: Term fee details"
-                className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
-              />
+              {/* Body */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-bold text-slate-700">Message Body</label>
+                <textarea
+                  required
+                  rows={8}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Dear Parent,&#10;&#10;Write your official notice text here..."
+                  className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 font-sans text-xs"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={sending}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-2.5 px-6 rounded-xl text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all w-full justify-center"
+              >
+                {sending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Dispatching...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Broadcast Notification
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Right Column: Interactive Live Email Preview */}
+            <div className="p-6 bg-slate-50/70 overflow-y-auto max-h-[600px] flex flex-col items-center justify-start scrollbar-thin">
+              <div className="w-full max-w-lg mb-3 flex items-center gap-2 text-slate-500 font-semibold text-xs border-b border-slate-200 pb-2">
+                <Eye className="w-4 h-4 text-slate-400" />
+                <span>Live Email Template Preview (Simulated)</span>
+              </div>
+
+              {/* CSS keyframe simulator inside preview */}
+              <style dangerouslySetInnerHTML={{__html: `
+                @keyframes preview-subtle-pulse {
+                  0%, 90%, 100% { transform: scale(1); box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3); }
+                  95% { transform: scale(1.04); box-shadow: 0 6px 18px rgba(26, 115, 232, 0.5); }
+                }
+                .preview-premium-btn {
+                  display: inline-block !important;
+                  background-color: #1A73E8 !important;
+                  color: #ffffff !important;
+                  font-family: Arial, sans-serif !important;
+                  font-size: 14px !important;
+                  font-weight: bold !important;
+                  text-decoration: none !important;
+                  padding: 12px 24px !important;
+                  border-radius: 10px !important;
+                  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3) !important;
+                  transition: all 0.2s ease-in-out !important;
+                  animation: preview-subtle-pulse 9s infinite ease-in-out !important;
+                  border: 1px solid #1A73E8;
+                  cursor: pointer;
+                }
+                .preview-premium-btn:hover {
+                  transform: translateY(-2px) !important;
+                  box-shadow: 0 6px 18px rgba(26, 115, 232, 0.6) !important;
+                  background-color: #1557b0 !important;
+                }
+              `}} />
+
+              {/* Styled Email Container Box */}
+              <div className="w-full bg-white border border-slate-200 rounded-2xl shadow-md overflow-hidden text-left flex flex-col font-serif select-none">
+                {/* Header Banner */}
+                <div className="bg-gradient-to-br from-[#14213d] to-[#000000] p-8 text-center relative text-white">
+                  {/* Star Circle */}
+                  <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 mx-auto mb-3 flex items-center justify-center">
+                    <span className="text-[#ffd700] text-2xl font-bold">★</span>
+                  </div>
+                  {/* Title */}
+                  <h4 className="text-xl font-bold tracking-tight font-serif">Virtue School</h4>
+                  {/* Subtitle */}
+                  <p className="text-[#f7a072] text-[9px] font-bold tracking-[0.15em] uppercase font-sans mt-1">Nurturing Excellence in Every Child</p>
+                </div>
+
+                {/* Pink Floral Divider */}
+                <div className="bg-[#f7d6e0] py-2 text-center text-[11px] tracking-[10px] text-[#ef709b] font-sans">
+                  🌸🌸🌸🌸🌸
+                </div>
+
+                {/* Body Content */}
+                <div className="p-6 bg-white flex-1 font-sans text-sm text-slate-700 flex flex-col">
+                  {/* Subject Line Simulator */}
+                  {subject && (
+                    <div className="mb-4 pb-3 border-b border-slate-100 font-serif text-slate-800">
+                      <strong className="text-slate-400 text-xs block font-sans uppercase font-bold tracking-wider mb-0.5">Subject:</strong>
+                      <span className="font-bold text-base">{subject}</span>
+                    </div>
+                  )}
+
+                  {/* Body Text */}
+                  <div className="font-serif min-h-[120px] text-[14px] leading-relaxed text-slate-800 whitespace-pre-line">
+                    {body || <span className="text-slate-400 font-sans italic text-xs">Start typing in the "Message Body" editor to preview the content live...</span>}
+                  </div>
+
+                  {/* Google Review CTA Widget */}
+                  <div className="border-t border-dashed border-slate-100 mt-8 pt-6 text-center flex flex-col items-center">
+                    <h5 className="text-[#14213d] font-bold font-serif text-[15px] mb-2">🌸 Your Feedback Means the World to Us! 🌸</h5>
+                    <p className="text-[11px] text-slate-500 max-w-sm mb-4 leading-normal font-sans">
+                      Thank you for trusting <strong>Virtue School</strong> with your child's education. If you've had a wonderful experience, please take just 30 seconds to support our community by sharing your review on Google!
+                    </p>
+
+                    {/* Premium Button */}
+                    <div className="my-2">
+                      <button type="button" className="preview-premium-btn">
+                        <span className="bg-white text-[#1A73E8] rounded-full w-5 h-5 inline-block text-center leading-5 text-[11px] font-extrabold mr-2 shadow-sm">G</span>
+                        <span className="align-middle text-xs">Leave a ★★★★★ Google Review</span>
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-slate-400 italic mt-2 font-sans">Click above to share your experience on Google.</p>
+                  </div>
+
+                  {/* Footer Divider */}
+                  <hr className="border-t dotted border-slate-200 my-6" />
+                  <p className="text-[11px] text-slate-500 text-center font-sans italic">
+                    Thank you for being a valued member of the <strong>Virtue School</strong> family. ❤️
+                  </p>
+                </div>
+              </div>
             </div>
-
-            {/* Body */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">Message Body</label>
-              <textarea
-                required
-                rows={6}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Write your email or notice here..."
-                className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 font-sans text-xs"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={sending}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-2.5 px-6 rounded-xl text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
-            >
-              {sending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Dispatching...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Broadcast Notification
-                </>
-              )}
-            </button>
-          </form>
+          </div>
         )}
       </div>
 
