@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node --dns-result-order=ipv6first node_modules/next/dist/bin/next dev",
     "dev:turbo": "node --dns-result-order=ipv6first node_modules/next/dist/bin/next dev --turbo",
-    "build": "next build",
+    "build": "prisma db push && next build",
     "start": "node --dns-result-order=ipv6first node_modules/next/dist/bin/next start",
     "lint": "eslint",
     "postinstall": "prisma generate"
