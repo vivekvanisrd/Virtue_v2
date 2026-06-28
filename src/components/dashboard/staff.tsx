@@ -61,7 +61,8 @@ export function StaffContent({ tabId, params }: StaffContentProps) {
             lastName: staff.lastName?.trim() || "",
             middleName: staff.middleName?.trim() || "",
             email: staff.email?.trim() || "",
-            phone: staff.phone?.trim() || "",
+            phone: staff.phone?.trim() || 
+                   (staff.username && /^\d{10}$/.test(staff.username.trim()) ? staff.username.trim() : ""),
             gender: staff.gender || "Female",
             role: staff.role || "Teacher",
             schoolId: staff.schoolId || "",

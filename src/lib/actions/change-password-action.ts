@@ -108,13 +108,18 @@ export async function getCurrentStaffOnboardingDetailsAction() {
                 return { success: false, error: "Staff profile not found." };
             }
 
+            let phone = staff.phone || "";
+            if (!phone && staff.username && /^\d{10}$/.test(staff.username.trim())) {
+                phone = staff.username.trim();
+            }
+
             return {
                 success: true,
                 data: {
                     firstName: staff.firstName || "",
                     lastName: staff.lastName || "",
                     middleName: staff.middleName || "",
-                    phone: staff.phone || "",
+                    phone: phone,
                     email: staff.email || "",
                     dob: staff.dob ? staff.dob.toISOString().split("T")[0] : "",
                     gender: staff.gender || "",
