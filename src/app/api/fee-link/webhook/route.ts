@@ -13,11 +13,13 @@ export async function POST(req: NextRequest) {
     }
 
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (secret) {
-      const expected = crypto.createHmac("sha256", secret).update(body).digest("hex");
-      if (expected !== signature) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-      }
+    if (!secret) {
+      console.error("[WEBHOOK] CRITICAL: RAZORPAY_WEBHOOK_SECRET is not configured.");
+      return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+    }
+    const expected = crypto.createHmac("sha256", secret).update(body).digest("hex");
+    if (expected !== signature) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
     const json = JSON.parse(body);

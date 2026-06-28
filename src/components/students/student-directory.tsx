@@ -32,6 +32,7 @@ import { useTabs } from "@/context/tab-context";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { useTenant } from "@/context/tenant-context";
+import { toDisplayId } from "@/lib/utils/id-utils";
 
 export function StudentDirectory() {
   const { openTab } = useTabs();
@@ -289,7 +290,7 @@ export function StudentDirectory() {
                    {viewMode === "grid" && (
                       <div className="mt-5">
                           <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-white/80 border border-slate-200/50 px-4 py-1.5 rounded-full shadow-sm font-mono tracking-normal">
-                             {(student.registrationId || student.studentCode || "NO_ID")}
+                             {toDisplayId(student.registrationId || student.studentCode || "NO_ID")}
                           </span>
                       </div>
                    )}
@@ -327,7 +328,7 @@ export function StudentDirectory() {
                    <div className="grid grid-cols-2 gap-6 my-8">
                       <div className="space-y-1.5">
                          <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Enrollment</p>
-                         <p className="text-xs font-black text-slate-700 tracking-tight">{student.history?.[0]?.admissionNumber || student.admissionNumber || "N/A"}</p>
+                         <p className="text-xs font-black text-slate-700 tracking-tight">{toDisplayId(student.history?.[0]?.admissionNumber || student.admissionNumber || "N/A")}</p>
                       </div>
                        <div className="space-y-1.5 text-right">
                           <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Financials</p>

@@ -121,72 +121,12 @@ export async function getStudentTransportAction(studentId: string) {
 }
 
 /**
+ * @deprecated
  * recordTransportCollectionAction
  * 
- * Independent Transport Receipt Generation (TS-...)
+ * DEPRECATED: Transport collections are now fully unified under the POS and accounting ledger 
+ * system. Settle transport dues through the `recordFeeCollection` route.
  */
 export async function recordTransportCollectionAction(enquiryId: string, amount: number, remarks?: string) {
-  try {
-    const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
-    
-    // 1. Dynamic Active Financial Year Guard
-    const activeFY = await prisma.financialYear.findFirst({
-      where: { schoolId: context.schoolId, isCurrent: true }
-    });
-    if (!activeFY) throw new Error("Active Financial Year not found.");
-
-    // 2. Generate TS Receipt Number
-    const count = await prisma.transportCollection.count({ where: { schoolId: context.schoolId } });
-    const receiptNo = `TS-${new Date().getFullYear()}-${(count + 1).toString().padStart(4, '0')}`;
-
-    // 2. Atomic Record
-    const result = await prisma.$transaction(async (tx: any) => {
-      const collection = await tx.transportCollection.create({
-        data: {
-          studentId: enquiryId, // Stored as reference for conversion gate
-          amount: amount,
-          receiptNo,
-          remarks: remarks,
-          schoolId: context.schoolId,
-          branchId: context.branchId
-        }
-      });
-
-      // 3. Accounting: Debit Cash (1110), Credit Transport Rev (4100)
-      const cashAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "1110" } });
-      const transRevAcc = await tx.chartOfAccount.findFirst({ where: { schoolId: context.schoolId, accountCode: "4100" } });
-
-      if (cashAcc && transRevAcc) {
-        await tx.journalEntry.create({
-          data: {
-            schoolId: context.schoolId,
-            branchId: context.branchId, // Tenancy
-            financialYearId: activeFY.id, // Dynamic
-            entryType: "RECEIPT",
-            totalDebit: amount,
-            totalCredit: amount,
-            description: `Transport Fee - Receipt: ${receiptNo}`,
-            lines: {
-              create: [
-                { accountId: cashAcc.id, debit: amount, credit: 0 },
-                { accountId: transRevAcc.id, debit: 0, credit: amount },
-              ]
-            }
-          }
-        });
-        
-        await tx.chartOfAccount.update({ where: { id: cashAcc.id }, data: { currentBalance: { increment: amount } } });
-        await tx.chartOfAccount.update({ where: { id: transRevAcc.id }, data: { currentBalance: { increment: Number(amount) } } });
-      }
-
-      return collection;
-    });
-
-    revalidatePath("/admin/transport");
-    return { success: true, data: result };
-  } catch (error: any) {
-    return { success: false, error: "Transport collection failure: " + error.message };
-  }
+  throw new Error("DEPRECATED_FLOW: Direct transport collection is decommissioned. Settle transport dues via the unified recordFeeCollection ledger action.");
 }

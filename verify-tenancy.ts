@@ -9,22 +9,55 @@ async function verifyTenancy() {
   try {
     // --- SCENARIO 1: Owner of School A (Virtue School) ---
     console.log('\n--- Scenario 1: School A Isolation ---');
-    const ownerA = await prisma.staff.findFirst({ where: { employeeId: 'VR-OWN-01' } });
-    if (!ownerA) throw new Error("Seed failed: VR-OWN-01 not found");
+    const owners = await prisma.staff.findMany({ where: { role: 'OWNER' } });
+    let ownerA = null;
+    let branchA = null;
+    let ayA = null;
+    let classA = null;
+
+    for (const owner of owners) {
+      const b = await prisma.branch.findFirst({ where: { schoolId: owner.schoolId } });
+      const ay = await prisma.academicYear.findFirst({ where: { schoolId: owner.schoolId } });
+      const c = await prisma.class.findFirst({ where: { schoolId: owner.schoolId } });
+      if (b && ay && c) {
+        ownerA = owner;
+        branchA = b;
+        ayA = ay;
+        classA = c;
+        break;
+      }
+    }
+
+    if (!ownerA || !branchA || !ayA || !classA) {
+      throw new Error(`Seed failed: No complete Owner/School context found in the database.`);
+    }
 
     const admissionDataA = {
       firstName: "Student",
       lastName: "Alpha",
-      classId: "GEN-CLS-1",
-      branchId: "VR-RCB01",
-      academicYearId: "VR-AY-2026-27",
+      gender: "MALE",
+      dateOfBirth: "2018-05-15",
+      aadhaarNumber: "112233445566",
+      classId: classA.id,
+      branchId: branchA.id,
+      academicYearId: ayA.id,
       admissionDate: "2026-06-01",
       paymentType: "Term-wise",
       tuitionFee: 50000,
+      fatherName: "Father Alpha",
+      fatherPhone: "9988776655",
+      fatherAadhaar: "432143214321",
+      motherName: "Mother Alpha",
+      motherPhone: "8877665544",
+      motherAadhaar: "123412341234",
     };
 
     // Simulate login for Action
-    // process.env.NODE_ENV = 'development'; // Removed as it is read-only
+    process.env.TEST_OVERRIDE_SOVEREIGN = 'true';
+    process.env.TEST_STAFF_ID = ownerA.id;
+    process.env.TEST_ROLE = ownerA.role;
+    process.env.TEST_SCHOOL_ID = ownerA.schoolId;
+    process.env.TEST_BRANCH_ID = branchA.id;
 
     console.log('Submitting admission for School A...');
     const resultA = await submitAdmissionAction(admissionDataA);

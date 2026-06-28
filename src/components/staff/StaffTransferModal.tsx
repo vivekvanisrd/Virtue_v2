@@ -7,6 +7,7 @@ import {
 import { getBranchesAction } from "@/lib/actions/tenancy-actions";
 import { transferStaffBranchAction } from "@/lib/actions/staff-actions";
 import { cn } from "@/lib/utils";
+import { toDisplayId } from "@/lib/utils/id-utils";
 
 interface StaffTransferModalProps {
   staff: {
@@ -92,7 +93,7 @@ export function StaffTransferModal({ staff, onClose, onSuccess }: StaffTransferM
                </div>
                <div>
                   <p className="text-sm font-black text-foreground">{staff.firstName} {staff.lastName}</p>
-                  <p className="text-xs font-bold text-primary">{staff.staffCode}</p>
+                  <p className="text-xs font-bold text-primary">{toDisplayId(staff.staffCode)}</p>
                </div>
             </div>
           </div>

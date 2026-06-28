@@ -88,7 +88,8 @@ export async function signInAction(data: { identifier: string; password: string 
             name: `${staff.firstName} ${staff.lastName || ""}`.trim(),
             role: staff.role,
             schoolId: staff.schoolId,
-            branchId: staff.branchId
+            branchId: staff.branchId,
+            onboardingStatus: staff.onboardingStatus
         })
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()
@@ -171,7 +172,8 @@ export async function refreshSessionAction() {
             name: `${staff.firstName} ${staff.lastName || ""}`.trim(),
             role: staff.role,
             schoolId: staff.schoolId,
-            branchId: staff.branchId
+            branchId: staff.branchId,
+            onboardingStatus: staff.onboardingStatus
         })
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()

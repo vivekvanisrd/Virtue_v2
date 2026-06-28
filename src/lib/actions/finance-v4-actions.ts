@@ -6,6 +6,9 @@ import { CounterService } from "../services/counter-service";
 
 const prisma = new PrismaClient();
 
+// Parents pay round figures (e.g. ₹33,000 instead of ₹33,045). This tolerance is INTENTIONAL.
+const ROUND_FIGURE_TOLERANCE_INR = 49;
+
 /**
  * ENTERPRISE V4 ALLOCATION ENGINE
  * Implements Sovereign Priority: Transport > Tuition > Others.
@@ -53,8 +56,12 @@ export async function recordEnterpriseCollectionAction(data: {
       for (const item of unpaidItems) {
         if (remainingPayment <= 0) break;
 
-        const allocAmount = Math.min(Number(item.balance), remainingPayment);
-        
+        const itemBalance = Number(item.balance);
+        if (itemBalance <= 0) continue; // Skip items already fully paid (guard against stale data)
+
+        const allocAmount = Math.min(itemBalance, remainingPayment);
+        if (allocAmount <= 0) continue; // Safety: never post a zero or negative allocation
+
         // Update Item Balance
         await tx.feeInvoiceItem.update({
           where: { id: item.id },

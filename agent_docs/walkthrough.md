@@ -1,40 +1,43 @@
-# Developer Command Center v4.9 — Walkthrough
+# Walkthrough: Transport Management UI Integration
 
-This update integrates the secure, industrial-standard user password reset action directly into both developer interface portals:
-1. **Developer Provisioning Portal** (`/developer`)
-2. **Developer Mission Control Dashboard** (`/developer/dashboard`)
+We have successfully built and integrated the complete, enterprise-grade Transport Management UI module into the unified Next.js dashboard workspace shell.
 
 ---
 
-## What Was Built
+## 🛠️ Key Features Implemented
 
-### 1. Secure Staff Search and Reset Server Actions
-* **User Search:** Created `searchStaffUsersAction` in [actions.ts](file:///j:/virtue_fb/virtue-v2/src/app/developer/actions.ts) to lookup staff users system-wide.
-* **Refactored Dashboard Reset Action:** Updated `resetUserPassword` in [dev-actions.ts](file:///j:/virtue_fb/virtue-v2/src/lib/actions/dev-actions.ts) to match the high security standard:
-  * Cryptographically secure temporary password generation via Node's `crypto` module (14-character high-entropy default).
-  * Enforces `onboardingStatus = 'PASSWORD_CHANGE_REQUIRED'` to force immediate password change on next login.
-  * Resets mobile sessions (`mobilePasswordUsed = false`, `mobileSessionToken = null`).
-  * Logs actions in the platform activity logs.
+### 1. Database Seeding & Safety Guardrails
+* **Script**: Created [seed-transport.ts](file:///j:/virtue_fb/virtue-v2/scratch/seed-transport.ts).
+* **Isolation**: Populated isolated demo-only entities ("Demo Route Alpha", "Demo Driver 1", etc.) instead of production school mappings. This ensures no data pollution in institutional reports.
+* **Historical Data**: Seeded historical GPS log sequences to feed the Trip Playback map timeline.
 
-### 2. Dashboard UI Integration (`/developer/dashboard`)
-* **Reset Action Trigger:** Embedded a key icon button next to user rows in the **Global Authority Directory** (Registry tab).
-* **Reset Confirmation Modal:** Added a dedicated `StaffResetPasswordModal` that allows selecting auto-generate password or custom password options, warns of session invalidation, and displays reset credentials exactly once.
+### 2. Tab-based Layout & Navigation
+* **Sidebar**: Added "Transport" navigation tree in [sidebar.tsx](file:///j:/virtue_fb/virtue-v2/src/components/layout/sidebar.tsx) with four target tabs:
+  * Transport Hub
+  * Fleet Setup
+  * Live Tracking
+  * Trip Replay
+* **Shell Integration**: Updated [dashboard-shell.tsx](file:///j:/virtue_fb/virtue-v2/src/components/layout/dashboard-shell.tsx) to dynamically import the transport workspace tab container, reducing bundle footprint.
 
----
-
-## Files Changed
-
-| File | Description |
-|------|-------------|
-| [actions.ts](file:///j:/virtue_fb/virtue-v2/src/app/developer/actions.ts) | Exported lookup and reset action services. |
-| [page.tsx](file:///j:/virtue_fb/virtue-v2/src/app/developer/page.tsx) | Developer page layout integrations. |
-| [dev-actions.ts](file:///j:/virtue_fb/virtue-v2/src/lib/actions/dev-actions.ts) | Upgraded `resetUserPassword` to high security standards with random generation and audit logging. |
-| [page.tsx](file:///j:/virtue_fb/virtue-v2/src/app/developer/dashboard/page.tsx) | Mounted custom reset button on user rows, added password reset state hooks, and custom `StaffResetPasswordModal`. |
+### 3. Transport Container Dashboard & Sub-views
+* **File**: Created the master component in [transport.tsx](file:///j:/virtue_fb/virtue-v2/src/components/dashboard/transport.tsx).
+* **Transport Hub**: Consolidates active bus metrics, safety incident alert feed, and a detailed **Vehicle Health Expiry Panel** showing document expiry statuses (Fitness/Insurance/Pollution) and overdue maintenance.
+* **Fleet Setup**: Sub-divided tabs for creating, editing, and deleting Routes, Stops, Vehicles, Drivers, and Assignments. Concurrency blocks duplicate allocations.
+* **Live Tracking**: Integrates a local Leaflet map rendering current moving coordinates of active bus trips.
+* **Trip Replay**: Allows selecting completed runs, scrolling coordinates dynamically via a timeline progress slider, and plotting milestones.
+* **Parent Tracking**: Gated behind `ENABLE_PARENT_TRACKING = false`, keeping the parent experience isolated from staff administration panels.
 
 ---
 
-## Verification Results
+## 🧪 Verification Results
 
-### 1. Compile Verification
-* Ran `npx tsc --noEmit` to verify type safety and compilation success.
-* **Result:** Successful compile with zero errors in the modified files.
+### 1. Seeding Verification
+* Executed `npx tsx scratch/seed-transport.ts`.
+* **Result**: Clean drop and re-creation of demo-scoped route coordinates, stops, drivers, and GPS histories without foreign key constraint violations.
+
+### 2. Type Safety & Compilation
+* Executed `npx tsc --noEmit`.
+* **Result**: Compilation completed with `0 errors`.
+
+---
+*Created by Antigravity AI*

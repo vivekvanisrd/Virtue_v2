@@ -11,9 +11,10 @@ import { getSovereignIdentity } from "./auth/backbone";
  * DEVELOPER role bypasses this via isGlobalAdmin check.
  */
 const SYSTEM_MODELS = [
-    "School", "GlobalSetting", "TenancyCounter", "PlatformAdmin", 
+    "School", "GlobalSetting", "TenancyCounter", "PlatformAdmin",
     "PlatformClass", "PlatformSection", "PlatformAcademicYear", "PlatformFinancialYear",
-    "AttendanceException"
+    "AttendanceException",
+    "PublicHolidayMaster" // Global lookup table — no schoolId/branchId fields
 ];
 
 /**
@@ -22,7 +23,8 @@ const SYSTEM_MODELS = [
  * These require a schoolId but DO NOT have a branchId.
  */
 const SCHOOL_LEVEL_MODELS = [
-    "Branch", "AcademicYear", "FinancialYear", "SovereignRole", "StaffDepartment", "StaffCategory"
+    "Branch", "AcademicYear", "FinancialYear", "SovereignRole", "StaffDepartment", "StaffCategory",
+    "SchoolCalendar" // School-wide calendar; branchId is optional (null = whole school)
 ];
 
 /**
@@ -104,15 +106,8 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                     const rawTenant = await getSovereignIdentity();
                     
                     // 🛡️ LOCK: Fail-Shut Policy (Universal Coverage)
+                    // schoolId from request payload is NEVER trusted — always resolved from JWT session only
                     if (!rawTenant) {
-                        // 🏛️ RECOVERY HOOK: Allow session-free access if schoolId is explicitly provided (e.g. Razorpay Callback)
-                        const a = args as any;
-                        const explicitSchoolId = a.where?.schoolId || a.data?.schoolId || (Array.isArray(a.data) ? a.data[0]?.schoolId : null);
-                        
-                        if (explicitSchoolId) {
-                            return query(args); 
-                        }
-
                         throw new Error(`SECURITY_VIOLATION: Initialized Fail-Shut. Protected model '${model}' accessed without session.`);
                     }
 
@@ -197,8 +192,8 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                         }
                         
                         // 🏛️ UNIVERSAL OVERSIGHT: Principals and Owners see all branches. 
-                        // Only STAFF are jailed to their specific branch.
-                        if (tenant.role === 'STAFF') {
+                        // Only STAFF and DRIVER are jailed to their specific branch.
+                        if (tenant.role === 'STAFF' || tenant.role === 'DRIVER') {
                              if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
                                   a.where[branchIdField] = tenant.branchId;
                              }
@@ -233,10 +228,11 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                             }
                             a.data = a.data || {};
                             a.data[schoolIdField] = tenant.schoolId;
-                            // 🔒 Mandatory Injection
+                            // 🔒 Mandatory Injection — always inject branchId for non-school-level models
                             if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
-                                if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL' || !a.data[branchIdField]) {
-                                    a.data[branchIdField] = tenant.branchId;
+                                a.data[branchIdField] = a.data[branchIdField] || tenant.branchId;
+                                if (!a.data[branchIdField]) {
+                                    throw new Error(`SECURITY_VIOLATION: branchId cannot be null for model '${model}'.`);
                                 }
                             }
                         } else if (operation === 'createMany') {
@@ -282,9 +278,9 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                     }
 
                     const writeResult = await (client as any).$transaction(async (tx: any) => {
-                        await tx.$executeRawUnsafe(`SET LOCAL app.current_school_id = '${tenant.schoolId}';`);
+                        await tx.$executeRaw`SELECT set_config('app.current_school_id', ${tenant.schoolId}, true)`;
                         if (tenant.branchId) {
-                            await tx.$executeRawUnsafe(`SET LOCAL app.current_branch_id = '${tenant.branchId}';`);
+                            await tx.$executeRaw`SELECT set_config('app.current_branch_id', ${tenant.branchId}, true)`;
                         }
                         return query(args);
                     }, {

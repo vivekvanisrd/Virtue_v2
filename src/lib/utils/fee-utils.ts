@@ -40,7 +40,7 @@ export const calculateTermBreakdown = (
   const currentYear = new Date().getFullYear();
   const installments: (TermDetail & { key: string })[] = [];
 
-  if (paymentType === "Annual") {
+  if (paymentType === "Annual" || paymentType === "One-time" || paymentType === "One-Time") {
     t1Amt = Math.max(0, tuition - discount);
     t2Amt = 0;
     t3Amt = 0;
@@ -192,10 +192,15 @@ export const generateUPIString = (params: {
   name: string;
   amount: number;
   note: string;
+  tr?: string;
 }) => {
-  const { vpa, name, amount, note } = params;
+  const { vpa, name, amount, note, tr } = params;
   const formattedAmount = Number(amount).toFixed(2);
-  return `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${formattedAmount}&tn=${encodeURIComponent(note)}&cu=INR`;
+  let uri = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(name)}&am=${formattedAmount}&tn=${encodeURIComponent(note)}`;
+  if (tr) {
+    uri += `&tr=${encodeURIComponent(tr)}`;
+  }
+  return uri + `&cu=INR`;
 };
 
 /**

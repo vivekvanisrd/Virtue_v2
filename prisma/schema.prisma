@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model School {
@@ -23,6 +24,12 @@ model School {
   isGenesis             Boolean                      @default(false)
   metadata              Json?
   tenantId              String?
+  country               String?   @default("India")
+  state                 String?
+  saturdayPolicy        String?   @default("ALL_OFF")
+  academicYearStart     Int?      @default(6)
+  academicYearEnd       Int?      @default(3)
+  calendars             SchoolCalendar[]
   academicHist          AcademicHistory[]
   academicRecs          AcademicRecord[]
   academicYears         AcademicYear[]
@@ -84,6 +91,20 @@ model School {
   TransportDetail       TransportDetail[]
   TransportStop         TransportStop[]
   unlockRequests        UnlockRequest[]
+
+  biometricDevices      BiometricDevice[]
+
+  // V2 Transport Relations
+  drivers               Driver[]
+  driverAssignments     DriverAssignment[]
+  studentTransports     StudentTransport[]
+  tripSessions          TripSession[]
+  vehicleIncidents      VehicleIncident[]
+  vehicleMaintenances   VehicleMaintenance[]
+  vehicleStops          VehicleStop[]
+  driverDeviceLogs      DriverDeviceLog[]
+  driverLoginAudits     DriverLoginAudit[]
+  driverRefreshSessions DriverRefreshSession[]
 }
 
 model PlatformAdmin {
@@ -144,6 +165,7 @@ model Branch {
   triggeredBy          String?
   metadata             Json?
   tenantId             String?
+  timezone             String                 @default("Asia/Kolkata")
   academicHistory      AcademicHistory[]      @relation("BranchHistory")
   academicRecords      AcademicRecord[]
   activityLogs         ActivityLog[]          @relation("BranchLogs")
@@ -193,6 +215,9 @@ model Branch {
   vehicles             Vehicle[]              @relation("BranchVehicles")
   vehicleStops         VehicleStop[]          @relation("BranchStops")
   sovereignRoles       SovereignRole[]
+  drivers              Driver[]
+  schoolCalendars      SchoolCalendar[]
+  biometricDevices     BiometricDevice[]
 
   @@unique([schoolId, code])
 }
@@ -340,6 +365,8 @@ model Student {
   newTransport     TransportAssignment?        @relation("NewTransport")
   transportHistory TransportCollection[]       @relation("TransportHistory")
   transport        TransportDetail?
+  studentTransport StudentTransport?
+  busAttendances   BusAttendance[]
   unlockRequests   UnlockRequest[]
   promotionRecords PromotionRecord[]
 
@@ -1088,6 +1115,9 @@ model StaffAttendance {
   branch         Branch?   @relation(fields: [branchId], references: [id])
   school         School?   @relation(fields: [schoolId], references: [id])
   staff          Staff     @relation(fields: [staffId], references: [id])
+
+  @@unique([staffId, date])
+  @@index([schoolId, date])
 }
 
 model StudentAttendance {
@@ -1108,40 +1138,65 @@ model StudentAttendance {
   section   Section?  @relation(fields: [sectionId], references: [id])
   student   Student   @relation(fields: [studentId], references: [id])
 
+  @@unique([studentId, date, session])
   @@index([studentId])
   @@index([date])
   @@index([branchId])
 }
 
 model Route {
-  id          String                       @id @default(uuid())
-  routeName   String
-  routeCode   String                       @unique
-  schoolId    String
-  branchId    String?
-  branch      Branch?                      @relation("BranchRoutes", fields: [branchId], references: [id])
-  school      School                       @relation(fields: [schoolId], references: [id])
-  assignments StudentTransportAssignment[]
-  vehicles    Vehicle[]
-  stops       VehicleStop[]
+  id                 String                       @id @default(uuid())
+  routeName          String
+  routeCode          String                       @unique
+  schoolId           String
+  branchId           String?
+  isDeleted          Boolean                      @default(false)
+  deletedAt          DateTime?
+  branch             Branch?                      @relation("BranchRoutes", fields: [branchId], references: [id])
+  school             School                       @relation(fields: [schoolId], references: [id])
+  assignments        StudentTransportAssignment[]
+  vehicles           Vehicle[]
+  stops              VehicleStop[]
+  
+  // V2 Relations
+  studentTransports  StudentTransport[]
+  driverAssignments  DriverAssignment[]
+  tripSessions       TripSession[]
+  polyline           RoutePolyline?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
 
   @@index([branchId])
+  @@index([schoolId])
 }
 
 model Vehicle {
-  id               String         @id @default(uuid())
-  registrationNo   String         @unique
-  model            String?
-  capacity         Int
-  onboardingStatus String?
-  routeId          String
-  branchId         String
-  schoolId         String
-  branch           Branch         @relation("BranchVehicles", fields: [branchId], references: [id])
-  route            Route          @relation(fields: [routeId], references: [id])
-  staff            VehicleStaff[]
+  id                String             @id @default(uuid())
+  registrationNo    String             @unique
+  model             String?
+  capacity          Int
+  onboardingStatus  String?
+  routeId           String
+  branchId          String
+  schoolId          String
+  isDeleted         Boolean            @default(false)
+  deletedAt         DateTime?
+  branch            Branch             @relation("BranchVehicles", fields: [branchId], references: [id])
+  route             Route              @relation(fields: [routeId], references: [id])
+  staff             VehicleStaff[]
+  
+  // V2 Relations
+  driverAssignments DriverAssignment[]
+  tripSessions      TripSession[]
+  incidents         VehicleIncident[]
+  maintenances      VehicleMaintenance[]
+  gpsLive           VehicleGPSLive?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  documents         Json?              // RC, insurance, pollution certificates, etc.
 
   @@index([branchId])
+  @@index([schoolId])
 }
 
 model VehicleStop {
@@ -1152,12 +1207,23 @@ model VehicleStop {
   dropTime          String?
   monthlyFee        Decimal                      @db.Decimal(10, 2)
   branchId          String?
+  schoolId          String?
+  isDeleted         Boolean                      @default(false)
+  deletedAt         DateTime?
   dropAssignments   StudentTransportAssignment[] @relation("DropStop")
   pickupAssignments StudentTransportAssignment[] @relation("PickupStop")
   branch            Branch?                      @relation("BranchStops", fields: [branchId], references: [id])
   route             Route                        @relation(fields: [routeId], references: [id])
+  school            School?                      @relation(fields: [schoolId], references: [id])
+  
+  // V2 Relations
+  pickupTransports  StudentTransport[]           @relation("PickupStopV2")
+  dropTransports    StudentTransport[]           @relation("DropStopV2")
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
 
   @@index([branchId])
+  @@index([schoolId])
 }
 
 model VehicleStaff {
@@ -1399,14 +1465,22 @@ model PayrollRun {
   totalNet    Decimal      @db.Decimal(15, 2)
   processedBy String?
   processedAt DateTime?
-  approvedBy  String?
-  approvedAt  DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  branchId    String?
-  branch      Branch?      @relation("BranchPayroll", fields: [branchId], references: [id])
-  school      School       @relation(fields: [schoolId], references: [id])
-  slips       SalarySlip[]
+  approvedBy                  String?
+  approvedAt                  DateTime?
+  isLocked                    Boolean   @default(false)
+  lockedAt                    DateTime?
+  lockedBy                    String?
+  unlockedAt                  DateTime?
+  unlockedBy                  String?
+  unlockReason                String?
+  workingDaysOverride         Int?
+  workingDaysOverrideReason   String?
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
+  branchId                    String?
+  branch                      Branch?      @relation("BranchPayroll", fields: [branchId], references: [id])
+  school                      School       @relation(fields: [schoolId], references: [id])
+  slips                       SalarySlip[]
 
   @@unique([schoolId, branchId, month, year])
   @@index([branchId])
@@ -1515,13 +1589,14 @@ model StaffAsset {
 }
 
 model TransportStop {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
   latitude  Float?
   longitude Float?
   schoolId  String?
   branchId  String?
-  school    School? @relation(fields: [schoolId], references: [id])
+  fare      Decimal? @db.Decimal(10, 2)
+  school    School?  @relation(fields: [schoolId], references: [id])
 }
 
 model TransportAssignment {
@@ -1574,6 +1649,8 @@ model TransportCollection {
   amount    Decimal @db.Decimal(12, 2)
   month     Int
   year      Int
+  schoolId  String?
+  branchId  String?
   student   Student @relation("TransportHistory", fields: [studentId], references: [id])
 }
 
@@ -1598,19 +1675,24 @@ model StaffCategory {
 }
 
 model AttendancePolicy {
-  id             String  @id @default(uuid())
-  branchId       String
-  startMinutes   Int
-  endMinutes     Int
-  gracePeriod    Int
-  halfDayMinutes Int
-  autoHoliday    Boolean @default(true)
-  name           String  @default("Default")
-  weeklyOffs     Int[]   @default([0])
-  schoolId       String
-  branch         Branch  @relation(fields: [branchId], references: [id])
-  school         School  @relation(fields: [schoolId], references: [id])
-  staff          Staff[]
+  id                   String  @id @default(uuid())
+  branchId             String
+  startMinutes         Int
+  endMinutes           Int
+  gracePeriod          Int
+  halfDayMinutes       Int
+  autoHoliday          Boolean @default(true)
+  name                 String  @default("Default")
+  weeklyOffs           Int[]   @default([0])
+  schoolId             String
+  // lateThresholdMinutes: minutes from midnight after which staff is marked late.
+  // Default 555 = 9:15 AM. Effective late = startMinutes + gracePeriod.
+  lateThresholdMinutes Int     @default(555)
+  branch               Branch  @relation(fields: [branchId], references: [id])
+  school               School  @relation(fields: [schoolId], references: [id])
+  staff                Staff[]
+
+  @@index([schoolId, branchId])
 }
 
 model AttendanceException {
@@ -1710,6 +1792,59 @@ model BankStatementEntry {
   @@index([statementId])
   @@index([txnDate])
   @@index([schoolId])
+}
+
+// School-specific calendar — holidays, half-days, working Saturdays
+model SchoolCalendar {
+  id         String   @id @default(uuid())
+  schoolId   String
+  branchId   String?  // null = applies to whole school; set = branch-specific
+  date       DateTime
+  type       String   // "HOLIDAY" | "HALF_DAY" | "WORKING_SATURDAY" | "WORKING_DAY"
+  reason     String
+  source     String   @default("SCHOOL") // "NATIONAL" | "STATE" | "SCHOOL" | "UNPLANNED"
+  isOverride Boolean  @default(false)    // true = admin manually changed a pre-loaded holiday
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  school     School   @relation(fields: [schoolId], references: [id])
+  branch     Branch?  @relation(fields: [branchId], references: [id])
+
+  @@unique([schoolId, branchId, date])
+  @@index([schoolId, date])
+  @@index([schoolId, type])
+}
+
+// Master list of public holidays — maintained by ERP admin once per year per state
+model PublicHolidayMaster {
+  id        String   @id @default(uuid())
+  country   String   @default("India")
+  state     String?  // null = national holiday applies to all states
+  year      Int
+  date      DateTime
+  name      String
+  type      String   @default("PUBLIC") // "PUBLIC" | "RESTRICTED" | "OPTIONAL"
+  createdAt DateTime @default(now())
+
+  @@unique([country, state, year, date])
+  @@index([country, state, year])
+}
+
+// Fingerprint device registry — connects hardware to ERP branches
+model BiometricDevice {
+  id         String    @id @default(uuid())
+  schoolId   String
+  branchId   String
+  deviceCode String    @unique  // set on the physical device, used in API calls
+  deviceName String
+  model      String?
+  location   String?   // "Main Gate" | "Staff Room" etc.
+  isActive   Boolean   @default(true)
+  lastPingAt DateTime?
+  createdAt  DateTime  @default(now())
+  school     School    @relation(fields: [schoolId], references: [id])
+  branch     Branch    @relation(fields: [branchId], references: [id])
+
+  @@index([schoolId, branchId])
 }
 
 model LeaveRequest {
@@ -2206,3 +2341,344 @@ model PromotionRecord {
   batch            PromotionBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
   student          Student         @relation(fields: [studentId], references: [id])
 }
+
+// ==========================================
+// TRANSPORT V2 MODELS
+// ==========================================
+
+model Driver {
+  id                  String             @id @default(uuid())
+  name                String
+  phone               String             @unique
+  licenseNo           String             @unique
+  passwordHash        String
+  status              String             @default("Active") // Active, Inactive, Suspended
+  schoolId            String
+  branchId            String?
+  lastLoginAt         DateTime?
+  deviceId            String?
+  refreshTokenVersion Int                @default(0)
+  lastSeenAt          DateTime?
+  failedLoginAttempts Int                @default(0)
+  accountLockedUntil  DateTime?
+  isDeleted           Boolean            @default(false)
+  deletedAt           DateTime?
+  branch              Branch?            @relation(fields: [branchId], references: [id])
+  school              School             @relation(fields: [schoolId], references: [id])
+  assignments         DriverAssignment[]
+  tripSessions        TripSession[]
+  incidents           VehicleIncident[]
+  deviceLogs          DriverDeviceLog[]
+  loginAudits         DriverLoginAudit[]
+  refreshSessions       DriverRefreshSession[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  documents           Json?              // Stores references to photoUrl, licenseScanUrl, etc.
+
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model DriverAssignment {
+  id         String    @id @default(uuid())
+  driverId   String
+  vehicleId  String
+  routeId    String
+  schoolId   String
+  branchId   String?
+  status     String    @default("Active") // Active, Historical
+  isDeleted  Boolean   @default(false)
+  deletedAt  DateTime?
+  assignedAt DateTime  @default(now())
+  driver     Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  route      Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  school     School    @relation(fields: [schoolId], references: [id])
+
+  @@unique([driverId, vehicleId, routeId, status])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model StudentTransport {
+  id           String      @id @default(uuid())
+  studentId    String      @unique
+  routeId      String
+  pickupStopId String
+  dropStopId   String
+  monthlyFee   Decimal     @db.Decimal(10, 2)
+  status       String      @default("Active") // Active, Suspended
+  schoolId     String
+  branchId     String?
+  isDeleted    Boolean     @default(false)
+  deletedAt    DateTime?
+  student      Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  route        Route       @relation(fields: [routeId], references: [id])
+  pickupStop   VehicleStop @relation("PickupStopV2", fields: [pickupStopId], references: [id])
+  dropStop     VehicleStop @relation("DropStopV2", fields: [dropStopId], references: [id])
+  school       School      @relation(fields: [schoolId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([studentId])
+  @@index([routeId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model TripSession {
+  id           String          @id @default(uuid())
+  routeId      String
+  vehicleId    String
+  driverId     String
+  tripType     String          // PICKUP, DROP
+  status       String          @default("SCHEDULED") // SCHEDULED, ACTIVE, COMPLETED, CANCELLED
+  startedAt       DateTime?
+  endedAt         DateTime?
+  tripHeartbeatAt DateTime?
+  schoolId     String
+  branchId     String?
+  isDeleted    Boolean         @default(false)
+  deletedAt    DateTime?
+  route        Route           @relation(fields: [routeId], references: [id])
+  vehicle      Vehicle         @relation(fields: [vehicleId], references: [id])
+  driver       Driver          @relation(fields: [driverId], references: [id])
+  school       School          @relation(fields: [schoolId], references: [id])
+  attendance   BusAttendance[]
+  incidents    VehicleIncident[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([routeId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+/// 💡 Redis is the primary live store for real-time telemetry.
+/// This PostgreSQL table is used purely as an optional failover/fallback cache.
+model VehicleGPSLive {
+  vehicleId       String   @id
+  schoolId        String
+  branchId        String?
+  latitude        Float
+  longitude       Float
+  speed           Float    @default(0.0)
+  heading         Float    @default(0.0)
+  sequenceNo      Int?
+  updatedAt       DateTime @updatedAt
+  serverTimestamp DateTime @default(now())
+  clientTimestamp DateTime?
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+/// 📅 GPS Log Retention Policy:
+/// Keep recent 90 days in PostgreSQL, older logs should be archived to compressed storage.
+model VehicleGPSLog {
+  id              String   @id @default(uuid())
+  vehicleId       String
+  tripSessionId   String
+  schoolId        String
+  branchId        String?
+  latitude        Float
+  longitude       Float
+  speed           Float    @default(0.0)
+  heading         Float    @default(0.0)
+  sequenceNo      Int?
+  timestamp       DateTime @default(now())
+  serverTimestamp DateTime @default(now())
+  clientTimestamp DateTime?
+
+  @@index([vehicleId, timestamp])
+  @@index([tripSessionId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model BusAttendance {
+  id            String      @id @default(uuid())
+  tripSessionId String
+  studentId     String
+  schoolId      String
+  branchId      String?
+  status        String      // BOARDED, DROPPED, MISSED
+  eventTime     DateTime    @default(now())
+  isDeleted     Boolean     @default(false)
+  deletedAt     DateTime?
+  tripSession   TripSession @relation(fields: [tripSessionId], references: [id], onDelete: Cascade)
+  student       Student     @relation(fields: [studentId], references: [id])
+
+  @@index([tripSessionId])
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model VehicleIncident {
+  id            String       @id @default(uuid())
+  vehicleId     String
+  driverId      String?
+  tripSessionId String?
+  severity      String       // LOW, MEDIUM, HIGH, CRITICAL
+  incidentType  IncidentType?
+  description   String
+  status        String       @default("PENDING") // PENDING, RESOLVED
+  reportedAt    DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  schoolId      String
+  branchId      String?
+  isDeleted     Boolean      @default(false)
+  deletedAt     DateTime?
+  vehicle       Vehicle      @relation(fields: [vehicleId], references: [id])
+  driver        Driver?      @relation(fields: [driverId], references: [id])
+  tripSession   TripSession? @relation(fields: [tripSessionId], references: [id])
+  school        School       @relation(fields: [schoolId], references: [id])
+
+  @@index([vehicleId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model VehicleMaintenance {
+  id              String    @id @default(uuid())
+  vehicleId       String
+  maintenanceType String    // SERVICE, REPAIR, INSPECTION
+  cost            Decimal   @db.Decimal(12, 2)
+  description     String
+  performedAt     DateTime
+  nextDueDate     DateTime?
+  status          String    @default("COMPLETED") // COMPLETED, PENDING
+  updatedAt       DateTime  @updatedAt
+  schoolId        String
+  branchId        String?
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  school          School    @relation(fields: [schoolId], references: [id])
+
+  @@index([vehicleId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model RoutePolyline {
+  id        String   @id @default(uuid())
+  routeId   String   @unique
+  schoolId  String
+  branchId  String?
+  polyline  String   // JSON text of coordinates [[lat, lng], ...]
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model TransportNotification {
+  id               String    @id @default(uuid())
+  schoolId         String
+  branchId         String?
+  recipientId      String    // Student or User ID
+  notificationType String    // APPROACHING_STOP, BOARDED, DROPPED, DELAYED, INCIDENT
+  title            String
+  message          String
+  sentAt           DateTime  @default(now())
+  readAt           DateTime?
+  deliveryStatus   String    @default("SENT") // SENT, DELIVERED, READ, FAILED
+  isDeleted        Boolean   @default(false)
+  deletedAt        DateTime?
+
+  @@index([recipientId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model TransportAuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String   // e.g., Route Created, Route Updated, Route Deleted, Vehicle Created, Driver Assigned...
+  entityType String   // e.g., Route, Vehicle, Driver, StudentTransport, TripSession...
+  entityId   String
+  timestamp  DateTime @default(now())
+  schoolId   String
+  branchId   String?
+
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+enum IncidentType {
+  BREAKDOWN
+  ACCIDENT
+  DELAY
+  ROUTE_DEVIATION
+  GPS_SPOOFING
+  OVERSPEED
+  UNAUTHORIZED_DRIVER
+  VEHICLE_OFFLINE
+}
+
+model DriverDeviceLog {
+  id         String    @id @default(uuid())
+  driverId   String
+  deviceId   String
+  deviceName String?
+  loginTime  DateTime  @default(now())
+  logoutTime DateTime?
+  ipAddress  String?
+  userAgent  String?
+  schoolId   String
+  branchId   String?
+  driver     Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  school     School    @relation(fields: [schoolId], references: [id])
+
+  @@index([driverId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model DriverLoginAudit {
+  id         String   @id @default(uuid())
+  driverId   String?
+  phone      String?
+  licenseNo  String?
+  event      String   // SUCCESS, FAILED_PASSWORD, FAILED_DEVICE, LOCKED_ACCOUNT, PASSWORD_RESET, SESSION_REVOKED, REFRESH_TOKEN_REUSE
+  timestamp  DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+  deviceId   String?
+  schoolId   String?
+  branchId   String?
+  driver     Driver?  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  school     School?  @relation(fields: [schoolId], references: [id])
+
+  @@index([driverId])
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model DriverRefreshSession {
+  id        String    @id @default(uuid())
+  driverId  String
+  tokenId   String    @unique
+  deviceId  String?
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  schoolId  String
+  branchId  String?
+  driver    Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id])
+
+  @@index([driverId])
+  @@index([tokenId])
+  @@index([schoolId])
+}
+

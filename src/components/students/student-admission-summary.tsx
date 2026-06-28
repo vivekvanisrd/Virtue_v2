@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
 import { toPng } from "html-to-image";
 import { useTabs } from "@/context/tab-context";
+import { toDisplayId } from "@/lib/utils/id-utils";
 
 interface SummaryProps {
   studentData: any;
@@ -248,7 +249,7 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
             <span className="block text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">
               {(admissionId?.includes("PROV") || !studentData.admissionNumber) ? "Provisional Tracking ID" : "Official Admission No"}
             </span>
-            <span className="block text-2xl font-black text-emerald-600 font-mono">{admissionId || "DRAFT_SCOPE"}</span>
+            <span className="block text-2xl font-black text-emerald-600 font-mono">{toDisplayId(admissionId) || "DRAFT_SCOPE"}</span>
           </div>
         </div>
 

@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { TCTemplate } from "./tc-template";
 import { useTabs } from "@/context/tab-context";
 import { StudentFinancialHub } from "../finance/StudentFinancialHub";
+import { toDisplayId } from "@/lib/utils/id-utils";
 
 interface StudentProfileProps {
   studentId: string;
@@ -200,7 +201,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 )}
               </h2>
               <p className="text-xs font-bold text-foreground opacity-60 tracking-wide uppercase">
-                {isActive ? "Admission ID" : "Provisional ID"}: <span className="text-primary font-black">{student.admissionNumber || student.registrationId}</span>
+                {isActive ? "Admission ID" : "Provisional ID"}: <span className="text-primary font-black">{toDisplayId(student.admissionNumber || student.registrationId)}</span>
               </p>
             </div>
           </div>

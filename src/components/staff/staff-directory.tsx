@@ -9,6 +9,36 @@ import { cn } from "@/lib/utils";
 import { StaffTransferModal } from "./StaffTransferModal";
 import { useTabs } from "@/context/tab-context";
 import { useTenant } from "@/context/tenant-context";
+import { toDisplayId } from "@/lib/utils/id-utils";
+
+function getRoleBadge(role: string) {
+  const normalizedRole = (role || "").toUpperCase();
+  let text = "STAF";
+  let classes = "bg-slate-100 text-slate-700 border-slate-200"; // default
+  
+  if (normalizedRole.includes("TEACHER")) {
+     text = "TEAC";
+     classes = "bg-emerald-50 text-emerald-700 border-emerald-200";
+  } else if (normalizedRole.includes("ADMIN") || normalizedRole.includes("PRINCIPAL")) {
+     text = "ADMN";
+     classes = "bg-blue-50 text-blue-700 border-blue-200";
+  } else if (normalizedRole.includes("OWNER") || normalizedRole.includes("DEVELOPER")) {
+     text = "OWNR";
+     classes = "bg-purple-50 text-purple-700 border-purple-200";
+  } else if (normalizedRole.includes("STAFF")) {
+     text = "STAF";
+     classes = "bg-slate-100 text-slate-700 border-slate-200";
+  } else {
+     text = normalizedRole.slice(0, 4);
+     classes = "bg-slate-100 text-slate-700 border-slate-200";
+  }
+
+  return (
+    <span className={cn("px-2 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider", classes)}>
+      {text}
+    </span>
+  );
+}
 
 interface StaffDirectoryProps {
     onEdit?: (staff: any) => void;
@@ -176,7 +206,7 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                              <p 
                                 onClick={() => openTab({ 
                                     id: `staff-profile-${employee.id}`, 
-                                    title: `${employee.firstName} [${employee.staffCode}]`, 
+                                    title: `${employee.firstName} [${toDisplayId(employee.staffCode)}]`, 
                                     component: "Staff", 
                                     params: { staffId: employee.id, forceEdit: true } 
                                 })}
@@ -196,15 +226,16 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                                     e.stopPropagation();
                                     openTab({
                                        id: `staff-financials-${employee.id}`,
-                                       title: `${employee.firstName} [${employee.staffCode}] Ledger`,
+                                       title: `${employee.firstName} [${toDisplayId(employee.staffCode)}] Ledger`,
                                        component: "Staff",
                                        params: { staffId: employee.id, view: "financials" }
                                     });
                                  }}
                                  className="text-primary font-black font-mono leading-none bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 tracking-normal cursor-pointer hover:bg-primary hover:text-white transition-all"
                               >
-                                 {employee.staffCode}
+                                 {toDisplayId(employee.staffCode)}
                               </span>
+                              {getRoleBadge(employee.role)}
                             </p>
                           </div>
                         </div>

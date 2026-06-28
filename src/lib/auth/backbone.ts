@@ -90,16 +90,16 @@ export const getSovereignIdentity = cache(async (): Promise<SovereignIdentity | 
             }
         }
 
-        console.log(`🏛️ [BACKBONE_TRACE:${traceId}] Identified via COOKIE RECOVERY (Email: ${user.email})`);
+        console.log(`🏛️ [BACKBONE_TRACE:${traceId}] Identified via COOKIE RECOVERY (User/Driver: ${user.email || user.phone})`);
         return {
-            staffId: user.staffId,
+            staffId: user.staffId || user.driverId,
             role: user.role,
             schoolId,
             branchId,
             isGlobalDev: !!user.isGlobalDev,
             isPlatformAdmin: !!user.isPlatformAdmin,
-            email: user.email,
-            name: user.name
+            email: user.email || user.phone || "",
+            name: user.name || ""
         };
 
     } catch (e: any) {

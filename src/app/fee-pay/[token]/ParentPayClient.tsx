@@ -110,10 +110,12 @@ export default function ParentPayClient({ token }: Props) {
     }
   }
 
-  const cleanUpiRef = token.replace(/[^a-zA-Z0-9]/g, "").slice(0, 30);
+  const cleanUpiRef = data 
+    ? `FEE-${data.studentName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase()}-${token.slice(0, 8).toUpperCase()}`
+    : "";
 
   // Construct standard prefilled UPI deep link
-  const upiUrl = (data && data.upiVpa) ? `upi://pay?pa=${data.upiVpa}&pn=${encodeURIComponent(data.upiMerchantName)}&am=${Number(data.amount).toFixed(2)}&tr=${cleanUpiRef}&tn=${encodeURIComponent(`Fees for ${data.studentName}${data.description ? ` - ${data.description}` : ""}`.substring(0, 50))}&cu=INR` : "";
+  const upiUrl = (data && data.upiVpa) ? `upi://pay?pa=${encodeURIComponent(data.upiVpa)}&pn=${encodeURIComponent(data.upiMerchantName)}&am=${Number(data.amount).toFixed(2)}&tr=${cleanUpiRef}&tn=${encodeURIComponent(`Fees for ${data.studentName}${data.description ? ` - ${data.description}` : ""}`.substring(0, 100))}&cu=INR` : "";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/20 flex items-center justify-center p-4">

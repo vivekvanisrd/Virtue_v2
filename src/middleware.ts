@@ -57,10 +57,29 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // 🛡️ LOCK: PASSWORD CHANGE FORCE FOR ONBOARDING
+  if (user && user.onboardingStatus === 'PASSWORD_CHANGE_REQUIRED') {
+    if (pathname !== '/change-password') {
+      console.log(`🛡️ [SENTINEL] Redirecting '${user.email || user.staffId}' to /change-password (status: PASSWORD_CHANGE_REQUIRED)`);
+      return NextResponse.redirect(new URL('/change-password', request.url));
+    }
+  }
+
   // Redirect Teacher role to /mobile/attendance
   if (user && user.role?.toLowerCase() === 'teacher') {
-    if (!pathname.startsWith('/mobile') && !pathname.startsWith('/api')) {
+    if (!pathname.startsWith('/mobile') && !pathname.startsWith('/api') && pathname !== '/change-password') {
       return NextResponse.redirect(new URL('/mobile/attendance', request.url));
+    }
+  }
+
+  // Block Driver role from accessing admin dashboards
+  if (user && user.role === 'DRIVER') {
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/developer') || pathname.startsWith('/registry')) {
+      console.warn(`🛡️ [SENTINEL] BLOCKED: Driver '${user.email || user.phone}' attempted to access admin path '${pathname}'`);
+      return new NextResponse(
+        JSON.stringify({ error: "ACCESS_DENIED", message: "Access denied: Drivers are not allowed to access administrative dashboards." }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
     }
   }
 
@@ -121,19 +140,19 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    requestHeaders.set('x-v2-staff-id', user.staffId);
+    requestHeaders.set('x-v2-staff-id', user.staffId || user.driverId || '');
     requestHeaders.set('x-v2-role', user.role);
     requestHeaders.set('x-v2-school-id', activeSchoolId);
     requestHeaders.set('x-v2-branch-id', activeBranchId);
     requestHeaders.set('x-v2-name', user.name || '');
-    requestHeaders.set('x-v2-email', user.email || '');
+    requestHeaders.set('x-v2-email', user.email || user.phone || '');
     requestHeaders.set('x-v2-global-dev', user.isGlobalDev ? 'true' : 'false');
     requestHeaders.set('x-v2-trace-id', traceId);
     
     if (activeBranchId !== user.branchId) {
         console.log(`🏛️ [SENTINEL:${traceId}] Branch Context Switched to '${activeBranchId}' for ${user.role}`);
     } else {
-        console.log(`🏛️ [SENTINEL:${traceId}] Injected headers for '${user.email}'`);
+        console.log(`🏛️ [SENTINEL:${traceId}] Injected headers for '${user.email || user.phone}'`);
     }
   }
 

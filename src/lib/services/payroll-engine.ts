@@ -98,8 +98,9 @@ export class PayrollEngine {
     const penaltyDays = options.lateCount ? Math.floor(options.lateCount / 3) * 0.5 : 0;
     const totalDeductibleDays = (options.lwpDays || 0) + penaltyDays;
 
-    if (totalDeductibleDays > 0 && options.totalDays && options.totalDays > 0) {
-      lwp = this.roundINR((grossRemuneration / options.totalDays) * totalDeductibleDays);
+    // A12: Indian standard LWP formula = Gross ÷ 26 × LWP days
+    if (totalDeductibleDays > 0) {
+      lwp = this.roundINR((grossRemuneration / 26) * totalDeductibleDays);
     }
 
     const totalDeductions = pf + esi + pt + lwp;

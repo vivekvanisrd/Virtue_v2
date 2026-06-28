@@ -5,7 +5,8 @@ import { FaceService } from "@/lib/services/face-service";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, format } from "date-fns";
+
 
 /**
  * ATTENDANCE V2.1 SERVER ACTIONS
@@ -441,6 +442,189 @@ export async function updateBranchGeofenceSettingsAction(data: {
 
     revalidatePath("/dashboard");
     return { success: true, data: result };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getBiometricDevicesAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED_ACCESS");
+
+    const devices = await prisma.biometricDevice.findMany({
+      where: {
+        schoolId: identity.schoolId,
+        branchId: identity.branchId
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    return { success: true, data: devices };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function registerBiometricDeviceAction(data: {
+  deviceCode: string;
+  deviceName: string;
+  location?: string;
+  model?: string;
+}) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED_ACCESS");
+
+    if (!data.deviceCode || !data.deviceName) {
+      throw new Error("Device Code and Device Name are required.");
+    }
+
+    // Check if deviceCode is already registered globally
+    const existing = await prisma.biometricDevice.findUnique({
+      where: { deviceCode: data.deviceCode }
+    });
+
+    if (existing) {
+      throw new Error(`Device code/serial ${data.deviceCode} is already registered.`);
+    }
+
+    const device = await prisma.biometricDevice.create({
+      data: {
+        deviceCode: data.deviceCode,
+        deviceName: data.deviceName,
+        location: data.location || null,
+        model: data.model || "BioMax ADMS",
+        schoolId: identity.schoolId,
+        branchId: identity.branchId,
+        isActive: true
+      }
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true, data: device };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function toggleBiometricDeviceAction(deviceId: string, isActive: boolean) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("UNAUTHORIZED_ACCESS");
+
+    const device = await prisma.biometricDevice.findUnique({
+      where: { id: deviceId }
+    });
+
+    if (!device || device.schoolId !== identity.schoolId) {
+      throw new Error("Device not found or access denied.");
+    }
+
+    if (identity.role !== "OWNER" && identity.role !== "DEVELOPER" && device.branchId !== identity.branchId) {
+      throw new Error("Access denied: You can only manage devices in your branch.");
+    }
+
+    const updated = await prisma.biometricDevice.update({
+      where: { id: deviceId },
+      data: { isActive }
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true, data: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteBiometricDeviceAction(deviceId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("UNAUTHORIZED_ACCESS");
+
+    const device = await prisma.biometricDevice.findUnique({
+      where: { id: deviceId }
+    });
+
+    if (!device || device.schoolId !== identity.schoolId) {
+      throw new Error("Device not found or access denied.");
+    }
+
+    if (identity.role !== "OWNER" && identity.role !== "DEVELOPER" && device.branchId !== identity.branchId) {
+      throw new Error("Access denied: You can only delete devices in your branch.");
+    }
+
+    await prisma.biometricDevice.delete({
+      where: { id: deviceId }
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getRecentBiometricPunchesAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED_ACCESS");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const punches = await prisma.staffAttendance.findMany({
+      where: {
+        schoolId: identity.schoolId,
+        branchId: identity.branchId,
+        date: { gte: today },
+        remarks: { contains: "via device" }
+      },
+      include: {
+        staff: {
+          select: {
+            firstName: true,
+            lastName: true,
+            staffCode: true
+          }
+        }
+      },
+      orderBy: { checkIn: "desc" },
+      take: 25
+    });
+
+    const formatted = punches.flatMap(p => {
+      const logs = [];
+      if (p.checkIn) {
+        logs.push({
+          id: `${p.id}-in`,
+          name: `${p.staff.firstName} ${p.staff.lastName}`,
+          code: p.staff.staffCode,
+          time: format(new Date(p.checkIn), "hh:mm a"),
+          rawTime: p.checkIn,
+          type: "IN",
+          status: p.status,
+          remarks: p.remarks || ""
+        });
+      }
+      if (p.checkOut) {
+        logs.push({
+          id: `${p.id}-out`,
+          name: `${p.staff.firstName} ${p.staff.lastName}`,
+          code: p.staff.staffCode,
+          time: format(new Date(p.checkOut), "hh:mm a"),
+          rawTime: p.checkOut,
+          type: "OUT",
+          status: "Completed",
+          remarks: p.remarks || ""
+        });
+      }
+      return logs;
+    });
+
+    formatted.sort((a, b) => new Date(b.rawTime).getTime() - new Date(a.rawTime).getTime());
+
+    return { success: true, data: formatted.slice(0, 20) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { prismaBypass } from "@/lib/prisma";
 import { decrypt } from "@/lib/auth/session";
 import { cookies } from "next/headers";
+import redis from "@/lib/redis";
+import crypto from "crypto";
+
+function getSigningSecret(schoolId: string): string {
+  const base = process.env.JWT_SECRET;
+  if (!base) throw new Error("FATAL: JWT_SECRET not configured.");
+  return crypto.createHmac("sha256", base).update(`QR_SIGNING:${schoolId}`).digest("hex");
+}
+
+function verifyQRSignature(schoolId: string, timestamp: string, signature: string): boolean {
+  const secret = getSigningSecret(schoolId);
+  const payload = `${schoolId}:${timestamp}`;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex")
+    .substring(0, 16)
+    .toUpperCase();
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature.toUpperCase()));
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,9 +42,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
+    // A2: GPS is mandatory — staff must allow location on their phone
+    if (latitude == null || longitude == null) {
+      return NextResponse.json({ success: false, error: "Location access is required to mark attendance. Please enable GPS and try again." }, { status: 400 });
+    }
+
     // Verify requesting staffId matches the session staffId
     if (staffId !== session.staffId) {
       return NextResponse.json({ success: false, error: "Session verification mismatch." }, { status: 401 });
+    }
+
+    // Role check: only authorised roles can use QR attendance
+    const allowedRoles = ["TEACHER", "STAFF", "PRINCIPAL", "OWNER", "ADMIN", "CLERK"];
+    if (!allowedRoles.includes(session.role)) {
+      return NextResponse.json({ success: false, error: "Your role is not permitted to use QR attendance." }, { status: 403 });
+    }
+
+    // QR Replay Protection: reject tokens already used within 60 seconds
+    const replayKey = `qr_used:${token}`;
+    if (redis) {
+      const alreadyUsed = await redis.get(replayKey);
+      if (alreadyUsed) {
+        return NextResponse.json({ success: false, error: "QR Code already used. Please scan a fresh QR." }, { status: 403 });
+      }
     }
 
     // Token format: SOV2_[SchoolID]_[Timestamp]_[Signature]
@@ -41,6 +81,11 @@ export async function POST(req: NextRequest) {
     const diffSeconds = currentTimestamp - qrTimestamp;
     if (diffSeconds > 30 || diffSeconds < -5) {
       return NextResponse.json({ success: false, error: "QR Code Expired. Please scan again." }, { status: 403 });
+    }
+
+    // 1b. Cryptographic Signature Check (CRITICAL — was missing before)
+    if (!verifyQRSignature(schoolId, timestampStr, signature)) {
+      return NextResponse.json({ success: false, error: "QR Token signature invalid. Possible forgery." }, { status: 403 });
     }
 
     // 2. Validate Staff Exists (Check by ID)
@@ -120,6 +165,14 @@ export async function POST(req: NextRequest) {
     // Calculate a stable 32-bit signed integer hash of staff.id (UUID string) for advisory lock
     const hash = staff.id.split('').reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0) | 0, 0);
 
+    // A3: Read late threshold from AttendancePolicy (falls back to 555 = 9:15 AM if not configured)
+    const policy = await prismaBypass.attendancePolicy.findFirst({
+      where: { schoolId, branchId: staff.branchId ?? undefined }
+    });
+    const startMinutes = policy?.startMinutes ?? 540; // 9:00 AM default
+    const gracePeriod = policy?.gracePeriod ?? 15;    // 15 min grace
+    const lateThreshold = policy?.lateThresholdMinutes ?? (startMinutes + gracePeriod);
+
     const transactionResult = await prismaBypass.$transaction(async (tx) => {
       // Obtain transaction-level advisory lock based on the staff ID hash to serialize concurrent scans for this staff member
       await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(${hash})`);
@@ -173,24 +226,33 @@ export async function POST(req: NextRequest) {
       }
 
       // Create new Punch In record
+      const checkInTime = new Date();
+      const checkInMinutes = checkInTime.getHours() * 60 + checkInTime.getMinutes();
+      const isLate = checkInMinutes > lateThreshold;
+      const punchStatus = isLate ? "Late" : "Present";
+
       await tx.staffAttendance.create({
         data: {
           staffId: staff.id,
           date: today,
-          status: "Present",
+          status: punchStatus,
           schoolId: schoolId,
           branchId: staff.branchId,
-          checkIn: new Date(),
-          remarks: `Mobile Scan IN (Lat: ${latitude || "Unknown"}, Lon: ${longitude || "Unknown"})`
+          checkIn: checkInTime,
+          remarks: `Mobile Scan IN (Lat: ${latitude}, Lon: ${longitude})${isLate ? ` | LATE by ${checkInMinutes - lateThreshold} min` : ""}`
         }
       });
 
+      const lateMsg = isLate ? ` You are ${checkInMinutes - lateThreshold} minute(s) late.` : "";
       return {
         success: true,
-        message: `Punched in successfully! Welcome, ${staff.firstName}.`,
-        status: "Present"
+        message: `Punched in successfully! Welcome, ${staff.firstName}.${lateMsg}`,
+        status: punchStatus
       };
     });
+
+    // Mark QR token as used (60s TTL) to prevent replay
+    if (redis) await redis.setex(replayKey, 60, "1");
 
     return NextResponse.json(transactionResult);
 

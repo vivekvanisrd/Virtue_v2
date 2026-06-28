@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toDisplayId } from "@/lib/utils/id-utils";
 import { 
   generatePayrollDraftAction, 
   finalizePayrollAction,
@@ -219,7 +220,7 @@ export function PayrollManager() {
                      <td className="px-8 py-6">
                         <div>
                            <p className="text-slate-900 tracking-tight text-sm uppercase italic">{s.staff?.firstName} {s.staff?.lastName}</p>
-                           <code className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.staff?.staffCode}</code>
+                           <code className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{toDisplayId(s.staff?.staffCode)}</code>
                         </div>
                      </td>
                      <td className="px-8 py-6">

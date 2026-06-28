@@ -65,6 +65,12 @@ const FeeMasterHub = dynamic(() => import("../finance/FeeMasterHub").then(mod =>
 const ClassDashboardContent = dynamic(() => import("../dashboard/class-dashboard").then(mod => mod.ClassDashboardContent), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
+const TransportContent = dynamic(() => import("../dashboard/transport").then(mod => mod.TransportContent), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const SchoolCalendarPage = dynamic(() => import("../../app/dashboard/calendar/page"), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -122,6 +128,9 @@ function WorkspaceRenderer() {
           {tab.id === "attendance-kiosk" && (
             <AttendanceKiosk />
           )}
+          {tab.id === "attendance-calendar" && (
+            <SchoolCalendarPage />
+          )}
 
           {tab.id === "razorpay-lab" && (
             <RazorpaySimulationLab />
@@ -131,8 +140,13 @@ function WorkspaceRenderer() {
           {tab.id === "acad-config" && <AcademicArchitectHub />}
           {tab.id === "acad-genesis" && <GenesisLab />}
 
+          {/* Transport Module */}
+          {(tab.id === "transport" || tab.id.startsWith("transport-")) && (
+            <TransportContent tabId={tab.id} params={tab.params} />
+          )}
+
           {/* Generic mappings for other cataloged modules */}
-          {["accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication"].includes(tab.id) && (
+          {["accounting", "teachers", "academics", "attendance", "activities", "library", "communication"].includes(tab.id) && (
             <GenericModule 
               title={tab.title} 
               description={`Modern ${tab.title} and information systems powered by PaVa-EDUX`}

@@ -93,8 +93,9 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
         where: { schoolId: context.schoolId, isCurrent: true },
         select: { id: true, name: true }
       });
-      currentAYId = activeYear?.id || "2026-27";
-      currentAYName = activeYear?.name || "2026-27";
+      if (!activeYear) throw new Error("No active Academic Year configured. Please set one in Settings before admitting students.");
+      currentAYId = activeYear.id;
+      currentAYName = activeYear.name;
     }
     
     // Fetch School and Branch Codes for ID generation
@@ -142,7 +143,7 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
           branchCode: branch.code 
         });
 
-    const historyId = `VR-SAH-${year}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+    const historyId = crypto.randomUUID();
 
     // 4. Financial Logic: Sum granular fees
     // One-time fees (admission, caution) are excluded from the term-split base,
@@ -169,10 +170,12 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
 
     const annualFee = recurringAnnualFee + oneTimeFees; // Total stored in DB
 
-    // Term splits calculated only on recurring fees (Sovereign Rulebook)
+    // Term billing splits (for invoice generation)
     const term1 = recurringAnnualFee * 0.50;
     const term2 = recurringAnnualFee * 0.25;
     const term3 = recurringAnnualFee * 0.25;
+    // Confirmation threshold stored separately — 35% of gross annual fee
+    const confirmationThreshold = annualFee * 0.35;
 
     // 5. Transactional Insert (Atomic)
     const result = await prisma.$transaction(async (tx: any) => {
@@ -292,8 +295,8 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
               miscellaneousFee: validatedData.miscellaneousFee,
               cautionDeposit: validatedData.cautionDeposit,
               transportFee: validatedData.transportFee,
-              annualTuition: annualFee,   // ✅ Store true total for milestone validation
-              term1Amount: term1,
+              annualTuition: annualFee,
+              term1Amount: confirmationThreshold, // 35% of gross — confirmation threshold
               term2Amount: term2,
               term3Amount: term3,
               totalDiscount: 0,
@@ -545,17 +548,24 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
     const admissionNumber = null;
     const studentCode = null;
 
-    // 🏷️ CALCULATE AUTHORIZED DISCOUNTS (Law 5.1 Alignment)
+    // 🏷️ CALCULATE AUTHORIZED DISCOUNTS — applies to TUITION component only
     let totalDiscountAmount = 0;
     if (validatedData.discountId1) {
       const selectedDiscountType = await prisma.discountType.findUnique({
         where: { id: validatedData.discountId1 }
       });
       if (selectedDiscountType) {
+        // Find tuition component base amount only
+        const tuitionComp = resolvedComponents.find(c =>
+          c.masterComponent?.type === "CORE" ||
+          c.masterComponent?.name?.toLowerCase().includes("tuition")
+        );
+        if (!tuitionComp) throw new Error("RULE_VIOLATION: Discount can only be applied when a Tuition Fee component exists.");
+        const tuitionBase = Number(tuitionComp.amount || 0);
         if (selectedDiscountType.percentage) {
-          totalDiscountAmount = (annualTotal * Number(selectedDiscountType.percentage)) / 100;
+          totalDiscountAmount = (tuitionBase * Number(selectedDiscountType.percentage)) / 100;
         } else {
-          totalDiscountAmount = Number(selectedDiscountType.amount || 0);
+          totalDiscountAmount = Math.min(Number(selectedDiscountType.amount || 0), tuitionBase);
         }
       }
     }
@@ -592,17 +602,17 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
               feeStructureId: feeStructure.id,
               paymentType: validatedData.paymentType || "Term-wise",
               annualTuition: annualTotal,
-              term1Amount: Math.floor(annualTotal * 0.50),
-              totalDiscount: totalDiscountAmount,
+              term1Amount: Math.floor(annualTotal * 0.35),
+              totalDiscount: (context.role === "PRINCIPAL" || context.role === "OWNER") ? totalDiscountAmount : 0,
 
-              // 🏷️ LINK AUTHORIZED DISCOUNT (Registry Audit)
+              // 🏷️ LINK AUTHORIZED DISCOUNT — PRINCIPAL/OWNER approve; ACCOUNTS/ADMIN propose
               discounts: validatedData.discountId1 ? {
                 create: {
                   schoolId: context.schoolId,
                   discountTypeId: validatedData.discountId1,
                   amount: totalDiscountAmount,
                   reason: validatedData.discountReason1 || "Applied at Admission",
-                  status: "Approved",
+                  status: (context.role === "PRINCIPAL" || context.role === "OWNER") ? "Approved" : "Pending",
                   branchId
                 }
               } : undefined,
@@ -854,6 +864,7 @@ export async function confirmStudentAdmission(studentId: string) {
 
     // ─── Institutional Hardening: Strict Financial Milestone Check ───
     const totalAnnual = Number(student.financial?.annualTuition || 0);
+
     const totalDiscount = Number(student.financial?.totalDiscount || 0);
     const netTuition = Number(student.financial?.netTuition || (totalAnnual - totalDiscount));
     const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0) || 0;
@@ -861,11 +872,9 @@ export async function confirmStudentAdmission(studentId: string) {
     // Check for absolute 100% institutional discount
     const isFullyDiscounted = netTuition <= 0 || totalDiscount >= totalAnnual;
 
-    // Term 1 is defined as 50% of Annual Tuition for institutional confirmation.
-    const term1Requirement = Math.min(
-      Number(student.financial?.term1Amount || (totalAnnual * 0.5)),
-      (totalAnnual * 0.5)
-    ) || (totalAnnual * 0.5);
+    // Confirmation threshold: 35% of GROSS annual fee (before discount).
+    // Discount only applies from Term 3 backwards — Term 1 is always paid at full price.
+    const term1Requirement = totalAnnual * 0.35;
     
     const isFinancialClear = isFullyDiscounted || (totalPaid >= term1Requirement);
 
@@ -1620,11 +1629,9 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
     // Check for absolute 100% institutional discount
     const isFullyDiscounted = netTuition <= 0 || totalDiscount >= totalAnnual;
 
-    // Term 1 is defined as 50% of Annual Tuition for institutional confirmation.
-    const term1Requirement = Math.min(
-      Number(student.financial?.term1Amount || (totalAnnual * 0.5)),
-      (totalAnnual * 0.5)
-    ) || (totalAnnual * 0.5);
+    // Confirmation threshold: 35% of GROSS annual fee (before discount).
+    // Discount only applies from Term 3 backwards — Term 1 is always paid at full price.
+    const term1Requirement = totalAnnual * 0.35;
     
     const isFinancialClear = isFullyDiscounted || (totalPaid >= term1Requirement);
 
@@ -1652,7 +1659,8 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
     }
 
     const schoolId = student.schoolId;
-    const branchId = student.branchId || "GLOBAL";
+    const branchId = student.branchId;
+    if (!branchId) throw new Error("BRANCH_MISSING: Student has no branch assigned. Please assign a branch before confirming admission.");
 
     // Fetch Codes
     const [school, branch] = await Promise.all([

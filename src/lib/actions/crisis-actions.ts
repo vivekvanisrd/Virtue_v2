@@ -40,7 +40,7 @@ export async function remapSchoolIdAction(oldId: string, newId: string) {
             // 3. Final: Update School PK (Requires manual update in Prisma as PK is immutable directly)
             // Note: Since id is PK, we must create a new record and delete the old one or use raw SQL.
             // Raw SQL is safer for PK remapping in Postgres.
-            await tx.$executeRawUnsafe(`UPDATE "School" SET "id" = '${newId}' WHERE "id" = '${oldId}'`);
+            await tx.$executeRaw`UPDATE "School" SET "id" = ${newId} WHERE "id" = ${oldId}`;
 
             return true;
         });
@@ -70,7 +70,7 @@ export async function remapBranchIdAction(oldId: string, newId: string) {
             }
 
             // Update Branch PK using raw SQL for guaranteed isolation
-            await tx.$executeRawUnsafe(`UPDATE "Branch" SET "id" = '${newId}' WHERE "id" = '${oldId}'`);
+            await tx.$executeRaw`UPDATE "Branch" SET "id" = ${newId} WHERE "id" = ${oldId}`;
         });
 
         revalidatePath("/developer");

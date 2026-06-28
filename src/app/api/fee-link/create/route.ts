@@ -4,7 +4,11 @@ import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import prisma from "@/lib/prisma";
 
-const ENCRYPTION_KEY = process.env.BANKING_ENCRYPTION_KEY || "virtue_default_dev_key_32_chars_!!";
+const _RAW_ENCRYPTION_KEY = process.env.BANKING_ENCRYPTION_KEY;
+if (!_RAW_ENCRYPTION_KEY || _RAW_ENCRYPTION_KEY.length < 32) {
+    throw new Error("FATAL: BANKING_ENCRYPTION_KEY must be configured and at least 32 characters long.");
+}
+const ENCRYPTION_KEY = _RAW_ENCRYPTION_KEY;
 
 function decrypt(text: string) {
   try {

@@ -117,14 +117,26 @@ const menuItems: MenuItem[] = [
       { id: "acad-exams", name: "Examinations", component: "Academics", requiredCapability: "ACADEMIC_CONFIG" },
     ]
   },
-  { 
-    id: "attendance", 
-    name: "Attendance", 
-    icon: CalendarCheck, 
+  {
+    id: "attendance",
+    name: "Attendance",
+    icon: CalendarCheck,
     subItems: [
       { id: "attendance-student", name: "Velocity Run (Students)", component: "Attendance", requiredCapability: "ACADEMIC_CONFIG" },
       { id: "attendance-staff", name: "Payroll Ledger (Staff)", component: "Attendance", requiredCapability: "HR_PAYROLL" },
       { id: "attendance-kiosk", name: "Dynamic QR Kiosk", component: "Attendance", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "attendance-calendar", name: "School Calendar", component: "Calendar", requiredCapability: "ACADEMIC_CONFIG" },
+    ]
+  },
+  { 
+    id: "transport", 
+    name: "Transport", 
+    icon: Bus,
+    subItems: [
+      { id: "transport-dashboard", name: "Transport Hub", component: "Transport" },
+      { id: "transport-setup", name: "Fleet Setup", component: "Transport", requiredCapability: "ACADEMIC_CONFIG" },
+      { id: "transport-live", name: "Live Tracking", component: "Transport" },
+      { id: "transport-replay", name: "Trip Replay", component: "Transport" }
     ]
   },
   { 

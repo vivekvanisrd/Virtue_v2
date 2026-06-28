@@ -83,6 +83,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const [schoolName, setSchoolName] = useState("PaVa-EDUX Institution");
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [customAmount, setCustomAmount] = useState<number | null>(null);
+  const [qrTimeLeft, setQrTimeLeft] = useState(300); // 5 minutes (in seconds) for POS QR expiry
   const [paymentDetails, setPaymentDetails] = useState({
     bankName: "",
     accountNo: "",
@@ -106,7 +107,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
 
   useEffect(() => {
     const student = settlements[0]?.student;
-    if (!student?.branchId) {
+    const branchId = student?.branchId || student?.academic?.branchId;
+    if (!branchId) {
       setBranchUpiConfig(null);
       return;
     }
@@ -114,7 +116,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     async function fetchBranchUpi() {
       try {
         const { getBranchGatewayConfigAction } = await import("@/lib/actions/banking-actions");
-        const res = await getBranchGatewayConfigAction(student.branchId);
+        const res = await getBranchGatewayConfigAction(branchId);
         if (res.success && res.config?.upiVpa) {
           setBranchUpiConfig({
             vpa: res.config.upiVpa,
@@ -130,7 +132,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     }
     
     fetchBranchUpi();
-  }, [settlements[0]?.student?.branchId, schoolName]);
+  }, [settlements[0]?.student?.branchId, settlements[0]?.student?.academic?.branchId, schoolName]);
 
   useEffect(() => {
     async function loadSchool() {
@@ -242,7 +244,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       const fb = s.student.feeBreakdown;
       const termTotal = s.selectedTerms.reduce((sum, t) => {
         const detail = fb.installments?.find((inst: any) => inst.key === t) || fb[t] || fb.ancillary?.[t];
-        const val = (detail?.amount === 0 && s.adHocAmounts[t]) ? s.adHocAmounts[t] : (detail?.amount || 0);
+        const val = (detail?.amount === 0 && s.adHocAmounts[t]) ? s.adHocAmounts[t] 
+                  : (detail?.balance !== undefined ? detail.balance : (detail?.amount || 0));
         return sum + val;
       }, 0);
       const lateTotal = s.waivedLateFee ? 0 : s.selectedTerms.reduce((sum, t) => {
@@ -258,6 +261,50 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const targetTotal = customAmount !== null ? customAmount : grandTotal;
   const tallyTotal = Object.entries(denominations).reduce((sum, [val, count]) => sum + (Number(val) * count), 0);
   const isTallyValid = Math.abs(targetTotal - tallyTotal) <= 49;
+
+  const student = settlements[0]?.student;
+  const fb = student?.feeBreakdown;
+
+  // Generate QR VPA string for Bank QR mode (Memoized to prevent render flicker)
+  const upiString = React.useMemo(() => {
+    if (paymentMode !== "Bank QR" || targetTotal <= 0 || !branchUpiConfig?.vpa || !student) return "";
+    
+    const studentClass = student.academic?.class?.name || "N/A";
+    const noteText = `${student.firstName} ${student.lastName} | Class: ${studentClass} | School Fee`;
+    
+    // POS transaction reference for manual reconciliation in bank statements
+    const trRef = `POS-${student.id.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+    return generateUPIString({
+      vpa: branchUpiConfig.vpa,
+      name: branchUpiConfig.merchantName || "VIVEK VANI EDUCATION",
+      amount: targetTotal,
+      note: noteText.substring(0, 100),
+      tr: trRef
+    });
+  }, [paymentMode, targetTotal, branchUpiConfig, student?.id, student?.firstName, student?.lastName, student?.academic?.class?.name]);
+
+  // Timer for QR code expiry on POS desk
+  React.useEffect(() => {
+    if (paymentMode !== "Bank QR" || targetTotal <= 0) {
+      setQrTimeLeft(300);
+      return;
+    }
+
+    setQrTimeLeft(300); // Reset timer to 5 minutes when key parameters change
+
+    const timer = setInterval(() => {
+      setQrTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [paymentMode, targetTotal, branchUpiConfig]);
 
   const getParentMessage = () => {
     if (!settlements[0]) return "";
@@ -287,6 +334,12 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     if (settlements.length === 0 || settlements.every(s => s.selectedTerms.length === 0)) return;
     setCollectionLoading(true);
     setError(null);
+
+    if (targetTotal <= 0) {
+      setError("Payment amount must be greater than zero.");
+      setCollectionLoading(false);
+      return;
+    }
 
     // Form validation based on payment modes
     if (paymentMode === "Razorpay" && !paymentDetails.transactionId) {
@@ -450,25 +503,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     );
   }
 
-  const student = settlements[0].student;
-  const fb = student.feeBreakdown;
-  const totalPaid = (student.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
-  const paidPercent = fb.annualNet > 0 ? (totalPaid / fb.annualNet) * 100 : 0;
-
-  // Generate QR VPA string for Bank QR mode
-  const upiString = (() => {
-    if (paymentMode !== "Bank QR") return "";
-    
-    const studentClass = student.academic?.class?.name || "N/A";
-    const noteText = `${student.firstName} ${student.lastName} | Class: ${studentClass} | School Fee`;
-
-    return generateUPIString({
-      vpa: branchUpiConfig?.vpa || "paytmqr6z0l99@ptys",
-      name: branchUpiConfig?.merchantName || "VIVEK VANI EDUCATION",
-      amount: targetTotal,
-      note: noteText.substring(0, 50)
-    });
-  })();
+  const totalPaid = (student?.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
+  const paidPercent = (fb && fb.annualNet > 0) ? (totalPaid / fb.annualNet) * 100 : 0;
 
   const paymentModes = ["Cash", "Bank QR", "Card Swipe", "Razorpay"];
 
@@ -542,7 +578,12 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                         {isSelected && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary animate-in zoom-in" />}
                         <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 leading-none">{inst.label}</p>
                         
-                        {isThirdTermOfTermWise ? (
+                        {inst.balance < inst.amount && inst.balance > 0 ? (
+                           <div className="space-y-0.5">
+                              <p className="text-[9px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{(inst.amount || 0).toLocaleString()}</p>
+                              <p className="text-lg font-black text-amber-600 tracking-tighter leading-none">₹{(inst.balance || 0).toLocaleString()} <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest block mt-0.5 leading-none">Pending</span></p>
+                           </div>
+                        ) : isThirdTermOfTermWise ? (
                            <div className="space-y-0.5">
                               <p className="text-[9px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{((inst.amount || 0) + (fb.totalDiscount || 0)).toLocaleString()}</p>
                               <p className="text-lg font-black text-emerald-600 tracking-tighter leading-none">₹{(inst.amount || 0).toLocaleString()}</p>
@@ -592,7 +633,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
               {paymentModes.map(m => {
                 const isSelected = paymentMode === m;
                 const Icon = m === "Cash" ? Banknote 
-                           : m === m && m === "Bank QR" ? QrCode 
+                           : m === "Bank QR" ? QrCode 
                            : m === "Bank Transfer" ? Monitor 
                            : m === "Cheque/DD" ? FileText 
                            : m === "Card Swipe" ? CreditCard 
@@ -644,13 +685,32 @@ export function FeeCollectionForm({ params }: { params?: any }) {
               <div className="animate-in fade-in slide-in-from-top-4 space-y-4">
                 <div className="bg-white rounded-3xl p-6 border border-slate-100 space-y-4 shadow-sm flex flex-col items-center">
                   <p className="text-[8px] font-black uppercase tracking-widest text-primary">Scan QR to Pay (Bypasses Gateway Fee)</p>
-                  
                   {targetTotal <= 0 ? (
                     <div className="text-center py-6 px-4 space-y-2">
                       <p className="text-xs font-bold text-slate-400">Awaiting Selection</p>
                       <p className="text-[10px] text-slate-400 max-w-xs leading-normal">Select installment terms or add ancillary fees from the inventory list to generate the dynamic payment QR Code.</p>
                     </div>
-                  ) : branchUpiConfig?.vpa ? (
+                  ) : !branchUpiConfig?.vpa ? (
+                    <div className="text-center p-6 bg-rose-50 border border-rose-100 rounded-2xl space-y-2 w-full">
+                      <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                      <h4 className="text-xs font-black text-rose-800 uppercase">UPI Config Missing</h4>
+                      <p className="text-[10px] text-rose-600 font-medium leading-relaxed">
+                        This branch has not set up its UPI QR code or VPA ID in Bank Settings. Please configure it to enable cashier QR payments.
+                      </p>
+                    </div>
+                  ) : qrTimeLeft <= 0 ? (
+                    <div className="text-center py-6 px-4 space-y-3 flex flex-col items-center justify-center min-h-[160px] w-full">
+                      <p className="text-xs font-black text-rose-500 uppercase tracking-wider">QR Code Expired</p>
+                      <p className="text-[10px] text-slate-400 max-w-xs leading-normal font-medium">For security, this QR code has expired to prevent stale payments.</p>
+                      <button
+                        type="button"
+                        onClick={() => setQrTimeLeft(300)}
+                        className="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-md shadow-slate-900/10"
+                      >
+                        Refresh QR Code
+                      </button>
+                    </div>
+                  ) : (
                     <>
                       <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-inner">
                         <QRCodeSVG value={upiString} size={160} level="M" />
@@ -658,20 +718,13 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                         Payable: <span className="text-slate-900 font-extrabold text-sm">₹{targetTotal.toLocaleString()}</span>
                       </p>
-                      <p className="text-[8px] font-bold text-emerald-600">✓ Using Branch Custom UPI QR ({branchUpiConfig.vpa})</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[8px] font-bold text-emerald-600">✓ Using Branch Custom UPI QR ({branchUpiConfig.vpa})</p>
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">
+                          Expires in {Math.floor(qrTimeLeft / 60)}:{(qrTimeLeft % 60).toString().padStart(2, "0")}
+                        </span>
+                      </div>
                     </>
-                  ) : (
-                    <div className="text-center space-y-3 w-full">
-                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[10px] text-amber-700 font-bold leading-normal">
-                        ⚠️ Branch UPI configuration missing. Defaulting to general gateway address.
-                      </div>
-                      <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-inner inline-block">
-                        <QRCodeSVG value={upiString} size={160} level="M" />
-                      </div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                        Payable: <span className="text-slate-900 font-extrabold text-sm">₹{targetTotal.toLocaleString()}</span>
-                      </p>
-                    </div>
                   )}
                 </div>
                 
@@ -807,7 +860,11 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   value={customAmount !== null ? customAmount : grandTotal} 
                   onChange={(e) => {
                     const val = parseFloat(e.target.value);
-                    setCustomAmount(isNaN(val) ? null : val);
+                    if (isNaN(val)) {
+                      setCustomAmount(null);
+                    } else {
+                      setCustomAmount(val < 1 ? 1 : val);
+                    }
                   }}
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-8 pr-4 py-4 text-xl font-black outline-none focus:border-primary focus:bg-white transition-all text-slate-900"
                   placeholder="Enter custom amount..."

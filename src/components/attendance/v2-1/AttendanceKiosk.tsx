@@ -32,29 +32,31 @@ export function AttendanceKiosk() {
   }, []);
 
   useEffect(() => {
-    // We would ideally fetch the true encrypted token from the server.
-    // For the UI, we'll generate a time-based string that mimics it.
-    const generateToken = () => {
-      const timestamp = Math.floor(Date.now() / 1000);
-      // Format: SOV2_[SchoolID]_[Timestamp]_[RandomSignature]
-      const sig = Math.random().toString(36).substring(2, 10).toUpperCase();
-      setToken(`SOV2_${schoolId}_${timestamp}_${sig}`);
-      setTimeLeft(15);
+    const fetchToken = async () => {
+      try {
+        const res = await fetch("/api/attendance/generate-token");
+        if (!res.ok) throw new Error("Token fetch failed");
+        const data = await res.json();
+        setToken(data.token);
+        setTimeLeft(data.expiresIn ?? 30);
+      } catch (e) {
+        console.error("Failed to fetch QR token:", e);
+      }
     };
 
-    generateToken();
+    fetchToken();
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          generateToken();
-          return 15;
+          fetchToken();
+          return 30;
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [schoolId]);
+  }, []);
 
   return (
     <div className="h-full flex flex-col md:flex-row bg-slate-950 overflow-hidden relative font-sans text-slate-50">

@@ -575,6 +575,24 @@ export async function promoteStudentChunkAction(data: {
     const result = await prisma.$transaction(async (tx) => {
       const recordsCreated = [];
 
+      // Resolve sourceClassId from PromotionBatch
+      const batch = await tx.promotionBatch.findUnique({
+        where: { id: data.batchId }
+      });
+      const sourceClassId = batch?.sourceClassId;
+
+      // Resolve old Fee Structure to find template components to clean up
+      const oldFeeStructure = sourceClassId ? await tx.feeStructure.findFirst({
+        where: {
+          schoolId: identity.schoolId,
+          branchId,
+          classId: sourceClassId,
+          academicYearId: data.sourceAcademicYearId
+        },
+        include: { components: true }
+      }) : null;
+      const oldComponentIds = oldFeeStructure?.components.map(c => c.componentId) || [];
+
       // Resolve target Fee Structure
       const feeStructure = await tx.feeStructure.findFirst({
         where: {
@@ -589,6 +607,10 @@ export async function promoteStudentChunkAction(data: {
           }
         }
       });
+      const newComponentIds = feeStructure?.components.map(c => c.componentId) || [];
+
+      // Merge component IDs to target for clean deletion of defaults, preserving manual components
+      const componentsToDelete = Array.from(new Set([...oldComponentIds, ...newComponentIds]));
 
       const receivableAccount = await tx.chartOfAccount.findFirst({
         where: { accountCode: "1200", schoolId: identity.schoolId }
@@ -616,6 +638,13 @@ export async function promoteStudentChunkAction(data: {
         });
         if (!student) continue;
 
+        // 🛡️ SECURITY: Verify multi-tenancy boundaries
+        if (identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
+          if (student.branchId !== branchId || student.schoolId !== identity.schoolId) {
+            throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your campus.`);
+          }
+        }
+
         const oldSectionId = student.academic?.sectionId || null;
 
         // 3. Create AcademicHistory
@@ -636,10 +665,18 @@ export async function promoteStudentChunkAction(data: {
           }
         });
 
-        // 4. Update AcademicRecord
-        await tx.academicRecord.update({
+        // 4. Update or Create AcademicRecord (Upsert)
+        await tx.academicRecord.upsert({
           where: { studentId },
-          data: {
+          update: {
+            classId: data.targetClassId,
+            sectionId: data.targetSectionId || null,
+            academicYear: data.targetAcademicYearId
+          },
+          create: {
+            studentId,
+            schoolId: identity.schoolId,
+            branchId,
             classId: data.targetClassId,
             sectionId: data.targetSectionId || null,
             academicYear: data.targetAcademicYearId
@@ -667,9 +704,16 @@ export async function promoteStudentChunkAction(data: {
             }
           });
 
-          await tx.studentFeeComponent.deleteMany({
-            where: { studentFinancialId: fin.id, schoolId: identity.schoolId }
-          });
+          // Targeted Fee Component Overrides (Preserves other manual components)
+          if (componentsToDelete.length > 0) {
+            await tx.studentFeeComponent.deleteMany({
+              where: { 
+                studentFinancialId: fin.id, 
+                schoolId: identity.schoolId,
+                componentId: { in: componentsToDelete }
+              }
+            });
+          }
 
           await tx.studentFeeComponent.createMany({
             data: feeStructure.components.map(tc => ({
@@ -729,6 +773,12 @@ export async function promoteStudentChunkAction(data: {
                   description: `Accrued: ${mComp.name}`
                 });
               }
+            }
+
+            // 🛡️ Double-Entry Accounting Balance Verification
+            const totalCredits = incomeMapping.reduce((sum, line) => sum + line.credit, 0);
+            if (totalCredits !== Number(feeStructure.totalAmount)) {
+              throw new Error(`ACCOUNTING_ERROR: Accrual line credits total (${totalCredits}) does not match billing total (${feeStructure.totalAmount}). Please configure account code mappings or verify fallback account '4100'.`);
             }
 
             const jEntry = await tx.journalEntry.create({
@@ -797,7 +847,50 @@ export async function rollbackPromotionBatchAction(batchId: string) {
         throw new Error("UNAUTHORIZED: School mismatch.");
       }
 
+      if (identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
+        if (batch.branchId !== identity.branchId) {
+          throw new Error("SECURITY_VIOLATION: You can only rollback promotion batches created on your campus.");
+        }
+      }
+
+      // Resolve target Fee Structure (the new one applied during promotion)
+      const targetFeeStructure = await tx.feeStructure.findFirst({
+        where: {
+          schoolId: identity.schoolId,
+          branchId: batch.branchId,
+          classId: batch.targetClassId,
+          academicYearId: batch.targetYearId
+        },
+        include: { components: true }
+      });
+      const targetComponentIds = targetFeeStructure?.components.map(c => c.componentId) || [];
+
+      // Resolve source Fee Structure (the old one we want to restore)
+      const oldFeeStructure = await tx.feeStructure.findFirst({
+        where: {
+          schoolId: identity.schoolId,
+          branchId: batch.branchId,
+          classId: batch.sourceClassId,
+          academicYearId: batch.sourceYearId
+        },
+        include: { components: true }
+      });
+      const oldComponentIds = oldFeeStructure?.components.map(c => c.componentId) || [];
+
+      // Merge component IDs to delete specifically from student fee card, preserving other custom ones
+      const rollbackComponentsToDelete = Array.from(new Set([...targetComponentIds, ...oldComponentIds]));
+
       for (const rec of batch.records) {
+        // Double-check student branch tenancy inside transaction loop for extra security
+        const student = await tx.student.findUnique({
+          where: { id: rec.studentId }
+        });
+        if (student && identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
+          if (student.branchId !== identity.branchId || student.schoolId !== identity.schoolId) {
+            throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your campus.`);
+          }
+        }
+
         await tx.academicRecord.update({
           where: { studentId: rec.studentId },
           data: {
@@ -811,30 +904,32 @@ export async function rollbackPromotionBatchAction(batchId: string) {
           where: { studentId: rec.studentId, academicYearId: batch.targetYearId }
         });
 
-        await tx.ledgerEntry.deleteMany({
-          where: { studentId: rec.studentId, academicYearId: batch.targetYearId }
-        });
+        // Safe ledger rollback: only delete CHARGE entries created for this target fee structure
+        if (targetFeeStructure) {
+          await tx.ledgerEntry.deleteMany({
+            where: { 
+              studentId: rec.studentId, 
+              academicYearId: batch.targetYearId,
+              type: "CHARGE",
+              feeStructureId: targetFeeStructure.id
+            }
+          });
+        }
 
         const finRecord = await tx.financialRecord.findUnique({
           where: { studentId: rec.studentId }
         });
         if (finRecord) {
-          await tx.studentFeeComponent.deleteMany({
-            where: { studentFinancialId: finRecord.id }
-          });
+          if (rollbackComponentsToDelete.length > 0) {
+            await tx.studentFeeComponent.deleteMany({
+              where: { 
+                studentFinancialId: finRecord.id,
+                schoolId: identity.schoolId,
+                componentId: { in: rollbackComponentsToDelete }
+              }
+            });
+          }
           
-          const oldFeeStructure = await tx.feeStructure.findFirst({
-            where: {
-              schoolId: identity.schoolId,
-              branchId: batch.branchId,
-              classId: batch.sourceClassId,
-              academicYearId: batch.sourceYearId
-            },
-            include: {
-              components: true
-            }
-          });
-
           if (oldFeeStructure) {
             await tx.financialRecord.update({
               where: { studentId: rec.studentId },

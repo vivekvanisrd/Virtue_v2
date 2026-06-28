@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getStaffDirectoryAction } from "@/lib/actions/staff-actions";
+import { toDisplayId } from "@/lib/utils/id-utils";
 import { submitStaffAttendanceAction, getStaffAttendanceAuditAction } from "@/lib/actions/attendance-actions";
 
 export function StaffAttendanceSheet() {
@@ -240,7 +241,7 @@ export function StaffAttendanceSheet() {
                               )} />
                               <div>
                                  <p className="font-black text-slate-900 text-sm tracking-tight">{s.firstName} {s.lastName}</p>
-                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{s.staffCode}</p>
+                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{toDisplayId(s.staffCode)}</p>
                               </div>
                            </div>
                         </td>

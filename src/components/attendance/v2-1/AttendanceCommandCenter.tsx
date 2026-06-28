@@ -32,11 +32,12 @@ import { ShiftManager } from "./ShiftManager";
 import { PersonnelAssignment } from "./PersonnelAssignment";
 import { ExceptionDashboard } from "./ExceptionDashboard";
 import { FingerprintModal } from "./FingerprintModal";
+import { BiometricDevicesManager } from "./BiometricDevicesManager";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 export function AttendanceCommandCenter() {
-  const [activeTab, setActiveTab] = useState<"PULSE" | "REGISTER" | "SHIFTS" | "LEDGER" | "PERSONNEL" | "AUDIT" | "SETTINGS">("PULSE");
+  const [activeTab, setActiveTab] = useState<"PULSE" | "REGISTER" | "SHIFTS" | "LEDGER" | "PERSONNEL" | "AUDIT" | "SETTINGS" | "DEVICES">("PULSE");
   const [stats, setStats] = useState<any>(null);
   const [staff, setStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -247,6 +248,15 @@ export function AttendanceCommandCenter() {
                 )}
              >
                 <Settings2 className="w-4 h-4" /> Location Settings
+             </button>
+             <button 
+                onClick={() => setActiveTab("DEVICES")}
+                className={cn(
+                   "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3",
+                   activeTab === "DEVICES" ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                )}
+             >
+                <Fingerprint className="w-4 h-4 text-emerald-500" /> Biometric Devices
              </button>
           </div>
 
@@ -476,6 +486,7 @@ export function AttendanceCommandCenter() {
       {activeTab === "SHIFTS" && <ShiftManager />}
       {activeTab === "PERSONNEL" && <PersonnelAssignment />}
       {activeTab === "AUDIT" && <ExceptionDashboard />}
+      {activeTab === "DEVICES" && <BiometricDevicesManager />}
 
       {isFaceMode && (
          <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-3xl flex items-center justify-center p-6">

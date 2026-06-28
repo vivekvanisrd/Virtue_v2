@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getStaffFinancialSummaryAction } from "@/lib/actions/staff-actions";
+import { toDisplayId } from "@/lib/utils/id-utils";
 
 interface StaffFinancialVaultProps {
   staffId: string;
@@ -95,7 +96,7 @@ export function StaffFinancialVault({ staffId, onBack }: StaffFinancialVaultProp
                <h2 className="text-3xl font-black tracking-tighter text-slate-900">{data.staff.firstName} {data.staff.lastName}</h2>
                <span className="px-3 py-1 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg">{data.staff.role}</span>
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{data.staff.staffCode} // Personnel Ledger Hub</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{toDisplayId(data.staff.staffCode)} // Personnel Ledger Hub</p>
           </div>
         </div>
 

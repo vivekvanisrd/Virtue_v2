@@ -1,7 +1,7 @@
 const fs = require('fs');
 const readline = require('readline');
 
-const logPath = 'C:\\Users\\SriKriations\\.gemini\\antigravity\\brain\\9c7156a0-e1c4-462b-a3f8-70303075f29e\\.system_generated\\logs\\transcript.jsonl';
+const logPath = 'C:\\Users\\SriKriations\\.gemini\\antigravity-ide\\brain\\ee2596cf-dc5f-4e6d-aee3-f724c9f13c1b\\.system_generated\\logs\\transcript.jsonl';
 
 if (!fs.existsSync(logPath)) {
   console.log("Log path does not exist");

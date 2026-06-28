@@ -7,12 +7,12 @@ import { jwtVerify, SignJWT } from "jose";
 function resolveSecret() {
     const raw = process.env.JWT_SECRET;
     if (!raw) {
-        // Only throw at runtime. At build-time (Phases) we use a placeholder.
-        const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'production';
-        if (!isBuildPhase) {
-            console.warn("⚠️ AUTH_WARNING: JWT_SECRET is missing. Authentication will fail at runtime.");
+        // Allow build phase to proceed without secret (Vercel build step has no env)
+        if (process.env.NEXT_PHASE === 'phase-production-build') {
+            return new TextEncoder().encode("BUILD_PHASE_PLACEHOLDER_NOT_USED_AT_RUNTIME");
         }
-        return new TextEncoder().encode("BUILD_TIME_VIRTUE_SECURE_FALLBACK_2026");
+        // At runtime, fail hard — no fallback allowed
+        throw new Error("FATAL: JWT_SECRET is not configured. Server cannot start without it.");
     }
     return new TextEncoder().encode(raw);
 }

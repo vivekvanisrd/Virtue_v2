@@ -679,7 +679,15 @@ export async function getEnquiryPaymentReviewAction(enquiryId: string) {
         // Resolve fare from TransportStop model (V3)
         const stop = await prisma.transportStop.findUnique({ where: { id: enquiry.requestedStopId } });
         if (stop) {
-            transportEstimate = Number(stop.fare) * 10;
+            // Calculate remaining transport months from today to academic year end (March = month 2 next year)
+            const now = new Date();
+            const academicEndMonth = 2; // March
+            const academicEndYear = now.getMonth() <= academicEndMonth ? now.getFullYear() : now.getFullYear() + 1;
+            const academicEnd = new Date(academicEndYear, academicEndMonth + 1, 0); // Last day of March
+            const monthsRemaining = Math.max(1,
+              (academicEnd.getFullYear() - now.getFullYear()) * 12 + (academicEnd.getMonth() - now.getMonth()) + 1
+            );
+            transportEstimate = Number(stop.fare) * Math.min(monthsRemaining, 10);
             transportStopName = stop.name;
         }
     }

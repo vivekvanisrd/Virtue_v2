@@ -31,12 +31,52 @@ type PrismaTransaction = Omit<
  * -----------------------
  * Generates the official `PayrollRun` Draft and maps all `StaffProfessional` components into a frozen JSON snapshot.
  */
-export async function generatePayrollDraftAction(month: number, year: number, totalWorkingDays: number, branchId: string, skipStatutory: boolean = false) {
+export async function generatePayrollDraftAction(
+  month: number,
+  year: number,
+  totalWorkingDays: number | null,   // null = auto from SchoolCalendar
+  branchId: string,
+  skipStatutory: boolean = false,
+  workingDaysOverrideReason?: string // A15: required when totalWorkingDays is manually provided
+) {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     const schoolId = context.schoolId;
+
+    // A14: Auto-calculate working days from SchoolCalendar if not manually overridden
+    let resolvedWorkingDays: number;
+    let isManualOverride = false;
+
+    if (totalWorkingDays != null) {
+      // A15: Manual override — reason is mandatory
+      if (!workingDaysOverrideReason?.trim()) {
+        throw new Error("VALIDATION: A reason is required when manually overriding working days.");
+      }
+      resolvedWorkingDays = totalWorkingDays;
+      isManualOverride = true;
+    } else {
+      // Auto: count days in this month that are NOT marked as holiday/off in SchoolCalendar
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0); // last day of month
+
+      const offDays = await prisma.schoolCalendar.count({
+        where: {
+          schoolId,
+          date: { gte: monthStart, lte: monthEnd },
+          type: { in: ["HOLIDAY", "WEEKLY_OFF", "PUBLIC_HOLIDAY"] }
+        }
+      });
+
+      const daysInMonth = monthEnd.getDate();
+      // Also count Sundays that are NOT already in SchoolCalendar
+      let sundayCount = 0;
+      for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === 0) sundayCount++;
+      }
+      resolvedWorkingDays = Math.max(1, daysInMonth - offDays - sundayCount);
+    }
 
     // 1. Check for Existing Run
     const existingRun = await prisma.payrollRun.findUnique({
@@ -110,23 +150,31 @@ export async function generatePayrollDraftAction(month: number, year: number, to
           totalGross: 0,
           totalNet: 0,
           processedBy: context.staffId || "System",
-          processedAt: new Date()
+          processedAt: new Date(),
+          // A15: Store override info for audit trail
+          ...(isManualOverride && {
+            workingDaysOverride: resolvedWorkingDays,
+            workingDaysOverrideReason: workingDaysOverrideReason
+          })
         }
       });
 
       const slips = staffMembers.map((staff: any) => {
         const prof = staff.professional;
-        const staffAtt = attendanceSummary[staff.id] || { present: totalWorkingDays, absent: 0, lwp: 0, lateCount: 0 };
-        
+        // A4: No attendance records = Unverified; payroll cannot assume full present
+        const rawAtt = attendanceSummary[staff.id];
+        const isUnverified = !rawAtt;
+        const staffAtt = rawAtt || { present: 0, absent: resolvedWorkingDays, lwp: resolvedWorkingDays, lateCount: 0 };
+
         // --- 1. MID-MONTH PRORATION ENGINE ---
-        let dynamicWorkingDays = totalWorkingDays;
-        
+        let dynamicWorkingDays = resolvedWorkingDays;
+
         if (prof?.dateOfJoining) {
           const joinDate = new Date(prof.dateOfJoining);
           if (joinDate.getFullYear() === year && joinDate.getMonth() + 1 === month) {
             const daysInMonth = new Date(year, month, 0).getDate();
             dynamicWorkingDays = daysInMonth - joinDate.getDate() + 1;
-            dynamicWorkingDays = Math.min(dynamicWorkingDays, totalWorkingDays); 
+            dynamicWorkingDays = Math.min(dynamicWorkingDays, resolvedWorkingDays);
           }
         }
 
@@ -134,7 +182,7 @@ export async function generatePayrollDraftAction(month: number, year: number, to
             skipStatutory,
             lwpDays: staffAtt.lwp,
             lateCount: staffAtt.lateCount,
-            totalDays: totalWorkingDays
+            totalDays: resolvedWorkingDays
         });
 
         const snapshot: any = {
@@ -157,17 +205,17 @@ export async function generatePayrollDraftAction(month: number, year: number, to
         return {
           payrollRunId: run.id,
           staffId: staff.id,
-          totalWorkingDays: totalWorkingDays, 
+          totalWorkingDays: resolvedWorkingDays,
           attendedDays: staffAtt.present,
-          paidLeaves: Math.max(0, Math.max(0, totalWorkingDays - staffAtt.lwp) - staffAtt.present),
+          paidLeaves: Math.max(0, Math.max(0, resolvedWorkingDays - staffAtt.lwp) - staffAtt.present),
           lwpDays: staffAtt.lwp,
-          payableDays: Math.max(0, totalWorkingDays - staffAtt.lwp),
+          payableDays: Math.max(0, resolvedWorkingDays - staffAtt.lwp),
           baseAmount: breakdown.basic,
           snapshot: snapshot,
           grossSalary: gross,
           netSalary: net - autoAdvanceRecovery,
           deductions: { ...breakdown.deductions, advanceRecovery: autoAdvanceRecovery },
-          status: "Draft",
+          status: isUnverified ? "Unverified" : "Draft",
           branchId: staff.branchId
         };
       });
@@ -294,7 +342,11 @@ export async function savePayrollDraftAction(payrollRunId: string, slipsUpdates:
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    
+
+    // A16: Block edits on locked payroll runs
+    const existingRun = await prisma.payrollRun.findUnique({ where: { id: payrollRunId } });
+    if (existingRun?.isLocked) throw new Error("LOCKED: This payroll run is locked. Only the Owner can unlock it.");
+
     let totalGross = 0;
     let totalNet = 0;
 
@@ -446,6 +498,68 @@ export async function finalizePayrollAction(payrollRunId: string) {
     return { success: true, data: result };
   } catch (error: any) {
     console.error("Disbursement Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * A16: LOCK PAYROLL RUN (OWNER only)
+ * Prevents any further edits to a finalized payroll.
+ */
+export async function lockPayrollRunAction(payrollRunId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+    if (identity.role !== "OWNER") throw new Error("ACCESS_DENIED: Only the Owner can lock a payroll run.");
+
+    const run = await prisma.payrollRun.findUnique({ where: { id: payrollRunId } });
+    if (!run) throw new Error("Payroll run not found.");
+    if (run.isLocked) throw new Error("Payroll run is already locked.");
+    if (run.status !== "Approved") throw new Error("Only Approved payroll runs can be locked.");
+
+    await prisma.payrollRun.update({
+      where: { id: payrollRunId },
+      data: {
+        isLocked: true,
+        lockedAt: new Date(),
+        lockedBy: identity.staffId
+      }
+    });
+
+    revalidatePath("/dashboard/salaries");
+    return { success: true, message: "Payroll run locked successfully." };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * A17: UNLOCK PAYROLL RUN (OWNER only, requires reason — full audit trail)
+ */
+export async function unlockPayrollRunAction(payrollRunId: string, reason: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+    if (identity.role !== "OWNER") throw new Error("ACCESS_DENIED: Only the Owner can unlock a payroll run.");
+    if (!reason?.trim()) throw new Error("VALIDATION: A reason is required to unlock a payroll run.");
+
+    const run = await prisma.payrollRun.findUnique({ where: { id: payrollRunId } });
+    if (!run) throw new Error("Payroll run not found.");
+    if (!run.isLocked) throw new Error("Payroll run is not locked.");
+
+    await prisma.payrollRun.update({
+      where: { id: payrollRunId },
+      data: {
+        isLocked: false,
+        unlockedAt: new Date(),
+        unlockedBy: identity.staffId,
+        unlockReason: reason.trim()
+      }
+    });
+
+    revalidatePath("/dashboard/salaries");
+    return { success: true, message: "Payroll run unlocked. All changes will be audit logged." };
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
 }

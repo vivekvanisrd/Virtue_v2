@@ -23,10 +23,10 @@ export const CounterService = {
     const counter = await p.tenancyCounter.upsert({
       where: {
         schoolId_branchId_type_year: {
-          schoolId: params.schoolId,
-          branchId: params.branchId,
-          type: params.type,
-          year: params.year
+          schoolId: params.schoolId as string,
+          branchId: params.branchId as string,
+          type: params.type as string,
+          year: params.year as string
         }
       },
       update: {
@@ -139,7 +139,7 @@ export const CounterService = {
     }, tx);
 
     const shortBranch = this.sanitizeBranchCode(params.schoolCode, params.branchCode);
-    return `${params.schoolCode}-${shortBranch}-STF-${seq.toString().padStart(6, '0')}`;
+    return `${params.schoolCode}-${shortBranch}-STAF-${seq.toString().padStart(4, '0')}`;
   },
 
   /**

@@ -1129,6 +1129,7 @@ export function StudentForm() {
                     <select {...register("paymentType")} className={selectCls}>
                       <option value="Term-wise">Term-wise (50/25/25)</option>
                       <option value="One-time">One-time (Annual)</option>
+                      <option value="Monthly">Monthly (10 Installments)</option>
                     </select>
                   </Field>
                 </div>
@@ -1234,10 +1235,32 @@ export function StudentForm() {
                                   </div>
                                 </div>
                               )}
+
+                              {paymentType === "One-time" && (
+                                <div className="mt-3 flex items-center gap-3">
+                                  <div className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Annual Settlement</p>
+                                    <p className="text-[11px] font-bold text-primary mt-0.5">₹{termBreakdown.annualNet.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {paymentType === "Monthly" && (
+                                <div className="mt-3 grid grid-cols-5 gap-2 max-w-lg">
+                                  {termBreakdown.installments.map((inst, idx) => (
+                                    <div key={inst.key} className="px-2 py-1 bg-white/50 rounded-lg border border-primary/10">
+                                      <p className="text-[7px] font-black text-slate-400 uppercase leading-none">Month {idx + 1}</p>
+                                      <p className="text-[9px] font-bold text-primary mt-0.5">₹{inst.amount.toLocaleString()}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div className="text-right">
                               <p className="text-3xl font-black text-slate-900 tracking-tighter">₹{Number(watch("tuitionFee") || 0).toLocaleString()}</p>
-                              <p className="text-[10px] text-primary font-black uppercase tracking-widest italic">✓ {watch("paymentType") === "Term-wise" ? "Sovereign Term Split" : "Lump Sum Payment"}</p>
+                              <p className="text-[10px] text-primary font-black uppercase tracking-widest italic">
+                                ✓ {watch("paymentType") === "Term-wise" ? "Sovereign Term Split" : watch("paymentType") === "Monthly" ? "Monthly Installments" : "Lump Sum Payment"}
+                              </p>
                             </div>
                           </div>
                         </div>

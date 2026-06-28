@@ -35,10 +35,16 @@ export async function appointPrincipalAction(data: {
 
         if (!branch) throw new Error("INVALID_CAMPUS: The selected campus does not exist or is unauthorized.");
 
+        const school = await prisma.school.findUnique({
+            where: { id: schoolId },
+            select: { code: true }
+        });
+        if (!school) throw new Error("INVALID_SCHOOL: The associated school record was not found.");
+
         // 2. Generate Staff Code (Rule 2.1)
         const staffCode = await IdGenerator.generateStaffCode({
             schoolId,
-            schoolCode: schoolId,
+            schoolCode: school.code,
             branchId: branch.id,
             branchCode: branch.code,
             role: "Principal"
@@ -163,10 +169,16 @@ export async function createStaffAction(data: any) {
             throw new Error(`IDENTIFICATION_CONFLICT: This ${conflictField} is already registered to another staff member in this branch.`);
         }
 
+        const school = await prisma.school.findUnique({
+            where: { id: schoolId },
+            select: { code: true }
+        });
+        if (!school) throw new Error("INVALID_SCHOOL: Associated school record not found.");
+
         // 2. Generate Staff Code (Rule 2.1)
         const staffCode = await IdGenerator.generateStaffCode({
             schoolId,
-            schoolCode: schoolId,
+            schoolCode: school.code,
             branchId: branch.id,
             branchCode: branch.code,
             role: data.role
@@ -368,6 +380,18 @@ export async function disburseStaffAdvanceAction(staffId: string, amount: number
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
+        // Verify staff exists and matches branch boundaries
+        const staff = await prisma.staff.findUnique({
+            where: { id: staffId, schoolId: identity.schoolId }
+        });
+        if (!staff) throw new Error("STAFF_NOT_FOUND: Record does not exist in your institution.");
+
+        if (identity.role !== "OWNER" && identity.role !== "DEVELOPER") {
+            if (staff.branchId !== identity.branchId) {
+                throw new Error("ACCESS_DENIED: Principals can only disburse advances to staff within their own campus.");
+            }
+        }
+
         const advance = await prisma.staffAdvance.create({
             data: {
                 staffId,
@@ -416,6 +440,18 @@ export async function updateStaffProfessionalAction(staffId: string, data: any) 
     try {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+
+        const staff = await prisma.staff.findUnique({
+            where: { id: staffId, schoolId: identity.schoolId }
+        });
+        if (!staff) throw new Error("STAFF_NOT_FOUND: Record does not exist in your institution.");
+
+        if (identity.role !== "OWNER" && identity.role !== "DEVELOPER") {
+            if (staff.branchId !== identity.branchId) {
+                throw new Error("ACCESS_DENIED: Principals can only modify professional details within their own campus.");
+            }
+        }
+
         const res = await prisma.staffProfessional.update({
             where: { staffId },
             data: {
@@ -480,6 +516,9 @@ export async function updateStaffAction(staffId: string, data: any) {
 
         // 2. Enforce Branch Jailing (Rule 5.3)
         if (identity.role !== "OWNER" && identity.role !== "DEVELOPER") {
+            if (currentStaff.branchId !== identity.branchId) {
+                throw new Error("ACCESS_DENIED: Principals are restricted to modifying staff within their own campus.");
+            }
             if (!data.branchId || data.branchId !== identity.branchId) {
                 console.log(`🛡️ [StaffActions:updateStaffAction] Identity sentinel: Force-lining branch ${identity.branchId} for update`);
                 data.branchId = identity.branchId;
@@ -629,6 +668,24 @@ export async function updateStaffRoleAction(staffId: string, newRole: string) {
         const identity = await getSovereignIdentity();
         if (!identity || !['DEVELOPER', 'OWNER', 'PRINCIPAL'].includes(identity.role)) {
             throw new Error("SECURE_AUTH_REQUIRED: Insufficient privileges to modify security roles.");
+        }
+
+        // 1. Fetch current record to check boundaries
+        const targetStaff = await prisma.staff.findUnique({
+            where: { id: staffId, schoolId: identity.schoolId }
+        });
+        if (!targetStaff) {
+            throw new Error("STAFF_NOT_FOUND: Record does not exist in your institution.");
+        }
+
+        // 2. Enforce Branch Jailing for Principals
+        if (identity.role === 'PRINCIPAL' && targetStaff.branchId !== identity.branchId) {
+            throw new Error(`SECURITY_VIOLATION: Principals can only modify roles within their own branch.`);
+        }
+
+        // 3. Prevent downgrade of Owners
+        if (targetStaff.role === 'OWNER' && identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
+            throw new Error("ACCESS_DENIED: Only Owners can modify Owner roles.");
         }
 
         const staff = await prisma.staff.update({

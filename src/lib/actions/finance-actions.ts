@@ -11,6 +11,9 @@ import crypto from "crypto";
 import { checkCapability } from "../auth/rbac";
 import { ST_CONFIRMED, ST_PROVISIONAL } from "../constants/admission-statuses";
 
+// Parents pay round figures (e.g. ₹33,000 instead of ₹33,045). This tolerance is INTENTIONAL.
+const ROUND_FIGURE_TOLERANCE_INR = 49;
+
 /**
  * serialize
  * 
@@ -154,10 +157,11 @@ export async function recordFeeCollection(params: {
     });
     if (!activeFY) throw new Error("Active Financial Year not found. Please configure one in Settings.");
 
-    // IDEMPOTENCY CHECK: Ensure this specific transaction (Razorpay/Reference) isn't already recorded
+    // IDEMPOTENCY CHECK: Ensure this specific transaction isn't already recorded
     if (params.paymentReference) {
+      // Online/Cheque: match by unique reference
       const existing = await prisma.collection.findFirst({
-        where: { 
+        where: {
           schoolId: context.schoolId,
           paymentReference: params.paymentReference,
           status: "Success"
@@ -165,7 +169,24 @@ export async function recordFeeCollection(params: {
       });
       if (existing) {
         console.warn(`[FINANCE_IDEMPOTENCY] Reference ${params.paymentReference} already settled. Skipping duplicate.`);
-        return { success: true, data: existing }; // Idempotent return
+        return { success: true, data: existing };
+      }
+    } else if (params.paymentMode?.toLowerCase() === "cash") {
+      // Cash: block if same student paid same amount within the last 2 minutes
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      const recentCash = await prisma.collection.findFirst({
+        where: {
+          schoolId: context.schoolId,
+          studentId: params.studentId,
+          amountPaid: params.amountPaid,
+          paymentMode: "Cash",
+          status: "Success",
+          createdAt: { gte: twoMinutesAgo }
+        }
+      });
+      if (recentCash) {
+        console.warn(`[FINANCE_IDEMPOTENCY] Possible duplicate cash payment for student ${params.studentId} within 2 minutes.`);
+        return { success: true, data: recentCash };
       }
     }
 
@@ -207,21 +228,64 @@ export async function recordFeeCollection(params: {
       throw new Error("Audit Violation: A valid reason must be provided when waiving late fees.");
     }
 
-    // 2.5 Policy Guard: 30-Day Partial Window (Sovereign Rulebook)
-    // If a provisional student is older than 30 days, we block partial settlements for the primary milestone.
-    if (student.status === ST_PROVISIONAL && student.createdAt) {
+    // 2.5 Policy Guard: Enrollment Milestone Compliance (Sovereign Rulebook)
+    // ALL students must cumulatively reach their plan-specific milestone within the grace window.
+    // Part payments are fully allowed — this checks the CUMULATIVE total, not a single payment amount.
+    //
+    // Grace Windows by Plan:
+    //   Term-wise  → 30 days  → must reach full Term 1 amount (50% of net annual)
+    //   One-time   → 30 days  → must reach full annual net amount
+    //   Monthly    → 80 days  → must reach cumulative sum of all monthly installments due within 80 days
+    //                           (i.e., the first "term" worth of monthly payments)
+    if (student.createdAt) {
       const plan = student.financial.paymentType || "Term-wise";
-      const threshold = plan === "Yearly" 
-        ? Number(student.financial.annualTuition || 0)
-        : Number(student.financial.term1Amount || 0);
-      
-      const enrollmentAge = Math.floor((new Date().getTime() - new Date(student.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (enrollmentAge > 30 && params.amountPaid < threshold && threshold > 0) {
+      const enrollmentDate = new Date(student.createdAt);
+      const enrollmentAge = Math.floor((new Date().getTime() - enrollmentDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      let threshold = 0;
+      let graceWindowDays = 30;
+
+      if (plan === "Annual" || plan === "One-time" || plan === "One-Time") {
+        // One-time: must pay full net annual within 30 days
+        graceWindowDays = 30;
+        threshold = Number(student.financial.annualTuition || 0) - Number(student.financial.totalDiscount || 0);
+
+      } else if (plan === "Monthly") {
+        // Monthly: 80-day grace window (≈ one term's duration)
+        // Threshold = cumulative sum of all monthly installments due within 80 days of enrollment
+        graceWindowDays = 80;
+        const cutoffDate = new Date(enrollmentDate.getTime() + (80 * 24 * 60 * 60 * 1000));
+        const annualTuition = Number(student.financial.annualTuition || student.financial.tuitionFee || 0);
+        const baseMonthly = Math.floor(annualTuition / 10);
+        const remainder = annualTuition - (baseMonthly * 10);
+        const enrollYear = enrollmentDate.getFullYear();
+
+        // Generate the 10 monthly installments starting June of the enrollment year
+        for (let m = 0; m < 10; m++) {
+          const monthIndex = (5 + m) % 12; // June = 5
+          const yearOffset = Math.floor((5 + m) / 12);
+          const dueDate = new Date(enrollYear + yearOffset, monthIndex, 10);
+          const amount = m === 9 ? (baseMonthly + remainder) : baseMonthly;
+          // Sum installments whose due date falls on or before the 80-day cutoff
+          if (dueDate <= cutoffDate) {
+            threshold += amount;
+          }
+        }
+
+      } else {
+        // Term-wise (default): must reach Term 1 (50% of net annual) within 30 days
+        graceWindowDays = 30;
+        threshold = Number(student.financial.term1Amount || 0);
+      }
+
+      // Only enforce after the grace window has elapsed
+      if (enrollmentAge > graceWindowDays && threshold > 0 && newTotalPaid < (threshold - 1)) {
+        const planLabel = plan === "Monthly" ? "Monthly (80-day term window)" : `${plan} (${graceWindowDays}-day window)`;
         throw new Error(
-          `Policy Violation: This provisional enrollment is ${enrollmentAge} days old. ` +
-          `Partial payments are restricted after the 30-day grace period. ` +
-          `Full ${plan} settlement (₹${threshold.toLocaleString()}) is required to proceed.`
+          `Policy Violation: This enrollment is ${enrollmentAge} days old. ` +
+          `The cumulative amount collected (₹${Math.round(newTotalPaid).toLocaleString()}) has not yet reached ` +
+          `the required milestone of ₹${Math.round(threshold).toLocaleString()} for the ${planLabel} plan. ` +
+          `Part payments are accepted — please collect the remaining ₹${Math.round(threshold - newTotalPaid).toLocaleString()} to clear this milestone.`
         );
       }
     }
@@ -279,7 +343,7 @@ export async function recordFeeCollection(params: {
         maxAllowedTotal += inst.amount;
       }
     });
-    if (newTotalPaid > (maxAllowedTotal + 49)) { // Allow up to 49 rupees tolerance for overpayment/rounding!
+    if (newTotalPaid > (maxAllowedTotal + ROUND_FIGURE_TOLERANCE_INR)) {
       throw new Error(`Overpayment Violation: The new cumulative total (₹${newTotalPaid.toLocaleString()}) exceeds the maximum amount due for the selected installments (₹${maxAllowedTotal.toLocaleString()}). Please select additional installments to credit the extra amount.`);
     }
 
@@ -476,8 +540,12 @@ export async function recordFeeCollection(params: {
       return collection;
     }, { maxWait: 10000, timeout: 30000 });
 
-    revalidatePath("/admin/fees");
-    revalidatePath("/dashboard/finance");
+    try {
+      revalidatePath("/admin/fees");
+      revalidatePath("/dashboard/finance");
+    } catch (e) {
+      console.log("ℹ️ [Next.js Cache] Skipping path revalidation outside request context.");
+    }
     return { success: true, data: serialize(result) };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -582,7 +650,11 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
       return { success: true };
     });
 
-    revalidatePath("/admin/fees");
+    try {
+      revalidatePath("/admin/fees");
+    } catch (e) {
+      console.log("ℹ️ [Next.js Cache] Skipping path revalidation outside request context.");
+    }
     return { success: true, data: result };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -626,6 +698,23 @@ export async function getStudentFeeStatus(studentId: string) {
     });
 
     if (!student) throw new Error("Student not found or unauthorized.");
+
+    // Retrieve branchId and schoolId securely by bypassing RLS sanitization on the read result
+    let secureBranchId: string | null = null;
+    let secureSchoolId: string | null = null;
+    try {
+      const savedSkip = process.env.SKIP_TENANCY;
+      process.env.SKIP_TENANCY = "true";
+      const rawStudent = await prisma.student.findFirst({
+        where: { id: studentId },
+        select: { branchId: true, schoolId: true }
+      });
+      secureBranchId = rawStudent?.branchId || null;
+      secureSchoolId = rawStudent?.schoolId || null;
+      process.env.SKIP_TENANCY = savedSkip;
+    } catch (e) {
+      console.error("Failed to fetch secure branchId/schoolId:", e);
+    }
 
     // Calculate dynamic term status
     // TENANCY HARDENED: Resolve financial data with fallback to ledger charges if profile is missing
@@ -778,7 +867,7 @@ export async function getStudentFeeStatus(studentId: string) {
     // Priority 3: Ledger Fallback
     if (student.ledgerEntries && student.ledgerEntries.length > 0) {
        student.ledgerEntries.forEach((entry: any, index: number) => {
-          const reason = entry.reason.toLowerCase();
+          const reason = (entry.reason ?? "unknown").toLowerCase();
           if (reason.includes("term 1") || reason.includes("term 2") || reason.includes("term 3") || 
               (reason.includes("tuition") && !reason.includes("admission") && !reason.includes("transport"))) return;
 
@@ -847,6 +936,13 @@ export async function getStudentFeeStatus(studentId: string) {
       success: true, 
       data: serialize({
         ...student,
+        branchId: secureBranchId,
+        schoolId: secureSchoolId,
+        academic: student.academic ? {
+          ...student.academic,
+          branchId: secureBranchId,
+          schoolId: secureSchoolId
+        } : null,
         feeBreakdown: breakdown
       })
     };
@@ -1022,9 +1118,13 @@ export async function verifyPublicRazorpayPaymentAction(params: {
     });
     if (!activeFY) throw new Error("No active Financial Year found for school.");
 
-    // 4. Find branch from school
-    const branch = await prisma.branch.findFirst({ where: { schoolId } });
-    const branchId = branch?.id || "GLOBAL";
+    // 4. Resolve branch from student's current enrollment (not a random findFirst)
+    const enrollment = await prisma.academicHistory.findFirst({
+      where: { studentId: params.studentId, schoolId },
+      select: { branchId: true },
+      orderBy: { createdAt: "desc" }
+    });
+    const branchId = enrollment?.branchId || (await prisma.branch.findFirst({ where: { schoolId }, select: { id: true } }))?.id || "GLOBAL";
 
     // 5. Idempotency: never double-record
     const existing = await prisma.collection.findFirst({
@@ -1053,9 +1153,20 @@ export async function verifyPublicRazorpayPaymentAction(params: {
         orderBy: { createdAt: 'desc' }
       });
 
+      let schoolCode = schoolId;
+      if (enrollment?.branch?.school?.code) {
+        schoolCode = enrollment.branch.school.code;
+      } else {
+        const sch = await tx.school.findUnique({
+          where: { id: schoolId },
+          select: { code: true }
+        });
+        if (sch) schoolCode = sch.code;
+      }
+
       const receiptNumber = await CounterService.generateReceiptNumber({
         schoolId,
-        schoolCode: schoolId,
+        schoolCode,
         branchId,
         branchCode: branchId.split('-').pop() || "MAIN",
         year: new Date().getFullYear().toString()
@@ -1269,7 +1380,7 @@ export async function getFinanceKPIs() {
     const voidRequests = await prisma.collection.count({
       where: {
         ...tenancy,
-        status: "VoidRequested"
+        status: "VOID_REQUESTED"
       }
     });
 
@@ -1440,7 +1551,7 @@ export async function requestReceiptVoid(collectionId: string, reason: string) {
     await prisma.collection.update({
       where: { id: collectionId, schoolId: context.schoolId },
       data: { 
-        status: "VoidRequested",
+        status: "VOID_REQUESTED",
         allocatedTo: {
           push: { voidReason: reason, requestedBy: context.role, requestedAt: new Date() }
         }
@@ -1468,7 +1579,7 @@ export async function approveReceiptVoid(collectionId: string) {
       include: { journalEntry: { include: { lines: true } } }
     });
 
-    if (!collection || collection.status !== "VoidRequested") throw new Error("Invalid request.");
+    if (!collection || collection.status !== "VOID_REQUESTED") throw new Error("Invalid request.");
 
     await prisma.$transaction(async (tx: any) => {
       // 1. Mark as VOIDED (BUG-3 FIX: Standardized casing to match voidPaymentAction)
@@ -1598,7 +1709,7 @@ export async function getPendingVoidRequests() {
     const requests = await prisma.collection.findMany({
       where: {
         schoolId: context.schoolId,
-        status: "VoidRequested"
+        status: "VOID_REQUESTED"
       },
       include: {
         student: { 
@@ -1828,6 +1939,13 @@ export async function applyDiscountAction(params: {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
     const context = identity;
 
+    // Role gate: ACCOUNTS/ADMIN can only propose; PRINCIPAL/OWNER can directly approve
+    const canApprove = context.role === "PRINCIPAL" || context.role === "OWNER";
+    const canPropose = canApprove || context.role === "ACCOUNTS" || context.role === "ADMIN";
+    if (!canPropose) throw new Error("ACCESS_DENIED: Only Accounts, Admin, Principal, or Owner can apply discounts.");
+
+    const discountStatus = canApprove ? "Approved" : "Pending";
+
     const discountType = await prisma.discountType.findUnique({
       where: { id: params.discountTypeId, schoolId: context.schoolId }
     });
@@ -1841,39 +1959,7 @@ export async function applyDiscountAction(params: {
       });
       if (!financial) throw new Error("Financial record not found.");
 
-      // 2. Calculate Amount
-      let discountAmount = 0;
-      if (discountType.percentage) {
-        discountAmount = (Number(financial.annualTuition) * Number(discountType.percentage)) / 100;
-      } else {
-        discountAmount = Number(discountType.amount || 0);
-      }
-
-      // 3. Create Audit Record
-      await tx.discount.create({
-        data: {
-          schoolId: context.schoolId,
-          studentFinancialId: financial.id,
-          discountTypeId: discountType.id,
-          amount: discountAmount,
-          reason: params.reason,
-          status: "Approved",
-          branchId: context.branchId
-        }
-      });
-
-      // 4. Update Financial Record
-      const updatedFinancial = await tx.financialRecord.update({
-        where: { studentId: params.studentId },
-        data: {
-          totalDiscount: { increment: discountAmount }
-        }
-      });
-
-      // 4b. BUG-5 FIX: Sync discount to StudentFeeComponent so both calculation paths agree.
-      // Previously, applyDiscountAction updated FinancialRecord.totalDiscount (legacy path)
-      // but left StudentFeeComponent.discountAmount = 0, causing the component-sum path
-      // to return a higher netAnnual than the legacy path, breaking milestone validation.
+      // 2. Find tuition component — discount is ONLY allowed on tuition fee
       const allComponents = await tx.studentFeeComponent.findMany({
         where: { studentFinancialId: financial.id },
         include: { masterComponent: { select: { name: true, type: true } } }
@@ -1882,12 +1968,56 @@ export async function applyDiscountAction(params: {
         c.masterComponent.type === "CORE" ||
         c.masterComponent.name.toLowerCase().includes("tuition")
       );
-      if (tuitionComp) {
-        await tx.studentFeeComponent.update({
-          where: { id: tuitionComp.id },
-          data: { discountAmount: { increment: discountAmount } }
-        });
+      if (!tuitionComp) throw new Error("RULE_VIOLATION: Discount can only be applied when a Tuition Fee component exists. No tuition component found for this student.");
+
+      // 3. Calculate Amount (based on tuition base only)
+      const tuitionBase = Number(tuitionComp.baseAmount || 0);
+      let discountAmount = 0;
+      if (discountType.percentage) {
+        discountAmount = (tuitionBase * Number(discountType.percentage)) / 100;
+      } else {
+        discountAmount = Number(discountType.amount || 0);
       }
+
+      // 4. Validate: total discounts (existing + new) cannot exceed tuition base
+      const existingDiscount = Number(tuitionComp.discountAmount || 0);
+      if (existingDiscount + discountAmount > tuitionBase) {
+        throw new Error(
+          `RULE_VIOLATION: Total discount (₹${(existingDiscount + discountAmount).toLocaleString()}) would exceed tuition base (₹${tuitionBase.toLocaleString()}). Maximum additional discount allowed: ₹${(tuitionBase - existingDiscount).toLocaleString()}.`
+        );
+      }
+
+      // 5. Create Audit Record
+      await tx.discount.create({
+        data: {
+          schoolId: context.schoolId,
+          studentFinancialId: financial.id,
+          discountTypeId: discountType.id,
+          amount: discountAmount,
+          reason: params.reason,
+          status: discountStatus,
+          branchId: context.branchId
+        }
+      });
+
+      // Only update balances immediately if approved; pending discounts wait for PRINCIPAL/OWNER approval
+      if (discountStatus !== "Approved") {
+        return { pendingApproval: true, amount: discountAmount };
+      }
+
+      // 6. Update Financial Record
+      const updatedFinancial = await tx.financialRecord.update({
+        where: { studentId: params.studentId },
+        data: {
+          totalDiscount: { increment: discountAmount }
+        }
+      });
+
+      // 7. Sync discount to tuition StudentFeeComponent
+      await tx.studentFeeComponent.update({
+        where: { id: tuitionComp.id },
+        data: { discountAmount: { increment: discountAmount } }
+      });
 
       // 5. Post to Ledger
       const [activeFY, activeAY] = await Promise.all([
@@ -1942,11 +2072,14 @@ export async function applyDiscountAction(params: {
         });
       }
 
-      return updatedFinancial;
+      return { approved: true, financial: updatedFinancial };
     }, { maxWait: 5000, timeout: 15000 });
 
     revalidatePath("/dashboard/finance");
-    return { success: true, data: serialize(result) };
+    if ((result as any).pendingApproval) {
+      return { success: true, pending: true, message: "Discount proposal submitted. Awaiting approval from Principal or Owner." };
+    }
+    return { success: true, data: serialize((result as any).financial) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

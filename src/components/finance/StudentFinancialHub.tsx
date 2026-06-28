@@ -41,7 +41,6 @@ import {
   applyDiscountAction,
   removeAdHocFeeAction
 } from "@/lib/actions/finance-actions";
-import { QRCodeSVG } from "qrcode.react";
 import RazorpayPaymentReport from "./RazorpayPaymentReport";
 
 declare global {
@@ -324,6 +323,8 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   // 🛡️ RE-CALIBRATED OUTSTANDING: Annual Net (minus) Total Collections
   const outstanding = (Number(studentData.feeBreakdown?.annualNet) || 0) - (studentData.collections?.reduce((acc: number, curr: any) => acc + Number(curr.amountPaid), 0) || 0);
 
+  const firstUnpaid = studentData.feeBreakdown?.installments?.find((inst: any) => !inst.isPaid);
+
   if (success) {
     return (
       <div className="flex flex-col bg-slate-50 animate-in fade-in zoom-in duration-500 min-h-[600px] border border-slate-200 rounded-[3.5rem] mt-6">
@@ -390,13 +391,19 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
           </div>
 
           <div className="relative z-10 flex gap-4 mt-8">
-             <button 
-               onClick={() => handlePayInitiate("term1", studentData.financial?.term1Amount)}
-               className="flex-1 py-4 bg-accent text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] transition-all active:scale-95 group italic"
-             >
-                <CreditCard className="w-3.5 h-3.5" />
-                Settle Installment
-             </button>
+             {firstUnpaid ? (
+               <button 
+                 onClick={() => handlePayInitiate(firstUnpaid.key, firstUnpaid.balance !== undefined ? firstUnpaid.balance : firstUnpaid.amount)}
+                 className="flex-1 py-4 bg-accent text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] transition-all active:scale-95 group italic"
+               >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Settle {firstUnpaid.label}
+               </button>
+             ) : (
+               <div className="flex-1 py-4 bg-emerald-500/20 text-emerald-400 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 border border-emerald-500/10 italic">
+                 ✓ Fully Settled
+               </div>
+             )}
              <button className="px-6 py-4 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 transition-all backdrop-blur-md">
                 <Download className="w-3.5 h-3.5" />
                 Ledger
@@ -746,80 +753,97 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
       </div>
 
       {/* ─── MATURITY LEDGER ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-         {["term1", "term2", "term3"].map((term: any) => {
-           const amount = Number(studentData.financial?.[`${term}Amount`]) || 0;
-           const isPaid = studentData.collections?.some((c: any) => {
-             const allocated = c.allocatedTo as any;
-             return c.status === "Success" && (allocated?.terms?.includes(term) || (allocated && allocated[term] > 0));
-           });
-           
-           return (
-             <div key={term} className={cn(
-               "p-10 rounded-[4rem] border transition-all duration-700 relative group overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)]",
-               isPaid ? "bg-emerald-50/50 border-emerald-100" : "bg-white border-slate-100"
-             )}>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-[100px] opacity-0 group-hover:opacity-100 transition-opacity" />
-                
-                <div className="flex items-center justify-between mb-8">
-                   <div className={cn(
-                     "w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-lg transition-transform group-hover:scale-110",
-                     isPaid ? "bg-emerald-500 text-white shadow-emerald-200" : "bg-[#0f172a] text-white shadow-slate-200"
-                   )}>
-                      {isPaid ? <CheckCircle2 className="w-8 h-8" /> : <CalendarDays className="w-8 h-8" />}
-                   </div>
-                   <span className={cn(
-                     "text-[10px] font-black uppercase tracking-[0.2em] px-5 py-2 rounded-full border shadow-sm",
-                     isPaid ? "bg-emerald-100/50 text-emerald-600 border-emerald-200" : "bg-slate-50 text-slate-400 border-slate-100"
-                   )}>
-                     {isPaid ? "Cleared" : "Awaiting"}
-                   </span>
-                </div>
-
-                <div className="space-y-1">
-                    <h4 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">
-                      {term.replace("term", "Sovereign Term ")}
-                    </h4>
-                    {term === "term3" && studentData.financial?.totalDiscount > 0 ? (
-                       <div className="space-y-0.5">
-                          <p className="text-sm font-black text-slate-300 line-through tracking-tighter italic">
-                             ₹{(amount + Number(studentData.financial?.totalDiscount)).toLocaleString()}
-                          </p>
-                          <p className="text-3xl font-black tabular-nums tracking-tighter italic text-emerald-600">
-                             <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
-                          </p>
-                          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">
-                             -₹{Number(studentData.financial?.totalDiscount).toLocaleString()} Discount Applied
-                          </p>
-                       </div>
-                    ) : (
-                       <p className="text-3xl font-black tabular-nums tracking-tighter italic text-slate-900">
-                         <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
-                       </p>
-                    )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+         {(studentData.feeBreakdown?.installments || []).map((inst: any) => {
+            const amount = Number(inst.amount) || 0;
+            const isPaid = inst.isPaid;
+            const label = inst.label;
+            const key = inst.key;
+            const balance = inst.balance !== undefined ? inst.balance : amount;
+            
+            return (
+              <div key={key} className={cn(
+                "p-10 rounded-[4rem] border transition-all duration-700 relative group overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)]",
+                isPaid ? "bg-emerald-50/50 border-emerald-100" : "bg-white border-slate-100"
+              )}>
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-primary/5 to-transparent rounded-bl-[100px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                 
+                 <div className="flex items-center justify-between mb-8">
+                    <div className={cn(
+                      "w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-lg transition-transform group-hover:scale-110",
+                      isPaid ? "bg-emerald-500 text-white shadow-emerald-200" : "bg-[#0f172a] text-white shadow-slate-200"
+                    )}>
+                       {isPaid ? <CheckCircle2 className="w-8 h-8" /> : <CalendarDays className="w-8 h-8" />}
+                    </div>
+                    <span className={cn(
+                      "text-[10px] font-black uppercase tracking-[0.2em] px-5 py-2 rounded-full border shadow-sm",
+                      isPaid ? "bg-emerald-100/50 text-emerald-600 border-emerald-200" : balance < amount ? "bg-amber-100/50 text-amber-600 border-amber-200 animate-pulse" : "bg-slate-50 text-slate-400 border-slate-100"
+                    )}>
+                      {isPaid ? "Cleared" : balance < amount ? "Partial" : "Awaiting"}
+                    </span>
                  </div>
-                
-                {!isPaid && (
-                  <div className="space-y-3 mt-8">
-                    <button 
-                      onClick={() => handlePayInitiate(term, amount)}
-                      className="w-full py-4 bg-accent text-white rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all transform active:scale-95 group/btn overflow-hidden relative italic"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
-                      <span className="relative z-10">Process Payment</span>
-                    </button>
-                    <button 
-                      onClick={() => handleShareLink(term)}
-                      className="w-full py-4 bg-white text-slate-400 border border-slate-200 rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center justify-center gap-3"
-                    >
-                       <ExternalLink size={14} className="opacity-40" />
-                       {copiedLink === term ? "Secure Link Copied" : "Share Ledger Access"}
-                    </button>
+
+                 <div className="space-y-1">
+                     <h4 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">
+                       {label}
+                     </h4>
+                     {balance < amount && balance > 0 ? (
+                        <div className="space-y-0.5">
+                           <p className="text-xs font-black text-slate-300 line-through tracking-tighter italic leading-none">
+                              ₹{amount.toLocaleString()}
+                           </p>
+                           <p className="text-2xl font-black tabular-nums tracking-tighter italic text-amber-600">
+                              <span className="text-lg font-normal mr-1">₹</span>{balance.toLocaleString()}
+                           </p>
+                           <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest italic leading-none">
+                              Remaining Balance
+                           </p>
+                        </div>
+                     ) : key === "term3" && studentData.financial?.totalDiscount > 0 ? (
+                        <div className="space-y-0.5">
+                           <p className="text-xs font-black text-slate-300 line-through tracking-tighter italic leading-none">
+                              ₹{(amount + Number(studentData.financial?.totalDiscount)).toLocaleString()}
+                           </p>
+                           <p className="text-2xl font-black tabular-nums tracking-tighter italic text-emerald-600">
+                              <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
+                           </p>
+                           <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic leading-none">
+                              -₹{Number(studentData.financial?.totalDiscount).toLocaleString()} Discount Applied
+                           </p>
+                        </div>
+                     ) : (
+                        <p className="text-3xl font-black tabular-nums tracking-tighter italic text-slate-900">
+                          <span className="text-lg font-normal mr-1">₹</span>{amount.toLocaleString()}
+                        </p>
+                     )}
+                     {inst.dueDate && (
+                       <p className="text-[9px] font-bold text-slate-400 mt-2">
+                         Due: {new Date(inst.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                       </p>
+                     )}
                   </div>
-                )}
-             </div>
-           );
-         })}
+                 
+                 {!isPaid && (
+                   <div className="space-y-3 mt-8">
+                     <button 
+                       onClick={() => handlePayInitiate(key, balance)}
+                       className="w-full py-4 bg-accent text-white rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all transform active:scale-95 group/btn overflow-hidden relative italic"
+                     >
+                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
+                       <span className="relative z-10">Process Payment</span>
+                     </button>
+                     <button 
+                       onClick={() => handleShareLink(key)}
+                       className="w-full py-4 bg-white text-slate-400 border border-slate-200 rounded-[20px] font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center justify-center gap-3"
+                     >
+                        <ExternalLink size={14} className="opacity-40" />
+                        {copiedLink === key ? "Secure Link Copied" : "Share Ledger Access"}
+                     </button>
+                   </div>
+                 )}
+              </div>
+            );
+          })}
       </div>
 
       {/* ─── PAYMENT OVERLAY MODAL ─── */}

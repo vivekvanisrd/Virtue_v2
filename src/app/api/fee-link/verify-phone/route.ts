@@ -39,12 +39,13 @@ export async function POST(req: NextRequest) {
           where: { schoolId, key: { in: [`BRANCH_${branchId}_UPI_MERCHANT_NAME`, `BRANCH_${branchId}_UPIMERCHANTNAME`] } }
         });
         
-        upiVpa = vpaSetting?.value || "paytmqr6z0l99@ptys";
-        upiMerchantName = nameSetting?.value || "VIVEK VANI EDUCATION";
+        // No global VPA fallback. Must be configured per school/branch.
+        upiVpa = vpaSetting?.value || "";
+        upiMerchantName = nameSetting?.value || "";
       } catch (dbErr) {
         console.warn("Failed to load VPA configuration:", dbErr);
-        upiVpa = "paytmqr6z0l99@ptys";
-        upiMerchantName = "VIVEK VANI EDUCATION";
+        upiVpa = "";
+        upiMerchantName = "";
       }
     }
 

@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { getPublicPaymentDetails, validatePaymentGate, createRazorpayOrderAction, verifyPublicRazorpayPaymentAction } from "@/lib/actions/finance-actions";
-import { QRCodeSVG } from "qrcode.react";
 import { FeeReceipt } from "./FeeReceipt";
 
 export function PublicPaymentPortal({ token }: { token: string }) {
