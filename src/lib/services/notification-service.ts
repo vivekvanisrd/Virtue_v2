@@ -85,6 +85,7 @@ class EmailNotificationProvider implements INotificationProvider {
   async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string }): Promise<boolean> {
     const fromName = process.env.SMTP_FROM_NAME || "Virtue School Office";
     const fromEmail = process.env.SMTP_USER || "office@virtueschool.in";
+    const googleReviewUrl = process.env.GOOGLE_REVIEW_URL || "https://g.page/r/your-school-profile/review";
 
     if (!this.transporter) {
       console.log(`\n--- [SMTP MOCK (CREDENTIALS MISSING)] ---`);
@@ -121,16 +122,89 @@ class EmailNotificationProvider implements INotificationProvider {
         to: payload.to,
         subject: payload.title,
         text: payload.body,
-        html: `<div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                <div style="background-color: #4f46e5; padding: 15px; border-radius: 8px 8px 0 0; text-align: center; color: white;">
-                  <h2 style="margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">${payload.title}</h2>
-                </div>
-                <div style="padding: 20px; line-height: 1.6; font-size: 14px;">
-                  <p style="white-space: pre-line; margin: 0;">${payload.body}</p>
-                </div>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p style="font-size: 11px; color: #888; text-align: center; margin: 0;">This is an automated notification from Virtue School Administrative System.</p>
-               </div>`,
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @keyframes subtle-pulse {
+      0%, 90%, 100% { transform: scale(1); box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3); }
+      95% { transform: scale(1.04); box-shadow: 0 6px 18px rgba(26, 115, 232, 0.5); }
+    }
+    .premium-btn {
+      display: inline-block !important;
+      background-color: #1A73E8 !important;
+      color: #ffffff !important;
+      font-family: Arial, sans-serif !important;
+      font-size: 14px !important;
+      font-weight: bold !important;
+      text-decoration: none !important;
+      padding: 14px 28px !important;
+      border-radius: 10px !important;
+      box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3) !important;
+      transition: all 0.2s ease-in-out !important;
+      animation: subtle-pulse 9s infinite ease-in-out !important;
+    }
+    .premium-btn:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 6px 18px rgba(26, 115, 232, 0.6) !important;
+      background-color: #1557b0 !important;
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f7f9fc;">
+  <div style="font-family: 'Georgia', 'Times New Roman', serif; background-color: #fcfcfc; padding: 20px 10px; color: #333333; max-width: 600px; margin: 20px auto; border: 1px solid #eaeaea; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+    <!-- Header Banner -->
+    <div style="background: linear-gradient(135deg, #14213d, #000000); padding: 35px 20px; text-align: center; border-radius: 12px 12px 0 0; position: relative;">
+      <!-- Gold Star Circle -->
+      <div style="width: 50px; height: 50px; border-radius: 50px; background-color: rgba(255, 255, 255, 0.15); border: 2px solid #ffffff; margin: 0 auto 15px auto; display: flex; align-items: center; justify-content: center; line-height: 50px; text-align: center;">
+        <span style="color: #ffd700; font-size: 24px; font-weight: bold; display: inline-block; vertical-align: middle;">★</span>
+      </div>
+      <!-- School Title -->
+      <h1 style="color: #ffffff; margin: 0 0 5px 0; font-size: 26px; font-weight: 700; font-family: 'Times New Roman', Times, serif; letter-spacing: 0.5px;">Virtue School</h1>
+      <!-- Subtitle -->
+      <p style="color: #f7a072; font-size: 10px; font-weight: bold; letter-spacing: 1.5px; margin: 0; text-transform: uppercase; font-family: 'Arial', sans-serif;">Nurturing Excellence in Every Child</p>
+    </div>
+
+    <!-- Pink Floral Divider -->
+    <div style="background-color: #f7d6e0; padding: 8px; text-align: center; font-size: 14px; letter-spacing: 12px; color: #ef709b;">
+      🌸🌸🌸🌸🌸
+    </div>
+
+    <!-- Message Body Card -->
+    <div style="background-color: #ffffff; padding: 30px 25px; border-radius: 0 0 12px 12px; font-family: 'Arial', sans-serif; font-size: 15px; line-height: 1.6; color: #333333;">
+      <div style="margin-bottom: 30px; font-family: 'Georgia', serif; font-size: 15px; color: #2d3748; text-align: left; line-height: 1.7;">
+        ${payload.body.replace(/\n/g, '<br/>')}
+      </div>
+
+      <!-- Review Invite Segment (Appended to all emails dynamically) -->
+      <div style="border-top: 1px dashed #e2e8f0; margin-top: 30px; padding-top: 25px; text-align: center;">
+        <h3 style="color: #14213d; font-family: 'Times New Roman', serif; font-size: 18px; font-weight: bold; margin: 0 0 15px 0;">🌸 Your Feedback Means the World to Us! 🌸</h3>
+        <p style="font-size: 13px; color: #555555; line-height: 1.5; margin: 0 0 20px 0; max-width: 450px; margin-left: auto; margin-right: auto;">
+          Thank you for trusting <strong>Virtue School</strong> with your child's education. If you've had a wonderful experience, please take just 30 seconds to support our community by sharing your review on Google!
+        </p>
+        
+        <!-- Premium Review Button -->
+        <div style="margin: 25px 0;">
+          <a href="${googleReviewUrl}" target="_blank" class="premium-btn" style="background-color: #1A73E8; color: #ffffff; font-weight: bold; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 14px; box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3); display: inline-block; font-family: 'Arial', sans-serif; border: 1px solid #1A73E8;">
+            <span style="background-color: white; color: #1A73E8; border-radius: 50%; width: 22px; height: 22px; display: inline-block; text-align: center; line-height: 22px; font-size: 13px; font-weight: 900; margin-right: 10px; vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">G</span>
+            <span style="vertical-align: middle; letter-spacing: 0.2px;">Leave a ★★★★★ Google Review</span>
+          </a>
+        </div>
+        <p style="font-size: 11px; color: #888888; font-style: italic; margin: 0;">Click above to share your experience on Google.</p>
+      </div>
+
+      <!-- Dotted Footer -->
+      <hr style="border: none; border-top: 1px dotted #cccccc; margin: 30px 0 20px 0;" />
+      <p style="font-size: 12px; font-style: italic; color: #555555; text-align: center; margin: 0;">
+        Thank you for being a valued member of the <strong>Virtue School</strong> family. ❤️
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+        `,
       });
 
       console.log(`✉️ [EMAIL SERVICE] Sent message to ${payload.to} (ID: ${info.messageId})`);
