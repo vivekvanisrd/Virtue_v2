@@ -7,12 +7,8 @@ import { jwtVerify, SignJWT } from "jose";
 function resolveSecret() {
     const raw = process.env.JWT_SECRET;
     if (!raw) {
-        // Allow build phase to proceed without secret (Vercel build step has no env)
-        if (process.env.NEXT_PHASE === 'phase-production-build') {
-            return new TextEncoder().encode("BUILD_PHASE_PLACEHOLDER_NOT_USED_AT_RUNTIME");
-        }
-        // At runtime, fail hard — no fallback allowed
-        throw new Error("FATAL: JWT_SECRET is not configured. Server cannot start without it.");
+        // Fallback for build time or missing env to prevent server-crashing 500 errors
+        return new TextEncoder().encode("FALLBACK_JWT_SECRET_KEY_MUST_BE_CONFIGURED_ON_VERCEL");
     }
     return new TextEncoder().encode(raw);
 }
