@@ -92,12 +92,15 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
     if (searchLower) {
       const firstNameMatch = employee.firstName ? employee.firstName.toLowerCase().includes(searchLower) : false;
       const lastNameMatch = employee.lastName ? employee.lastName.toLowerCase().includes(searchLower) : false;
+      const middleNameMatch = employee.middleName ? employee.middleName.toLowerCase().includes(searchLower) : false;
       const staffCodeMatch = employee.staffCode ? employee.staffCode.toLowerCase().includes(searchLower) : false;
       const emailMatch = employee.email ? employee.email.toLowerCase().includes(searchLower) : false;
       const phoneMatch = employee.phone ? employee.phone.toLowerCase().includes(searchLower) : false;
       const designationMatch = employee.professional?.designation ? employee.professional.designation.toLowerCase().includes(searchLower) : false;
+      const roleMatch = employee.role ? employee.role.toLowerCase().includes(searchLower) : false;
+      const departmentMatch = employee.professional?.department ? employee.professional.department.toLowerCase().includes(searchLower) : false;
       
-      matchesSearch = !!(firstNameMatch || lastNameMatch || staffCodeMatch || emailMatch || phoneMatch || designationMatch);
+      matchesSearch = !!(firstNameMatch || lastNameMatch || middleNameMatch || staffCodeMatch || emailMatch || phoneMatch || designationMatch || roleMatch || departmentMatch);
     }
 
     const matchesDept = !filterDept || employee.professional?.department?.toLowerCase() === filterDept.toLowerCase();
@@ -114,9 +117,10 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
   };
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchStaff();
+    e.preventDefault(); // Prevent full page reload and avoid flashing the server sync loader
   };
+
+  console.log("🔍 [StaffDirectory] Render. searchTerm:", searchTerm, "staff.length:", staff.length, "filteredStaff.length:", filteredStaff.length);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
