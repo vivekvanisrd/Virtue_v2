@@ -3,7 +3,15 @@ import { Mail, Send, History, Search, Filter, CheckCircle, XCircle, Info, Loader
 import { getCommunicationLogsAction, sendCustomEmailAction, sendBulkRemindersAction } from "@/lib/actions/communication-actions";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 
-export function MailboxHub() {
+interface MailboxHubProps {
+  params?: {
+    recipient?: string;
+    targetGroup?: "MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT";
+    activeTab?: "logs" | "compose";
+  };
+}
+
+export function MailboxHub({ params }: MailboxHubProps) {
   const [activeTab, setActiveTab] = useState<"logs" | "compose">("logs");
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,9 +28,11 @@ export function MailboxHub() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   
-  // Student selection fields
-  const [studentsList, setStudentsList] = useState<any[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState("");
+  // Smart Student Lookup Search
+  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   // States
@@ -31,30 +41,63 @@ export function MailboxHub() {
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
+  // Pre-fill state if redirect parameters are passed (e.g. from Student Profile)
+  useEffect(() => {
+    if (params) {
+      if (params.activeTab) setActiveTab(params.activeTab);
+      if (params.recipient) setRecipient(params.recipient);
+      if (params.targetGroup) setTargetGroup(params.targetGroup);
+      
+      // If we got a recipient passed in, default to MANUAL so it is prefilled
+      if (params.recipient) {
+        setTargetGroup("MANUAL");
+      }
+    }
+  }, [params]);
+
   useEffect(() => {
     if (activeTab === "logs") {
       fetchLogs();
     }
   }, [activeTab, filterType, filterStatus]);
 
+  // Load all students once for quick local lookup
   useEffect(() => {
-    if (targetGroup === "STUDENT") {
-      loadStudents();
-    }
-  }, [targetGroup]);
+    loadStudents();
+  }, []);
 
   async function loadStudents() {
     setLoadingStudents(true);
     try {
       const res = await getStudentListAction();
       if (res.success && res.data) {
-        setStudentsList(res.data);
+        setAllStudents(res.data);
       }
     } catch (e) {
       console.error("Failed to load students:", e);
     }
     setLoadingStudents(false);
   }
+
+  // Handle local searching for student lookup
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredStudents([]);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    const matches = allStudents.filter(s => {
+      const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+      const code = (s.studentCode || s.admissionNumber || "").toLowerCase();
+      const phone = (s.phone || s.family?.fatherPhone || s.family?.motherPhone || "");
+      const aadhar = (s.aadharNumber || s.family?.fatherAadhaar || s.family?.motherAadhaar || "");
+      
+      return name.includes(term) || code.includes(term) || phone.includes(term) || aadhar.includes(term);
+    });
+
+    setFilteredStudents(matches.slice(0, 10)); // Limit to top 10 matches for neatness
+  }, [searchTerm, allStudents]);
 
   async function fetchLogs() {
     setLoading(true);
@@ -73,18 +116,19 @@ export function MailboxHub() {
     setLoading(false);
   }
 
-  // Set recipient based on selected student's family details
-  function handleStudentChange(studentId: string) {
-    setSelectedStudentId(studentId);
-    const student = studentsList.find(s => s.id === studentId);
-    if (student) {
-      const email = student.email || student.family?.fatherEmail || student.family?.motherEmail || "";
-      setRecipient(email);
-      if (!email) {
-        setFeedback({ success: false, message: `Warning: Selected student ${student.firstName} has no email configured.` });
-      } else {
-        setFeedback(null);
-      }
+  function handleSelectStudent(student: any) {
+    setSelectedStudent(student);
+    setSearchTerm("");
+    setFilteredStudents([]);
+    
+    // Choose first available email as default
+    const email = student.email || student.family?.fatherEmail || student.family?.motherEmail || "";
+    setRecipient(email);
+    
+    if (!email) {
+      setFeedback({ success: false, message: `Warning: Selected student ${student.firstName} has no email address configured in records.` });
+    } else {
+      setFeedback(null);
     }
   }
 
@@ -113,7 +157,7 @@ export function MailboxHub() {
         setSubject("");
         setBody("");
         setRecipient("");
-        setSelectedStudentId("");
+        setSelectedStudent(null);
       } else {
         setFeedback({ success: false, message: res.error || "Failed to dispatch communication." });
       }
@@ -126,7 +170,7 @@ export function MailboxHub() {
   async function triggerAutoReminders() {
     const confirm = window.confirm(
       `Are you sure you want to run the auto-reminders for all active students with outstanding dues?\n\nMode: ${
-        isInternalOnly ? "Internal Portal Notices (Free)" : "External Hostinger SMTP Emails (Active)"
+        isInternalOnly ? "Internal Portal Notices (Free)" : "Official Emails (External Communication)"
       }`
     );
     if (!confirm) return;
@@ -152,7 +196,7 @@ export function MailboxHub() {
   }
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -167,7 +211,7 @@ export function MailboxHub() {
         <button
           onClick={triggerAutoReminders}
           disabled={runningReminders}
-          className="bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all"
+          className="bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all animate-in fade-in"
         >
           {runningReminders ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -204,11 +248,11 @@ export function MailboxHub() {
         </button>
       </div>
 
-      {/* Main Panel Content */}
-      <div className="flex-1 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+      {/* Main Panel Content - Stretches naturally, using Page Scroll */}
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
         {activeTab === "logs" ? (
           /* OUTBOX LOGS VIEW */
-          <div className="p-6 space-y-4 flex-1 flex flex-col overflow-hidden">
+          <div className="p-6 space-y-4">
             {/* Filter Controls */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -259,7 +303,7 @@ export function MailboxHub() {
             </div>
 
             {/* Logs Table */}
-            <div className="flex-1 overflow-y-auto border border-slate-100 rounded-lg">
+            <div className="border border-slate-100 rounded-lg overflow-x-auto">
               {loading ? (
                 <div className="h-64 flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
@@ -350,10 +394,10 @@ export function MailboxHub() {
             </div>
           </div>
         ) : (
-          /* COMPOSE EMAIL VIEW WITH LIVE PREVIEW SIDE-BY-SIDE */
-          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 flex-1 overflow-hidden">
+          /* COMPOSE EMAIL VIEW WITH LIVE PREVIEW SIDE-BY-SIDE (PAGE-SCROLLED) */
+          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
             {/* Left Column: Editor Form */}
-            <form onSubmit={handleSend} className="p-6 space-y-5 overflow-y-auto max-h-[600px] scrollbar-thin">
+            <form onSubmit={handleSend} className="p-6 space-y-5">
               {/* Feedback Alerts */}
               {feedback && (
                 <div className={`p-4 rounded-xl border flex gap-3 ${
@@ -373,7 +417,7 @@ export function MailboxHub() {
                   <button
                     type="button"
                     onClick={() => setIsInternalOnly(true)}
-                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all ${
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 text-left transition-all ${
                       isInternalOnly 
                         ? "border-indigo-600 bg-indigo-50/20 text-indigo-900" 
                         : "border-slate-200 bg-white hover:border-slate-300"
@@ -383,13 +427,13 @@ export function MailboxHub() {
                       <Bell className="w-4 h-4 text-indigo-600" />
                       Internal Portal Notice (Free)
                     </span>
-                    <span className="text-[10px] text-slate-500 mt-1">Delivers instantly to dashboard notification lists</span>
+                    <span className="text-[10px] text-slate-500 mt-1">Delivers instantly to parent/staff dashboard lists</span>
                   </button>
                   
                   <button
                     type="button"
                     onClick={() => setIsInternalOnly(false)}
-                    className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all ${
+                    className={`flex flex-col items-start p-4 rounded-xl border-2 text-left transition-all ${
                       !isInternalOnly 
                         ? "border-indigo-600 bg-indigo-50/20 text-indigo-900" 
                         : "border-slate-200 bg-white hover:border-slate-300"
@@ -397,9 +441,9 @@ export function MailboxHub() {
                   >
                     <span className="font-bold text-sm flex items-center gap-1.5">
                       <Mail className="w-4 h-4 text-indigo-600" />
-                      Hostinger SMTP Email
+                      Official Email (External Communication)
                     </span>
-                    <span className="text-[10px] text-slate-500 mt-1">Sends external email alerts to parent/staff inboxes</span>
+                    <span className="text-[10px] text-slate-500 mt-1">Sends external email alerts to inbox via Hostinger SMTP</span>
                   </button>
                 </div>
               </div>
@@ -412,41 +456,124 @@ export function MailboxHub() {
                   onChange={(e: any) => {
                     setTargetGroup(e.target.value);
                     setRecipient("");
-                    setSelectedStudentId("");
+                    setSelectedStudent(null);
+                    setSearchTerm("");
                   }}
                   className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
                 >
                   <option value="MANUAL">Manual Type Email Address</option>
-                  <option value="STUDENT">Select from Student Directory</option>
+                  <option value="STUDENT">Select / Search from Student Directory</option>
                   <option value="ALL_PARENTS">All Active Parents</option>
                   <option value="ALL_STAFF">All Active Staff</option>
                   <option value="ALL">All (Both Parents & Staff)</option>
                 </select>
               </div>
 
-              {/* Student Directory selector */}
+              {/* Smart Student Lookup Search Section */}
               {targetGroup === "STUDENT" && (
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-slate-700">Select Student</label>
-                  {loadingStudents ? (
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                      Loading student list...
-                    </div>
-                  ) : (
-                    <select
-                      value={selectedStudentId}
-                      onChange={(e) => handleStudentChange(e.target.value)}
-                      required
-                      className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                    >
-                      <option value="">-- Choose student --</option>
-                      {studentsList.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.firstName} {s.lastName || ""} ({s.admissionNumber || s.studentCode || "No ID"})
-                        </option>
+                <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-1">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">Search Recipient Student</label>
+                  
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Type Student Name, Admission No, Phone, or Aadhar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 w-full rounded-xl border border-slate-200 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+                    />
+                  </div>
+
+                  {/* Filter results list */}
+                  {filteredStudents.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {filteredStudents.map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleSelectStudent(s)}
+                          className="w-full text-left p-3 hover:bg-slate-50 transition-all flex justify-between items-center text-xs"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-800">{s.firstName} {s.lastName || ""}</span>
+                            <span className="text-slate-400 block text-[10px] mt-0.5">Adm No: {s.admissionNumber || s.studentCode || "N/A"}</span>
+                          </div>
+                          <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-500">
+                            Class {s.academic?.class?.name || "N/A"}
+                          </span>
+                        </button>
                       ))}
-                    </select>
+                    </div>
+                  )}
+
+                  {/* Selected Student Card with quick email select buttons */}
+                  {selectedStudent && (
+                    <div className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm space-y-2 text-xs">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span className="font-bold text-indigo-900">{selectedStudent.firstName} {selectedStudent.lastName || ""}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => { setSelectedStudent(null); setRecipient(""); }} 
+                          className="text-rose-500 font-bold hover:underline text-[10px]"
+                        >
+                          Clear
+                        </button>
+                      </div>
+
+                      {/* Associated Email Options Selector */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">Select Target Email Address:</span>
+                        
+                        {/* Student Email */}
+                        {selectedStudent.email && (
+                          <button
+                            type="button"
+                            onClick={() => setRecipient(selectedStudent.email)}
+                            className={`w-full text-left p-2 rounded border flex justify-between items-center transition ${
+                              recipient === selectedStudent.email ? "border-indigo-600 bg-indigo-50/30 text-indigo-900" : "border-slate-100 hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            <span>Student's Email:</span>
+                            <span className="font-mono font-semibold">{selectedStudent.email}</span>
+                          </button>
+                        )}
+
+                        {/* Father's Email */}
+                        {selectedStudent.family?.fatherEmail && (
+                          <button
+                            type="button"
+                            onClick={() => setRecipient(selectedStudent.family.fatherEmail)}
+                            className={`w-full text-left p-2 rounded border flex justify-between items-center transition ${
+                              recipient === selectedStudent.family.fatherEmail ? "border-indigo-600 bg-indigo-50/30 text-indigo-900" : "border-slate-100 hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            <span>Father's Email:</span>
+                            <span className="font-mono font-semibold">{selectedStudent.family.fatherEmail}</span>
+                          </button>
+                        )}
+
+                        {/* Mother's Email */}
+                        {selectedStudent.family?.motherEmail && (
+                          <button
+                            type="button"
+                            onClick={() => setRecipient(selectedStudent.family.motherEmail)}
+                            className={`w-full text-left p-2 rounded border flex justify-between items-center transition ${
+                              recipient === selectedStudent.family.motherEmail ? "border-indigo-600 bg-indigo-50/30 text-indigo-900" : "border-slate-100 hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            <span>Mother's Email:</span>
+                            <span className="font-mono font-semibold">{selectedStudent.family.motherEmail}</span>
+                          </button>
+                        )}
+
+                        {/* Fallback if no email configured */}
+                        {!selectedStudent.email && !selectedStudent.family?.fatherEmail && !selectedStudent.family?.motherEmail && (
+                          <p className="text-[10px] text-rose-500 italic">No email addresses found for this student or family record.</p>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -513,7 +640,7 @@ export function MailboxHub() {
             </form>
 
             {/* Right Column: Interactive Live Email Preview */}
-            <div className="p-6 bg-slate-50/70 overflow-y-auto max-h-[600px] flex flex-col items-center justify-start scrollbar-thin">
+            <div className="p-6 bg-slate-50/70 flex flex-col items-center justify-start">
               <div className="w-full max-w-lg mb-3 flex items-center gap-2 text-slate-500 font-semibold text-xs border-b border-slate-200 pb-2">
                 <Eye className="w-4 h-4 text-slate-400" />
                 <span>Live Email Template Preview (Simulated)</span>
@@ -582,22 +709,24 @@ export function MailboxHub() {
                     {body || <span className="text-slate-400 font-sans italic text-xs">Start typing in the "Message Body" editor to preview the content live...</span>}
                   </div>
 
-                  {/* Google Review CTA Widget */}
-                  <div className="border-t border-dashed border-slate-100 mt-8 pt-6 text-center flex flex-col items-center">
-                    <h5 className="text-[#14213d] font-bold font-serif text-[15px] mb-2">🌸 Your Feedback Means the World to Us! 🌸</h5>
-                    <p className="text-[11px] text-slate-500 max-w-sm mb-4 leading-normal font-sans">
-                      Thank you for trusting <strong>Virtue School</strong> with your child's education. If you've had a wonderful experience, please take just 30 seconds to support our community by sharing your review on Google!
-                    </p>
+                  {/* Google Review CTA Widget - Hidden for Internal Portal Notices */}
+                  {!isInternalOnly && (
+                    <div className="border-t border-dashed border-slate-100 mt-8 pt-6 text-center flex flex-col items-center animate-in fade-in duration-300">
+                      <h5 className="text-[#14213d] font-bold font-serif text-[15px] mb-2">🌸 Your Feedback Means the World to Us! 🌸</h5>
+                      <p className="text-[11px] text-slate-500 max-w-sm mb-4 leading-normal font-sans">
+                        Thank you for trusting <strong>Virtue School</strong> with your child's education. If you've had a wonderful experience, please take just 30 seconds to support our community by sharing your review on Google!
+                      </p>
 
-                    {/* Premium Button */}
-                    <div className="my-2">
-                      <button type="button" className="preview-premium-btn">
-                        <span className="bg-white text-[#1A73E8] rounded-full w-5 h-5 inline-block text-center leading-5 text-[11px] font-extrabold mr-2 shadow-sm">G</span>
-                        <span className="align-middle text-xs">Leave a ★★★★★ Google Review</span>
-                      </button>
+                      {/* Premium Button */}
+                      <div className="my-2">
+                        <button type="button" className="preview-premium-btn">
+                          <span className="bg-white text-[#1A73E8] rounded-full w-5 h-5 inline-block text-center leading-5 text-[11px] font-extrabold mr-2 shadow-sm">G</span>
+                          <span className="align-middle text-xs">Leave a ★★★★★ Google Review</span>
+                        </button>
+                      </div>
+                      <p className="text-[9px] text-slate-400 italic mt-2 font-sans">Click above to share your experience on Google.</p>
                     </div>
-                    <p className="text-[9px] text-slate-400 italic mt-2 font-sans">Click above to share your experience on Google.</p>
-                  </div>
+                  )}
 
                   {/* Footer Divider */}
                   <hr className="border-t dotted border-slate-200 my-6" />

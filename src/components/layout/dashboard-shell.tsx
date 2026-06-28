@@ -149,7 +149,7 @@ function WorkspaceRenderer() {
           )}
 
           {/* Communication / Mailbox Hub Module */}
-          {tab.id === "communication" && <MailboxHub />}
+          {tab.id === "communication" && <MailboxHub params={tab.params} />}
 
           {/* Generic mappings for other cataloged modules */}
           {["accounting", "teachers", "academics", "attendance", "activities", "library"].includes(tab.id) && (

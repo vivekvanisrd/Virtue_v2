@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
   User, School, Users, MapPin, CreditCard, Info, 
   Heart, Building, ShieldCheck, ShieldAlert,
-  ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download,
+  ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download, Send,
   ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit, Zap, Plus
 } from "lucide-react";
 import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit, promoteStudentAction } from "@/lib/actions/student-actions";
@@ -412,9 +412,30 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                         className="w-full bg-muted/50 border border-border rounded px-2 py-1 text-sm font-bold shadow-inner"
                       />
                     ) : (
-                      <p className="text-sm font-bold text-foreground flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.email || "No Email Linked"}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.email || "No Email Linked"}
+                        </p>
+                        {student.email && (
+                          <button
+                            type="button"
+                            onClick={() => openTab({
+                              id: "communication",
+                              title: "Mailbox Hub",
+                              component: "Communication",
+                              params: {
+                                recipient: student.email,
+                                activeTab: "compose",
+                                targetGroup: "MANUAL"
+                              }
+                            })}
+                            title="Send email to student"
+                            className="p-1 hover:bg-muted border border-border/50 rounded-lg text-indigo-600 transition shadow-sm bg-white"
+                          >
+                            <Send className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="space-y-1">
@@ -664,6 +685,41 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                           <p className="text-sm font-bold text-primary">{student.family?.fatherAadhaar || "N/A"}</p>
                         )}
                       </div>
+                      <div>
+                        <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Email Address</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.fatherEmail || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, fatherEmail: e.target.value}})}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                              <Mail className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.family?.fatherEmail || "N/A"}
+                            </p>
+                            {student.family?.fatherEmail && (
+                              <button
+                                type="button"
+                                onClick={() => openTab({
+                                  id: "communication",
+                                  title: "Mailbox Hub",
+                                  component: "Communication",
+                                  params: {
+                                    recipient: student.family.fatherEmail,
+                                    activeTab: "compose",
+                                    targetGroup: "MANUAL"
+                                  }
+                                })}
+                                title="Send email to Father"
+                                className="p-1 hover:bg-muted border border-border/50 rounded-lg text-indigo-600 transition shadow-sm bg-white"
+                              >
+                                <Send className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -714,6 +770,41 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                           />
                         ) : (
                           <p className="text-sm font-bold text-primary">{student.family?.motherAadhaar || "N/A"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Email Address</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.motherEmail || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, motherEmail: e.target.value}})}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                              <Mail className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.family?.motherEmail || "N/A"}
+                            </p>
+                            {student.family?.motherEmail && (
+                              <button
+                                type="button"
+                                onClick={() => openTab({
+                                  id: "communication",
+                                  title: "Mailbox Hub",
+                                  component: "Communication",
+                                  params: {
+                                    recipient: student.family.motherEmail,
+                                    activeTab: "compose",
+                                    targetGroup: "MANUAL"
+                                  }
+                                })}
+                                title="Send email to Mother"
+                                className="p-1 hover:bg-muted border border-border/50 rounded-lg text-indigo-600 transition shadow-sm bg-white"
+                              >
+                                <Send className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
