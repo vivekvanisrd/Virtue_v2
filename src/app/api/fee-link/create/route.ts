@@ -4,18 +4,20 @@ import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import prisma from "@/lib/prisma";
 
-const _RAW_ENCRYPTION_KEY = process.env.BANKING_ENCRYPTION_KEY;
-if (!_RAW_ENCRYPTION_KEY || _RAW_ENCRYPTION_KEY.length < 32) {
-    throw new Error("FATAL: BANKING_ENCRYPTION_KEY must be configured and at least 32 characters long.");
+function getEncryptionKey() {
+  const key = process.env.BANKING_ENCRYPTION_KEY;
+  if (!key || key.length < 32) {
+      throw new Error("FATAL: BANKING_ENCRYPTION_KEY must be configured and at least 32 characters long.");
+  }
+  return key;
 }
-const ENCRYPTION_KEY = _RAW_ENCRYPTION_KEY;
 
 function decrypt(text: string) {
   try {
     const textParts = text.split(":");
     const iv = Buffer.from(textParts.shift()!, "hex");
     const encryptedText = Buffer.from(textParts.join(":"), "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(getEncryptionKey()), iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();

@@ -5,11 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
 import crypto from "crypto";
 
-const _RAW_ENCRYPTION_KEY = process.env.BANKING_ENCRYPTION_KEY;
-if (!_RAW_ENCRYPTION_KEY || _RAW_ENCRYPTION_KEY.length < 32) {
-    throw new Error("FATAL: BANKING_ENCRYPTION_KEY must be configured and at least 32 characters long.");
+function getEncryptionKey() {
+  const key = process.env.BANKING_ENCRYPTION_KEY;
+  if (!key || key.length < 32) {
+      throw new Error("FATAL: BANKING_ENCRYPTION_KEY must be configured and at least 32 characters long.");
+  }
+  return key;
 }
-const ENCRYPTION_KEY = _RAW_ENCRYPTION_KEY;
 const IV_LENGTH = 16;
 
 /**
@@ -17,7 +19,7 @@ const IV_LENGTH = 16;
  */
 function encrypt(text: string) {
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(getEncryptionKey()), iv);
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   return iv.toString("hex") + ":" + encrypted.toString("hex");
@@ -31,7 +33,7 @@ function decrypt(text: string) {
     const textParts = text.split(":");
     const iv = Buffer.from(textParts.shift()!, "hex");
     const encryptedText = Buffer.from(textParts.join(":"), "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(getEncryptionKey()), iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
