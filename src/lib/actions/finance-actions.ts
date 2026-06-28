@@ -546,6 +546,31 @@ export async function recordFeeCollection(params: {
     } catch (e) {
       console.log("ℹ️ [Next.js Cache] Skipping path revalidation outside request context.");
     }
+
+    // Dispatch automated Email Receipt notification to parent/student asynchronously
+    try {
+      let recipientEmail = params.customerEmail || student.email || "";
+      if (!recipientEmail) {
+        const family = await prisma.familyDetail.findUnique({
+          where: { studentId: student.id }
+        });
+        recipientEmail = family?.fatherEmail || family?.motherEmail || "";
+      }
+
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const { NotificationService } = await import("../services/notification-service");
+        // Non-blocking trigger
+        NotificationService.sendReceiptNotification(
+          recipientEmail.trim(),
+          result.receiptNumber,
+          Number(result.amountPaid),
+          { schoolId: context.schoolId, branchId: result.branchId || undefined }
+        ).catch(err => console.error("❌ Failed to dispatch automated receipt email:", err));
+      }
+    } catch (notifyErr) {
+      console.error("⚠️ Failed to resolve parent email for receipt dispatch:", notifyErr);
+    }
+
     return { success: true, data: serialize(result) };
   } catch (error: any) {
     return { success: false, error: error.message };

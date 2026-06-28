@@ -2682,3 +2682,20 @@ model DriverRefreshSession {
   @@index([schoolId])
 }
 
+model CommunicationLog {
+  id           String   @id @default(uuid())
+  schoolId     String
+  branchId     String?
+  sender       String   // e.g. "office@virtueschool.in" or admin ID
+  recipient    String   // Parent/Staff email
+  subject      String
+  body         String   @db.Text
+  type         String   // "RECEIPT" | "REMINDER" | "ADMISSION" | "PROMOTION" | "DEPARTURE" | "CUSTOM"
+  status       String   // "SUCCESS" | "FAILED"
+  errorMessage String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([branchId])
+}
+

@@ -855,6 +855,7 @@ export async function confirmStudentAdmission(studentId: string) {
       include: { 
         academic: true,
         financial: true,
+        family: true,
         collections: { where: { status: "Success" } }
       }
     });
@@ -926,6 +927,23 @@ export async function confirmStudentAdmission(studentId: string) {
         }
       }
     });
+
+    // Dispatch automated Admission Confirmation email asynchronously
+    try {
+      const recipientEmail = student.email || student.family?.fatherEmail || student.family?.motherEmail || "";
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const { NotificationService } = await import("../services/notification-service");
+        NotificationService.sendAdmissionAlert(
+          recipientEmail.trim(),
+          `${student.firstName} ${student.lastName || ""}`.trim(),
+          admissionNumber,
+          undefined, // no temp credentials during manual confirmation
+          { schoolId: context.schoolId, branchId: student.branchId || undefined }
+        ).catch(err => console.error("❌ Failed to dispatch automated admission email:", err));
+      }
+    } catch (notifyErr) {
+      console.error("⚠️ Failed to trigger admission email:", notifyErr);
+    }
 
     revalidatePath("/admin/students");
     return { success: true, data: serializeDecimal(result) };
@@ -1319,6 +1337,12 @@ export async function processStudentExit(studentId: string, data: { reason: stri
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId, schoolId: context.schoolId },
+      include: { family: true }
+    });
+    if (!student) throw new Error("Student not found.");
     
     const academicYear = await prisma.academicYear.findFirst({
       where: { schoolId: context.schoolId, isCurrent: true }
@@ -1359,6 +1383,22 @@ export async function processStudentExit(studentId: string, data: { reason: stri
       action: "EXIT",
       details: `Processed withdrawal/TC for student. TC #${data.tcNumber}`
     });
+
+    // Dispatch automated Departure Confirmation email asynchronously
+    try {
+      const recipientEmail = student.email || student.family?.fatherEmail || student.family?.motherEmail || "";
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const { NotificationService } = await import("../services/notification-service");
+        NotificationService.sendDepartureAlert(
+          recipientEmail.trim(),
+          `${student.firstName} ${student.lastName || ""}`.trim(),
+          "WITHDRAWN/EXITED",
+          { schoolId: context.schoolId, branchId: student.branchId || undefined }
+        ).catch(err => console.error("❌ Failed to dispatch automated departure email:", err));
+      }
+    } catch (notifyErr) {
+      console.error("⚠️ Failed to trigger departure email:", notifyErr);
+    }
 
     revalidatePath(`/admin/students/${studentId}`);
     return { success: true };
@@ -1612,6 +1652,7 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
       include: { 
         academic: true,
         financial: true,
+        family: true,
         collections: { where: { status: "Success" } }
       }
     });
@@ -1727,6 +1768,23 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
                 promotionStatus: "ActiveAdmission" // Updated from In-Progress
             }
         });
+    }
+
+    // Dispatch automated Admission Confirmation email asynchronously
+    try {
+      const recipientEmail = student.email || student.family?.fatherEmail || student.family?.motherEmail || "";
+      if (recipientEmail && recipientEmail.includes("@")) {
+        const { NotificationService } = await import("../services/notification-service");
+        NotificationService.sendAdmissionAlert(
+          recipientEmail.trim(),
+          `${student.firstName} ${student.lastName || ""}`.trim(),
+          admissionNumber,
+          undefined,
+          { schoolId: student.schoolId || "UNKNOWN", branchId: student.branchId || undefined }
+        ).catch(err => console.error("❌ Failed to dispatch automated admission email during promotion:", err));
+      }
+    } catch (notifyErr) {
+      console.error("⚠️ Failed to trigger admission email during promotion:", notifyErr);
     }
 
     return { 

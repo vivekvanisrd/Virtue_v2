@@ -71,6 +71,9 @@ const TransportContent = dynamic(() => import("../dashboard/transport").then(mod
 const SchoolCalendarPage = dynamic(() => import("../../app/dashboard/calendar/page"), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
+const MailboxHub = dynamic(() => import("../dashboard/MailboxHub").then(mod => mod.MailboxHub), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -145,8 +148,11 @@ function WorkspaceRenderer() {
             <TransportContent tabId={tab.id} params={tab.params} />
           )}
 
+          {/* Communication / Mailbox Hub Module */}
+          {tab.id === "communication" && <MailboxHub />}
+
           {/* Generic mappings for other cataloged modules */}
-          {["accounting", "teachers", "academics", "attendance", "activities", "library", "communication"].includes(tab.id) && (
+          {["accounting", "teachers", "academics", "attendance", "activities", "library"].includes(tab.id) && (
             <GenericModule 
               title={tab.title} 
               description={`Modern ${tab.title} and information systems powered by PaVa-EDUX`}

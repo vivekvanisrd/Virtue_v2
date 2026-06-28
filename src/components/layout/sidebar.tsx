@@ -139,6 +139,13 @@ const menuItems: MenuItem[] = [
       { id: "transport-replay", name: "Trip Replay", component: "Transport" }
     ]
   },
+  {
+    id: "communication",
+    name: "Mailbox Hub",
+    icon: MessageSquare,
+    component: "Communication",
+    requiredCapability: "ACADEMIC_CONFIG"
+  },
   { 
     id: "settings", 
     name: "Settings", 
