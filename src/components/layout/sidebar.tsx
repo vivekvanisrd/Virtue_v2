@@ -143,8 +143,13 @@ const menuItems: MenuItem[] = [
     id: "communication",
     name: "Mailbox Hub",
     icon: MessageSquare,
-    component: "Communication",
-    requiredCapability: "ACADEMIC_CONFIG"
+    component: "Communication"
+  },
+  {
+    id: "approvals",
+    name: "Approvals Hub",
+    icon: ShieldCheck,
+    component: "Approvals"
   },
   { 
     id: "settings", 

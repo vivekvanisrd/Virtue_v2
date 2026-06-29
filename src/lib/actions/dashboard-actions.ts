@@ -23,10 +23,8 @@ export async function getDashboardStatsAction() {
       studentCount,
       teacherCount,
       expectationStats,
-      collectionsStats,
+      collectionsStatsGroup,
       dailyRevenue,
-      cashStats,
-      onlineStats,
       recentCollectionsRaw,
       classes,
       voidRequests,
@@ -43,7 +41,8 @@ export async function getDashboardStatsAction() {
         where: { schoolId: context.schoolId, isApplicable: true, ...branchFilter },
         _sum: { baseAmount: true, waiverAmount: true, discountAmount: true }
       }),
-      prisma.collection.aggregate({
+      prisma.collection.groupBy({
+        by: ['paymentMode'],
         where: { schoolId: context.schoolId, status: "Success", isDeleted: false, ...branchFilter },
         _sum: { amountPaid: true, totalPaid: true }
       }),
@@ -56,14 +55,6 @@ export async function getDashboardStatsAction() {
           ...branchFilter
         },
         _sum: { totalPaid: true }
-      }),
-      prisma.collection.aggregate({
-        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, paymentMode: "Cash", ...branchFilter },
-        _sum: { amountPaid: true }
-      }),
-      prisma.collection.aggregate({
-        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, paymentMode: "Razorpay", ...branchFilter },
-        _sum: { amountPaid: true }
       }),
       prisma.collection.findMany({
         where: { schoolId: context.schoolId, status: "Success", isDeleted: false, ...branchFilter },
@@ -134,10 +125,29 @@ export async function getDashboardStatsAction() {
     const expectedWaivers  = Number(expectationStats._sum.waiverAmount   || 0);
     const expectedDiscounts= Number(expectationStats._sum.discountAmount || 0);
     const expectedNet = expectedBase - expectedWaivers - expectedDiscounts;
-    const lifetimeCollected = Number(collectionsStats._sum.amountPaid || 0);
+    
+    // Parse consolidated collection stats from groupBy
+    let lifetimeCollected = 0;
+    let cashCollected = 0;
+    let onlineCollected = 0;
+
+    if (Array.isArray(collectionsStatsGroup)) {
+      collectionsStatsGroup.forEach((group: any) => {
+        const amt = Number(group._sum.amountPaid || 0);
+        lifetimeCollected += Number(group._sum.totalPaid || group._sum.amountPaid || 0);
+        
+        if (group.paymentMode === "Cash") {
+          cashCollected += amt;
+        } else if (group.paymentMode === "Razorpay") {
+          onlineCollected += amt;
+        } else {
+          // Count any other payment modes (e.g. Bank Transfer, cards) as online/other
+          onlineCollected += amt;
+        }
+      });
+    }
+
     const collectedToday = Number(dailyRevenue._sum.totalPaid || 0);
-    const cashCollected = Number(cashStats._sum.amountPaid || 0);
-    const onlineCollected = Number(onlineStats._sum.amountPaid || 0);
 
     // Map recent collections
     const recentCollections = recentCollectionsRaw.map((col: any) => ({

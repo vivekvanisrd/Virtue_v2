@@ -10,6 +10,7 @@ import { GenericModule } from "../dashboard/generic-module";
 import { TenantProvider, useTenant } from "@/context/tenant-context";
 import { RazorpayCallbackHandler } from "../finance/RazorpayCallbackHandler";
 import dynamic from "next/dynamic";
+import { checkNewInternalNoticesAction } from "@/lib/actions/communication-actions";
 
 const OverviewContent = dynamic(() => import("../dashboard/overview").then(mod => mod.OverviewContent), { 
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" /> 
@@ -72,6 +73,9 @@ const SchoolCalendarPage = dynamic(() => import("../../app/dashboard/calendar/pa
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
 const MailboxHub = dynamic(() => import("../dashboard/MailboxHub").then(mod => mod.MailboxHub), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
+const ApprovalsHub = dynamic(() => import("../dashboard/ApprovalsHub").then(mod => mod.ApprovalsHub), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
 
@@ -151,6 +155,9 @@ function WorkspaceRenderer() {
           {/* Communication / Mailbox Hub Module */}
           {tab.id === "communication" && <MailboxHub params={tab.params} />}
 
+          {/* Approvals Hub Module */}
+          {tab.id === "approvals" && <ApprovalsHub />}
+
           {/* Generic mappings for other cataloged modules */}
           {["accounting", "teachers", "academics", "attendance", "activities", "library"].includes(tab.id) && (
             <GenericModule 
@@ -200,6 +207,38 @@ export default function DashboardShell({
   capabilities?: Record<string, boolean>;
 }) {
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [activeToast, setActiveToast] = React.useState<{ id: string; subject: string; body: string } | null>(null);
+  const seenNoticeIds = React.useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    if (!userEmail) return;
+
+    const checkNotices = async () => {
+      try {
+        const res = await checkNewInternalNoticesAction();
+        if (res.success && res.data) {
+          const notice = res.data;
+          if (!seenNoticeIds.current.has(notice.id)) {
+            seenNoticeIds.current.add(notice.id);
+            setActiveToast({ id: notice.id, subject: notice.subject, body: notice.body });
+            
+            // Auto dismiss after 10 seconds
+            setTimeout(() => {
+              setActiveToast(prev => prev?.id === notice.id ? null : prev);
+            }, 10000);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to check notices:", err);
+      }
+    };
+
+    // Run check immediately, then poll every 12 seconds
+    checkNotices();
+    const interval = setInterval(checkNotices, 12000);
+
+    return () => clearInterval(interval);
+  }, [userEmail]);
 
   return (
     <TabProvider>
@@ -209,6 +248,7 @@ export default function DashboardShell({
         branchId: activeBranchId || "", 
         userRole: userRole || "", 
         userName: userName || "",
+        userEmail: userEmail || "",
         academicYear: academicYear || "",
         isOperationalReady,
         capabilities: capabilities || {}
@@ -247,6 +287,28 @@ export default function DashboardShell({
             <Suspense fallback={null}>
               <RazorpayCallbackHandler />
             </Suspense>
+
+            {/* Live Real-time Portal Notification Popup */}
+            {activeToast && (
+              <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-full bg-white/95 backdrop-blur-md rounded-2xl border border-indigo-100 shadow-2xl p-4 flex gap-3 animate-in slide-in-from-bottom-5 duration-300 font-sans">
+                <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-600 text-lg">
+                  🔔
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <h4 className="font-bold text-slate-400 text-[10px] tracking-wider uppercase">New Portal Notice</h4>
+                    <button 
+                      onClick={() => setActiveToast(null)} 
+                      className="text-slate-400 hover:text-slate-600 font-bold leading-none text-base"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <h5 className="font-black text-slate-800 text-sm mt-1 truncate">{activeToast.subject}</h5>
+                  <p className="text-slate-600 text-xs mt-1 leading-normal max-h-16 overflow-y-auto pr-1 whitespace-pre-wrap">{activeToast.body}</p>
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </TenantProvider>

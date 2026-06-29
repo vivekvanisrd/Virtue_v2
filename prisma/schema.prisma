@@ -72,6 +72,7 @@ model School {
   SovereignEvent        SovereignEvent[]
   sovereignRoles        SovereignRole[]
   staff                 Staff[]
+  approvalRequests      ApprovalRequest[]
   StaffAdvance          StaffAdvance[]
   StaffAsset            StaffAsset[]
   StaffAttendance       StaffAttendance[]
@@ -997,6 +998,7 @@ model Staff {
   Discount            Discount[]            @relation("DiscountAuthorizer")
   documents           Document[]
   leaveRequests       LeaveRequest[]
+  approvalRequests    ApprovalRequest[]     @relation("StaffRequests")
   salarySlips         SalarySlip[]
   assignedSection     Section?              @relation("SectionTeacher")
   assignedClass       Class?                @relation("ClassTeacher", fields: [assignedClassId], references: [id])
@@ -2694,6 +2696,35 @@ model CommunicationLog {
   status       String   // "SUCCESS" | "FAILED"
   errorMessage String?  @db.Text
   createdAt    DateTime @default(now())
+  isRead       Boolean  @default(false)
+  readAt       DateTime?
+  parentId     String?
+
+  @@index([schoolId])
+  @@index([branchId])
+}
+
+model ApprovalRequest {
+  id             String    @id @default(uuid())
+  schoolId       String
+  branchId       String?
+  staffId        String
+  category       String    // "LEAVE" | "ADVANCE" | "SUPPLIES" | "CUSTOM"
+  title          String
+  description    String    @db.Text
+  startDate      DateTime? // Optional: for leaves
+  endDate        DateTime? // Optional: for leaves
+  amount         Decimal?  // Optional: for salary advances
+  status         String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  reviewerId     String?   // Staff ID of the reviewer
+  reviewerName   String?   // Name of the reviewer
+  reviewComments String?   @db.Text
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  staff          Staff     @relation("StaffRequests", fields: [staffId], references: [id])
+  school         School    @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
   @@index([branchId])

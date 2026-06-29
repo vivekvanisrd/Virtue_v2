@@ -1,19 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { Mail, Send, History, Search, Filter, CheckCircle, XCircle, Info, Loader2, Users, Bell, DollarSign, Eye } from "lucide-react";
-import { getCommunicationLogsAction, sendCustomEmailAction, sendBulkRemindersAction } from "@/lib/actions/communication-actions";
+import { Mail, Send, History, Search, Filter, CheckCircle, XCircle, Info, Loader2, Users, Bell, DollarSign, Eye, Inbox } from "lucide-react";
+import { getCommunicationLogsAction, sendCustomEmailAction, sendBulkRemindersAction, getInboxLogsAction, markNoticeAsReadAction } from "@/lib/actions/communication-actions";
 import { getStudentListAction } from "@/lib/actions/student-actions";
+import { getStaffDirectoryAction } from "@/lib/actions/staff-actions";
+import { useTenant } from "@/context/tenant-context";
 
 interface MailboxHubProps {
   params?: {
     recipient?: string;
-    targetGroup?: "MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT";
-    activeTab?: "logs" | "compose";
+    targetGroup?: "MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT" | "STAFF";
+    activeTab?: "logs" | "compose" | "inbox";
   };
 }
 
 export function MailboxHub({ params }: MailboxHubProps) {
-  const [activeTab, setActiveTab] = useState<"logs" | "compose">("logs");
+  const { userRole, capabilities, userEmail } = useTenant();
+  const canComposeAndManage = 
+    userRole === "OWNER" || 
+    userRole === "DEVELOPER" || 
+    userRole === "PRINCIPAL" || 
+    userRole === "ADMIN" ||
+    capabilities?.ACADEMIC_CONFIG === true;
+
+  const [activeTab, setActiveTab] = useState<"logs" | "compose" | "inbox">("inbox");
   const [logs, setLogs] = useState<any[]>([]);
+  const [inboxLogs, setInboxLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Log Filters
@@ -22,18 +33,26 @@ export function MailboxHub({ params }: MailboxHubProps) {
   const [searchRecipient, setSearchRecipient] = useState("");
 
   // Compose Form
-  const [targetGroup, setTargetGroup] = useState<"MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT">("MANUAL");
+  const [targetGroup, setTargetGroup] = useState<"MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT" | "STAFF">("MANUAL");
   const [isInternalOnly, setIsInternalOnly] = useState(true); // Default to Internal Portal Notice (Free)
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [parentId, setParentId] = useState<string | null>(null);
   
   // Smart Student Lookup Search
   const [allStudents, setAllStudents] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTermStudent, setSearchTermStudent] = useState("");
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [loadingStudents, setLoadingStudents] = useState(false);
+
+  // Smart Staff Lookup Search
+  const [allStaff, setAllStaff] = useState<any[]>([]);
+  const [searchTermStaff, setSearchTermStaff] = useState("");
+  const [filteredStaff, setFilteredStaff] = useState<any[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+  const [loadingStaff, setLoadingStaff] = useState(false);
 
   // States
   const [sending, setSending] = useState(false);
@@ -41,30 +60,48 @@ export function MailboxHub({ params }: MailboxHubProps) {
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
-  // Pre-fill state if redirect parameters are passed (e.g. from Student Profile)
+  // Pre-fill state if redirect parameters are passed
   useEffect(() => {
     if (params) {
-      if (params.activeTab) setActiveTab(params.activeTab);
-      if (params.recipient) setRecipient(params.recipient);
-      if (params.targetGroup) setTargetGroup(params.targetGroup);
+      // Standard staff members should not be forced into unauthorized tabs
+      if (params.activeTab && (canComposeAndManage || params.activeTab === "inbox")) {
+        setActiveTab(params.activeTab as any);
+      }
+      if (params.recipient && canComposeAndManage) setRecipient(params.recipient);
+      if (params.targetGroup && canComposeAndManage) setTargetGroup(params.targetGroup);
       
-      // If we got a recipient passed in, default to MANUAL so it is prefilled
-      if (params.recipient) {
+      if (params.recipient && canComposeAndManage) {
         setTargetGroup("MANUAL");
       }
     }
-  }, [params]);
+  }, [params, canComposeAndManage]);
 
   useEffect(() => {
-    if (activeTab === "logs") {
+    if (activeTab === "logs" && canComposeAndManage) {
       fetchLogs();
+    } else if (activeTab === "inbox") {
+      fetchInbox();
     }
-  }, [activeTab, filterType, filterStatus]);
+  }, [activeTab, filterType, filterStatus, canComposeAndManage]);
 
-  // Load all students once for quick local lookup
+  // Load directory details only if user has management capabilities
   useEffect(() => {
-    loadStudents();
-  }, []);
+    if (canComposeAndManage) {
+      loadStudents();
+      loadStaff();
+    }
+  }, [canComposeAndManage]);
+
+  // When communication channel changes, adapt the target groups
+  useEffect(() => {
+    if (isInternalOnly) {
+      if (targetGroup === "STUDENT" || targetGroup === "ALL_PARENTS" || targetGroup === "ALL") {
+        setTargetGroup("MANUAL");
+        setRecipient("");
+        setSelectedStudent(null);
+      }
+    }
+  }, [isInternalOnly]);
 
   async function loadStudents() {
     setLoadingStudents(true);
@@ -79,14 +116,27 @@ export function MailboxHub({ params }: MailboxHubProps) {
     setLoadingStudents(false);
   }
 
+  async function loadStaff() {
+    setLoadingStaff(true);
+    try {
+      const res = await getStaffDirectoryAction();
+      if (res.success && res.data) {
+        setAllStaff(res.data);
+      }
+    } catch (e) {
+      console.error("Failed to load staff directory:", e);
+    }
+    setLoadingStaff(false);
+  }
+
   // Handle local searching for student lookup
   useEffect(() => {
-    if (!searchTerm.trim()) {
+    if (!searchTermStudent.trim()) {
       setFilteredStudents([]);
       return;
     }
 
-    const term = searchTerm.toLowerCase();
+    const term = searchTermStudent.toLowerCase();
     const matches = allStudents.filter(s => {
       const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
       const code = (s.studentCode || s.admissionNumber || "").toLowerCase();
@@ -96,8 +146,27 @@ export function MailboxHub({ params }: MailboxHubProps) {
       return name.includes(term) || code.includes(term) || phone.includes(term) || aadhar.includes(term);
     });
 
-    setFilteredStudents(matches.slice(0, 10)); // Limit to top 10 matches for neatness
-  }, [searchTerm, allStudents]);
+    setFilteredStudents(matches.slice(0, 10));
+  }, [searchTermStudent, allStudents]);
+
+  // Handle local searching for staff lookup
+  useEffect(() => {
+    if (!searchTermStaff.trim()) {
+      setFilteredStaff([]);
+      return;
+    }
+
+    const term = searchTermStaff.toLowerCase();
+    const matches = allStaff.filter(s => {
+      const name = `${s.firstName || ""} ${s.lastName || ""}`.toLowerCase();
+      const code = (s.employeeId || "").toLowerCase();
+      const phone = (s.phone || "");
+      
+      return name.includes(term) || code.includes(term) || phone.includes(term);
+    });
+
+    setFilteredStaff(matches.slice(0, 10));
+  }, [searchTermStaff, allStaff]);
 
   async function fetchLogs() {
     setLoading(true);
@@ -116,9 +185,58 @@ export function MailboxHub({ params }: MailboxHubProps) {
     setLoading(false);
   }
 
+  async function fetchInbox() {
+    setLoading(true);
+    try {
+      const res = await getInboxLogsAction();
+      if (res.success && res.data) {
+        setInboxLogs(res.data);
+      }
+    } catch (e) {
+      console.error("Failed to load inbox:", e);
+    }
+    setLoading(false);
+  }
+
+  async function handleOpenNotice(log: any) {
+    setSelectedLog(log);
+    if (!log.isRead) {
+      try {
+        const res = await markNoticeAsReadAction(log.id);
+        if (res.success) {
+          setInboxLogs(prev => prev.map(item => item.id === log.id ? { ...item, isRead: true, readAt: res.data.readAt } : item));
+        }
+      } catch (err) {
+        console.error("Failed to mark notice as read:", err);
+      }
+    }
+  }
+
+  function handleReply(log: any) {
+    setSelectedLog(null);
+    setTargetGroup("MANUAL");
+    setIsInternalOnly(!log.sender.includes("@") || log.sender.includes("internal@virtueschool.in"));
+    
+    // Extract email from "Name (email@domain.com)" or default to the sender string
+    let targetRecipient = log.sender;
+    const match = log.sender.match(/\(([^)]+)\)/);
+    if (match && match[1]) {
+      targetRecipient = match[1].trim();
+    }
+    
+    setRecipient(targetRecipient);
+    setSubject(log.subject.startsWith("Re:") ? log.subject : `Re: ${log.subject}`);
+    setParentId(log.id);
+    
+    const quotedBody = `\n\n----- Original Message -----\nFrom: ${log.sender}\nDate: ${new Date(log.createdAt).toLocaleString()}\nSubject: ${log.subject}\n\n${log.body}`;
+    setBody(quotedBody);
+    
+    setActiveTab("compose");
+  }
+
   function handleSelectStudent(student: any) {
     setSelectedStudent(student);
-    setSearchTerm("");
+    setSearchTermStudent("");
     setFilteredStudents([]);
     
     // Choose first available email as default
@@ -132,13 +250,29 @@ export function MailboxHub({ params }: MailboxHubProps) {
     }
   }
 
+  function handleSelectStaff(staff: any) {
+    setSelectedStaff(staff);
+    setSearchTermStaff("");
+    setFilteredStaff([]);
+    
+    const email = staff.email || "";
+    setRecipient(email);
+    
+    if (!email) {
+      setFeedback({ success: false, message: `Warning: Selected staff ${staff.firstName} has no email address configured in records.` });
+    } else {
+      setFeedback(null);
+    }
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
+    if (!canComposeAndManage) return;
+
     setSending(true);
     setFeedback(null);
 
-    // If student selected, use MANUAL dispatch to their resolved email
-    const finalGroup = targetGroup === "STUDENT" ? "MANUAL" : targetGroup;
+    const finalGroup = (targetGroup === "STUDENT" || targetGroup === "STAFF") ? "MANUAL" : targetGroup;
 
     try {
       const res = await sendCustomEmailAction({
@@ -146,7 +280,8 @@ export function MailboxHub({ params }: MailboxHubProps) {
         recipient,
         subject,
         body,
-        isInternalOnly
+        isInternalOnly,
+        parentId: parentId || undefined
       });
 
       if (res.success) {
@@ -158,6 +293,8 @@ export function MailboxHub({ params }: MailboxHubProps) {
         setBody("");
         setRecipient("");
         setSelectedStudent(null);
+        setSelectedStaff(null);
+        setParentId(null);
       } else {
         setFeedback({ success: false, message: res.error || "Failed to dispatch communication." });
       }
@@ -168,6 +305,8 @@ export function MailboxHub({ params }: MailboxHubProps) {
   }
 
   async function triggerAutoReminders() {
+    if (!canComposeAndManage) return;
+
     const confirm = window.confirm(
       `Are you sure you want to run the auto-reminders for all active students with outstanding dues?\n\nMode: ${
         isInternalOnly ? "Internal Portal Notices (Free)" : "Official Emails (External Communication)"
@@ -207,50 +346,134 @@ export function MailboxHub({ params }: MailboxHubProps) {
           <p className="text-slate-500 font-medium text-xs mt-1">Manage school notices and send emails via Hostinger SMTP</p>
         </div>
 
-        {/* Bulk Actions Button */}
-        <button
-          onClick={triggerAutoReminders}
-          disabled={runningReminders}
-          className="bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all animate-in fade-in"
-        >
-          {runningReminders ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <DollarSign className="w-4 h-4" />
-          )}
-          ⚡ Run Auto-Reminders for Fee Dues
-        </button>
+        {/* Bulk Actions Button - Hidden for standard staff */}
+        {canComposeAndManage && (
+          <button
+            onClick={triggerAutoReminders}
+            disabled={runningReminders}
+            className="bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all animate-in fade-in"
+          >
+            {runningReminders ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <DollarSign className="w-4 h-4" />
+            )}
+            ⚡ Run Auto-Reminders for Fee Dues
+          </button>
+        )}
       </div>
 
-      {/* Tabs Menu */}
+      {/* Tabs Menu - Dynamic tabs based on user capabilities */}
       <div className="flex border-b border-slate-200">
         <button
-          onClick={() => setActiveTab("logs")}
+          onClick={() => setActiveTab("inbox")}
           className={`flex items-center gap-2 py-3 px-6 text-sm font-semibold border-b-2 transition-all ${
-            activeTab === "logs"
+            activeTab === "inbox"
               ? "border-indigo-600 text-indigo-600"
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          <History className="w-4 h-4" />
-          Outbox & Notification History
+          <Inbox className="w-4 h-4" />
+          Inbox (Received Notices)
         </button>
-        <button
-          onClick={() => setActiveTab("compose")}
-          className={`flex items-center gap-2 py-3 px-6 text-sm font-semibold border-b-2 transition-all ${
-            activeTab === "compose"
-              ? "border-indigo-600 text-indigo-600"
-              : "border-transparent text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          <Send className="w-4 h-4" />
-          Compose & Live Preview
-        </button>
+
+        {canComposeAndManage && (
+          <>
+            <button
+              onClick={() => setActiveTab("logs")}
+              className={`flex items-center gap-2 py-3 px-6 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === "logs"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <History className="w-4 h-4" />
+              Outbox & Sent History
+            </button>
+            <button
+              onClick={() => setActiveTab("compose")}
+              className={`flex items-center gap-2 py-3 px-6 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === "compose"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              Compose & Live Preview
+            </button>
+          </>
+        )}
       </div>
 
-      {/* Main Panel Content - Stretches naturally, using Page Scroll */}
+      {/* Main Panel Content */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
-        {activeTab === "logs" ? (
+        {activeTab === "inbox" ? (
+          /* INBOX VIEW */
+          <div className="p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <span className="text-xs font-black uppercase text-slate-400 tracking-wider">Internal notices sent to you</span>
+              <button 
+                onClick={fetchInbox}
+                className="text-xs font-semibold text-indigo-600 hover:underline"
+              >
+                Refresh Inbox
+              </button>
+            </div>
+
+            <div className="border border-slate-100 rounded-lg overflow-x-auto">
+              {loading ? (
+                <div className="h-64 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                  <p className="text-xs text-slate-500 font-medium">Checking received notices...</p>
+                </div>
+              ) : inboxLogs.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <Inbox className="w-10 h-10 stroke-[1.5]" />
+                  <p className="text-sm font-medium">Your Inbox is completely clear!</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">From</th>
+                      <th className="py-3 px-4">Subject</th>
+                      <th className="py-3 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {inboxLogs.map((log) => (
+                      <tr key={log.id} className={`hover:bg-slate-50/50 transition ${!log.isRead ? "bg-indigo-50/15" : ""}`}>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap flex items-center gap-2">
+                          {!log.isRead && (
+                            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse flex-shrink-0" title="Unread notice" />
+                          )}
+                          {new Date(log.createdAt).toLocaleString(undefined, {
+                            dateStyle: "short",
+                            timeStyle: "short"
+                          })}
+                        </td>
+                        <td className={`py-3 px-4 text-indigo-900 ${!log.isRead ? "font-extrabold" : "font-medium"}`}>{log.sender}</td>
+                        <td className={`py-3 px-4 text-slate-700 truncate max-w-[200px] ${!log.isRead ? "font-bold" : "font-medium"}`} title={log.subject}>
+                          {log.subject}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => handleOpenNotice(log)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 mx-auto"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Open Notice
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        ) : activeTab === "logs" && canComposeAndManage ? (
           /* OUTBOX LOGS VIEW */
           <div className="p-6 space-y-4">
             {/* Filter Controls */}
@@ -307,7 +530,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
               {loading ? (
                 <div className="h-64 flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                  <p className="text-xs text-slate-500 font-medium">Fetching communication logs...</p>
+                  <p className="text-xs text-slate-500 font-medium">Fetching outbox history...</p>
                 </div>
               ) : logs.length === 0 ? (
                 <div className="h-64 flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -315,7 +538,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
                   <p className="text-sm font-medium">No sent messages found matching filters.</p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs font-semibold uppercase tracking-wider">
                       <th className="py-3 px-4">Date</th>
@@ -327,10 +550,10 @@ export function MailboxHub({ params }: MailboxHubProps) {
                       <th className="py-3 px-4 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="text-sm divide-y divide-slate-50">
+                  <tbody className="divide-y divide-slate-50">
                     {logs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50/50 transition">
-                        <td className="py-3 px-4 text-slate-500 font-medium whitespace-nowrap">
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
                           {new Date(log.createdAt).toLocaleString(undefined, {
                             dateStyle: "short",
                             timeStyle: "short"
@@ -354,19 +577,30 @@ export function MailboxHub({ params }: MailboxHubProps) {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
-                            log.sender === "internal@virtueschool.in" || log.sender.includes("mock")
+                            log.sender.includes("internal@virtueschool.in") || log.sender.includes("mock") || !log.sender.includes("@")
                               ? "bg-slate-100 text-slate-600"
                               : "bg-indigo-50 text-indigo-600"
                           }`}>
-                            {log.sender === "internal@virtueschool.in" ? "INTERNAL PORTAL" : "SMTP EMAIL"}
+                            {!log.sender.includes("@") || log.sender.includes("internal@virtueschool.in") ? "INTERNAL PORTAL" : "SMTP EMAIL"}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
                           {log.status === "SUCCESS" ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-xs">
-                              <CheckCircle className="w-4 h-4 fill-emerald-50" />
-                              Delivered
-                            </span>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-xs">
+                                <CheckCircle className="w-4 h-4 fill-emerald-50" />
+                                Delivered
+                              </span>
+                              {(!log.sender.includes("@") || log.sender.includes("internal@virtueschool.in")) && (
+                                <span className={`text-[10px] font-bold ${log.isRead ? "text-indigo-600" : "text-slate-400"}`}>
+                                  {log.isRead ? (
+                                    <span title={`Read on ${new Date(log.readAt).toLocaleString()}`}>✓✓ Read</span>
+                                  ) : (
+                                    "✓ Sent"
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span
                               className="inline-flex items-center gap-1 text-rose-600 font-bold text-xs cursor-help"
@@ -380,7 +614,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
                         <td className="py-3 px-4 text-center">
                           <button
                             onClick={() => setSelectedLog(log)}
-                            className="text-indigo-600 hover:text-indigo-800 font-semibold text-xs flex items-center gap-1 mx-auto"
+                            className="text-indigo-600 hover:text-indigo-800 font-semibold text-xs flex items-center gap-1.5 mx-auto"
                           >
                             <Info className="w-3.5 h-3.5" />
                             View
@@ -393,7 +627,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === "compose" && canComposeAndManage ? (
           /* COMPOSE EMAIL VIEW WITH LIVE PREVIEW SIDE-BY-SIDE (PAGE-SCROLLED) */
           <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
             {/* Left Column: Editor Form */}
@@ -448,7 +682,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
                 </div>
               </div>
 
-              {/* Target Audience Group Selector */}
+              {/* Target Audience Group Selector - Dynamic based on internal channel selection */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-bold text-slate-700">Target Audience Group</label>
                 <select
@@ -457,20 +691,30 @@ export function MailboxHub({ params }: MailboxHubProps) {
                     setTargetGroup(e.target.value);
                     setRecipient("");
                     setSelectedStudent(null);
-                    setSearchTerm("");
+                    setSelectedStaff(null);
+                    setSearchTermStudent("");
+                    setSearchTermStaff("");
                   }}
                   className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
                 >
                   <option value="MANUAL">Manual Type Email Address</option>
-                  <option value="STUDENT">Select / Search from Student Directory</option>
-                  <option value="ALL_PARENTS">All Active Parents</option>
+                  
+                  {/* Hide parent/student groups for purely internal dashboard notices */}
+                  {!isInternalOnly && (
+                    <>
+                      <option value="STUDENT">Select / Search from Student Directory</option>
+                      <option value="ALL_PARENTS">All Active Parents</option>
+                      <option value="ALL">All (Both Parents & Staff)</option>
+                    </>
+                  )}
+
+                  <option value="STAFF">Select / Search from Staff Directory</option>
                   <option value="ALL_STAFF">All Active Staff</option>
-                  <option value="ALL">All (Both Parents & Staff)</option>
                 </select>
               </div>
 
-              {/* Smart Student Lookup Search Section */}
-              {targetGroup === "STUDENT" && (
+              {/* Smart Student Lookup Search Section (Only if External Communication) */}
+              {!isInternalOnly && targetGroup === "STUDENT" && (
                 <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-1">
                   <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">Search Recipient Student</label>
                   
@@ -480,8 +724,8 @@ export function MailboxHub({ params }: MailboxHubProps) {
                     <input
                       type="text"
                       placeholder="Type Student Name, Admission No, Phone, or Aadhar..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchTermStudent}
+                      onChange={(e) => setSearchTermStudent(e.target.value)}
                       className="pl-9 w-full rounded-xl border border-slate-200 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
                     />
                   </div>
@@ -578,16 +822,94 @@ export function MailboxHub({ params }: MailboxHubProps) {
                 </div>
               )}
 
-              {/* Recipient Input (Shown if MANUAL or student selected) */}
-              {(targetGroup === "MANUAL" || targetGroup === "STUDENT") && (
+              {/* Smart Staff Lookup Search Section */}
+              {targetGroup === "STAFF" && (
+                <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-1">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">Search Recipient Staff Member</label>
+                  
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Type Staff Name, Employee ID, or Phone..."
+                      value={searchTermStaff}
+                      onChange={(e) => setSearchTermStaff(e.target.value)}
+                      className="pl-9 w-full rounded-xl border border-slate-200 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+                    />
+                  </div>
+
+                  {/* Filter results list */}
+                  {filteredStaff.length > 0 && (
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {filteredStaff.map(st => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => handleSelectStaff(st)}
+                          className="w-full text-left p-3 hover:bg-slate-50 transition-all flex justify-between items-center text-xs"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-800">{st.firstName} {st.lastName || ""}</span>
+                            <span className="text-slate-400 block text-[10px] mt-0.5">Emp ID: {st.employeeId || "N/A"}</span>
+                          </div>
+                          <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-semibold text-slate-500">
+                            {st.role || "STAFF"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Selected Staff Card */}
+                  {selectedStaff && (
+                    <div className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm space-y-2 text-xs">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <span className="font-bold text-indigo-900">{selectedStaff.firstName} {selectedStaff.lastName || ""} ({selectedStaff.employeeId || "Staff"})</span>
+                        <button 
+                          type="button" 
+                          onClick={() => { setSelectedStaff(null); setRecipient(""); }} 
+                          className="text-rose-500 font-bold hover:underline text-[10px]"
+                        >
+                          Clear
+                        </button>
+                      </div>
+
+                      {/* Email select button */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">Target User Notification ID:</span>
+                        {selectedStaff.email ? (
+                          <button
+                            type="button"
+                            onClick={() => setRecipient(selectedStaff.email)}
+                            className={`w-full text-left p-2 rounded border flex justify-between items-center transition ${
+                              recipient === selectedStaff.email ? "border-indigo-600 bg-indigo-50/30 text-indigo-900" : "border-slate-100 hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            <span>Target Account:</span>
+                            <span className="font-mono font-semibold">{selectedStaff.email}</span>
+                          </button>
+                        ) : (
+                          <p className="text-[10px] text-rose-500 italic">No account identifier configured in database for this staff member.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Recipient Input (Shown if MANUAL or student/staff selected) */}
+              {(targetGroup === "MANUAL" || targetGroup === "STUDENT" || targetGroup === "STAFF") && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-slate-700">Recipient Address</label>
+                  <label className="block text-sm font-bold text-slate-700">
+                    {isInternalOnly ? "Recipient Target Account" : "Recipient Email Address"}
+                  </label>
                   <input
                     type="text"
                     required
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
-                    placeholder="e.g. parent@gmail.com"
+                    placeholder={isInternalOnly ? "Target user email identifier..." : "e.g. parent@gmail.com"}
                     className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
                   />
                 </div>
@@ -737,6 +1059,10 @@ export function MailboxHub({ params }: MailboxHubProps) {
               </div>
             </div>
           </div>
+        ) : (
+          <div className="p-8 text-center text-slate-500 font-medium text-sm">
+            Access restricted. Please use the Inbox tab.
+          </div>
         )}
       </div>
 
@@ -747,7 +1073,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
             {/* Modal Header */}
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-slate-800">Email Message Log Detail</h3>
+                <h3 className="font-bold text-slate-800">Internal Notice Detail</h3>
                 <p className="text-[11px] text-slate-500 font-medium">Log ID: {selectedLog.id}</p>
               </div>
               <button
@@ -760,6 +1086,13 @@ export function MailboxHub({ params }: MailboxHubProps) {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4 flex-1 overflow-y-auto max-h-[450px]">
+              {selectedLog.parentId && (
+                <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-2.5 text-xs text-indigo-700 flex items-center gap-2">
+                  <Info className="w-4 h-4 flex-shrink-0" />
+                  <span>This notice is a reply. (Original notice ID: {selectedLog.parentId})</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
                 <div>
                   <span className="text-slate-400 block font-normal">Sender</span>
@@ -770,32 +1103,20 @@ export function MailboxHub({ params }: MailboxHubProps) {
                   <span className="text-slate-700">{selectedLog.recipient}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-normal">Sent Timestamp</span>
+                  <span className="text-slate-400 block font-normal">Timestamp</span>
                   <span className="text-slate-700">{new Date(selectedLog.createdAt).toLocaleString()}</span>
                 </div>
-                <div>
-                  <span className="text-slate-400 block font-normal">Status</span>
-                  <span className={selectedLog.status === "SUCCESS" ? "text-emerald-600" : "text-rose-600"}>
-                    {selectedLog.status}
-                  </span>
-                </div>
               </div>
-
-              {selectedLog.errorMessage && (
-                <div className="bg-rose-50 border border-rose-100 p-3 rounded-lg text-rose-800 text-xs font-mono">
-                  <strong>Error Message:</strong> {selectedLog.errorMessage}
-                </div>
-              )}
 
               <hr className="border-slate-100" />
 
               <div className="space-y-2">
-                <span className="text-xs text-slate-400 block">Email Subject</span>
+                <span className="text-xs text-slate-400 block">Notice Subject</span>
                 <p className="font-bold text-slate-800 text-sm">{selectedLog.subject}</p>
               </div>
 
               <div className="space-y-2">
-                <span className="text-xs text-slate-400 block">Email Text Content</span>
+                <span className="text-xs text-slate-400 block">Notice Content</span>
                 <pre className="bg-slate-50 rounded-lg p-4 font-mono text-xs text-slate-600 whitespace-pre-wrap leading-relaxed border border-slate-100">
                   {selectedLog.body}
                 </pre>
@@ -803,7 +1124,18 @@ export function MailboxHub({ params }: MailboxHubProps) {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              {userEmail && selectedLog.recipient === userEmail ? (
+                <button
+                  onClick={() => handleReply(selectedLog)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Reply to Notice
+                </button>
+              ) : (
+                <div />
+              )}
               <button
                 onClick={() => setSelectedLog(null)}
                 className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2 rounded-lg text-sm font-semibold transition"

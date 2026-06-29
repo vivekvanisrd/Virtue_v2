@@ -8,6 +8,7 @@ interface TenantContextType {
   branchId: string;
   userRole: string;
   userName: string;
+  userEmail?: string;
   academicYear: string;
   isOperationalReady: boolean;
   capabilities: Record<string, boolean>;

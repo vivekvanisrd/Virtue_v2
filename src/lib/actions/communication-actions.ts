@@ -6,18 +6,19 @@ import { NotificationService } from "@/lib/services/notification-service";
 import { revalidatePath } from "next/cache";
 
 /**
- * Fetch list of communication logs with tenancy checks.
+ * Fetch list of communication logs with tenancy checks (Sent Outbox logs).
  */
 export async function getCommunicationLogsAction(filters?: { type?: string; recipient?: string; status?: string }) {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId } = identity;
+    const { schoolId, branchId, email } = identity;
 
     const logs = await prisma.communicationLog.findMany({
       where: {
         schoolId,
-        ...(identity.branchId ? { branchId: identity.branchId } : {}),
+        ...(branchId ? { branchId } : {}),
+        sender: { contains: email || "unknown-sender" },
         ...(filters?.type ? { type: filters.type } : {}),
         ...(filters?.recipient ? { recipient: { contains: filters.recipient, mode: 'insensitive' } } : {}),
         ...(filters?.status ? { status: filters.status } : {})
@@ -38,16 +39,17 @@ export async function getCommunicationLogsAction(filters?: { type?: string; reci
  * Send custom messages or emails with targeted groupings and internal-only toggling.
  */
 export async function sendCustomEmailAction(data: { 
-  targetGroup: "MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL";
+  targetGroup: "MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT" | "STAFF";
   recipient: string; // Used if MANUAL
   subject: string; 
   body: string; 
   isInternalOnly: boolean; 
+  parentId?: string;
 }) {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId } = identity;
+    const { schoolId, branchId, email: senderEmail, name: senderName } = identity;
 
     if (!data.subject || !data.body) {
       throw new Error("MISSING_FIELDS: Subject and Message Body are required.");
@@ -56,7 +58,7 @@ export async function sendCustomEmailAction(data: {
     // Resolve targets
     const recipientEmails: string[] = [];
 
-    if (data.targetGroup === "MANUAL") {
+    if (data.targetGroup === "MANUAL" || data.targetGroup === "STUDENT" || data.targetGroup === "STAFF") {
       if (!data.recipient || !data.recipient.includes("@")) {
         throw new Error("INVALID_EMAIL: Please provide a valid recipient email address.");
       }
@@ -103,9 +105,11 @@ export async function sendCustomEmailAction(data: {
       throw new Error("NO_RECIPIENTS: No active contact email addresses were found for the selected target group.");
     }
 
+    // Resolve sender description
+    const senderDisplay = senderName ? `${senderName} (${senderEmail})` : (senderEmail || "internal@virtueschool.in");
+
     // Dispatch messages
     let successCount = 0;
-    const fromEmail = process.env.SMTP_USER || "office@virtueschool.in";
 
     for (const email of uniqueEmails) {
       try {
@@ -115,12 +119,13 @@ export async function sendCustomEmailAction(data: {
             data: {
               schoolId,
               branchId: branchId || null,
-              sender: "internal@virtueschool.in",
+              sender: senderDisplay,
               recipient: email,
               subject: data.subject,
               body: data.body,
               type: "CUSTOM",
-              status: "SUCCESS"
+              status: "SUCCESS",
+              parentId: data.parentId || null
             }
           });
           successCount++;
@@ -130,7 +135,7 @@ export async function sendCustomEmailAction(data: {
             email,
             data.subject,
             data.body,
-            { schoolId, branchId: branchId || undefined }
+            { schoolId, branchId: branchId || undefined, parentId: data.parentId, sender: senderDisplay }
           );
           if (success) successCount++;
         }
@@ -152,7 +157,7 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId } = identity;
+    const { schoolId, branchId, email: senderEmail, name: senderName } = identity;
 
     // Fetch all active students with financial records and collections
     const students = await prisma.student.findMany({
@@ -169,12 +174,11 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
     });
 
     let sentCount = 0;
-    const fromEmail = process.env.SMTP_USER || "office@virtueschool.in";
+    const senderDisplay = senderName ? `${senderName} (${senderEmail})` : (senderEmail || "internal@virtueschool.in");
 
     for (const student of students) {
       if (!student.financial) continue;
 
-      // annualNet represents tuition after discounts
       const annualNet = Number(student.financial.netTuition || student.financial.annualTuition || 0);
       const totalPaid = student.collections.reduce((sum, c) => sum + Number(c.amountPaid), 0);
       const outstanding = annualNet - totalPaid;
@@ -192,7 +196,7 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
               data: {
                 schoolId,
                 branchId: student.branchId || null,
-                sender: "internal@virtueschool.in",
+                sender: senderDisplay,
                 recipient: recipientEmail,
                 subject: title,
                 body,
@@ -220,3 +224,95 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Check for recent internal notices targeted at the logged-in user.
+ */
+export async function checkNewInternalNoticesAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) return { success: false };
+    const { schoolId, branchId, email } = identity;
+
+    // Fetch the most recent internal notice sent to this user in the last 20 seconds, excluding self-sent
+    const notice = await prisma.communicationLog.findFirst({
+      where: {
+        schoolId,
+        ...(branchId ? { branchId } : {}),
+        recipient: email,
+        sender: { not: { contains: email } },
+        createdAt: { gte: new Date(Date.now() - 20 * 1000) }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    return { success: true, data: notice ? JSON.parse(JSON.stringify(notice)) : null };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetch received internal notices for the logged-in user's inbox.
+ */
+export async function getInboxLogsAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const { schoolId, branchId, email } = identity;
+
+    const logs = await prisma.communicationLog.findMany({
+      where: {
+        schoolId,
+        ...(branchId ? { branchId } : {}),
+        recipient: email
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 100
+    });
+
+    return { success: true, data: JSON.parse(JSON.stringify(logs)) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Mark a received internal notice as read with timestamp.
+ */
+export async function markNoticeAsReadAction(logId: string) {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const { email } = identity;
+
+    // Fetch log and assert recipient matches
+    const log = await prisma.communicationLog.findUnique({
+      where: { id: logId }
+    });
+
+    if (!log) {
+      throw new Error("NOTICE_NOT_FOUND");
+    }
+
+    if (log.recipient !== email) {
+      throw new Error("UNAUTHORIZED_ACCESS: Recipient identity does not match this user.");
+    }
+
+    const updated = await prisma.communicationLog.update({
+      where: { id: logId },
+      data: {
+        isRead: true,
+        readAt: new Date()
+      }
+    });
+
+    revalidatePath("/dashboard/communication");
+    return { success: true, data: JSON.parse(JSON.stringify(updated)) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+

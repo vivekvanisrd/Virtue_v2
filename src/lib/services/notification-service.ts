@@ -17,7 +17,7 @@ export interface NotificationPayload {
 }
 
 export interface INotificationProvider {
-  send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string }): Promise<boolean>;
+  send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; sender?: string }): Promise<boolean>;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface INotificationProvider {
  * Logs messages to the console so staff can verify content.
  */
 class LoggerNotificationProvider implements INotificationProvider {
-  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string }): Promise<boolean> {
+  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string }): Promise<boolean> {
     console.log(`\n--- [NOTIFICATION MOCK] ---`);
     console.log(`TO: ${payload.to}`);
     console.log(`TITLE: ${payload.title}`);
@@ -45,7 +45,8 @@ class LoggerNotificationProvider implements INotificationProvider {
             subject: payload.title,
             body: payload.body,
             type: context.type,
-            status: "SUCCESS"
+            status: "SUCCESS",
+            parentId: context.parentId || null
           }
         });
       } catch (err) {
@@ -82,7 +83,7 @@ class EmailNotificationProvider implements INotificationProvider {
     }
   }
 
-  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string }): Promise<boolean> {
+  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; sender?: string }): Promise<boolean> {
     const fromName = process.env.SMTP_FROM_NAME || "Virtue School Office";
     const fromEmail = process.env.SMTP_USER || "office@virtueschool.in";
     const googleReviewUrl = process.env.GOOGLE_REVIEW_URL || "https://g.page/r/your-school-profile/review";
@@ -101,12 +102,13 @@ class EmailNotificationProvider implements INotificationProvider {
             data: {
               schoolId: context.schoolId,
               branchId: context.branchId || null,
-              sender: fromEmail,
+              sender: context.sender || fromEmail,
               recipient: payload.to,
               subject: payload.title,
               body: payload.body,
               type: context.type,
-              status: "SUCCESS"
+              status: "SUCCESS",
+              parentId: context.parentId || null
             }
           });
         } catch (err) {
@@ -215,12 +217,13 @@ class EmailNotificationProvider implements INotificationProvider {
           data: {
             schoolId: context.schoolId,
             branchId: context.branchId || null,
-            sender: fromEmail,
+            sender: context.sender || fromEmail,
             recipient: payload.to,
             subject: payload.title,
             body: payload.body,
             type: context.type,
-            status: "SUCCESS"
+            status: "SUCCESS",
+            parentId: context.parentId || null
           }
         });
       }
@@ -235,13 +238,14 @@ class EmailNotificationProvider implements INotificationProvider {
             data: {
               schoolId: context.schoolId,
               branchId: context.branchId || null,
-              sender: fromEmail,
+              sender: context.sender || fromEmail,
               recipient: payload.to,
               subject: payload.title,
               body: payload.body,
               type: context.type,
               status: "FAILED",
-              errorMessage: err.message || "Unknown SMTP Error"
+              errorMessage: err.message || "Unknown SMTP Error",
+              parentId: context.parentId || null
             }
           });
         } catch (dbErr) {
@@ -298,13 +302,13 @@ export const NotificationService = {
     }, { schoolId: context.schoolId, branchId: context.branchId, type: "REMINDER" });
   },
 
-  async sendCustomEmail(to: string, subject: string, body: string, context: { schoolId: string; branchId?: string }) {
+  async sendCustomEmail(to: string, subject: string, body: string, context: { schoolId: string; branchId?: string; parentId?: string; sender?: string }) {
     const provider = to.includes("@") ? new EmailNotificationProvider() : new LoggerNotificationProvider();
     return await provider.send({
       to,
       title: subject,
       body,
-    }, { schoolId: context.schoolId, branchId: context.branchId, type: "CUSTOM" });
+    }, { schoolId: context.schoolId, branchId: context.branchId, type: "CUSTOM", parentId: context.parentId, sender: context.sender });
   },
 
   async sendAdmissionAlert(to: string, studentName: string, admissionNumber: string, tempCredentials?: { username: string; tempPass: string }, context?: { schoolId: string; branchId?: string }) {

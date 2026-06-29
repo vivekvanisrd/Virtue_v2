@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 import DashboardShell from "@/components/layout/dashboard-shell";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
 import { redirect } from "next/navigation";
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
+
+import { unstable_cache } from "next/cache";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const identity = await getSovereignIdentity();
@@ -12,32 +14,42 @@ export default async function Layout({ children }: { children: React.ReactNode }
     redirect("/login");
   }
   
-  // 🏛️ SOVEREIGN IDENTITY: Parallel fetch for institutional vitals
-  const [school, activeYear, branches, sovereignRole] = await Promise.all([
-    prisma.school.findUnique({
-      where: { id: identity.schoolId },
-      select: { name: true }
-    }),
-    prisma.academicYear.findFirst({
-      where: { 
-        schoolId: identity.schoolId,
-        isCurrent: true 
-      },
-      select: { name: true }
-    }),
-    prisma.branch.findMany({ 
-      where: { schoolId: identity.schoolId }, 
-      select: { id: true, name: true, code: true } 
-    }),
-    // 🛡️ RBAC CBAC: Fetch dynamic capabilities
-    prisma.sovereignRole.findFirst({
-      where: {
-        schoolId: identity.schoolId,
-        name: identity.role
-      },
-      select: { capabilities: true }
-    })
-  ]);
+  // 🏛️ SOVEREIGN IDENTITY: Parallel cached fetch for institutional vitals
+  const getCachedVitals = unstable_cache(
+    async (schoolId: string, roleName: string) => {
+      return Promise.all([
+        prismaBypass.school.findUnique({
+          where: { id: schoolId },
+          select: { name: true }
+        }),
+        prismaBypass.academicYear.findFirst({
+          where: { 
+            schoolId: schoolId,
+            isCurrent: true 
+          },
+          select: { name: true }
+        }),
+        prismaBypass.branch.findMany({ 
+          where: { schoolId: schoolId }, 
+          select: { id: true, name: true, code: true } 
+        }),
+        prismaBypass.sovereignRole.findFirst({
+          where: {
+            schoolId: schoolId,
+            name: roleName
+          },
+          select: { capabilities: true }
+        })
+      ]);
+    },
+    ['dashboard-layout-vitals'],
+    { revalidate: 3600 } // Cache for 1 hour
+  );
+
+  const [school, activeYear, branches, sovereignRole] = await getCachedVitals(
+    identity.schoolId,
+    identity.role
+  );
 
   // 🏢 BRANCH AUDIT: Fetch current branch name
   const currentBranch = identity.branchId 
