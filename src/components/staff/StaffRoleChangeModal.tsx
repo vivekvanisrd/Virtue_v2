@@ -31,6 +31,7 @@ export function StaffRoleChangeModal({ staff, onClose, onSuccess }: StaffRoleCha
     { value: "Management", label: "Management Staff" },
     { value: "Principal", label: "Principal" },
     { value: "Vice Principal", label: "Vice Principal" },
+    { value: "FEE_COLLECTOR", label: "Fee Collector / Cashier" },
     { value: "Driver", label: "Driver / Transit Operator" },
     { value: "Clerk", label: "Clerk / Support Staff" },
     { value: "Owner", label: "Institution Owner" }
