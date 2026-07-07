@@ -4,9 +4,10 @@ import React, { useState, useEffect } from "react";
 import { 
   Users, Search, Edit, Eye, Filter, Loader2, ShieldCheck, FileText, BadgeCheck, ArrowRightLeft, Mail, UserX, UserCheck
 } from "lucide-react";
-import { getStaffDirectoryAction, toggleStaffStatusAction } from "@/lib/actions/staff-actions";
+import { getStaffDirectoryAction, toggleStaffStatusAction, updateStaffRoleAction } from "@/lib/actions/staff-actions";
 import { cn } from "@/lib/utils";
 import { StaffTransferModal } from "./StaffTransferModal";
+import { StaffRoleChangeModal } from "./StaffRoleChangeModal";
 import { useTabs } from "@/context/tab-context";
 import { useTenant } from "@/context/tenant-context";
 import { toDisplayId } from "@/lib/utils/id-utils";
@@ -52,6 +53,7 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDept, setFilterDept] = useState("");
   const [transferStaff, setTransferStaff] = useState<any>(null);
+  const [roleToChangeStaff, setRoleToChangeStaff] = useState<any>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const handleToggleStatus = async (employeeId: string, currentStatus: string) => {
@@ -302,6 +304,15 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
+                          {(userRole === "OWNER" || userRole === "DEVELOPER" || userRole?.toUpperCase() === "PRINCIPAL" || userRole?.toUpperCase() === "PLATFORM_ADMIN") && (
+                            <button 
+                              onClick={() => setRoleToChangeStaff(employee)}
+                              className="w-9 h-9 flex items-center justify-center hover:bg-white hover:shadow-xl hover:shadow-slate-200 rounded-xl text-slate-400 hover:text-amber-600 border border-transparent hover:border-slate-100 transition-all" 
+                              title="Quick Change Role"
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </button>
+                          )}
                           <button 
                             onClick={() => setTransferStaff(employee)}
                             className="w-9 h-9 flex items-center justify-center hover:bg-white hover:shadow-xl hover:shadow-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 border border-transparent hover:border-slate-100 transition-all" 
@@ -358,6 +369,17 @@ export function StaffDirectory({ onEdit }: StaffDirectoryProps) {
         <StaffTransferModal 
           staff={transferStaff}
           onClose={() => setTransferStaff(null)}
+          onSuccess={() => {
+            fetchStaff();
+          }}
+        />
+      )}
+
+      {/* Role Change Modal */}
+      {roleToChangeStaff && (
+        <StaffRoleChangeModal 
+          staff={roleToChangeStaff}
+          onClose={() => setRoleToChangeStaff(null)}
           onSuccess={() => {
             fetchStaff();
           }}

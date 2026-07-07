@@ -53,6 +53,7 @@ export function FeeStructureManager() {
   // 🏢 VIEW ENGINE STATE
   const [viewMode, setViewMode] = useState<"grid" | "list" | "detail">("grid");
   const [showArchived, setShowArchived] = useState(false);
+  const [selectedYearId, setSelectedYearId] = useState<string>("");
 
   const fetchData = async () => {
     setLoading(true);
@@ -70,6 +71,25 @@ export function FeeStructureManager() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const academicYears = React.useMemo(() => {
+    const yearsMap = new Map<string, string>();
+    structures.forEach(s => {
+      if (s.academicYear) {
+        yearsMap.set(s.academicYear.id, s.academicYear.name);
+      }
+    });
+    return Array.from(yearsMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [structures]);
+
+  useEffect(() => {
+    if (structures.length > 0 && !selectedYearId) {
+      const currentYear = structures.find(s => s.academicYear?.isCurrent)?.academicYearId;
+      if (currentYear) {
+        setSelectedYearId(currentYear);
+      }
+    }
+  }, [structures, selectedYearId]);
 
   const handleToggleArchive = async (id: string) => {
     const { toggleFeeStructureActiveAction } = await import("@/lib/actions/fee-actions");
@@ -106,7 +126,11 @@ export function FeeStructureManager() {
     setActiveActionId(null);
   };
 
-  const filteredStructures = structures.filter(s => showArchived ? true : s.isActive !== false);
+  const filteredStructures = structures.filter(s => {
+    const matchesYear = !selectedYearId || s.academicYearId === selectedYearId;
+    const matchesArchive = showArchived ? true : s.isActive !== false;
+    return matchesYear && matchesArchive;
+  });
 
   return (
     <div className="space-y-12 pb-20">
@@ -120,6 +144,23 @@ export function FeeStructureManager() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
+            {/* ACADEMIC YEAR SELECTOR */}
+            {academicYears.length > 0 && (
+              <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-2 border border-slate-200 px-3">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest pl-1">Year</span>
+                <select
+                  value={selectedYearId}
+                  onChange={(e) => setSelectedYearId(e.target.value)}
+                  className="bg-transparent text-[10px] font-black text-slate-700 outline-none cursor-pointer py-1.5"
+                >
+                  <option value="">All Years</option>
+                  {academicYears.map(y => (
+                    <option key={y.id} value={y.id}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* VIEW SWITCHER */}
             <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-1 border border-slate-200">
                <button 

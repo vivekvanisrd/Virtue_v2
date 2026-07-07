@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
+import { serializeDecimal } from "@/lib/utils/serialization";
 import { getTenancyFilters } from "../utils/tenancy";
 import { CounterService } from "../services/counter-service";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -74,7 +75,7 @@ export async function findPotentialSiblings(studentId: string) {
     }
 
     if (conditions.length === 0) {
-      return { success: true, data: [] };
+      return { success: true, data: serializeDecimal([]) };
     }
 
     const siblings = await prisma.student.findMany({
@@ -86,7 +87,7 @@ export async function findPotentialSiblings(studentId: string) {
       include: { academic: { include: { class: true } }, financial: true }
     });
 
-    return { success: true, data: serialize(siblings) };
+    return { success: true, data: serializeDecimal(serialize(siblings)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -169,7 +170,7 @@ export async function recordFeeCollection(params: {
       });
       if (existing) {
         console.warn(`[FINANCE_IDEMPOTENCY] Reference ${params.paymentReference} already settled. Skipping duplicate.`);
-        return { success: true, data: existing };
+        return { success: true, data: serializeDecimal(existing) };
       }
     } else if (params.paymentMode?.toLowerCase() === "cash") {
       // Cash: block if same student paid same amount within the last 2 minutes
@@ -186,7 +187,7 @@ export async function recordFeeCollection(params: {
       });
       if (recentCash) {
         console.warn(`[FINANCE_IDEMPOTENCY] Possible duplicate cash payment for student ${params.studentId} within 2 minutes.`);
-        return { success: true, data: recentCash };
+        return { success: true, data: serializeDecimal(recentCash) };
       }
     }
 
@@ -571,7 +572,7 @@ export async function recordFeeCollection(params: {
       console.error("⚠️ Failed to resolve parent email for receipt dispatch:", notifyErr);
     }
 
-    return { success: true, data: serialize(result) };
+    return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -680,7 +681,7 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
     } catch (e) {
       console.log("ℹ️ [Next.js Cache] Skipping path revalidation outside request context.");
     }
-    return { success: true, data: result };
+    return { success: true, data: serializeDecimal(result) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1161,7 +1162,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
         where: { id: existing.id },
         include: { student: { include: { academic: { include: { class: true } }, family: true } } }
       });
-      return { success: true, data: serialize(receiptData) };
+      return { success: true, data: serializeDecimal(serialize(receiptData)) };
     }
 
     // 6. Atomic transaction
@@ -1322,7 +1323,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
       return collection;
     });
 
-    return { success: true, data: serialize(result) };
+    return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1362,7 +1363,7 @@ export async function getRazorpayReport() {
       orderBy: { paymentDate: "desc" }
     });
 
-    return { success: true, data: serialize(collections) };
+    return { success: true, data: serializeDecimal(serialize(collections)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1455,7 +1456,7 @@ export async function getCollectionHistory(limit = 10) {
       take: limit
     });
 
-    return { success: true, data: serialize(history) };
+    return { success: true, data: serializeDecimal(serialize(history)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1710,12 +1711,12 @@ export async function getRevenueLeakageReport() {
     const students = await prisma.student.findMany({
       where: {
         schoolId: context.schoolId,
-        status: "Active",
+        status: "CONFIRMED",
         financial: null
       },
       include: { academic: { include: { class: true } } }
     });
-    return { success: true, data: serialize(students) };
+    return { success: true, data: serializeDecimal(serialize(students)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1752,7 +1753,7 @@ export async function getPendingVoidRequests() {
       },
       orderBy: { paymentDate: 'desc' }
     });
-    return { success: true, data: serialize(requests) };
+    return { success: true, data: serializeDecimal(serialize(requests)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1814,7 +1815,7 @@ export async function getDailyCollectionSummary() {
       return acc;
     }, { Cash: 0, UPI: 0, Cheque: 0, total: 0, count: 0 });
 
-    return { success: true, data: serialize(summary) };
+    return { success: true, data: serializeDecimal(serialize(summary)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1839,7 +1840,7 @@ export async function getAdHocFeeOptions() {
       orderBy: { name: 'asc' }
     });
 
-    return { success: true, data: serialize(components) };
+    return { success: true, data: serializeDecimal(serialize(components)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1942,7 +1943,7 @@ export async function assignAdHocFeeAction(params: {
     }, { maxWait: 5000, timeout: 15000 });
 
     revalidatePath("/dashboard/finance");
-    return { success: true, data: serialize(result) };
+    return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -2104,7 +2105,7 @@ export async function applyDiscountAction(params: {
     if ((result as any).pendingApproval) {
       return { success: true, pending: true, message: "Discount proposal submitted. Awaiting approval from Principal or Owner." };
     }
-    return { success: true, data: serialize((result as any).financial) };
+    return { success: true, data: serializeDecimal(serialize((result as any).financial)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -2188,7 +2189,7 @@ export async function updateStudentFeeComponentAction(params: {
 
     revalidatePath("/dashboard/finance");
     revalidatePath(`/admin/students/${params.studentId}`);
-    return { success: true, data: serialize(result) };
+    return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -2214,7 +2215,7 @@ export async function getDiscountTypesAction() {
       orderBy: { name: 'asc' }
     });
 
-    return { success: true, data: serialize(discountTypes) };
+    return { success: true, data: serializeDecimal(serialize(discountTypes)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -2249,11 +2250,11 @@ export async function upsertDiscountTypeAction(params: {
     };
 
     const result = params.id 
-      ? await prisma.discountType.update({ where: { id: params.id }, data })
+      ? await prisma.discountType.update({ where: { id: params.id, schoolId: context.schoolId }, data })
       : await prisma.discountType.create({ data });
 
     revalidatePath("/dashboard/finance/settings");
-    return { success: true, data: serialize(result) };
+    return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -2270,7 +2271,7 @@ export async function toggleDiscountTypeStatusAction(id: string, status: boolean
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
     
     await prisma.discountType.update({
-      where: { id },
+      where: { id, schoolId: identity.schoolId },
       data: { isActive: status }
     });
 
@@ -2358,7 +2359,7 @@ export async function removeAdHocFeeAction(params: {
     }, { maxWait: 5000, timeout: 15000 });
 
     revalidatePath("/dashboard/finance");
-    return { success: true, data: serialize(result) };
+    return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

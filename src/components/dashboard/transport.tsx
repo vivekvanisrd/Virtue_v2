@@ -34,7 +34,8 @@ import {
   DollarSign,
   UserX,
   Lock,
-  ArrowRight
+  ArrowRight,
+  BarChart3
 } from "lucide-react";
 import { useTabs } from "@/context/tab-context";
 import { useTenant } from "@/context/tenant-context";
@@ -75,6 +76,14 @@ import {
   deleteMaintenanceAction,
   assignStudentTransportAction,
   removeStudentTransportAction,
+  startSimulationAction,
+  pauseSimulationAction,
+  resumeSimulationAction,
+  stopSimulationAction,
+  getSimulationStatusAction,
+  getParentTransportTelemetryAction,
+  getLiveTelemetryAction,
+  getTransportAnalyticsAction,
 } from "@/lib/actions/transport-actions-v2";
 
 import { getStudentListAction } from "@/lib/actions/student-actions";
@@ -406,6 +415,7 @@ export function TransportContent({ tabId }: { tabId: string; params?: any }) {
           routes={routes}
           stops={stops}
           getPolyline={getRoutePolyline}
+          onRefresh={() => loadData(true)}
         />
       ) : tabId === "transport-replay" ? (
         <TransportReplayView
@@ -418,6 +428,8 @@ export function TransportContent({ tabId }: { tabId: string; params?: any }) {
         />
       ) : tabId === "transport-parent" ? (
         <TransportParentView />
+      ) : tabId === "transport-analytics" ? (
+        <TransportAnalyticsView />
       ) : null}
 
       {/* Modal Overlays */}
@@ -1261,13 +1273,82 @@ interface LiveProps {
   routes: any[];
   stops: any[];
   getPolyline: (routeId: string) => [number, number][];
+  onRefresh?: () => void;
 }
 
-function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: LiveProps) {
+function TransportLiveView({ trips, vehicles, routes, stops, getPolyline, onRefresh }: LiveProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const activeTrips = trips.filter(t => t.status === "ACTIVE" || t.status === "STALE");
   const [selectedTrip, setSelectedTrip] = useState<any>(activeTrips[0] || null);
 
+  const [simStatus, setSimStatus] = useState<string | null>(null);
+  const [livePositions, setLivePositions] = useState<Record<string, [number, number]>>({});
+
+  // 1. Telemetry Polling Loop
+  useEffect(() => {
+    async function fetchLiveGPS() {
+      const res = await getLiveTelemetryAction() as any;
+      if (res.success && res.data) {
+        const mappings: Record<string, [number, number]> = {};
+        res.data.forEach((gps: any) => {
+          mappings[gps.vehicleId] = [gps.latitude, gps.longitude];
+        });
+        setLivePositions(mappings);
+      }
+    }
+    
+    fetchLiveGPS();
+    const interval = setInterval(fetchLiveGPS, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Simulation Status Polling Loop
+  useEffect(() => {
+    if (!selectedTrip) {
+      setSimStatus(null);
+      return;
+    }
+    async function checkStatus() {
+      const res = await getSimulationStatusAction(selectedTrip.id);
+      if (res.success && res.data) {
+        setSimStatus(res.data.status);
+      } else {
+        setSimStatus("OFFLINE");
+      }
+    }
+    checkStatus();
+    const interval = setInterval(checkStatus, 4000);
+    return () => clearInterval(interval);
+  }, [selectedTrip]);
+
+  const handleStartSim = async () => {
+    if (!selectedTrip) return;
+    const res = await startSimulationAction(selectedTrip.id);
+    if (res.success) {
+      setSimStatus("RUNNING");
+      if (onRefresh) onRefresh();
+    } else {
+      alert(`Simulation failed: ${res.error}`);
+    }
+  };
+
+  const handlePauseSim = async () => {
+    if (!selectedTrip) return;
+    const res = await pauseSimulationAction(selectedTrip.id);
+    if (res.success) {
+      setSimStatus("PAUSED");
+    }
+  };
+
+  const handleStopSim = async () => {
+    if (!selectedTrip) return;
+    const res = await stopSimulationAction(selectedTrip.id);
+    if (res.success) {
+      setSimStatus("STOPPED");
+    }
+  };
+
+  // 3. Leaflet Draw Logic
   useEffect(() => {
     if (typeof window === "undefined" || !mapRef.current) return;
 
@@ -1277,12 +1358,9 @@ function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: Live
     let polylineInstance: any = null;
 
     async function initLeaflet() {
-      // 1. Dynamic import of leaflet
       const L = await import("leaflet");
 
-      // Fix default Leaflet icon paths
-      // @ts-ignore
-      delete L.Icon.Default.prototype._getIconUrl;
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
         iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -1291,7 +1369,6 @@ function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: Live
 
       if (!isMounted || !mapRef.current) return;
 
-      // 2. Initialize Map
       const startCenter: [number, number] = selectedTrip 
         ? getPolyline(selectedTrip.routeId)[0] 
         : [17.6000, 78.1100];
@@ -1302,24 +1379,19 @@ function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: Live
         attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
       }).addTo(mapInstance);
 
-      // 3. Draw stops & Route Polyline if trip is selected
       if (selectedTrip) {
         const polyCoords = getPolyline(selectedTrip.routeId);
         
-        // Draw Polyline
         polylineInstance = L.polyline(polyCoords, {
           color: "#4f46e5",
           weight: 4,
           opacity: 0.8
         }).addTo(mapInstance);
 
-        // Zoom to polyline
         mapInstance.fitBounds(polylineInstance.getBounds(), { padding: [40, 40] });
 
-        // Draw Stop Markers
         const routeStops = stops.filter(s => s.routeId === selectedTrip.routeId);
         routeStops.forEach(stop => {
-          // Dummy offsets for stops along polyline
           const randomOffset = polyCoords[Math.floor(Math.random() * polyCoords.length)];
           const stopMarker = L.marker(randomOffset, {
             icon: L.divIcon({
@@ -1332,8 +1404,10 @@ function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: Live
           markers.push(stopMarker);
         });
 
-        // Draw Moving Vehicle Marker (Pulsating live indicator)
-        const vehiclePos = polyCoords[Math.floor(polyCoords.length / 2)];
+        // Use actual database position if available, fallback to middle index of polyline
+        const dbPos = selectedTrip.vehicleId ? livePositions[selectedTrip.vehicleId] : null;
+        const vehiclePos = dbPos || polyCoords[Math.floor(polyCoords.length / 2)];
+
         const vehicleMarker = L.marker(vehiclePos, {
           icon: L.divIcon({
             className: "custom-bus-marker",
@@ -1358,7 +1432,7 @@ function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: Live
         mapInstance.remove();
       }
     };
-  }, [selectedTrip]);
+  }, [selectedTrip, livePositions[selectedTrip?.vehicleId]]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-in fade-in duration-300">
@@ -1407,10 +1481,61 @@ function TransportLiveView({ trips, vehicles, routes, stops, getPolyline }: Live
             ))
           )}
         </div>
+
+        {/* GPS Simulation Controller Panel */}
+        {selectedTrip && (
+          <div className="p-5 border-t border-slate-100 bg-slate-50/50 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">GPS Simulator</span>
+              <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-indigo-600 text-white rounded">DEV CONTROL</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-white border border-slate-200/60 rounded-2xl">
+              <div>
+                <p className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Simulation Status</p>
+                <p className="text-xs font-black text-slate-800 uppercase tracking-widest mt-0.5">{simStatus || "OFFLINE"}</p>
+              </div>
+
+              <div className="flex gap-2">
+                {simStatus !== "RUNNING" ? (
+                  <button
+                    onClick={handleStartSim}
+                    className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-xl transition-all"
+                    title="Start / Resume"
+                  >
+                    <Play className="w-4 h-4 fill-emerald-600 text-emerald-600" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handlePauseSim}
+                    className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-100 rounded-xl transition-all"
+                    title="Pause"
+                  >
+                    <Pause className="w-4 h-4 fill-amber-600 text-amber-600" />
+                  </button>
+                )}
+                <button
+                  onClick={handleStopSim}
+                  className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl transition-all"
+                  title="Stop"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Live Map Panel */}
       <div className="lg:col-span-3 bg-white border border-slate-200/60 rounded-[2rem] overflow-hidden shadow-xl shadow-slate-200/30 flex flex-col min-h-[500px]">
+        {/* Development Banner */}
+        {simStatus === "RUNNING" && (
+          <div className="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest text-center py-2.5 animate-pulse shadow-md">
+            ⚠️ DEVELOPMENT / TEST MODE - ACTIVE GPS SIMULATION RUN
+          </div>
+        )}
+
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Map className="w-5 h-5 text-indigo-600" />
@@ -1673,26 +1798,453 @@ function TransportReplayView({ trips, routes, vehicles, incidents, stops, getPol
 // 🏡 VIEW: PARENT TRACKING PANEL (FEATURE DISABLED PLACEHOLDER)
 // ============================================================================
 function TransportParentView() {
-  return (
-    <div className="bg-white border border-slate-200/60 rounded-[2rem] shadow-xl shadow-slate-200/30 overflow-hidden p-8 max-w-lg mx-auto text-center space-y-6 animate-in fade-in duration-300">
-      <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto border border-slate-200">
-        <Lock className="w-8 h-8 text-slate-400" />
-      </div>
+  const [telemetry, setTelemetry] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-      <div className="space-y-2">
-        <h3 className="text-base font-black tracking-tight text-slate-800 uppercase">Parent Portal Isolated</h3>
-        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-          Feature Flag: `ENABLE_PARENT_TRACKING = false`
+  // 1. Feature Flag Protection Check (Kept FALSE by default)
+  const ENABLE_PARENT_TRACKING = false;
+
+  useEffect(() => {
+    if (!ENABLE_PARENT_TRACKING) {
+      setLoading(false);
+      return;
+    }
+
+    async function loadParentData() {
+      setLoading(true);
+      const res = await getParentTransportTelemetryAction();
+      if (res.success) {
+        setTelemetry(res.data || []);
+        if (res.data && res.data.length > 0) {
+          setSelectedStudent(res.data[0]);
+        }
+      } else {
+        setError((res.error as any)?.message || "Failed to load child telemetry.");
+      }
+      setLoading(false);
+    }
+
+    loadParentData();
+    const interval = setInterval(loadParentData, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Leaflet Map Setup
+  useEffect(() => {
+    if (typeof window === "undefined" || !mapRef.current || !selectedStudent || selectedStudent.liveLatitude === 0) return;
+
+    let isMounted = true;
+    let mapInstance: any = null;
+    let vehicleMarker: any = null;
+
+    async function initParentMap() {
+      const L = await import("leaflet");
+
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      });
+
+      if (!isMounted || !mapRef.current) return;
+
+      const vehiclePos: [number, number] = [selectedStudent.liveLatitude, selectedStudent.liveLongitude];
+      mapInstance = L.map(mapRef.current).setView(vehiclePos, 14);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+      }).addTo(mapInstance);
+
+      vehicleMarker = L.marker(vehiclePos, {
+        icon: L.divIcon({
+          className: "custom-parent-bus-marker",
+          html: `<div class="w-8 h-8 bg-indigo-600 border-2 border-white rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">🚌</div>`
+        })
+      })
+        .addTo(mapInstance)
+        .bindPopup(`<b>Bus Location</b>`);
+    }
+
+    initParentMap();
+
+    return () => {
+      isMounted = false;
+      if (vehicleMarker && mapInstance) vehicleMarker.remove();
+      if (mapInstance) mapInstance.remove();
+    };
+  }, [selectedStudent]);
+
+  if (!ENABLE_PARENT_TRACKING) {
+    return (
+      <div className="bg-white border border-slate-200/60 rounded-[2rem] shadow-xl shadow-slate-200/30 overflow-hidden p-8 max-w-lg mx-auto text-center space-y-6 animate-in fade-in duration-300">
+        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto border border-slate-200">
+          <Lock className="w-8 h-8 text-slate-400" />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-base font-black tracking-tight text-slate-800 uppercase">Parent Portal Isolated</h3>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+            Feature Flag: `ENABLE_PARENT_TRACKING = false`
+          </p>
+        </div>
+
+        <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+          Sovereign V2 specifies that the parent tracking experience should reside on dedicated mobile layouts or isolated parent portals (e.g. `/parent/transport` or `/mobile/transport`) rather than inside the main staff administrative command center.
         </p>
+
+        <div className="border-t border-slate-100 pt-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+          Virtue Enterprise Security Architecture
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && telemetry.length === 0) {
+    return <div className="py-20 text-center text-slate-400 text-xs font-black uppercase tracking-widest animate-pulse">Synchronizing child fleet coordinates...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-rose-50 border border-rose-100 rounded-[2rem] p-6 max-w-md mx-auto text-center space-y-4">
+        <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
+        <h3 className="text-xs font-black text-rose-800 uppercase tracking-wider">Security / Configuration Error</h3>
+        <p className="text-[10px] text-rose-600 font-bold uppercase">{error}</p>
+      </div>
+    );
+  }
+
+  if (telemetry.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200/60 rounded-[2rem] p-8 max-w-md mx-auto text-center space-y-4 shadow-xl">
+        <Info className="w-8 h-8 text-slate-400 mx-auto" />
+        <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">No Active Child Allocations</h3>
+        <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">No active transport assignments or linked student profiles resolved for these parent credentials.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-in fade-in duration-300">
+      
+      {/* Side Control Panel */}
+      <div className="bg-white border border-slate-200/60 rounded-[2rem] shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col lg:col-span-1 max-h-[500px]">
+        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Child Telemetry</h3>
+        </div>
+
+        <div className="p-4 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+          {telemetry.length > 1 && (
+            <div className="space-y-1.5">
+              <label className="text-[8px] font-black uppercase tracking-wider text-slate-400">Select Child</label>
+              <select
+                value={selectedStudent?.studentName}
+                onChange={e => setSelectedStudent(telemetry.find(t => t.studentName === e.target.value))}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-[11px] font-bold text-slate-700 focus:border-indigo-500"
+              >
+                {telemetry.map(t => <option key={t.studentName} value={t.studentName}>{t.studentName}</option>)}
+              </select>
+            </div>
+          )}
+
+          {selectedStudent && (
+            <div className="space-y-4">
+              <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                  <span className="text-[9px] font-black uppercase text-slate-400">Boarding Status</span>
+                  <span className={cn(
+                    "text-[8px] font-black uppercase px-2 py-0.5 rounded-md border",
+                    selectedStudent.boardingStatus === "BOARDED" 
+                      ? "bg-emerald-50 border-emerald-100 text-emerald-600" 
+                      : "bg-slate-50 border-slate-200 text-slate-500"
+                  )}>
+                    {selectedStudent.boardingStatus}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-600">
+                  <div>
+                    <span className="block text-[8px] font-black text-slate-400 uppercase tracking-wider">Driver Name</span>
+                    <span>{selectedStudent.driverName}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-black text-slate-400 uppercase tracking-wider">Driver Phone</span>
+                    <span>{selectedStudent.driverPhone}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-600 border-t border-slate-100 pt-2.5">
+                  <div>
+                    <span className="block text-[8px] font-black text-slate-400 uppercase tracking-wider">Vehicle Reg</span>
+                    <span>{selectedStudent.vehicleRegistration}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[8px] font-black text-slate-400 uppercase tracking-wider">Mock ETA</span>
+                    <span className="text-indigo-600 font-black">{selectedStudent.etaMinutes > 0 ? `${selectedStudent.etaMinutes} mins` : "Arrived/Idle"}</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-2.5 flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase">
+                  <span>Last Update</span>
+                  <span>{new Date(selectedStudent.lastUpdateTime).toLocaleTimeString()}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-        Sovereign V2 specifies that the parent tracking experience should reside on dedicated mobile layouts or isolated parent portals (e.g. `/parent/transport` or `/mobile/transport`) rather than inside the main staff administrative command center.
-      </p>
+      {/* Parent Map Panel */}
+      <div className="lg:col-span-3 bg-white border border-slate-200/60 rounded-[2rem] overflow-hidden shadow-xl shadow-slate-200/30 flex flex-col min-h-[500px]">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Map className="w-5 h-5 text-indigo-600" />
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">
+                {selectedStudent ? `Child Bus Tracker: ${selectedStudent.studentName}` : "Isolated Parent Tracker"}
+              </h3>
+            </div>
+          </div>
+        </div>
 
-      <div className="border-t border-slate-100 pt-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-        Virtue Enterprise Security Architecture
+        <div ref={mapRef} id="parent-map-container" className="flex-1 bg-slate-50 w-full h-full relative" />
       </div>
+    </div>
+  );
+}
+
+function TransportAnalyticsView() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAnalytics() {
+      const res = await getTransportAnalyticsAction() as any;
+      if (res.success && res.data) {
+        setData(res.data);
+      }
+      setLoading(false);
+    }
+    loadAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="py-24 text-center text-slate-400 text-xs font-black uppercase tracking-widest animate-pulse">
+        Generating Fleet Intelligence Report...
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="bg-rose-50 border border-rose-100 rounded-[2rem] p-8 max-w-md mx-auto text-center space-y-4">
+        <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
+        <h3 className="text-xs font-black text-rose-800 uppercase tracking-widest">Failed to compute Analytics</h3>
+        <p className="text-[10px] text-rose-600 font-bold uppercase">Database aggregations could not be resolved.</p>
+      </div>
+    );
+  }
+
+  const { kpis, routeUtilization, maintenanceCosts, driverPerformance } = data;
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-300">
+      
+      {/* 🚀 KPIS HEADER CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* KPI 1 */}
+        <div className="bg-gradient-to-br from-indigo-50/50 to-indigo-100/10 border border-indigo-100/40 rounded-[2rem] p-6 flex items-center justify-between shadow-xl shadow-slate-100/10 hover:-translate-y-1 transition-all duration-300">
+          <div>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Fleet Size</p>
+            <p className="text-3xl font-black text-indigo-950 mt-1">{kpis.totalVehicles} <span className="text-[10px] font-black uppercase text-indigo-500/60">Buses</span></p>
+          </div>
+          <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+            <Bus className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* KPI 2 */}
+        <div className="bg-gradient-to-br from-emerald-50/50 to-emerald-100/10 border border-emerald-100/40 rounded-[2rem] p-6 flex items-center justify-between shadow-xl shadow-slate-100/10 hover:-translate-y-1 transition-all duration-300">
+          <div>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Active Routes</p>
+            <p className="text-3xl font-black text-emerald-950 mt-1">{kpis.totalRoutes} <span className="text-[10px] font-black uppercase text-emerald-500/60">Lines</span></p>
+          </div>
+          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+            <Map className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* KPI 3 */}
+        <div className="bg-gradient-to-br from-pink-50/50 to-pink-100/10 border border-pink-100/40 rounded-[2rem] p-6 flex items-center justify-between shadow-xl shadow-slate-100/10 hover:-translate-y-1 transition-all duration-300">
+          <div>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Total Occupancy</p>
+            <p className="text-3xl font-black text-pink-950 mt-1">{kpis.totalAllocatedStudents} <span className="text-[10px] font-black uppercase text-pink-500/60">Kids</span></p>
+          </div>
+          <div className="w-12 h-12 bg-pink-50 rounded-2xl flex items-center justify-center text-pink-600">
+            <Users className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* KPI 4 */}
+        <div className="bg-gradient-to-br from-amber-50/50 to-amber-100/10 border border-amber-100/40 rounded-[2rem] p-6 flex items-center justify-between shadow-xl shadow-slate-100/10 hover:-translate-y-1 transition-all duration-300">
+          <div>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Maintenance Expenditure</p>
+            <p className="text-2xl font-black text-amber-950 mt-1">₹{kpis.totalMaintenanceCost.toLocaleString()}</p>
+          </div>
+          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+            <DollarSign className="w-6 h-6" />
+          </div>
+        </div>
+
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* 📊 ROUTE OCCUPANCY BAR METRICS */}
+        <div className="bg-white border border-slate-200/60 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/20 space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Route Utilization</h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase">Students Allocated vs Vehicle capacities</p>
+            </div>
+            <BarChart3 className="w-5 h-5 text-indigo-600" />
+          </div>
+
+          <div className="space-y-5">
+            {routeUtilization.length === 0 ? (
+              <p className="text-center text-slate-400 text-xs py-10 font-bold uppercase">No Route Allocations Found</p>
+            ) : (
+              routeUtilization.map((route: any) => {
+                const isTight = route.utilization >= 80;
+                const isOverloaded = route.utilization > 95;
+                const barColor = isOverloaded
+                  ? "bg-rose-500"
+                  : isTight
+                  ? "bg-amber-500"
+                  : "bg-emerald-500";
+
+                return (
+                  <div key={route.routeId} className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-700">
+                      <span>{route.routeName} ({route.routeCode})</span>
+                      <span>{route.studentCount} / {route.totalCapacity} ({route.utilization}%)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className={`h-full ${barColor} transition-all duration-1000`}
+                        style={{ width: `${Math.min(100, route.utilization)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* 🛠️ MAINTENANCE COST CATEGORIES BREAKDOWN */}
+        <div className="bg-white border border-slate-200/60 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/20 space-y-6 flex flex-col">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Maintenance Expenditure</h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase">Spending categories breakdown</p>
+            </div>
+            <Wrench className="w-5 h-5 text-indigo-600" />
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center space-y-6">
+            <div className="space-y-4">
+              {Object.keys(maintenanceCosts).map((cat: string) => {
+                const cost = maintenanceCosts[cat];
+                const total = kpis.totalMaintenanceCost || 1;
+                const ratio = Math.round((cost / total) * 100);
+
+                return (
+                  <div key={cat} className="space-y-1">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-700">
+                      <span className="uppercase">{cat}</span>
+                      <span>₹{cost.toLocaleString()} ({ratio}%)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-amber-500 rounded-full"
+                        style={{ width: `${ratio}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 🏎️ DRIVER SAFETY INCIDENTS CARD TABLE */}
+      <div className="bg-white border border-slate-200/60 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/20 space-y-6">
+        <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Driver Safety Performance</h3>
+            <p className="text-[9px] text-slate-400 font-bold uppercase">Trips completed, speeding alerts, and route deviations</p>
+          </div>
+          <Activity className="w-5 h-5 text-indigo-600" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                <th className="py-3 px-4">Driver Name</th>
+                <th className="py-3 px-4">Completed Runs</th>
+                <th className="py-3 px-4">Overspeed Alerts</th>
+                <th className="py-3 px-4">Route Deviations</th>
+                <th className="py-3 px-4">Safety Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {driverPerformance.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400 text-xs font-bold uppercase">No Driver performance logs</td>
+                </tr>
+              ) : (
+                driverPerformance.map((dp: any) => {
+                  const totalAlerts = dp.overspeedCount + dp.deviationCount;
+                  let score = "EXCELLENT";
+                  let scoreColor = "bg-emerald-50 border-emerald-100 text-emerald-600";
+                  
+                  if (totalAlerts > 5) {
+                    score = "CRITICAL WARNING";
+                    scoreColor = "bg-rose-50 border-rose-100 text-rose-600";
+                  } else if (totalAlerts > 0) {
+                    score = "NEEDS COACHING";
+                    scoreColor = "bg-amber-50 border-amber-100 text-amber-600";
+                  }
+
+                  return (
+                    <tr key={dp.driverId} className="border-b border-slate-50 hover:bg-slate-50/50 transition-all text-xs text-slate-700 font-bold">
+                      <td className="py-4 px-4">{dp.driverName}</td>
+                      <td className="py-4 px-4">{dp.completedTrips}</td>
+                      <td className="py-4 px-4 text-rose-600">{dp.overspeedCount}</td>
+                      <td className="py-4 px-4 text-amber-600">{dp.deviationCount}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-wider ${scoreColor}`}>
+                          {score}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }
@@ -1737,7 +2289,7 @@ function TransportModalOverlay({
       else if (type === "stop") setFormData({ routeId: routes[0]?.id || "", stopName: "", pickupTime: "08:00 AM", dropTime: "04:30 PM", monthlyFee: 1500 });
       else if (type === "vehicle") setFormData({ registrationNo: "", model: "", capacity: 15, routeId: routes[0]?.id || "", onboardingStatus: "ACTIVE", documents: { insuranceExpiry: "", fitnessExpiry: "", pollutionExpiry: "" } });
       else if (type === "driver") setFormData({ name: "", phone: "", licenseNo: "", password: "", status: "ACTIVE" });
-      else if (type === "assign-driver") setFormData({ driverId: drivers[0]?.id || "", vehicleId: vehicles[0]?.id || "", routeId: routes[0]?.id || "", status: "Active" });
+      else if (type === "assign-driver") setFormData({ driverId: drivers[0]?.id || "", vehicleId: vehicles[0]?.id || "", routeId: routes[0]?.id || "", status: "ACTIVE" });
       else if (type === "assign-student") setFormData({ studentId: students.filter(s => !s.studentTransport)[0]?.id || "", routeId: routes[0]?.id || "", pickupStopId: stops[0]?.id || "", dropStopId: stops[0]?.id || "", monthlyFee: 1500 });
       else if (type === "incident") setFormData({ vehicleId: vehicles[0]?.id || "", driverId: drivers[0]?.id || null, severity: "MEDIUM", description: "", status: "PENDING" });
       else if (type === "maintenance") setFormData({ vehicleId: vehicles[0]?.id || "", maintenanceType: "SERVICE", cost: 1500, description: "", performedAt: new Date().toISOString().substring(0, 10), nextDueDate: "", status: "COMPLETED" });

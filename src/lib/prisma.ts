@@ -34,7 +34,6 @@ if (process.env.NODE_ENV !== "production") globalThis.prismaBypass = baseClient;
 
 export const prismaBypass = baseClient;
 
-// Cache the extended client wrapper in globalThis to prevent memory leaks and connection exhaustion during HMR hot reloads
 const prisma = globalThis.prisma ?? baseClient.$extends(tenancyExtension);
 if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;
 
@@ -44,3 +43,5 @@ declare global {
 }
 
 export default prisma;
+
+

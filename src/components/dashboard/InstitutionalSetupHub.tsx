@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
  * and appoint leadership, satisfying Rule 6.
  */
 export function InstitutionalSetupHub() {
-    const [step, setStep] = useState(2);
+    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successData, setSuccessData] = useState<any>(null);
@@ -46,11 +46,7 @@ export function InstitutionalSetupHub() {
         email: "",
     });
 
-    const [createdBranch, setCreatedBranch] = useState<any>({ 
-        id: "VIVES-RCB", 
-        name: "Reddy Coloney Branch",
-        code: "RCB"
-    });
+    const [createdBranch, setCreatedBranch] = useState<any>(null);
 
     // Handlers
     async function handleCreateBranch() {

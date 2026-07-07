@@ -1,0 +1,58 @@
+[
+  {
+    "id": "unmapped-1783368252518-5412",
+    "biometricId": "8888",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-06T14:34:10.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  },
+  {
+    "id": "unmapped-1783368285993-7892",
+    "biometricId": "8888",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-06T14:34:43.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  },
+  {
+    "id": "unmapped-1783368426871-3967",
+    "biometricId": "8888",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-06T14:37:04.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  },
+  {
+    "id": "unmapped-1783368534329-8546",
+    "biometricId": "8888",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-06T14:38:52.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  },
+  {
+    "id": "unmapped-1783368603002-4897",
+    "biometricId": "8888",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-06T14:40:01.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  },
+  {
+    "id": "unmapped-1783404796405-6078",
+    "biometricId": "129",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-07T00:43:13.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  },
+  {
+    "id": "unmapped-1783404798290-368",
+    "biometricId": "129",
+    "deviceCode": "NFZ8252000045",
+    "timestamp": "2026-07-07T00:43:15.000Z",
+    "schoolId": "VIVES",
+    "branchId": "VIVES-SNB"
+  }
+]

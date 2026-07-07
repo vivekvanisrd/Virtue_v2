@@ -53,8 +53,9 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.warn("Fallback tenant lookup failed:", err);
       }
-      if (!schoolId) schoolId = "VIVES";
-      if (!branchId) branchId = "VIVES-RCB";
+      if (!schoolId || !branchId) {
+        return NextResponse.json({ error: "Unable to resolve institution context." }, { status: 400 });
+      }
     }
 
     // 2. Fetch Active Branch Config

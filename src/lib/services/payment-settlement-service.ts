@@ -102,7 +102,7 @@ export const PaymentSettlementService = {
         const branchCode = enrollment.branch.code || "MAIN";
 
         // C. Promotion Hook (Provisional -> Active)
-        if (student.status === "Provisional") {
+        if (student.status?.toUpperCase() === "PROVISIONAL") {
           const promotion = await promoteStudentAction(studentId, tx);
           if (!promotion.success) throw new Error(`Student Promotion Failed: ${promotion.error}`);
           console.log(`[SETTLEMENT_ENGINE] ✨ Student ${studentId} promoted to ACTIVE.`);

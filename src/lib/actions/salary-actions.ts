@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
+import { serializeDecimal } from "@/lib/utils/serialization";
 import { Decimal } from "@prisma/client/runtime/library";
 
 /**
@@ -37,12 +38,12 @@ export async function generatePayrollDraft(params: { month: number; year: number
     const staffList = await prisma.staff.findMany({
       where: { 
         schoolId: context.schoolId, 
-        status: "Active",
+        status: "ACTIVE",
         professional: { isNot: null } 
       },
       include: { 
         professional: true,
-        advances: { where: { status: "Active" } }
+        advances: { where: { status: "ACTIVE" } }
       }
     });
 
@@ -137,7 +138,7 @@ export async function generatePayrollDraft(params: { month: number; year: number
       include: { slips: { include: { staff: true } } }
     });
 
-    return { success: true, data: serialize(run) };
+    return { success: true, data: serializeDecimal(serialize(run)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -168,7 +169,7 @@ export async function finalizePayrollRun(runId: string) {
         // 1. Update Status
         await tx.payrollRun.update({
           where: { id: runId },
-          data: { status: "Approved", approvedBy: context.role, approvedAt: new Date() }
+          data: { status: "APPROVED", approvedBy: context.role, approvedAt: new Date() }
         });
 
         // 2. Process Advance Balances
@@ -176,7 +177,7 @@ export async function finalizePayrollRun(runId: string) {
            const deductions = slip.deductions as any;
            if (deductions && Number(deductions.advance) > 0) {
               const activeAdv = await tx.staffAdvance.findFirst({
-                 where: { staffId: slip.staffId, status: "Active" }
+                 where: { staffId: slip.staffId, status: "ACTIVE" }
               });
               if (activeAdv) {
                  const newBalance = new Decimal(activeAdv.balance).minus(new Decimal(deductions.advance));
@@ -184,7 +185,7 @@ export async function finalizePayrollRun(runId: string) {
                     where: { id: activeAdv.id },
                     data: { 
                       balance: newBalance,
-                      status: newBalance.lessThanOrEqualTo(0) ? "Paid" : "Active"
+                      status: newBalance.lessThanOrEqualTo(0) ? "PAID" : "ACTIVE"
                     }
                  });
               }

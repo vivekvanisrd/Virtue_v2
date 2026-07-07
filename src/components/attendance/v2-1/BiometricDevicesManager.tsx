@@ -27,13 +27,14 @@ import {
   getRecentBiometricPunchesAction
 } from "@/lib/actions/attendance-v2-actions";
 import { cn } from "@/lib/utils";
+import { BiometricKioskView } from "./BiometricKioskView";
 
 export function BiometricDevicesManager() {
   const [devices, setDevices] = useState<any[]>([]);
   const [punches, setPunches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<"DEVICES" | "LOGS">("DEVICES");
+  const [activeSubTab, setActiveSubTab] = useState<"DEVICES" | "LOGS" | "KIOSK">("DEVICES");
   
   // Registration Form State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -162,6 +163,15 @@ export function BiometricDevicesManager() {
             )}
           >
             Live Punch Stream ({punches.length})
+          </button>
+          <button 
+            onClick={() => setActiveSubTab("KIOSK")}
+            className={cn(
+              "pb-4 px-2 text-xs font-black uppercase tracking-wider transition-all border-b-2",
+              activeSubTab === "KIOSK" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"
+            )}
+          >
+            Kiosk Display
           </button>
         </div>
 
@@ -370,6 +380,10 @@ export function BiometricDevicesManager() {
             </table>
           </div>
         </div>
+      )}
+
+      {activeSubTab === "KIOSK" && (
+        <BiometricKioskView />
       )}
 
       {/* Register Device Modal */}

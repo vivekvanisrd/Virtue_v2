@@ -70,6 +70,7 @@ export function StaffContent({ tabId, params }: StaffContentProps) {
             dob: formatDate(staff.dob),
             address: staff.address || "",
             onboardingStatus: staff.onboardingStatus || "JOINED",
+            biometricId: staff.biometricId?.trim() || "",
             // Professional Mapping (Safe Numbers)
             designation: staff.professional?.designation || "",
             department: staff.professional?.department || "",

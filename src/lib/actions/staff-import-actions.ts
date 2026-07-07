@@ -27,7 +27,7 @@ const csvRowSchema = z.object({
   // Optional columns mapping to Staff model
   middleName: z.string().optional(),
   gender: z.string().optional(),
-  status: z.string().optional().default("Active")
+  status: z.string().optional().default("ACTIVE")
 });
 
 export type StaffCSVRow = z.infer<typeof csvRowSchema>;

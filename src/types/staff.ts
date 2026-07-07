@@ -25,6 +25,7 @@ export const staffBasicSchema = z.object({
   branchId: z.string().min(1, "Branch selection is required"),
   address: z.string().min(5, "Address must be at least 5 characters").trim(),
   onboardingStatus: z.string().nullable().optional().default("JOINED"),
+  biometricId: z.string().trim().nullable().optional().or(z.literal('')),
 });
 
 export const staffProfessionalSchema = z.object({
@@ -102,6 +103,7 @@ export const flexibleStaffBulkSchema = z.object({
     onboardingStatus: z.string().optional(),
     branchId: z.string().optional(),
     schoolId: z.string().optional(),
+    biometricId: z.string().optional(),
     employeeCategory: z.nativeEnum(EmployeeCategory).optional(),
     employmentType: z.nativeEnum(EmploymentType).optional(),
     identityVersion: z.string().optional(),

@@ -17,7 +17,7 @@ export interface NotificationPayload {
 }
 
 export interface INotificationProvider {
-  send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; sender?: string }): Promise<boolean>;
+  send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; sender?: string; authorEmail?: string }): Promise<boolean>;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface INotificationProvider {
  * Logs messages to the console so staff can verify content.
  */
 class LoggerNotificationProvider implements INotificationProvider {
-  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string }): Promise<boolean> {
+  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; authorEmail?: string }): Promise<boolean> {
     console.log(`\n--- [NOTIFICATION MOCK] ---`);
     console.log(`TO: ${payload.to}`);
     console.log(`TITLE: ${payload.title}`);
@@ -41,6 +41,7 @@ class LoggerNotificationProvider implements INotificationProvider {
             schoolId: context.schoolId,
             branchId: context.branchId || null,
             sender: "mock@virtueschool.in",
+            authorEmail: context.authorEmail || null,
             recipient: payload.to,
             subject: payload.title,
             body: payload.body,
@@ -83,7 +84,7 @@ class EmailNotificationProvider implements INotificationProvider {
     }
   }
 
-  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; sender?: string }): Promise<boolean> {
+  async send(payload: NotificationPayload, context?: { schoolId: string; branchId?: string; type: string; parentId?: string; sender?: string; authorEmail?: string }): Promise<boolean> {
     const fromName = process.env.SMTP_FROM_NAME || "Virtue School Office";
     const fromEmail = process.env.SMTP_USER || "office@virtueschool.in";
     const googleReviewUrl = process.env.GOOGLE_REVIEW_URL || "https://g.page/r/your-school-profile/review";
@@ -103,6 +104,7 @@ class EmailNotificationProvider implements INotificationProvider {
               schoolId: context.schoolId,
               branchId: context.branchId || null,
               sender: context.sender || fromEmail,
+              authorEmail: context.authorEmail || null,
               recipient: payload.to,
               subject: payload.title,
               body: payload.body,
@@ -218,6 +220,7 @@ class EmailNotificationProvider implements INotificationProvider {
             schoolId: context.schoolId,
             branchId: context.branchId || null,
             sender: context.sender || fromEmail,
+            authorEmail: context.authorEmail || null,
             recipient: payload.to,
             subject: payload.title,
             body: payload.body,
@@ -239,6 +242,7 @@ class EmailNotificationProvider implements INotificationProvider {
               schoolId: context.schoolId,
               branchId: context.branchId || null,
               sender: context.sender || fromEmail,
+              authorEmail: context.authorEmail || null,
               recipient: payload.to,
               subject: payload.title,
               body: payload.body,
@@ -293,22 +297,22 @@ export const NotificationService = {
     }, { schoolId: context.schoolId, branchId: context.branchId, type: "RECEIPT" });
   },
 
-  async sendOverdueReminder(to: string, termName: string, amount: number, context: { schoolId: string; branchId?: string }) {
+  async sendOverdueReminder(to: string, termName: string, amount: number, context: { schoolId: string; branchId?: string; authorEmail?: string }) {
     const provider = to.includes("@") ? new EmailNotificationProvider() : new LoggerNotificationProvider();
     return await provider.send({
       to,
       title: "Fee Reminder",
       body: `Dear Parent,\n\nThis is a reminder that the dues for ${termName} of ₹${amount.toLocaleString()} are pending.\n\nKindly settle the amount at your earliest convenience.`,
-    }, { schoolId: context.schoolId, branchId: context.branchId, type: "REMINDER" });
+    }, { schoolId: context.schoolId, branchId: context.branchId, type: "REMINDER", authorEmail: context.authorEmail });
   },
 
-  async sendCustomEmail(to: string, subject: string, body: string, context: { schoolId: string; branchId?: string; parentId?: string; sender?: string }) {
+  async sendCustomEmail(to: string, subject: string, body: string, context: { schoolId: string; branchId?: string; parentId?: string; sender?: string; authorEmail?: string }) {
     const provider = to.includes("@") ? new EmailNotificationProvider() : new LoggerNotificationProvider();
     return await provider.send({
       to,
       title: subject,
       body,
-    }, { schoolId: context.schoolId, branchId: context.branchId, type: "CUSTOM", parentId: context.parentId, sender: context.sender });
+    }, { schoolId: context.schoolId, branchId: context.branchId, type: "CUSTOM", parentId: context.parentId, sender: context.sender, authorEmail: context.authorEmail });
   },
 
   async sendAdmissionAlert(to: string, studentName: string, admissionNumber: string, tempCredentials?: { username: string; tempPass: string }, context?: { schoolId: string; branchId?: string }) {

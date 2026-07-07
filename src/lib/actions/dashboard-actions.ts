@@ -18,6 +18,15 @@ export async function getDashboardStatsAction() {
     const hasBranchContext = context.branchId && context.branchId !== 'GLOBAL';
     const branchFilter = hasBranchContext ? { branchId: context.branchId } : {};
 
+    // Resolve active academic year
+    const activeAY = await prisma.academicYear.findFirst({
+      where: { schoolId: context.schoolId, isCurrent: true }
+    });
+
+    if (!activeAY) {
+      throw new Error("Active academic year not found.");
+    }
+
     // 1-8. Parallel database queries via Promise.all
     const [
       studentCount,
@@ -27,18 +36,28 @@ export async function getDashboardStatsAction() {
       dailyRevenue,
       recentCollectionsRaw,
       classes,
-      voidRequests,
-      activeYear
+      voidRequests
     ] = await Promise.all([
       prisma.student.count({
-        where: { schoolId: context.schoolId, status: "Active", ...branchFilter }
+        where: { schoolId: context.schoolId, status: "CONFIRMED", ...branchFilter }
       }),
       prisma.staff.count({
-        where: { schoolId: context.schoolId, role: "TEACHER", ...branchFilter }
+        where: { schoolId: context.schoolId, role: "TEACHER", ...branchFilter, status: "ACTIVE" }
       }),
       // BUG-1 FIX: Use StudentFeeComponent as the source of truth (not legacy annualTuition)
       prisma.studentFeeComponent.aggregate({
-        where: { schoolId: context.schoolId, isApplicable: true, ...branchFilter },
+        where: {
+          schoolId: context.schoolId,
+          isApplicable: true,
+          ...branchFilter,
+          financialRecord: {
+            student: {
+              academic: {
+                academicYear: activeAY.id
+              }
+            }
+          }
+        },
         _sum: { baseAmount: true, waiverAmount: true, discountAmount: true }
       }),
       prisma.collection.groupBy({
@@ -75,6 +94,7 @@ export async function getDashboardStatsAction() {
           id: true,
           name: true,
           academicRecords: {
+            where: { academicYear: activeAY.id },
             select: {
               student: {
                 select: {
@@ -113,12 +133,10 @@ export async function getDashboardStatsAction() {
           status: "VoidRequested",
           ...branchFilter
         }
-      }),
-      prisma.academicYear.findFirst({
-        where: { schoolId: context.schoolId, isCurrent: true },
-        select: { name: true }
       })
     ]);
+
+    const activeYear = activeAY;
 
     // Financial calculations — BUG-1 FIX: derived from StudentFeeComponent sums
     const expectedBase     = Number(expectationStats._sum.baseAmount     || 0);

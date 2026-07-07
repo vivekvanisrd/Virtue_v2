@@ -7,6 +7,28 @@ const MAX_REQ_PER_MIN = 2000;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ⚡ eSSL / ZKTeco ADMS URL Rewrite: /iclock/:path -> /api/iclock/:path (stripping .aspx)
+  if (pathname.startsWith('/iclock/')) {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logDir = path.join(process.cwd(), 'scratch');
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      const logFile = path.join(logDir, 'http-log.txt');
+      const logLine = `[${new Date().toISOString()}] ${request.method} ${request.url} (IP: ${request.headers.get('x-forwarded-for') || 'unknown'})\n`;
+      fs.appendFileSync(logFile, logLine, 'utf8');
+    } catch (e) {
+      // safe bypass
+    }
+
+    const cleanPath = pathname.replace('.aspx', '');
+    const newUrl = request.nextUrl.clone();
+    newUrl.pathname = `/api${cleanPath}`;
+    console.log(`📡 [ADMS_REWRITE] Rewriting '${pathname}' to '${newUrl.pathname}'`);
+    return NextResponse.rewrite(newUrl);
+  }
+
   const ip = (request as any).ip || request.headers.get('x-forwarded-for') || 'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
   

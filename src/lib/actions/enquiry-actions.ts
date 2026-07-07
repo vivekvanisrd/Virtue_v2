@@ -1,7 +1,8 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 import { getSovereignIdentity } from "../auth/backbone";
+import { serializeDecimal } from "@/lib/utils/serialization";
 import { revalidatePath } from "next/cache";
 import { sanitizeEmail, sanitizePhone, cleanPhone } from "../utils/validations";
 import { CounterService } from "@/lib/services/counter-service";
@@ -165,7 +166,7 @@ export async function recordManualEnquiryPaymentAction(enquiryId: string, amount
         });
 
         revalidatePath("/dashboard/students/enquiries");
-        return { success: true, data: result };
+        return { success: true, data: serializeDecimal(result) };
 
     } catch (error: any) {
         console.error("Manual Enquiry Payment Error:", error);
@@ -238,7 +239,7 @@ export async function getEnquiriesAction(statusFilter?: string) {
     }
 }
 
-export async function updateEnquiryStatusAction(id: string, newStatus: "Pending" | "Converted" | "Rejected") {
+export async function updateEnquiryStatusAction(id: string, newStatus: "PENDING" | "CONVERTED" | "REJECTED") {
     try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
@@ -251,12 +252,12 @@ export async function updateEnquiryStatusAction(id: string, newStatus: "Pending"
         }
 
         const result = await prisma.enquiry.update({
-            where: { id },
+            where: { id, schoolId: context.schoolId },
             data: { status: newStatus }
         });
 
         revalidatePath("/dashboard/students/enquiries");
-        return { success: true, data: result };
+        return { success: true, data: serializeDecimal(result) };
     } catch (error: any) {
         console.error("Update Enquiry Error:", error);
         return { success: false, error: "Failed to update enquiry status" };
@@ -344,7 +345,7 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
                     registrationId,
                     schoolId: context.schoolId,
                     branchId: enquiry.branchId,
-                    status: "Provisional",
+                    status: "PROVISIONAL",
                     firstName: enquiry.studentFirstName,
                     lastName: enquiry.studentLastName,
                     middleName: enquiry.studentLastName ? "" : undefined, // Safety
@@ -505,7 +506,7 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
         revalidatePath("/dashboard?tab=students-enquiries");
         revalidatePath("/dashboard?tab=students-all");
 
-        return { success: true, data: student };
+        return { success: true, data: serializeDecimal(student) };
     } catch (error: any) {
         console.error("Conversion Error:", error);
         return { success: false, error: "Failed to convert enquiry to student: " + error.message };
@@ -623,7 +624,7 @@ export async function getEnquiryPaymentReviewAction(enquiryId: string) {
     const context = identity;
 
         // 1. Fetch Lead Details
-        const enquiry = await prisma.enquiry.findUnique({
+        const enquiry = await prismaBypass.enquiry.findUnique({
             where: { id: enquiryId },
             include: { school: { select: { name: true, code: true } } }
         });
@@ -676,8 +677,8 @@ export async function getEnquiryPaymentReviewAction(enquiryId: string) {
     let transportEstimate = 0;
     let transportStopName = "Not Selected";
     if (enquiry.isTransportRequired && enquiry.requestedStopId) {
-        // Resolve fare from TransportStop model (V3)
-        const stop = await prisma.transportStop.findUnique({ where: { id: enquiry.requestedStopId } });
+        // Resolve fare from VehicleStop model (V2)
+        const stop = await prisma.vehicleStop.findUnique({ where: { id: enquiry.requestedStopId } });
         if (stop) {
             // Calculate remaining transport months from today to academic year end (March = month 2 next year)
             const now = new Date();
@@ -687,8 +688,8 @@ export async function getEnquiryPaymentReviewAction(enquiryId: string) {
             const monthsRemaining = Math.max(1,
               (academicEnd.getFullYear() - now.getFullYear()) * 12 + (academicEnd.getMonth() - now.getMonth()) + 1
             );
-            transportEstimate = Number(stop.fare) * Math.min(monthsRemaining, 10);
-            transportStopName = stop.name;
+            transportEstimate = Number(stop.monthlyFee) * Math.min(monthsRemaining, 10);
+            transportStopName = stop.stopName;
         }
     }
 
@@ -751,7 +752,7 @@ export async function getStaffContextAction() {
       return { success: false, error: "No staff profile found for this school context." };
     }
 
-    return { success: true, data: staff };
+    return { success: true, data: serializeDecimal(staff) };
   } catch (error: any) {
     return { success: false, error: "Identity Failure: " + error.message };
   }

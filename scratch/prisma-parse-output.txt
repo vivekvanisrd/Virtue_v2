@@ -1,0 +1,744 @@
+=== ALL PRISMA MODELS ===
+School, PlatformAdmin, PlatformClass, PlatformSection, PlatformAcademicYear, Branch, AcademicYear, FinancialYear, Class, Section, Student, AcademicHistory, AcademicRecord, FamilyDetail, Address, TransportDetail, MedicalRecord, BankDetail, PreviousSchool, Document, FinancialRecord, Discount, DiscountType, FeeComponentMaster, FeeStructure, FeeTemplateComponent, StudentFeeComponent, LedgerEntry, FeeInvoice, FeeInvoiceItem, CollectionAllocation, AllocationPriority, LateFeeRule, FinancialPeriod, Collection, ChartOfAccount, JournalEntry, JournalLine, Expense, PaymentRequest, PaymentApproval, PaymentExecution, Staff, StaffProfessional, StaffAdvance, StaffStatutory, StaffBank, StaffAttendance, StudentAttendance, Route, , VehicleStop, VehicleStaff, StudentTransportAssignment, Subject, ExamType, GradeScale, ExamResult, Book, LibraryMember, IssueReturn, BiometricTemplate, Notification, TenancyCounter, Enquiry, GlobalSetting, StudentConsent, ActivityLog, PayrollRun, SalarySlip, SovereignRole, SovereignEvent, StaffKYC, SalaryRevision, StaffAsset, TransportStop, TransportAssignment, FinancialAuditLog, CreditNote, UnlockRequest, TransportCollection, StaffDepartment, StaffCategory, AttendancePolicy, AttendanceException, StaffFaceProfile, BulkPayoutAuditRecord, BankStatement, BankStatementEntry, SchoolCalendar, PublicHolidayMaster, , LeaveRequest, fee_payment_links, inventory_adjustments, inventory_audit_logs, inventory_damaged_stock, inventory_goods_receipts, inventory_grn_items, inventory_issue_items, inventory_issues, inventory_items, inventory_kit_items, inventory_kits, inventory_opening_stock, inventory_po_items, inventory_purchase_orders, inventory_reservations, inventory_sale_items, inventory_sales, inventory_supplier_payments, inventory_suppliers, inventory_transfer_items, inventory_transfers, inventory_year_end_snapshots, inventory_returns, inventory_return_items, PromotionBatch, PromotionRecord, Driver, DriverAssignment, StudentTransport, TripSession, VehicleGPSLive, VehicleGPSLog, BusAttendance, VehicleIncident, VehicleMaintenance, RoutePolyline, TransportNotification, TransportAuditLog, DriverDeviceLog, DriverLoginAudit, DriverRefreshSession, CommunicationLog, ApprovalRequest, TransportSettings, SimulationJob, NotificationStatusLog
+
+=== DEFINED INDEXES BY MODEL ===
+Model: Branch
+  @@unique([schoolId, code])
+Model: Student
+  @@unique([schoolId, branchId, studentCode])
+  @@unique([schoolId, branchId, admissionNumber])
+  @@index([branchId])
+  @@index([schoolId])
+  @@index([studentCode])
+  @@index([registrationId])
+Model: AcademicHistory
+  @@unique([studentId, academicYearId])
+  @@unique([schoolId, branchId, admissionNumber])
+  @@index([branchId])
+Model: FamilyDetail
+  @@index([fatherPhone])
+  @@index([motherPhone])
+Model: Address
+  @@index([permanentAddress])
+Model: FeeComponentMaster
+  @@unique([schoolId, branchId, name])
+Model: FeeStructure
+  @@unique([schoolId, structureCode])
+  @@index([schoolId])
+Model: LedgerEntry
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: FeeInvoice
+  @@index([studentId])
+  @@index([schoolId])
+Model: FeeInvoiceItem
+  @@index([invoiceId])
+Model: AllocationPriority
+  @@unique([schoolId, componentType])
+Model: LateFeeRule
+  @@unique([schoolId, componentType])
+Model: FinancialPeriod
+  @@unique([schoolId, year])
+Model: Collection
+  @@unique([schoolId, receiptNumber])
+  @@index([schoolId])
+  @@index([receiptNumber])
+  @@index([admissionId])
+  @@index([studentId])
+Model: ChartOfAccount
+  @@unique([schoolId, accountCode])
+Model: JournalEntry
+  @@unique([schoolId, branchId, entryCode])
+  @@index([schoolId])
+  @@index([branchId])
+Model: Staff
+  @@unique([branchId, staffCode])
+  @@unique([branchId, email])
+  @@unique([branchId, phone])
+  @@unique([branchId, userId])
+  @@index([schoolId])
+Model: StaffAttendance
+  @@unique([staffId, date])
+  @@index([schoolId, date])
+Model: StudentAttendance
+  @@unique([studentId, date, session])
+  @@index([studentId])
+  @@index([date])
+  @@index([branchId])
+Model: Route
+  @@index([branchId])
+  @@index([schoolId])
+Model: 
+  @@index([branchId])
+  @@index([schoolId])
+Model: VehicleStop
+  @@index([branchId])
+  @@index([schoolId])
+Model: Subject
+  @@index([branchId])
+Model: ExamType
+  @@index([branchId])
+Model: ExamResult
+  @@index([branchId])
+Model: Book
+  @@index([branchId])
+Model: LibraryMember
+  @@index([branchId])
+Model: IssueReturn
+  @@index([branchId])
+Model: Notification
+  @@index([branchId])
+Model: TenancyCounter
+  @@unique([schoolId, branchId, type, year])
+Model: Enquiry
+  @@index([branchId])
+Model: GlobalSetting
+  @@unique([schoolId, key])
+Model: StudentConsent
+  @@unique([studentId, academicYearId])
+Model: ActivityLog
+  @@index([branchId])
+Model: PayrollRun
+  @@unique([schoolId, branchId, month, year])
+  @@index([branchId])
+Model: SalarySlip
+  @@unique([payrollRunId, staffId])
+  @@index([branchId])
+Model: SovereignRole
+  @@unique([schoolId, name])
+  @@index([schoolId, branchId])
+Model: StaffDepartment
+  @@unique([schoolId, name])
+Model: StaffCategory
+  @@unique([schoolId, name])
+Model: AttendancePolicy
+  @@index([schoolId, branchId])
+Model: BulkPayoutAuditRecord
+  @@index([schoolId, month, year])
+  @@index([staffName])
+Model: BankStatement
+  @@index([schoolId, month, year])
+  @@index([schoolId, bankName])
+Model: BankStatementEntry
+  @@index([statementId])
+  @@index([txnDate])
+  @@index([schoolId])
+Model: SchoolCalendar
+  @@unique([schoolId, branchId, date])
+  @@index([schoolId, date])
+  @@index([schoolId, type])
+Model: PublicHolidayMaster
+  @@unique([country, state, year, date])
+  @@index([country, state, year])
+Model: 
+  @@index([schoolId, branchId])
+Model: fee_payment_links
+  @@index([phone], map: "idx_fpl_phone")
+  @@index([razorpay_link_id], map: "idx_fpl_rzp_id")
+  @@index([token], map: "idx_fpl_token")
+Model: inventory_goods_receipts
+  @@unique([school_id, grn_number])
+Model: inventory_grn_items
+  @@unique([grn_id, item_id])
+Model: inventory_issue_items
+  @@unique([issue_id, item_id])
+Model: inventory_items
+  @@unique([school_id, item_code])
+  @@index([school_id, branch_id], map: "idx_inv_items_tenant")
+Model: inventory_kit_items
+  @@unique([kit_id, item_id])
+Model: inventory_kits
+  @@unique([school_id, kit_name])
+Model: inventory_opening_stock
+  @@unique([school_id, item_id, academic_year_id])
+Model: inventory_po_items
+  @@unique([po_id, item_id])
+Model: inventory_purchase_orders
+  @@unique([school_id, po_number])
+Model: inventory_sale_items
+  @@unique([sale_id, item_id])
+Model: inventory_sales
+  @@unique([school_id, invoice_number])
+Model: inventory_suppliers
+  @@unique([school_id, supplier_name])
+Model: inventory_transfer_items
+  @@unique([transfer_id, item_id])
+Model: inventory_transfers
+  @@unique([school_id, transfer_number])
+Model: inventory_year_end_snapshots
+  @@unique([school_id, branch_id, item_id, academic_year_id])
+Model: inventory_return_items
+  @@unique([return_id, item_id])
+Model: Driver
+  @@index([schoolId])
+  @@index([branchId])
+Model: DriverAssignment
+  @@unique([driverId, vehicleId, routeId, status])
+  @@index([schoolId])
+  @@index([branchId])
+Model: StudentTransport
+  @@index([studentId])
+  @@index([routeId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: TripSession
+  @@index([routeId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: VehicleGPSLive
+  @@index([schoolId])
+  @@index([branchId])
+Model: VehicleGPSLog
+  @@index([vehicleId, timestamp])
+  @@index([tripSessionId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: BusAttendance
+  @@index([tripSessionId])
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: VehicleIncident
+  @@index([vehicleId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: VehicleMaintenance
+  @@index([vehicleId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: RoutePolyline
+  @@index([schoolId])
+  @@index([branchId])
+Model: TransportNotification
+  @@index([recipientId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: TransportAuditLog
+  @@index([schoolId])
+  @@index([branchId])
+Model: DriverDeviceLog
+  @@index([driverId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: DriverLoginAudit
+  @@index([driverId])
+  @@index([schoolId])
+  @@index([branchId])
+Model: DriverRefreshSession
+  @@index([driverId])
+  @@index([tokenId])
+  @@index([schoolId])
+Model: CommunicationLog
+  @@index([schoolId])
+  @@index([branchId])
+Model: ApprovalRequest
+  @@index([schoolId])
+  @@index([branchId])
+Model: TransportSettings
+  @@index([schoolId])
+Model: SimulationJob
+  @@index([schoolId])
+Model: NotificationStatusLog
+  @@index([notificationId])
+
+=== FIELD INDEX STATUS MATRIX ===
+
+Model: Branch
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: AcademicYear
+  - Field: schoolId -> Status: Not Indexed
+
+Model: FinancialYear
+  - Field: schoolId -> Status: Not Indexed
+
+Model: Class
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: Section
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: Student
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: AcademicHistory
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: AcademicRecord
+  - Field: studentId -> Status: Unique Indexed
+  - Field: branchId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+
+Model: FamilyDetail
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: Address
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: TransportDetail
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: MedicalRecord
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: BankDetail
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: PreviousSchool
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: Document
+  - Field: studentId -> Status: Not Indexed
+  - Field: staffId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+
+Model: FinancialRecord
+  - Field: studentId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: Discount
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: DiscountType
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: FeeComponentMaster
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: FeeStructure
+  - Field: branchId -> Status: Not Indexed
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: FeeTemplateComponent
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StudentFeeComponent
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: LedgerEntry
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: FeeInvoice
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: AllocationPriority
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: LateFeeRule
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: FinancialPeriod
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: Collection
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: ChartOfAccount
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: JournalEntry
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: Staff
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: StaffProfessional
+  - Field: staffId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffAdvance
+  - Field: staffId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffStatutory
+  - Field: staffId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffBank
+  - Field: staffId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffAttendance
+  - Field: staffId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: StudentAttendance
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: Route
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: 
+  - Field: routeId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: VehicleStop
+  - Field: routeId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: VehicleStaff
+  - Field: vehicleId -> Status: Not Indexed
+  - Field: staffId -> Status: Not Indexed
+
+Model: StudentTransportAssignment
+  - Field: studentId -> Status: Unique Indexed
+  - Field: routeId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+
+Model: Subject
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: ExamType
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: GradeScale
+  - Field: schoolId -> Status: Not Indexed
+
+Model: ExamResult
+  - Field: studentId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: Book
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: LibraryMember
+  - Field: studentId -> Status: Unique Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: IssueReturn
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: Notification
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: TenancyCounter
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: Enquiry
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: GlobalSetting
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: StudentConsent
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+
+Model: ActivityLog
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: PayrollRun
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: SalarySlip
+  - Field: staffId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Not Indexed
+
+Model: SovereignRole
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: SovereignEvent
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffKYC
+  - Field: staffId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: SalaryRevision
+  - Field: staffId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffAsset
+  - Field: staffId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: TransportStop
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: TransportAssignment
+  - Field: studentId -> Status: Unique Indexed
+  - Field: routeId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: FinancialAuditLog
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: CreditNote
+  - Field: studentId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: UnlockRequest
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+  - Field: studentId -> Status: Not Indexed
+
+Model: TransportCollection
+  - Field: studentId -> Status: Not Indexed
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: StaffDepartment
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: StaffCategory
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: AttendancePolicy
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: AttendanceException
+  - Field: staffId -> Status: Not Indexed
+
+Model: StaffFaceProfile
+  - Field: staffId -> Status: Unique Indexed
+
+Model: BulkPayoutAuditRecord
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: BankStatement
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: BankStatementEntry
+  - Field: branchId -> Status: Not Indexed
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+
+Model: SchoolCalendar
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: LeaveRequest
+  - Field: staffId -> Status: Not Indexed
+
+Model: fee_payment_links
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_adjustments
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_audit_logs
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_damaged_stock
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_goods_receipts
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_issues
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_items
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Composite Indexed / Index Defined
+
+Model: inventory_kits
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_opening_stock
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_purchase_orders
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_reservations
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_sales
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_supplier_payments
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_suppliers
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Not Indexed
+
+Model: inventory_transfers
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+
+Model: inventory_year_end_snapshots
+  - Field: school_id -> Status: Composite Indexed / Index Defined
+  - Field: branch_id -> Status: Composite Indexed / Index Defined
+
+Model: inventory_returns
+  - Field: school_id -> Status: Not Indexed
+  - Field: branch_id -> Status: Not Indexed
+
+Model: PromotionBatch
+  - Field: schoolId -> Status: Not Indexed
+  - Field: branchId -> Status: Not Indexed
+
+Model: PromotionRecord
+  - Field: studentId -> Status: Not Indexed
+
+Model: Driver
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: DriverAssignment
+  - Field: driverId -> Status: Composite Indexed / Index Defined
+  - Field: vehicleId -> Status: Composite Indexed / Index Defined
+  - Field: routeId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: StudentTransport
+  - Field: studentId -> Status: Unique Indexed
+  - Field: routeId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: TripSession
+  - Field: routeId -> Status: Composite Indexed / Index Defined
+  - Field: vehicleId -> Status: Composite Indexed / Index Defined
+  - Field: driverId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: VehicleGPSLive
+  - Field: vehicleId -> Status: Primary Key (ID) Indexed
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: VehicleGPSLog
+  - Field: vehicleId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: BusAttendance
+  - Field: studentId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: VehicleIncident
+  - Field: vehicleId -> Status: Composite Indexed / Index Defined
+  - Field: driverId -> Status: Not Indexed
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: VehicleMaintenance
+  - Field: vehicleId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: RoutePolyline
+  - Field: routeId -> Status: Unique Indexed
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: TransportNotification
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: TransportAuditLog
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: DriverDeviceLog
+  - Field: driverId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: DriverLoginAudit
+  - Field: driverId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+
+Model: DriverRefreshSession
+  - Field: driverId -> Status: Composite Indexed / Index Defined
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed
+
+Model: CommunicationLog
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: parentId -> Status: Not Indexed
+
+Model: ApprovalRequest
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Composite Indexed / Index Defined
+  - Field: staffId -> Status: Not Indexed
+
+Model: TransportSettings
+  - Field: schoolId -> Status: Unique Indexed
+
+Model: SimulationJob
+  - Field: schoolId -> Status: Composite Indexed / Index Defined
+  - Field: branchId -> Status: Not Indexed

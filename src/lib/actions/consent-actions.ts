@@ -100,7 +100,7 @@ export async function generateConsentLinksAction(classId: string, targetingAcade
         const students = await prisma.student.findMany({
             where: {
                 schoolId: context.schoolId,
-                academic: { classId: classId }
+                academic: { classId: classId, academicYear: targetingAcademicYearId }
             }
         });
 

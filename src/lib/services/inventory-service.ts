@@ -224,8 +224,12 @@ export const InventoryService = {
         return true;
       }
 
-      const schoolId = linkRecord.school_id || "VIVES";
-      const branchId = linkRecord.branch_id || "VIVES-RCB";
+      const schoolId = linkRecord.school_id;
+      const branchId = linkRecord.branch_id;
+      if (!schoolId || !branchId) {
+        console.error("[RESERVATION] Missing school_id or branch_id in link record. Aborting.");
+        return false;
+      }
       const description = linkRecord.description || "";
 
       let kitName = "";
@@ -241,7 +245,7 @@ export const InventoryService = {
           school_id: schoolId,
           branch_id: branchId,
           kit_name: kitName,
-          status: "Active"
+          status: "ACTIVE"
         },
         include: {
           inventory_kit_items: true

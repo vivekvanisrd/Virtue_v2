@@ -101,7 +101,7 @@ export async function updateStaffRole(targetStaffId: string, newRole: Role) {
     dbUpdateData.sovereignRoleId = customRole.id;
 
     const updated = await prisma.staff.update({
-      where: { id: targetStaffId },
+      where: { id: targetStaffId, schoolId: identity.schoolId },
       data: dbUpdateData
     });
 

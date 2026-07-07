@@ -30,14 +30,15 @@ export async function GET(req: NextRequest) {
         where: {
           schoolId,
           branchId,
-          status: "Active",
+          status: "CONFIRMED",
           isDeleted: false,
           ...(studentSearch ? {
             OR: [
               { firstName: { contains: studentSearch, mode: "insensitive" } },
               { lastName: { contains: studentSearch, mode: "insensitive" } },
               { admissionNumber: { contains: studentSearch, mode: "insensitive" } },
-              { studentCode: { contains: studentSearch, mode: "insensitive" } }
+              { studentCode: { contains: studentSearch, mode: "insensitive" } },
+              { legacyId: { contains: studentSearch, mode: "insensitive" } }
             ]
           } : {})
         },
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
           lastName: true,
           admissionNumber: true,
           studentCode: true,
+          legacyId: true,
           academic: {
             select: {
               classId: true,

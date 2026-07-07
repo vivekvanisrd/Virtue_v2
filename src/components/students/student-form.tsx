@@ -42,6 +42,16 @@ function Field({ label, error, children, className }: { label: string; error?: s
 const inputCls = "bg-white/50 backdrop-blur-md border border-slate-200 rounded-[24px] px-6 py-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/30 transition-all w-full shadow-sm";
 const selectCls = "bg-white/50 backdrop-blur-md border border-slate-200 rounded-[24px] px-6 py-4 text-sm text-slate-900 focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/30 transition-all w-full shadow-sm";
 
+const EXACT_NAMED: { names: string[], field: keyof StudentAdmissionData }[] = [
+  { names: ["admission fee", "admission"],                         field: "admissionFee" },
+  { names: ["caution deposit", "security deposit", "caution"],     field: "cautionDeposit" },
+  { names: ["library fee", "library"],                             field: "libraryFee" },
+  { names: ["lab fee", "laboratory fee", "lab"],                   field: "labFee" },
+  { names: ["sports fee", "sports"],                               field: "sportsFee" },
+  { names: ["development fee", "development"],                     field: "developmentFee" },
+  { names: ["exam fee", "examination fee", "exam"],               field: "examFee" },
+];
+
 export function StudentForm() {
   const { setTabDirty } = useTabs();
   const context = useTenant();
@@ -63,6 +73,7 @@ export function StudentForm() {
     feeSchedules: any[],
     feeMasters: any[],
     discountTypes: any[],
+    transportRoutes: any[],
     schoolName: string
   }>({
     branches: [],
@@ -71,6 +82,7 @@ export function StudentForm() {
     feeSchedules: [],
     feeMasters: [],
     discountTypes: [],
+    transportRoutes: [],
     schoolName: ""
   });
   const [sections, setSections] = useState<any[]>([]);
@@ -138,7 +150,31 @@ export function StudentForm() {
     setIsSubmitting(true);
     setFormError(null);
     try {
-      const result = await submitStandardizedAdmissionAction(data);
+      // Clean out fees that are not explicitly checked by the user
+      const cleanedData = { ...data };
+      
+      // 1. For named slots, if not selected, set to 0
+      EXACT_NAMED.forEach(({ names, field }) => {
+        const master = refData.feeMasters.find(
+          m => names.includes(m.name.toLowerCase().trim())
+        );
+        if (master && !selectedFeeIds.has(master.id)) {
+          (cleanedData as any)[field] = 0;
+        }
+      });
+
+      // 2. For auxiliary fields, filter out unselected
+      if (cleanedData.auxiliaryFields) {
+        const cleanedAux: Record<string, number> = {};
+        Object.entries(cleanedData.auxiliaryFields).forEach(([id, amt]) => {
+          if (selectedFeeIds.has(id)) {
+            cleanedAux[id] = Number(amt);
+          }
+        });
+        cleanedData.auxiliaryFields = cleanedAux;
+      }
+
+      const result = await submitStandardizedAdmissionAction(cleanedData);
       console.log("Admission Submission Result:", result);
       
       if (result.success && result.data) {
@@ -277,15 +313,6 @@ export function StudentForm() {
 
     // ⚠️ STRICT matching: only exact standard names map to hardcoded form fields.
     // Custom names (e.g. "Activity & Lab Fee") go to auxiliaryFields with their exact label.
-    const EXACT_NAMED: { names: string[], field: keyof StudentAdmissionData }[] = [
-      { names: ["admission fee", "admission"],             field: "admissionFee" },
-      { names: ["caution deposit", "security deposit", "caution"], field: "cautionDeposit" },
-      { names: ["library fee", "library"],                field: "libraryFee" },
-      { names: ["lab fee", "laboratory fee", "lab"],       field: "labFee" },
-      { names: ["sports fee", "sports"],                  field: "sportsFee" },
-      { names: ["development fee", "development"],        field: "developmentFee" },
-      { names: ["exam fee", "examination fee", "exam"],   field: "examFee" },
-    ];
 
     // Track which masters were claimed by a named slot
     const claimedIds = new Set<string>();
@@ -296,7 +323,7 @@ export function StudentForm() {
       );
       if (master) {
         claimedIds.add(master.id);
-        setValue(field, Number(master.amount || 0));
+        setValue(field, 0); // Start optional fields at 0 by default
       }
     });
 
@@ -307,17 +334,12 @@ export function StudentForm() {
       if (claimedIds.has(m.id)) return;
       if (tuitionNames.includes(m.name.toLowerCase().trim())) return;
       if (m.isActive === false) return;
-      auxiliary[m.id] = Number(m.amount || 0);
+      auxiliary[m.id] = 0; // Start auxiliary fields at 0 by default
     });
     setValue("auxiliaryFields", auxiliary);
 
-    // Auto-select all active fees with amount > 0
+    // Optional checkboxes start unchecked by default. Admin must explicitly select them.
     const autoSelected = new Set<string>();
-    refData.feeMasters.forEach(m => {
-      if (m.isActive !== false && Number(m.amount || 0) > 0) {
-        autoSelected.add(m.id);
-      }
-    });
     setSelectedFeeIds(autoSelected);
 
   }, [refData.feeMasters, setValue]);
@@ -801,22 +823,31 @@ export function StudentForm() {
                       {...register("classId", { 
                         onChange: async (e) => {
                           const cid = e.target.value;
-                          const res = await getSectionsByClass(cid);
+                          const selectedBranchId = watch("branchId"); // Pass form branch, not session branch
+                          const res = await getSectionsByClass(cid, selectedBranchId || undefined);
                           if (res.success && res.data) {
                             const sectionsList = res.data as any[];
                             setSections(sectionsList);
-                            // 🏁 Auto-Section: Select first available section with a slight delay for DOM sync
-                            if (sectionsList.length > 0) {
+                            // 🏁 Smart Auto-Section: Pick first section that has available capacity
+                            // Falls back to first section if all are full (user can still override)
+                            const firstAvailable = sectionsList.find(
+                              s => (s.studentCount ?? 0) < (s.capacity ?? 30)
+                            ) ?? sectionsList[0];
+                            if (firstAvailable) {
                               setTimeout(() => {
-                                setValue("sectionId", sectionsList[0].id, { shouldValidate: true, shouldDirty: true });
+                                setValue("sectionId", firstAvailable.id, { shouldValidate: true, shouldDirty: true });
                               }, 50);
                             } else {
                               setValue("sectionId", "");
                             }
                           }
 
-                          // 🎯 The Fee Schedule Pulse: Auto-filter by Class
-                          const schedules = refData.feeSchedules.filter(fs => fs.classId === cid);
+                          // 🎯 The Fee Schedule Pulse: Auto-filter by Class and Academic Year
+                          const selectedAY = watch("academicYearId");
+                          let schedules = refData.feeSchedules.filter(fs => fs.classId === cid && fs.academicYearId === selectedAY);
+                          if (schedules.length === 0) {
+                            schedules = refData.feeSchedules.filter(fs => fs.classId === cid);
+                          }
                           if (schedules.length > 0) {
                             setTimeout(() => {
                               setValue("feeScheduleId", schedules[0].id, { shouldValidate: true, shouldDirty: true });
@@ -836,12 +867,40 @@ export function StudentForm() {
                     </select>
                   </Field>
                   <Field label="Section" error={errors.sectionId?.message}>
-                    <select {...register("sectionId")} className={selectCls} disabled={sections.length === 0}>
-                      <option value="">Select Section</option>
-                      {sections.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
+                    <select {...register("sectionId")} className={selectCls}>
+                      <option value="">
+                        {watch("classId")
+                          ? sections.length === 0
+                            ? "No sections for this class/branch"
+                            : "Select Section"
+                          : "Select Class first"}
+                      </option>
+                      {sections.map((s: any) => {
+                        const count = s.studentCount ?? 0;
+                        const cap = s.capacity ?? 30;
+                        const isFull = count >= cap;
+                        return (
+                          <option key={s.id} value={s.id}>
+                            {isFull
+                              ? `Section ${s.name} ★ FULL (${count}/${cap})`
+                              : `Section ${s.name} (${count}/${cap})`}
+                          </option>
+                        );
+                      })}
                     </select>
+                    {/* Warning if selected section is full */}
+                    {(() => {
+                      const selectedSection = sections.find((s: any) => s.id === watch("sectionId"));
+                      if (!selectedSection) return null;
+                      const count = selectedSection.studentCount ?? 0;
+                      const cap = selectedSection.capacity ?? 30;
+                      if (count < cap) return null;
+                      return (
+                        <p className="mt-1.5 text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                          ⚠ Section {selectedSection.name} is at full capacity ({count}/{cap}). You can still proceed or choose another section.
+                        </p>
+                      );
+                    })()}
                   </Field>
                   <Field label="Roll Number" error={errors.rollNumber?.message}>
                     <input {...register("rollNumber")} placeholder="Roll No" className={inputCls} />
@@ -854,7 +913,10 @@ export function StudentForm() {
                     >
                       <option value="">Select Schedule</option>
                       {refData.feeSchedules
-                        .filter(fs => !watch("classId") || fs.classId === watch("classId"))
+                        .filter(fs => 
+                          (!watch("classId") || fs.classId === watch("classId")) &&
+                          (!watch("academicYearId") || fs.academicYearId === watch("academicYearId"))
+                        )
                         .map(fs => (
                           <option key={fs.id} value={fs.id}>{fs.name} (₹{fs.totalAmount?.toLocaleString()})</option>
                         ))
@@ -1071,26 +1133,109 @@ export function StudentForm() {
                     <Bus className="w-4 h-4 text-yellow-400" /> Transport Required
                   </label>
                 </div>
-                {transportRequired && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
-                    <Field label="Route" error={errors.transportRouteId?.message}>
-                      <select {...register("transportRouteId")} className={selectCls}>
-                        <option value="">Select Route</option>
-                        <option value="r1">Route 1 - East</option>
-                        <option value="r2">Route 2 - West</option>
-                      </select>
-                    </Field>
-                    <Field label="Pickup Stop" error={errors.pickupStop?.message}>
-                      <input {...register("pickupStop")} placeholder="Stop name" className={inputCls} />
-                    </Field>
-                    <Field label="Drop Stop" error={errors.dropStop?.message}>
-                      <input {...register("dropStop")} placeholder="Stop name" className={inputCls} />
-                    </Field>
-                    <Field label="Monthly Fee (₹)" error={errors.transportMonthlyFee?.message}>
-                      <input {...register("transportMonthlyFee", { valueAsNumber: true })} type="number" placeholder="0" className={inputCls} />
-                    </Field>
-                  </div>
-                )}
+                {transportRequired && (() => {
+                  const selectedRouteId = watch("transportRouteId");
+                  const selectedRoute = refData.transportRoutes.find((r: any) => r.id === selectedRouteId);
+                  const routeStops = selectedRoute?.stops || [];
+                  return (
+                    <div className="mt-3 space-y-3">
+                      {/* Route Selector */}
+                      <div className="grid grid-cols-1 gap-3">
+                        <Field label="Route" error={errors.transportRouteId?.message}>
+                          <select
+                            {...register("transportRouteId")}
+                            className={selectCls}
+                            onChange={(e) => {
+                              setValue("transportRouteId", e.target.value);
+                              setValue("pickupStop", "");
+                              setValue("dropStop", "");
+                              setValue("transportMonthlyFee", 0);
+                            }}
+                          >
+                            <option value="">— Select Transport Route —</option>
+                            {refData.transportRoutes.length === 0 && (
+                              <option value="" disabled>No routes configured in Transport Hub</option>
+                            )}
+                            {refData.transportRoutes.map((r: any) => (
+                              <option key={r.id} value={r.id}>
+                                {r.routeName} {r.routeCode ? `(${r.routeCode})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      </div>
+
+                      {/* Stop Selectors (appear after route is selected) */}
+                      {selectedRouteId && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <Field label="Pickup Stop" error={errors.pickupStop?.message}>
+                            <select
+                              {...register("pickupStop")}
+                              className={selectCls}
+                              onChange={(e) => {
+                                const stopId = e.target.value;
+                                setValue("pickupStop", stopId);
+                                // Auto-calculate fee: use higher of pickup/drop stop fee
+                                const pickupFee = routeStops.find((s: any) => s.id === stopId)?.monthlyFee || 0;
+                                const dropStopId = watch("dropStop");
+                                const dropFee = routeStops.find((s: any) => s.id === dropStopId)?.monthlyFee || 0;
+                                setValue("transportMonthlyFee", Math.max(Number(pickupFee), Number(dropFee)));
+                              }}
+                            >
+                              <option value="">— Select Pickup Stop —</option>
+                              {routeStops.map((s: any) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.stopName} — ₹{Number(s.monthlyFee).toLocaleString()}/mo
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+
+                          <Field label="Drop Stop" error={errors.dropStop?.message}>
+                            <select
+                              {...register("dropStop")}
+                              className={selectCls}
+                              onChange={(e) => {
+                                const stopId = e.target.value;
+                                setValue("dropStop", stopId);
+                                // Auto-calculate fee: use higher of pickup/drop stop fee
+                                const dropFee = routeStops.find((s: any) => s.id === stopId)?.monthlyFee || 0;
+                                const pickupStopId = watch("pickupStop");
+                                const pickupFee = routeStops.find((s: any) => s.id === pickupStopId)?.monthlyFee || 0;
+                                setValue("transportMonthlyFee", Math.max(Number(pickupFee), Number(dropFee)));
+                              }}
+                            >
+                              <option value="">— Select Drop Stop —</option>
+                              {routeStops.map((s: any) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.stopName} — ₹{Number(s.monthlyFee).toLocaleString()}/mo
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+
+                          <Field label="Monthly Fee (Auto)">
+                            <div className="relative">
+                              <input
+                                {...register("transportMonthlyFee", { valueAsNumber: true })}
+                                type="number"
+                                readOnly
+                                className={`${inputCls} bg-slate-50 cursor-not-allowed text-primary font-black`}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase tracking-wider">AUTO</span>
+                            </div>
+                          </Field>
+                        </div>
+                      )}
+
+                      {refData.transportRoutes.length === 0 && (
+                        <p className="text-[10px] text-amber-600 font-bold italic">
+                          ⚠ No transport routes are configured. Please set up routes in the Transport Hub first.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="border-t border-border my-4" />
                 <p className="text-[10px] font-bold text-orange-400/70 uppercase tracking-wider">Previous School</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-1">
@@ -1136,24 +1281,16 @@ export function StudentForm() {
 
                 {/* Fee Selection Grid */}
                 {(() => {
-                  const EXACT_NAMED: { names: string[], field: keyof StudentAdmissionData }[] = [
-                    { names: ["admission fee", "admission"],                         field: "admissionFee" },
-                    { names: ["caution deposit", "security deposit", "caution"],     field: "cautionDeposit" },
-                    { names: ["library fee", "library"],                             field: "libraryFee" },
-                    { names: ["lab fee", "laboratory fee", "lab"],                   field: "labFee" },
-                    { names: ["sports fee", "sports"],                               field: "sportsFee" },
-                    { names: ["development fee", "development"],                     field: "developmentFee" },
-                    { names: ["exam fee", "examination fee", "exam"],               field: "examFee" },
-                  ];
                   const tuitionNames = ["tuition fee", "tuition", "standard tuition fee"];
 
                   const tuitionMaster = refData.feeMasters.find(m => tuitionNames.includes(m.name.toLowerCase().trim()));
                   const claimedIds = new Set<string>();
                   if (tuitionMaster) claimedIds.add(tuitionMaster.id);
 
-                  // Build the list of toggleable fee cards
+                  // Build the list of toggleable fee cards — exclude transport (handled by Transport Hub)
                   const feeCards = refData.feeMasters
                     .filter(m => !tuitionNames.includes(m.name.toLowerCase().trim()) && m.isActive !== false)
+                    .filter(m => !m.name.toLowerCase().includes("transport"))
                     .map(m => {
                       const namedSlot = EXACT_NAMED.find(s => s.names.includes(m.name.toLowerCase().trim()));
                       claimedIds.add(m.id);
@@ -1172,6 +1309,22 @@ export function StudentForm() {
                           setValue("auxiliaryFields", { ...cur, [id]: 0 });
                         }
                       } else {
+                        // If it's an admission fee, deselect all other admission fees to enforce mutual exclusivity
+                        const targetMaster = refData.feeMasters.find(m => m.id === id);
+                        if (targetMaster && targetMaster.name.toLowerCase().includes("admission")) {
+                          refData.feeMasters.forEach(m => {
+                            if (m.id !== id && m.name.toLowerCase().includes("admission")) {
+                              next.delete(m.id);
+                              const slot = EXACT_NAMED.find(s => s.names.includes(m.name.toLowerCase().trim()));
+                              if (slot) setValue(slot.field, 0 as any);
+                              else {
+                                const cur: any = watch("auxiliaryFields") || {};
+                                setValue("auxiliaryFields", { ...cur, [m.id]: 0 });
+                              }
+                            }
+                          });
+                        }
+
                         next.add(id);
                         if (formField) setValue(formField, amount as any);
                         else {
@@ -1507,8 +1660,8 @@ export function StudentForm() {
             )}
           </div>
 
-          {/* 🪄 PRO MAGIC: Autofill (Dev Only) */}
-          {process.env.NODE_ENV === "development" && (
+          {/* 🪄 PRO MAGIC: Autofill — DEVELOPER role only, never exposed to any other user */}
+          {context?.userRole === "DEVELOPER" && (
             <div className="absolute left-1/2 -translate-x-1/2 bottom-8">
                <button
                  type="button"

@@ -163,7 +163,7 @@ export function StaffForm({ mode = "onboard", staffId, initialData, onSuccess }:
 
   const nextStep = async () => {
     const fieldsByStep: Record<number, (keyof StaffOnboardingData)[]> = {
-      1: ["firstName", "lastName", "middleName", "phone", "email", "gender", "dob", "branchId", "address"],
+      1: ["firstName", "lastName", "middleName", "phone", "email", "gender", "dob", "branchId", "address", "biometricId"],
       2: ["role", "department", "designation", "qualification", "experienceYears", "basicSalary", "dateOfJoining"],
       3: ["panNumber", "pfNumber", "uanNumber", "esiNumber", "aadhaarNumber"],
       4: ["bankName", "accountName", "accountNumber", "ifscCode"],
@@ -341,7 +341,7 @@ export function StaffForm({ mode = "onboard", staffId, initialData, onSuccess }:
                       </Field>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                       <Field label="EMAIL" error={errors.email?.message}>
                         <input {...register("email")} type="email" className={inputCls} placeholder="john@example.com" />
                       </Field>
@@ -354,6 +354,9 @@ export function StaffForm({ mode = "onboard", staffId, initialData, onSuccess }:
                             e.target.value = e.target.value.replace(/[^\d]/g, "");
                           }}
                         />
+                      </Field>
+                      <Field label="BIOMETRIC ID" error={errors.biometricId?.message}>
+                        <input {...register("biometricId")} className={inputCls} placeholder="e.g. 101" />
                       </Field>
                     </div>
 

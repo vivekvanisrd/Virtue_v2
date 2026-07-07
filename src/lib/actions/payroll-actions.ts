@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
+import { serializeDecimal } from "@/lib/utils/serialization";
 import { getTenancyFilters } from "../utils/tenancy";
 import crypto from "crypto";
 import { PayrollEngine } from "../services/payroll-engine";
@@ -111,7 +112,7 @@ export async function generatePayrollDraftAction(
             }
         }))
       };
-      return { success: true, data: serializedExisting, message: "Draft resumed." };
+      return { success: true, data: serializeDecimal(serializedExisting), message: "Draft resumed." };
     }
 
     const tenancy = getTenancyFilters(context);
@@ -126,12 +127,12 @@ export async function generatePayrollDraftAction(
       where: { 
         ...tenancy, 
         branchId: targetBranch,
-        status: "Active" 
+        status: "ACTIVE" 
       },
       include: { 
         professional: true,
         advances: {
-          where: { status: "Active", balance: { gt: 0 } }
+          where: { status: "ACTIVE", balance: { gt: 0 } }
         }
       }
     });
@@ -253,7 +254,7 @@ export async function generatePayrollDraftAction(
     };
 
     revalidatePath("/dashboard/salaries");
-    return { success: true, data: serializedRun, message: `Draft generated for ${staffMembers.length} staff.` };
+    return { success: true, data: serializeDecimal(serializedRun), message: `Draft generated for ${staffMembers.length} staff.` };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -285,13 +286,13 @@ export async function syncPayrollStaffAction(runId: string) {
       where: { 
         ...tenancy, 
         ...(run.branchId ? { branchId: run.branchId } : {}),
-        status: "Active",
+        status: "ACTIVE",
         id: { notIn: Array.from(existingStaffIds) } 
       },
       include: { 
         professional: true,
         advances: {
-          where: { status: "Active", balance: { gt: 0 } }
+          where: { status: "ACTIVE", balance: { gt: 0 } }
         }
       }
     });
@@ -431,7 +432,7 @@ export async function finalizePayrollAction(payrollRunId: string) {
         
         if (advanceRecovery > 0) {
            const activeAdv = await tx.staffAdvance.findFirst({
-              where: { staffId: slip.staffId, status: "Active" },
+              where: { staffId: slip.staffId, status: "ACTIVE" },
               orderBy: { disbursedDate: 'asc' }
            });
            
@@ -441,7 +442,7 @@ export async function finalizePayrollAction(payrollRunId: string) {
                  where: { id: activeAdv.id },
                  data: { 
                    balance: newBalance,
-                   status: newBalance <= 0 ? "Paid" : "Active"
+                   status: newBalance <= 0 ? "PAID" : "ACTIVE"
                  }
               });
            }
@@ -452,7 +453,7 @@ export async function finalizePayrollAction(payrollRunId: string) {
       await tx.payrollRun.update({
         where: { id: run.id },
         data: { 
-            status: "Approved", 
+            status: "APPROVED", 
             approvedBy: context.staffId || "System", 
             approvedAt: new Date(),
         }
@@ -495,7 +496,7 @@ export async function finalizePayrollAction(payrollRunId: string) {
     }, { timeout: 30000 });
 
     revalidatePath("/dashboard");
-    return { success: true, data: result };
+    return { success: true, data: serializeDecimal(result) };
   } catch (error: any) {
     console.error("Disbursement Error:", error);
     return { success: false, error: error.message };
@@ -515,10 +516,10 @@ export async function lockPayrollRunAction(payrollRunId: string) {
     const run = await prisma.payrollRun.findUnique({ where: { id: payrollRunId } });
     if (!run) throw new Error("Payroll run not found.");
     if (run.isLocked) throw new Error("Payroll run is already locked.");
-    if (run.status !== "Approved") throw new Error("Only Approved payroll runs can be locked.");
+    if (run.status !== "APPROVED") throw new Error("Only Approved payroll runs can be locked.");
 
     await prisma.payrollRun.update({
-      where: { id: payrollRunId },
+      where: { id: payrollRunId, schoolId: identity.schoolId },
       data: {
         isLocked: true,
         lockedAt: new Date(),
@@ -548,7 +549,7 @@ export async function unlockPayrollRunAction(payrollRunId: string, reason: strin
     if (!run.isLocked) throw new Error("Payroll run is not locked.");
 
     await prisma.payrollRun.update({
-      where: { id: payrollRunId },
+      where: { id: payrollRunId, schoolId: identity.schoolId },
       data: {
         isLocked: false,
         unlockedAt: new Date(),
@@ -861,12 +862,12 @@ export async function markSlipAsPaidAction(slipId: string, paymentMode: string, 
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
     await prisma.salarySlip.update({
-      where: { id: slipId }, 
+      where: { id: slipId, schoolId: identity.schoolId }, 
       data: {
         paidAt: new Date(),
         paymentMode,
         paymentRef,
-        status: "Paid"
+        status: "PAID"
       }
     });
 

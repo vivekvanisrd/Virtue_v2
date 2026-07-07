@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const suppliers = await prisma.inventory_suppliers.findMany({
       where: {
         school_id: schoolId,
-        status: "Active",
+        status: "ACTIVE",
       },
       orderBy: { supplier_name: "asc" },
     });
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       }
 
       const updated = await prisma.inventory_suppliers.update({
-        where: { id },
+        where: { id, school_id: schoolId },
         data: {
           supplier_name,
           contact_person,
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
           email,
           address,
           bank_details: bank_details || null,
-          status: status || "Active",
+          status: status || "ACTIVE",
           updated_at: new Date(),
         },
       });
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
           email,
           address,
           bank_details: bank_details || null,
-          status: status || "Active",
+          status: status || "ACTIVE",
         },
       });
 

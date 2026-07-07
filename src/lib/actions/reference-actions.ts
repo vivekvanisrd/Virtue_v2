@@ -34,6 +34,7 @@ export async function getAdmissionReferenceData() {
                     id: true, 
                     name: true, 
                     classId: true, 
+                    academicYearId: true,
                     totalAmount: true,
                     components: {
                         select: {
@@ -81,6 +82,27 @@ export async function getAdmissionReferenceData() {
             console.warn("[REF-DATA] feeMasters raw query failed, using empty array:", e);
         }
 
+        // 🚌 Transport Hub: Fetch active routes with stops for dynamic transport fee selection
+        let transportRoutes: any[] = [];
+        try {
+            transportRoutes = await prisma.route.findMany({
+                where: { schoolId: context.schoolId, isDeleted: false },
+                select: {
+                    id: true,
+                    routeName: true,
+                    routeCode: true,
+                    stops: {
+                        where: { isDeleted: false },
+                        select: { id: true, stopName: true, monthlyFee: true, pickupTime: true, dropTime: true },
+                        orderBy: { stopName: "asc" }
+                    }
+                },
+                orderBy: { routeName: "asc" }
+            });
+        } catch (e) {
+            console.warn("[REF-DATA] transportRoutes query failed, using empty array:", e);
+        }
+
         return {
             success: true,
             data: serializeDecimal({
@@ -90,6 +112,7 @@ export async function getAdmissionReferenceData() {
                 feeSchedules,
                 feeMasters,
                 discountTypes,
+                transportRoutes,
                 schoolName: school?.name || "PaVa-EDUX Academy"
             })
         };
@@ -99,24 +122,39 @@ export async function getAdmissionReferenceData() {
     }
 }
 
-export async function getSectionsByClass(classId: string) {
+export async function getSectionsByClass(classId: string, formBranchId?: string) {
     try {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
         const context = identity;
 
+        // Use the branch selected in the form if provided, otherwise fall back to session branch.
+        const effectiveBranchId = formBranchId || context.branchId || null;
+
         const sections = await prisma.section.findMany({
             where: { 
                 classId,
                 schoolId: context.schoolId,
-                ...(context.branchId ? { branchId: context.branchId } : {})
+                ...(effectiveBranchId ? { branchId: effectiveBranchId } : {})
             },
-            orderBy: { name: 'asc' }, // Ensure Section A is always [0]
-            select: { id: true, name: true }
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                capacity: true,
+                _count: { select: { academicRecords: true } }
+            }
         });
 
         // 💎 Sovereign De-duplication: Ensure no phantom duplicates leak to the UI
-        const uniqueSections = Array.from(new Map(sections.map(s => [s.name, s])).values());
+        const uniqueSections = Array.from(
+            new Map(sections.map(s => [s.name, s])).values()
+        ).map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            capacity: (s.capacity as number) ?? 30,
+            studentCount: (s._count?.academicRecords as number) ?? 0
+        }));
         
         return { success: true, data: uniqueSections };
     } catch (e: any) {

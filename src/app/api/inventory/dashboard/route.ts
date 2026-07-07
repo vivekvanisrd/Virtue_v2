@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         school_id: schoolId,
         branch_id: branchId,
         academic_year_id: academicYearId,
-        status: "Active"
+        status: "ACTIVE"
       },
       select: { total_amount: true }
     });
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
       where: {
         school_id: schoolId,
         branch_id: branchId,
-        status: "Active",
+        status: "ACTIVE",
         OR: [
           { item_type: { not: "Kit" } },
           { item_type: null }
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       where: {
         school_id: schoolId,
         branch_id: branchId,
-        status: "Active",
+        status: "ACTIVE",
         item_type: "Kit"
       }
     });

@@ -54,6 +54,7 @@ export async function getFeeComponentMaster() {
                   NOT: {
                     OR: [
                       { name: { contains: "Tuition", mode: "insensitive" } },
+                      { name: { contains: "Transport", mode: "insensitive" } },
                       { type: "CORE" } // Usually Tuition is the only CORE fee in some schemas
                     ]
                   }
@@ -249,8 +250,10 @@ export async function upsertFeeStructure(data: {
 }) {
     try {
         const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+        const context = identity;
+        const { checkCapability } = await import("@/lib/auth/rbac");
+        await checkCapability('ACADEMIC_CONFIG');
         const totalAmount = data.components.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
 
         const structure = await prisma.$transaction(async (tx: any) => {
@@ -309,8 +312,10 @@ export async function upsertFeeStructure(data: {
 export async function applyFeeStructureToClass(structureId: string) {
     try {
         const identity = await getSovereignIdentity();
-    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
-    const context = identity;
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
+        const context = identity;
+        const { checkCapability } = await import("@/lib/auth/rbac");
+        await checkCapability('ACADEMIC_CONFIG');
         
         const structure = await prisma.feeStructure.findUnique({
             where: { id: structureId, schoolId: context.schoolId }, // TENANCY CHECK
@@ -324,7 +329,8 @@ export async function applyFeeStructureToClass(structureId: string) {
                 schoolId: context.schoolId,
                 academic: {
                     classId: structure.classId,
-                    branchId: structure.branchId // Branch isolation
+                    branchId: structure.branchId, // Branch isolation
+                    academicYear: structure.academicYearId
                 }
             },
             include: { financial: true }
@@ -647,6 +653,8 @@ export async function toggleFeeStructureActiveAction(id: string) {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
         const context = identity;
+        const { checkCapability } = await import("@/lib/auth/rbac");
+        await checkCapability('ACADEMIC_CONFIG');
 
         const structure = await prisma.feeStructure.findUnique({
             where: { id, schoolId: context.schoolId }
@@ -655,7 +663,7 @@ export async function toggleFeeStructureActiveAction(id: string) {
         if (!structure) throw new Error("Structure not found.");
 
         const updated = await prisma.feeStructure.update({
-            where: { id },
+            where: { id, schoolId: context.schoolId },
             data: { isActive: !structure.isActive }
         });
 
@@ -674,6 +682,8 @@ export async function deleteFeeStructureAction(id: string) {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
         const context = identity;
+        const { checkCapability } = await import("@/lib/auth/rbac");
+        await checkCapability('ACADEMIC_CONFIG');
 
         // 1. Check for audit history (assigned students)
         const assignmentCount = await prisma.financialRecord.count({
@@ -683,7 +693,7 @@ export async function deleteFeeStructureAction(id: string) {
         if (assignmentCount > 0) {
             // Recommendation: Archive instead of Delete to protect audit trail
             await prisma.feeStructure.update({
-                where: { id },
+                where: { id, schoolId: context.schoolId },
                 data: { isActive: false }
             });
             return { 

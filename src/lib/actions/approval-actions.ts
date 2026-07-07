@@ -182,23 +182,19 @@ export async function resolveApprovalRequestAction(data: {
       throw new Error("UNAUTHORIZED_ACCESS: You do not have permission to review requests.");
     }
 
-    // Load request to verify branch ownership/tenancy safety
-    const request = await prisma.approvalRequest.findUnique({
-      where: { id: data.requestId }
+    const isGlobalManager = role === "OWNER" || role === "DEVELOPER";
+
+    // Load request directly under tenancy/branch filters
+    const request = await prisma.approvalRequest.findFirst({
+      where: { 
+        id: data.requestId,
+        schoolId,
+        ...(branchId && !isGlobalManager ? { branchId } : {})
+      }
     });
 
     if (!request) {
-      throw new Error("REQUEST_NOT_FOUND: The requested record does not exist.");
-    }
-
-    // Enforce tenancy & branch checks
-    if (request.schoolId !== schoolId) {
-      throw new Error("SECURITY_VIOLATION: Cross-tenant modification attempt blocked.");
-    }
-
-    const isGlobalManager = role === "OWNER" || role === "DEVELOPER";
-    if (branchId && !isGlobalManager && request.branchId !== branchId) {
-      throw new Error("SECURITY_VIOLATION: Cross-branch modification attempt blocked.");
+      throw new Error("REQUEST_NOT_FOUND: The requested record does not exist under your institutional scope.");
     }
 
     if (request.status !== "PENDING") {

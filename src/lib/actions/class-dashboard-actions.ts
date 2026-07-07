@@ -28,9 +28,18 @@ export async function getClassDashboardDataAction(classId: string) {
       return { success: false, error: "Class not found or unauthorized." };
     }
 
-    // 2. Fetch all academic records / enrolled students in this class
+    // Resolve active academic year
+    const activeAY = await prisma.academicYear.findFirst({
+      where: { schoolId: context.schoolId, isCurrent: true }
+    });
+
+    if (!activeAY) {
+      return { success: false, error: "Active academic year not found." };
+    }
+
+    // 2. Fetch all academic records / enrolled students in this class for the active academic year
     const academicRecords = await prisma.academicRecord.findMany({
-      where: { classId, schoolId: context.schoolId },
+      where: { classId, schoolId: context.schoolId, academicYear: activeAY.id },
       include: {
         student: {
           include: {
@@ -58,14 +67,12 @@ export async function getClassDashboardDataAction(classId: string) {
       if (s.financial) {
         const comps = s.financial.components || [];
         if (comps.length > 0) {
-          expected = comps.reduce((sum, c) => sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0);
-        } else {
-          expected = Number(s.financial.annualTuition || 0) - Number(s.financial.totalDiscount || 0);
+          expected = comps.reduce((sum, c) => sum + Number(c.amount || 0), 0);
         }
       }
 
-      const paid = s.collections.reduce((sum, col) => sum + Number(col.amountPaid || 0), 0);
-      const dues = Math.max(0, expected - paid);
+      const paid = s.collections.reduce((sum, col) => sum + Number(col.amountPaid || col.totalPaid || 0), 0);
+      const due = Math.max(0, expected - paid);
 
       totalExpected += expected;
       totalPaid += paid;
@@ -74,12 +81,11 @@ export async function getClassDashboardDataAction(classId: string) {
         id: s.id,
         firstName: s.firstName,
         lastName: s.lastName || "",
+        studentCode: s.studentCode,
         gender: s.gender || "Not Specified",
-        phone: s.phone || "N/A",
-        rollNumber: rec.rollNumber || "N/A",
         expected,
         paid,
-        dues,
+        due,
         status: s.status
       };
     });
@@ -106,7 +112,7 @@ export async function getClassDashboardDataAction(classId: string) {
 
     if (highestClass) {
       const oldestStudents = await prisma.academicRecord.findMany({
-        where: { classId: highestClass.id, schoolId: context.schoolId },
+        where: { classId: highestClass.id, schoolId: context.schoolId, academicYear: activeAY.id },
         include: { student: true }
       });
 
@@ -132,7 +138,7 @@ export async function getClassDashboardDataAction(classId: string) {
     // Fallbacks for Head Boy / Head Girl from the general student list if not found
     if (!headBoy) {
       const fallbackBoy = await prisma.student.findFirst({
-        where: { schoolId: context.schoolId, gender: { in: ['Male', 'male', 'M', 'm'] }, status: 'Active' }
+        where: { schoolId: context.schoolId, gender: { in: ['Male', 'male', 'M', 'm'] }, status: 'CONFIRMED' }
       });
       if (fallbackBoy) {
         headBoy = {
@@ -145,7 +151,7 @@ export async function getClassDashboardDataAction(classId: string) {
 
     if (!headGirl) {
       const fallbackGirl = await prisma.student.findFirst({
-        where: { schoolId: context.schoolId, gender: { in: ['Female', 'female', 'F', 'f'] }, status: 'Active' }
+        where: { schoolId: context.schoolId, gender: { in: ['Female', 'female', 'F', 'f'] }, status: 'CONFIRMED' }
       });
       if (fallbackGirl) {
         headGirl = {
@@ -161,7 +167,7 @@ export async function getClassDashboardDataAction(classId: string) {
     if (!resolvedTeacher) {
       // Find any active staff in the branch/school
       const fallbackStaff = await prisma.staff.findFirst({
-        where: { schoolId: context.schoolId, status: 'Active', role: 'TEACHER' }
+        where: { schoolId: context.schoolId, status: 'ACTIVE', role: 'TEACHER' }
       });
       if (fallbackStaff) {
         resolvedTeacher = {

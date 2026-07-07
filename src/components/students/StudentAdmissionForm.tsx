@@ -118,6 +118,7 @@ export default function StudentAdmissionForm() {
     );
 
     const watchedClassId = watch("classId");
+    const watchedAcademicYearId = watch("academicYearId");
     const watchedFees = watch([
         "tuitionFee", "admissionFee", "libraryFee", "labFee", "sportsFee",
         "developmentFee", "examFee", "computerFee", "miscellaneousFee", "cautionDeposit"
@@ -143,15 +144,14 @@ export default function StudentAdmissionForm() {
             getSectionsAction(watchedClassId).then(res => {
                 if (res.success) setSections(res.data);
             });
-            // Smart Match: Try to find a fee structure for this class
-            const matchingFee = feeStructures.find(f => f.classId === watchedClassId);
+            const matchingFee = feeStructures.find(f => f.classId === watchedClassId && f.academicYearId === watchedAcademicYearId);
             if (matchingFee) {
                 // Populate default tuition from template
                 setValue("tuitionFee", Number(matchingFee.totalAmount));
                 setValue("feeScheduleId", matchingFee.id);
             }
         }
-    }, [watchedClassId, feeStructures, setValue]);
+    }, [watchedClassId, watchedAcademicYearId, feeStructures, setValue]);
 
     const nextStep = async () => {
         const fields = getFieldsForStep(currentStep);

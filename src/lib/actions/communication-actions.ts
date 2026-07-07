@@ -12,13 +12,21 @@ export async function getCommunicationLogsAction(filters?: { type?: string; reci
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId, email } = identity;
+    const { schoolId, branchId, email, staffId } = identity;
 
     const logs = await prisma.communicationLog.findMany({
       where: {
         schoolId,
         ...(branchId ? { branchId } : {}),
-        sender: { contains: email || "unknown-sender" },
+        OR: [
+          { authorEmail: email || "unknown-sender" },
+          ...(staffId ? [{ authorId: staffId }] : []),
+          {
+            authorEmail: null,
+            authorId: null,
+            sender: { contains: email || "unknown-sender" }
+          }
+        ],
         ...(filters?.type ? { type: filters.type } : {}),
         ...(filters?.recipient ? { recipient: { contains: filters.recipient, mode: 'insensitive' } } : {}),
         ...(filters?.status ? { status: filters.status } : {})
@@ -39,7 +47,7 @@ export async function getCommunicationLogsAction(filters?: { type?: string; reci
  * Send custom messages or emails with targeted groupings and internal-only toggling.
  */
 export async function sendCustomEmailAction(data: { 
-  targetGroup: "MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT" | "STAFF";
+  targetGroup: string;
   recipient: string; // Used if MANUAL
   subject: string; 
   body: string; 
@@ -49,29 +57,124 @@ export async function sendCustomEmailAction(data: {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId, email: senderEmail, name: senderName } = identity;
+    const { schoolId, branchId, email: senderEmail, name: senderName, staffId } = identity;
 
     if (!data.subject || !data.body) {
       throw new Error("MISSING_FIELDS: Subject and Message Body are required.");
     }
 
     // Resolve targets
-    const recipientEmails: string[] = [];
+    const recipients: { email: string; staffId?: string; name?: string | null }[] = [];
 
     if (data.targetGroup === "MANUAL" || data.targetGroup === "STUDENT" || data.targetGroup === "STAFF") {
-      if (!data.recipient || !data.recipient.includes("@")) {
-        throw new Error("INVALID_EMAIL: Please provide a valid recipient email address.");
+      const targetEmails = data.recipient.split(",").map(e => e.trim()).filter(e => e.includes("@"));
+      if (targetEmails.length === 0) {
+        throw new Error("INVALID_EMAIL: Please provide at least one valid recipient email address.");
       }
-      recipientEmails.push(data.recipient.trim());
+      for (const targetEmail of targetEmails) {
+        const matchedStaff = await prisma.staff.findFirst({
+          where: { schoolId, email: targetEmail },
+          select: { id: true, firstName: true, lastName: true }
+        });
+        const staffName = matchedStaff ? `${matchedStaff.firstName} ${matchedStaff.lastName || ""}`.trim() : null;
+        recipients.push({ email: targetEmail, staffId: matchedStaff?.id, name: staffName });
+      }
+    } else if (data.targetGroup.startsWith("CLASS_TEACHER_")) {
+      const targetClassId = data.targetGroup.replace("CLASS_TEACHER_", "");
+      const staff = await prisma.staff.findMany({
+        where: { 
+          schoolId, 
+          status: "ACTIVE",
+          assignedClassId: targetClassId,
+          ...(branchId ? { branchId } : {})
+        },
+        select: { id: true, email: true, firstName: true, lastName: true }
+      });
+      staff.forEach(s => {
+        if (s.email && s.email.includes("@")) {
+          recipients.push({ 
+            email: s.email.trim(), 
+            staffId: s.id, 
+            name: `${s.firstName} ${s.lastName || ""}`.trim() 
+          });
+        }
+      });
+    } else if (data.targetGroup === "TEACHERS") {
+      const staff = await prisma.staff.findMany({
+        where: { 
+          schoolId, 
+          status: "ACTIVE",
+          role: { in: ["TEACHER", "Teacher"] },
+          ...(branchId ? { branchId } : {})
+        },
+        select: { id: true, email: true, firstName: true, lastName: true }
+      });
+      staff.forEach(s => {
+        if (s.email && s.email.includes("@")) {
+          recipients.push({ 
+            email: s.email.trim(), 
+            staffId: s.id, 
+            name: `${s.firstName} ${s.lastName || ""}`.trim() 
+          });
+        }
+      });
+    } else if (data.targetGroup === "DRIVERS") {
+      const staff = await prisma.staff.findMany({
+        where: { 
+          schoolId, 
+          status: "ACTIVE",
+          role: { in: ["DRIVER", "Driver"] },
+          ...(branchId ? { branchId } : {})
+        },
+        select: { id: true, email: true, firstName: true, lastName: true }
+      });
+      staff.forEach(s => {
+        if (s.email && s.email.includes("@")) {
+          recipients.push({ 
+            email: s.email.trim(), 
+            staffId: s.id, 
+            name: `${s.firstName} ${s.lastName || ""}`.trim() 
+          });
+        }
+      });
+    } else if (data.targetGroup === "ADMINS") {
+      const staff = await prisma.staff.findMany({
+        where: { 
+          schoolId, 
+          status: "ACTIVE",
+          role: { in: ["ADMIN", "Admin", "PRINCIPAL", "Principal", "OWNER", "Owner", "DEVELOPER", "Developer", "VICE_PRINCIPAL"] },
+          ...(branchId ? { branchId } : {})
+        },
+        select: { id: true, email: true, firstName: true, lastName: true }
+      });
+      staff.forEach(s => {
+        if (s.email && s.email.includes("@")) {
+          recipients.push({ 
+            email: s.email.trim(), 
+            staffId: s.id, 
+            name: `${s.firstName} ${s.lastName || ""}`.trim() 
+          });
+        }
+      });
     } else {
       // 1. Fetch Staff if targeted
       if (data.targetGroup === "ALL_STAFF" || data.targetGroup === "ALL") {
         const staff = await prisma.staff.findMany({
-          where: { schoolId, status: "Active" },
-          select: { email: true }
+          where: { 
+            schoolId, 
+            status: "ACTIVE",
+            ...(branchId ? { branchId } : {})
+          },
+          select: { id: true, email: true, firstName: true, lastName: true }
         });
         staff.forEach(s => {
-          if (s.email && s.email.includes("@")) recipientEmails.push(s.email.trim());
+          if (s.email && s.email.includes("@")) {
+            recipients.push({ 
+              email: s.email.trim(), 
+              staffId: s.id, 
+              name: `${s.firstName} ${s.lastName || ""}`.trim() 
+            });
+          }
         });
       }
 
@@ -79,29 +182,49 @@ export async function sendCustomEmailAction(data: {
       if (data.targetGroup === "ALL_PARENTS" || data.targetGroup === "ALL") {
         // Fetch student emails
         const students = await prisma.student.findMany({
-          where: { schoolId, status: "Active" },
-          select: { email: true }
+          where: { 
+            schoolId, 
+            status: "CONFIRMED",
+            ...(branchId ? { branchId } : {})
+          },
+          select: { email: true, firstName: true, lastName: true }
         });
         students.forEach(s => {
-          if (s.email && s.email.includes("@")) recipientEmails.push(s.email.trim());
+          if (s.email && s.email.includes("@")) {
+            recipients.push({ 
+              email: s.email.trim(), 
+              name: `${s.firstName} ${s.lastName || ""}`.trim() 
+            });
+          }
         });
 
         // Fetch parent details
         const families = await prisma.familyDetail.findMany({
-          where: { schoolId },
-          select: { fatherEmail: true, motherEmail: true }
+          where: { 
+            schoolId,
+            ...(branchId ? { branchId } : {})
+          },
+          select: { fatherEmail: true, motherEmail: true, fatherName: true, motherName: true }
         });
         families.forEach(f => {
-          if (f.fatherEmail && f.fatherEmail.includes("@")) recipientEmails.push(f.fatherEmail.trim());
-          if (f.motherEmail && f.motherEmail.includes("@")) recipientEmails.push(f.motherEmail.trim());
+          if (f.fatherEmail && f.fatherEmail.includes("@")) {
+            recipients.push({ email: f.fatherEmail.trim(), name: f.fatherName?.trim() });
+          }
+          if (f.motherEmail && f.motherEmail.includes("@")) {
+            recipients.push({ email: f.motherEmail.trim(), name: f.motherName?.trim() });
+          }
         });
       }
     }
 
-    // De-duplicate emails
-    const uniqueEmails = Array.from(new Set(recipientEmails));
+    // De-duplicate recipients by email address
+    const uniqueRecipientsMap = new Map<string, { email: string; staffId?: string; name?: string | null }>();
+    recipients.forEach(r => {
+      uniqueRecipientsMap.set(r.email.toLowerCase(), r);
+    });
+    const uniqueRecipients = Array.from(uniqueRecipientsMap.values());
 
-    if (uniqueEmails.length === 0) {
+    if (uniqueRecipients.length === 0) {
       throw new Error("NO_RECIPIENTS: No active contact email addresses were found for the selected target group.");
     }
 
@@ -111,16 +234,19 @@ export async function sendCustomEmailAction(data: {
     // Dispatch messages
     let successCount = 0;
 
-    for (const email of uniqueEmails) {
-      try {
-        if (data.isInternalOnly) {
-          // Internal communication: bypass SMTP completely and write directly to internal inbox logs
+    if (data.isInternalOnly) {
+      // Internal communication is fast (DB writes) - execute sequentially
+      for (const r of uniqueRecipients) {
+        try {
           await prisma.communicationLog.create({
             data: {
               schoolId,
               branchId: branchId || null,
               sender: senderDisplay,
-              recipient: email,
+              authorEmail: senderEmail || null,
+              authorId: staffId || null,
+              recipient: r.name ? `${r.name} (${r.email})` : r.email,
+              recipientId: r.staffId || null,
               subject: data.subject,
               body: data.body,
               type: "CUSTOM",
@@ -129,22 +255,34 @@ export async function sendCustomEmailAction(data: {
             }
           });
           successCount++;
-        } else {
-          // External communication: dispatch real email via Hostinger SMTP
-          const success = await NotificationService.sendCustomEmail(
-            email,
-            data.subject,
-            data.body,
-            { schoolId, branchId: branchId || undefined, parentId: data.parentId, sender: senderDisplay }
-          );
-          if (success) successCount++;
+        } catch (err) {
+          console.error(`Failed to create internal notice log for ${r.email}:`, err);
         }
-      } catch (err) {
-        console.error(`Failed to send custom notification to ${email}:`, err);
+      }
+    } else {
+      // External SMTP is slow (requires network handshakes). Execute in parallel batches of 5.
+      const batches = [];
+      for (let i = 0; i < uniqueRecipients.length; i += 5) {
+        batches.push(uniqueRecipients.slice(i, i + 5));
+      }
+      for (const batch of batches) {
+        await Promise.all(batch.map(async (r) => {
+          try {
+            const success = await NotificationService.sendCustomEmail(
+              r.email,
+              data.subject,
+              data.body,
+              { schoolId, branchId: branchId || undefined, parentId: data.parentId, sender: senderDisplay, authorEmail: senderEmail }
+            );
+            if (success) successCount++;
+          } catch (err) {
+            console.error(`Failed to send SMTP email to ${r.email}:`, err);
+          }
+        }));
       }
     }
 
-    return { success: true, sentCount: successCount, totalTargeted: uniqueEmails.length };
+    return { success: true, sentCount: successCount, totalTargeted: uniqueRecipients.length };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
@@ -164,7 +302,7 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
       where: {
         schoolId,
         ...(branchId ? { branchId } : {}),
-        status: "Active"
+        status: "CONFIRMED"
       },
       include: {
         financial: true,
@@ -197,6 +335,7 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
                 schoolId,
                 branchId: student.branchId || null,
                 sender: senderDisplay,
+                authorEmail: senderEmail || null,
                 recipient: recipientEmail,
                 subject: title,
                 body,
@@ -211,7 +350,7 @@ export async function sendBulkRemindersAction(isInternalOnly: boolean) {
               recipientEmail.trim(),
               "Academic Year Tuition",
               outstanding,
-              { schoolId, branchId: student.branchId || undefined }
+              { schoolId, branchId: student.branchId || undefined, authorEmail: senderEmail }
             );
             if (success) sentCount++;
           }
@@ -232,15 +371,26 @@ export async function checkNewInternalNoticesAction() {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) return { success: false };
-    const { schoolId, branchId, email } = identity;
+    const { schoolId, branchId, email, staffId } = identity;
 
     // Fetch the most recent internal notice sent to this user in the last 20 seconds, excluding self-sent
     const notice = await prisma.communicationLog.findFirst({
       where: {
         schoolId,
         ...(branchId ? { branchId } : {}),
-        recipient: email,
-        sender: { not: { contains: email } },
+        OR: [
+          { recipient: email },
+          ...(staffId ? [{ recipientId: staffId }] : [])
+        ],
+        AND: [
+          {
+            OR: [
+              { authorEmail: { not: email } },
+              { authorEmail: null, sender: { not: { contains: email } } }
+            ]
+          },
+          ...(staffId ? [{ authorId: { not: staffId } }] : [])
+        ],
         createdAt: { gte: new Date(Date.now() - 20 * 1000) }
       },
       orderBy: { createdAt: "desc" }
@@ -259,13 +409,16 @@ export async function getInboxLogsAction() {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId, email } = identity;
+    const { schoolId, branchId, email, staffId } = identity;
 
     const logs = await prisma.communicationLog.findMany({
       where: {
         schoolId,
         ...(branchId ? { branchId } : {}),
-        recipient: email
+        OR: [
+          { recipient: email },
+          ...(staffId ? [{ recipientId: staffId }] : [])
+        ]
       },
       orderBy: {
         createdAt: "desc"
@@ -286,18 +439,23 @@ export async function markNoticeAsReadAction(logId: string) {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { email } = identity;
+    const { schoolId, branchId, email, staffId } = identity;
 
-    // Fetch log and assert recipient matches
-    const log = await prisma.communicationLog.findUnique({
-      where: { id: logId }
+    // Fetch log and assert recipient matches under strict tenancy boundaries
+    const log = await prisma.communicationLog.findFirst({
+      where: { 
+        id: logId,
+        schoolId,
+        ...(branchId ? { branchId } : {})
+      }
     });
 
     if (!log) {
       throw new Error("NOTICE_NOT_FOUND");
     }
 
-    if (log.recipient !== email) {
+    const isRecipient = log.recipient === email || (staffId && log.recipientId === staffId);
+    if (!isRecipient) {
       throw new Error("UNAUTHORIZED_ACCESS: Recipient identity does not match this user.");
     }
 
@@ -311,6 +469,41 @@ export async function markNoticeAsReadAction(logId: string) {
 
     revalidatePath("/dashboard/communication");
     return { success: true, data: JSON.parse(JSON.stringify(updated)) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Fetch all classes in the school for mailbox grouping
+ */
+export async function getClassListAction() {
+  try {
+    const identity = await getSovereignIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
+    const { schoolId, branchId, role } = identity;
+
+    // Enforce role permission gate: Only management staff can query classes list
+    const isManager = ["OWNER", "DEVELOPER", "PRINCIPAL", "ADMIN"].includes(role);
+    if (!isManager) {
+      throw new Error("UNAUTHORIZED_ACCESS: Only staff members with management roles can retrieve class details.");
+    }
+
+    const classes = await prisma.class.findMany({
+      where: {
+        schoolId,
+        ...(branchId ? { branchId } : {})
+      },
+      select: {
+        id: true,
+        name: true
+      },
+      orderBy: {
+        level: "asc"
+      }
+    });
+
+    return { success: true, data: JSON.parse(JSON.stringify(classes)) };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

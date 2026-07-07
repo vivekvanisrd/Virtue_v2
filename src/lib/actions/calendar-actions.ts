@@ -160,7 +160,7 @@ export async function setCalendarDayAction(
 
     if (existing) {
       await prisma.schoolCalendar.update({
-        where: { id: existing.id },
+        where: { id: existing.id, schoolId },
         data: { type, reason: reason.trim(), isOverride: true, source: "SCHOOL" }
       });
     } else {

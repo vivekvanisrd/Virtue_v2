@@ -199,7 +199,7 @@ export async function provisionInstance(data: {
                     schoolId: school.id,
                     branchId: hqBranch.id,
                     role: "OWNER",
-                    status: "Active",
+                    status: "ACTIVE",
                     passwordHash,
                     username,
                     employeeCategory: "OWNER",

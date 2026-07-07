@@ -13,6 +13,7 @@ import { SovereignEventHub } from "../events/event-hub";
 import { initAdmissionHandlers } from "../events/handlers/admission-handlers";
 import { checkCapability } from "../auth/rbac";
 import { ST_PROVISIONAL } from "../constants/admission-statuses";
+import { ensureNextSectionAction } from "./academic-actions";
 
 // Law 9 Compliance: Initialize handlers at module load-time (or centralized boot)
 initAdmissionHandlers();
@@ -185,9 +186,10 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
           registrationId,
           admissionNumber,
           studentCode,
+          legacyId: validatedData.legacyId || null,
           schoolId: context.schoolId,
           branchId: branchId,
-          status: isProvisional ? "Provisional" : "Active",
+          status: isProvisional ? "PROVISIONAL" : "CONFIRMED",
           firstName: validatedData.firstName,
           middleName: validatedData.middleName || null,
           lastName: validatedData.lastName,
@@ -312,7 +314,7 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
                 pickupStop: { connect: { id: validatedData.pickupStop } },
                 dropStop: { connect: { id: validatedData.dropStop } },
                 monthlyFee: validatedData.transportMonthlyFee || 0,
-                status: "Active"
+                status: "ACTIVE"
               }
             }
           } : {}),
@@ -432,6 +434,16 @@ export async function submitAdmissionAction(formData: any, isProvisional: boolea
     } catch (e) {
       // Ignore revalidation errors in non-Next environments (e.g., verification scripts)
     }
+
+    // 🏁 Fire-and-forget: pre-emptively create next section if threshold reached
+    const admittedClassId = result?.academic?.classId;
+    const admittedBranchId = result?.academic?.branchId;
+    if (admittedClassId && admittedBranchId) {
+      ensureNextSectionAction(admittedClassId, admittedBranchId).catch((e: any) =>
+        console.warn("[AUTO-EXPAND] Non-critical: could not check section threshold:", e.message)
+      );
+    }
+
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
 
   } catch (error: any) {
@@ -861,7 +873,7 @@ export async function confirmStudentAdmission(studentId: string) {
     });
 
     if (!student) throw new Error("Student not found.");
-    if (student.status !== "Provisional") throw new Error("Admission already confirmed or student not in provisional state.");
+    if (student.status?.toUpperCase() !== "PROVISIONAL") throw new Error("Admission already confirmed or student not in provisional state.");
 
     // ─── Institutional Hardening: Strict Financial Milestone Check ───
     const totalAnnual = Number(student.financial?.annualTuition || 0);
@@ -914,9 +926,9 @@ export async function confirmStudentAdmission(studentId: string) {
     });
 
     const result = await prisma.student.update({
-      where: { id: studentId },
+      where: { id: studentId, schoolId: context.schoolId },
       data: {
-        status: "Active",
+        status: "CONFIRMED",
         admissionNumber,
         studentCode,
         academic: {
@@ -985,6 +997,7 @@ export async function getStudentListAction(filters?: {
               { lastName: { contains: filters.search, mode: 'insensitive' } },
               { admissionNumber: { contains: filters.search, mode: 'insensitive' } },
               { studentCode: { contains: filters.search, mode: 'insensitive' } },
+              { legacyId: { contains: filters.search, mode: 'insensitive' } },
             ]
           } : {},
           filters?.classId ? { academic: { classId: filters.classId } } : {},
@@ -1355,7 +1368,7 @@ export async function processStudentExit(studentId: string, data: { reason: stri
     await prisma.$transaction([
       prisma.student.update({
         where: { id: studentId, schoolId: context.schoolId },
-        data: { status: "Exited" }
+        data: { status: "EXITED" }
       }),
       prisma.academicRecord.update({
         where: { studentId },
@@ -1473,7 +1486,7 @@ export async function getStudentHubStats() {
         where: { 
           schoolId: context.schoolId,
           ...(context.branchId && context.branchId !== 'GLOBAL' ? { branchId: context.branchId } : {}),
-          status: "Active"
+          status: "CONFIRMED"
         }
       }),
       prisma.student.count({
@@ -1488,7 +1501,7 @@ export async function getStudentHubStats() {
         where: { 
           schoolId: context.schoolId,
           ...(context.branchId && context.branchId !== 'GLOBAL' ? { branchId: context.branchId } : {}),
-          status: "Active"
+          status: "CONFIRMED"
         },
         _count: true
       }),
@@ -1648,7 +1661,10 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
 
     
     const student = await db.student.findUnique({
-      where: { id: studentId },
+      where: { 
+        id: studentId,
+        ...(identity ? { schoolId: identity.schoolId } : {})
+      },
       include: { 
         academic: true,
         financial: true,

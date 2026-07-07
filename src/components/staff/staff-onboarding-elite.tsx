@@ -40,35 +40,38 @@ export function StaffOnboardingElite({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState<any>(initialData || {
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    gender: "Female",
-    dob: "",
-    address: "",
-    role: "Teacher",
-    branchId: "",
-    // Professional
-    designation: "",
-    department: "Academics",
-    qualification: "",
-    experienceYears: 0,
-    dateOfJoining: new Date().toISOString().split('T')[0],
-    basicSalary: 10000,
-    // Statutory
-    panNumber: "",
-    aadhaarNumber: "",
-    pfNumber: "",
-    uanNumber: "",
-    esiNumber: "",
-    // Bank
-    bankName: "",
-    accountName: "",
-    accountNumber: "",
-    ifscCode: ""
+  const [formData, setFormData] = useState<any>(() => {
+    const base = initialData || {
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      gender: "Female",
+      dob: "",
+      address: "",
+      role: "Teacher",
+      branchId: "",
+      designation: "",
+      department: "Academics",
+      qualification: "",
+      experienceYears: 0,
+      dateOfJoining: new Date().toISOString().split('T')[0],
+      basicSalary: 10000,
+      panNumber: "",
+      aadhaarNumber: "",
+      pfNumber: "",
+      uanNumber: "",
+      esiNumber: "",
+      bankName: "",
+      accountName: "",
+      accountNumber: "",
+      ifscCode: ""
+    };
+    return {
+      ...base,
+      biometricId: initialData?.biometricId || ""
+    };
   });
 
   const steps = [
@@ -357,41 +360,56 @@ export function StaffOnboardingElite({
                   </div>
                </div>
 
-               {/* Phone + Email */}
-               <div className="grid grid-cols-2 gap-6">
-                  <div>
-                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Primary Phone</label>
-                     <input 
-                       type="tel" 
-                       value={formData.phone}
-                       onChange={(e) => updateField("phone", e.target.value.replace(/[^\d]/g, ""))}
-                       className={cn(
-                          "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 transition-all outline-none",
-                          validationErrors.phone ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200',
-                          getPendingStyles("phone")
-                       )}
-                       placeholder="e.g. +91 98765 43210"
-                     />
-                     {validationErrors.phone && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.phone}</p>}
-                     {isPendingValue(formData.phone) && <p className="text-[10px] text-amber-600 font-black mt-1 ml-1 italic animate-pulse">! DATA MISSING</p>}
-                  </div>
-                  <div>
-                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Institutional Email</label>
-                     <input 
-                       type="email" 
-                       value={formData.email}
-                       onChange={(e) => updateField("email", e.target.value)}
-                       className={cn(
-                          "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 transition-all outline-none",
-                          validationErrors.email ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200',
-                          getPendingStyles("email")
-                       )}
-                       placeholder="staff@virtue.com"
-                     />
-                     {validationErrors.email && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.email}</p>}
-                     {isPendingValue(formData.email) && <p className="text-[10px] text-amber-600 font-black mt-1 ml-1 italic animate-pulse">! DATA MISSING</p>}
-                  </div>
-               </div>
+               {/* Phone + Email + Biometric ID */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Primary Phone</label>
+                      <input 
+                        type="tel" 
+                        value={formData.phone}
+                        onChange={(e) => updateField("phone", e.target.value.replace(/[^\d]/g, ""))}
+                        className={cn(
+                           "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 transition-all outline-none",
+                           validationErrors.phone ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200',
+                           getPendingStyles("phone")
+                        )}
+                        placeholder="e.g. +91 98765 43210"
+                      />
+                      {validationErrors.phone && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.phone}</p>}
+                      {isPendingValue(formData.phone) && <p className="text-[10px] text-amber-600 font-black mt-1 ml-1 italic animate-pulse">! DATA MISSING</p>}
+                   </div>
+                   <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Institutional Email</label>
+                      <input 
+                        type="email" 
+                        value={formData.email}
+                        onChange={(e) => updateField("email", e.target.value)}
+                        className={cn(
+                           "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 transition-all outline-none",
+                           validationErrors.email ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200',
+                           getPendingStyles("email")
+                        )}
+                        placeholder="staff@virtue.com"
+                      />
+                      {validationErrors.email && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.email}</p>}
+                      {isPendingValue(formData.email) && <p className="text-[10px] text-amber-600 font-black mt-1 ml-1 italic animate-pulse">! DATA MISSING</p>}
+                   </div>
+                   <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Biometric ID</label>
+                      <input 
+                        type="text" 
+                        value={formData.biometricId}
+                        onChange={(e) => updateField("biometricId", e.target.value)}
+                        className={cn(
+                           "w-full bg-slate-50/50 border rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 transition-all outline-none",
+                           validationErrors.biometricId ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200',
+                           getPendingStyles("biometricId")
+                        )}
+                        placeholder="e.g. 101"
+                      />
+                      {validationErrors.biometricId && <p className="text-[10px] text-rose-500 font-bold mt-1 ml-1">{validationErrors.biometricId}</p>}
+                   </div>
+                </div>
 
                 {/* Residential Address */}
                <div>

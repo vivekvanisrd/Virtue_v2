@@ -229,6 +229,25 @@ export async function upsertClassAction(data: { id?: string; name: string; level
       }
     });
 
+    // 🏁 Auto-seed Section A for newly created classes (not updates)
+    if (!data.id) {
+      const existingSectionCount = await prisma.section.count({
+        where: { classId: result.id }
+      });
+      if (existingSectionCount === 0) {
+        await prisma.section.create({
+          data: {
+            name: "A",
+            classId: result.id,
+            schoolId: identity.schoolId,
+            branchId: identity.branchId as string,
+            capacity: 30,
+            source: "AUTO_SEED"
+          }
+        });
+      }
+    }
+
     revalidatePath("/dashboard/academics");
     return { success: true, data: result };
   } catch (error: any) {
@@ -283,7 +302,7 @@ export async function deleteSectionAction(sectionId: string) {
             return { success: false, error: `FORBIDDEN: This section has ${studentCount} students enrolled. Transfer them before deleting.` };
         }
 
-        await prisma.section.delete({ where: { id: sectionId } });
+        await prisma.section.delete({ where: { id: sectionId, schoolId: identity.schoolId } });
         revalidatePath("/dashboard/academics");
         return { success: true };
     } catch (e) {
@@ -291,9 +310,150 @@ export async function deleteSectionAction(sectionId: string) {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🏁 SECTION AUTO-EXPANSION ENGINE
+// Pre-emptively creates the next section when current reaches 25 students (soft threshold).
+// Called after every successful student admission.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SECTION_NAMES = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+const SECTION_PREEMPTIVE_THRESHOLD = 25; // Create next section when this many students are in the current one
+
 /**
- * 📊 GET CLASSES WITH STATS (Master Dashboard Query)
+ * 🔄 ENSURE NEXT SECTION
+ * Checks if the most-occupied section in a class/branch has reached the pre-emptive
+ * threshold (25 students). If yes, auto-creates the next section letter.
  */
+export async function ensureNextSectionAction(classId: string, branchId: string) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+
+        // Fetch all sections for this class/branch with their student counts
+        const sections = await prisma.section.findMany({
+            where: { classId, branchId, schoolId: identity.schoolId },
+            orderBy: { name: "asc" },
+            select: {
+                id: true,
+                name: true,
+                capacity: true,
+                _count: { select: { academicRecords: true } }
+            }
+        });
+
+        if (sections.length === 0) {
+            // Edge case: no sections exist yet — create Section A
+            await prisma.section.create({
+                data: { name: "A", classId, branchId, schoolId: identity.schoolId, capacity: 30, source: "AUTO_EXPAND" }
+            });
+            return { success: true, created: "A", reason: "no_sections_existed" };
+        }
+
+        // Find the section with the most students (the "active" fill section)
+        const mostOccupied = sections.reduce((prev, curr) =>
+            curr._count.academicRecords > prev._count.academicRecords ? curr : prev
+        );
+
+        if (mostOccupied._count.academicRecords < SECTION_PREEMPTIVE_THRESHOLD) {
+            return { success: true, created: null, reason: "threshold_not_reached" };
+        }
+
+        // Determine what the next section letter should be
+        const existingNames = new Set(sections.map(s => s.name.toUpperCase()));
+        const nextName = SECTION_NAMES.find(n => !existingNames.has(n));
+
+        if (!nextName) {
+            return { success: true, created: null, reason: "all_26_sections_exist" };
+        }
+
+        // Create the next section pre-emptively
+        const created = await prisma.section.create({
+            data: {
+                name: nextName,
+                classId,
+                branchId,
+                schoolId: identity.schoolId,
+                capacity: 30,
+                source: "AUTO_EXPAND"
+            }
+        });
+
+        revalidatePath("/dashboard/academics");
+        return { success: true, created: nextName, sectionId: created.id };
+    } catch (e: any) {
+        console.error("[AUTO-EXPAND] Failed:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * 🔄 REASSIGN STUDENT SECTION
+ * Moves a student to a different section within the same class.
+ * Updates AcademicRecord and logs the change to history.
+ * No restrictions — any authorized user can reassign.
+ */
+export async function reassignStudentSectionAction(
+    studentId: string,
+    newSectionId: string,
+    reason?: string
+) {
+    try {
+        const identity = await getSovereignIdentity();
+        if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
+
+        // Get current academic record to confirm it belongs to this school
+        const record = await prisma.academicRecord.findUnique({
+            where: { studentId },
+            include: { section: { select: { name: true, class: { select: { name: true } } } } }
+        });
+
+        if (!record) throw new Error("No academic record found for this student.");
+
+        const oldSectionName = record.section?.name || "Unknown";
+
+        // Get the new section to validate it's in the same school
+        const newSection = await prisma.section.findFirst({
+            where: { id: newSectionId, schoolId: identity.schoolId },
+            select: { id: true, name: true, classId: true }
+        });
+        if (!newSection) throw new Error("Target section not found or belongs to a different school.");
+
+        // Update the academic record
+        await prisma.academicRecord.update({
+            where: { studentId },
+            data: { sectionId: newSectionId }
+        });
+
+        // Log the reassignment in academic history for traceability
+        await prisma.academicHistory.create({
+            data: {
+                id: `RSECT-${Date.now()}-${studentId.slice(-6)}`,
+                studentId,
+                academicYearId: record.academicYear,
+                classId: newSection.classId,
+                sectionId: newSectionId,
+                promotionStatus: "SECTION_REASSIGNMENT",
+                promotedFrom: oldSectionName,
+                leavingReason: reason || "Section reassignment by staff"
+            }
+        });
+
+        revalidatePath("/dashboard/students");
+        revalidatePath("/dashboard/academics");
+
+        return {
+            success: true,
+            from: oldSectionName,
+            to: newSection.name,
+            message: `Student moved from Section ${oldSectionName} to Section ${newSection.name}.`
+        };
+    } catch (e: any) {
+        console.error("[REASSIGN-SECTION] Failed:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+
 export async function getClassesWithStatsAction() {
   try {
     const identity = await getSovereignIdentity();
@@ -374,7 +534,7 @@ export async function assignSectionTeacherAction(sectionId: string, staffId: str
 
         // 🛡️ LOCK: Enforce unique constraint and avoid ghost assignments
         const result = await prisma.section.update({
-            where: { id: sectionId },
+            where: { id: sectionId, schoolId: identity.schoolId },
             data: { classTeacherId: staffId || null }
         });
 
@@ -577,7 +737,7 @@ export async function promoteStudentChunkAction(data: {
 
       // Resolve sourceClassId from PromotionBatch
       const batch = await tx.promotionBatch.findUnique({
-        where: { id: data.batchId }
+        where: { id: data.batchId, schoolId: identity.schoolId }
       });
       const sourceClassId = batch?.sourceClassId;
 
@@ -633,17 +793,26 @@ export async function promoteStudentChunkAction(data: {
 
         // 2. Fetch student details
         const student = await tx.student.findUnique({
-          where: { id: studentId },
+          where: { id: studentId, schoolId: identity.schoolId },
           include: { academic: true }
         });
         if (!student) continue;
 
         // 🛡️ SECURITY: Verify multi-tenancy boundaries
+        if (student.schoolId !== identity.schoolId) {
+          throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your school.`);
+        }
         if (identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
-          if (student.branchId !== branchId || student.schoolId !== identity.schoolId) {
+          if (student.branchId !== branchId) {
             throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your campus.`);
           }
         }
+
+        // Update Student status back to PROVISIONAL upon promotion
+        await tx.student.update({
+          where: { id: studentId, schoolId: identity.schoolId },
+          data: { status: "PROVISIONAL" }
+        });
 
         const oldSectionId = student.academic?.sectionId || null;
 
@@ -836,7 +1005,7 @@ export async function rollbackPromotionBatchAction(batchId: string) {
 
     const result = await prisma.$transaction(async (tx) => {
       const batch = await tx.promotionBatch.findUnique({
-        where: { id: batchId },
+        where: { id: batchId, schoolId: identity.schoolId },
         include: { records: true }
       });
       if (!batch || batch.status === "ROLLED_BACK") {
@@ -883,13 +1052,32 @@ export async function rollbackPromotionBatchAction(batchId: string) {
       for (const rec of batch.records) {
         // Double-check student branch tenancy inside transaction loop for extra security
         const student = await tx.student.findUnique({
-          where: { id: rec.studentId }
+          where: { id: rec.studentId, schoolId: identity.schoolId }
         });
-        if (student && identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
-          if (student.branchId !== identity.branchId || student.schoolId !== identity.schoolId) {
-            throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your campus.`);
+        if (student) {
+          if (student.schoolId !== identity.schoolId) {
+            throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your school.`);
+          }
+          if (identity.role !== 'OWNER' && identity.role !== 'DEVELOPER') {
+            if (student.branchId !== identity.branchId) {
+              throw new Error(`SECURITY_VIOLATION: Student ${student.studentCode || student.id} does not belong to your campus.`);
+            }
           }
         }
+
+        // Aligned Collection Guard: Prevent rollback if payments exist for the promoted year
+        const targetHistoryId = `AH-${rec.studentId}-${batch.targetYearId}`;
+        const targetCollectionsCount = await tx.collection.count({
+          where: { studentId: rec.studentId, admissionId: targetHistoryId }
+        });
+        if (targetCollectionsCount > 0) {
+          throw new Error(`CANNOT_ROLLBACK: Student ${student?.studentCode || rec.studentId} has active collections for the promoted year. Please void collections before rolling back.`);
+        }
+
+        await tx.student.update({
+          where: { id: rec.studentId, schoolId: identity.schoolId },
+          data: { status: "CONFIRMED" }
+        });
 
         await tx.academicRecord.update({
           where: { studentId: rec.studentId },

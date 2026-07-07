@@ -223,6 +223,7 @@ export async function createStaffAction(data: any) {
                     dob: data.dob ? new Date(data.dob) : null,
                     address: data.address?.trim() || null,
                     onboardingStatus: data.onboardingStatus || "JOINED",
+                    biometricId: data.biometricId?.trim() || null,
                     role: requestedRole,
                     branchId: branch.id,
                     schoolId,
@@ -315,9 +316,15 @@ export async function getStaffDirectoryAction(filters?: {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
+        const isGlobal = !identity.branchId || identity.branchId === 'GLOBAL';
         const whereClause: any = {
             schoolId: identity.schoolId,
-            ...(identity.branchId && identity.branchId !== 'GLOBAL' && { branchId: identity.branchId })
+            ...(isGlobal ? {} : {
+                OR: [
+                    { branchId: identity.branchId },
+                    { role: { in: ["PRINCIPAL", "Principal", "ADMIN", "Admin", "OWNER", "Owner", "DEVELOPER", "Developer", "VICE_PRINCIPAL", "Vice Principal"] } }
+                ]
+            })
         };
 
         if (filters) {
@@ -399,7 +406,7 @@ export async function disburseStaffAdvanceAction(staffId: string, amount: number
                 balance: amount,
                 installment,
                 reason,
-                status: "Active"
+                status: "ACTIVE"
             }
         });
 
@@ -537,7 +544,7 @@ export async function updateStaffAction(staffId: string, data: any) {
         const result = await prisma.$transaction(async (tx: any) => {
             // A. Base Record Update (ID & School remain immutable)
             const staff = await tx.staff.update({
-                where: { id: staffId },
+                where: { id: staffId, schoolId },
                 data: {
                     // 🔒 Required fields: skip (undefined) if empty — never overwrite with empty string
                     ...(data.firstName?.trim() && { firstName: data.firstName.trim() }),
@@ -551,6 +558,7 @@ export async function updateStaffAction(staffId: string, data: any) {
                     dob: data.dob ? new Date(data.dob) : null,
                     address: data.address?.trim() || null,
                     onboardingStatus: data.onboardingStatus || null,
+                    biometricId: data.biometricId !== undefined ? (data.biometricId?.trim() || null) : undefined,
                     ...(data.employeeCategory && { employeeCategory: data.employeeCategory }),
                     employmentType: data.employmentType !== undefined ? (data.employmentType || null) : undefined,
                 }
@@ -689,7 +697,7 @@ export async function updateStaffRoleAction(staffId: string, newRole: string) {
         }
 
         const staff = await prisma.staff.update({
-            where: { id: staffId },
+            where: { id: staffId, schoolId: identity.schoolId },
             data: { role: newRole }
         });
 
@@ -752,12 +760,12 @@ export async function getStaffFinancialSummaryAction(staffId: string) {
 
         // 🧮 Summary Math
         const totalEarnings = staff.salarySlips.reduce((acc: number, s: any) => acc + Number(s.netSalary || 0), 0);
-        const activeAdvance = staff.advances.filter((a: any) => a.status === "Active").reduce((acc: number, a: any) => acc + Number(a.balance || 0), 0);
+        const activeAdvance = staff.advances.filter((a: any) => a.status === "ACTIVE").reduce((acc: number, a: any) => acc + Number(a.balance || 0), 0);
         
         // Attendance Stats (Last 30 days)
         const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
         const recentAttendance = staff.attendance.filter((a: any) => a.date >= thirtyDaysAgo);
-        const presentDays = recentAttendance.filter((a: any) => a.status === "Present").length;
+        const presentDays = recentAttendance.filter((a: any) => a.status === "PRESENT").length;
         const totalPossible = recentAttendance.length || 1;
         const attendanceRate = Math.round((presentDays / totalPossible) * 100);
 
@@ -813,7 +821,7 @@ export async function toggleStaffStatusAction(staffId: string) {
         const newStatus = staff.status?.toUpperCase() === "ACTIVE" ? "INACTIVE" : "ACTIVE";
 
         const updated = await prisma.staff.update({
-            where: { id: staffId },
+            where: { id: staffId, schoolId: identity.schoolId },
             data: { 
                 status: newStatus,
                 mobileSessionToken: null

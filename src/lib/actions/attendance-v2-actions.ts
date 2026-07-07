@@ -218,7 +218,7 @@ export async function upsertAttendancePolicyAction(data: any) {
 
     if (id) {
         const result = await prisma.attendancePolicy.update({
-            where: { id },
+            where: { id, schoolId: identity.schoolId },
             data: policyData
         });
         revalidatePath("/dashboard");
@@ -248,7 +248,7 @@ export async function deleteAttendancePolicyAction(id: string) {
     const policy = await prisma.attendancePolicy.findUnique({ where: { id } });
     if (policy?.name === "Default") throw new Error("Cannot delete the system default policy.");
 
-    await prisma.attendancePolicy.delete({ where: { id } });
+    await prisma.attendancePolicy.delete({ where: { id, schoolId: identity.schoolId } });
 
     revalidatePath("/dashboard");
     return { success: true };
@@ -268,7 +268,7 @@ export async function getStaffForAssignmentAction() {
     const staff = await prisma.staff.findMany({
       where: { 
         branchId: identity.branchId,
-        status: "Active"
+        status: "ACTIVE"
       },
       select: {
         id: true,
@@ -567,6 +567,13 @@ export async function deleteBiometricDeviceAction(deviceId: string) {
 
 export async function getRecentBiometricPunchesAction() {
   try {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logFile = path.join(process.cwd(), 'scratch', 'kiosk-calls.log');
+      fs.appendFileSync(logFile, `[${new Date().toISOString()}] getRecentBiometricPunchesAction called\n`, 'utf8');
+    } catch (e) {}
+
     const identity = await getSovereignIdentity();
     if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED_ACCESS");
 
@@ -622,9 +629,169 @@ export async function getRecentBiometricPunchesAction() {
       return logs;
     });
 
-    formatted.sort((a, b) => new Date(b.rawTime).getTime() - new Date(a.rawTime).getTime());
+    // --- READ UNMAPPED PUNCHES FROM FILE ---
+    let unmappedLogs: any[] = [];
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(process.cwd(), 'scratch', 'unmapped-punches.json');
+      if (fs.existsSync(filePath)) {
+        let list = [];
+        try {
+          const raw = fs.readFileSync(filePath, 'utf8');
+          list = JSON.parse(raw || "[]");
+        } catch (parseErr) {
+          console.warn("Failed to parse unmapped-punches.json:", parseErr);
+          list = [];
+        }
+        
+        // Filter for this institution and branch
+        const filtered = list.filter((p: any) => 
+          p.schoolId === identity.schoolId && 
+          p.branchId === identity.branchId
+        );
+        
+        const { format: formatFn } = require('date-fns');
+        unmappedLogs = filtered.map((p: any) => ({
+          id: p.id,
+          name: `Unmapped Biometric PIN: ${p.biometricId}`,
+          code: `NOT FOUND`,
+          time: formatFn(new Date(p.timestamp), "hh:mm a"),
+          rawTime: new Date(p.timestamp),
+          type: "IN",
+          status: "Warning",
+          remarks: `Biometric scan on device ${p.deviceCode} (ID not mapped to any staff member)`
+        }));
+      }
+    } catch (e) {
+      console.error('Error reading unmapped punches:', e);
+    }
 
-    return { success: true, data: formatted.slice(0, 20) };
+    const combined = [...formatted, ...unmappedLogs];
+    combined.sort((a, b) => new Date(b.rawTime).getTime() - new Date(a.rawTime).getTime());
+
+    return { success: true, data: combined.slice(0, 20) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getKioskPunchDetailsAction(punchId: string) {
+  try {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logFile = path.join(process.cwd(), 'scratch', 'kiosk-calls.log');
+      fs.appendFileSync(logFile, `[${new Date().toISOString()}] getKioskPunchDetailsAction called for ${punchId}\n`, 'utf8');
+    } catch (e) {}
+
+    const identity = await getSovereignIdentity();
+    if (!identity || !identity.branchId) throw new Error("UNAUTHORIZED_ACCESS");
+
+    // Case A: Unmapped punch (stored in scratch file)
+    if (punchId.startsWith("unmapped-")) {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(process.cwd(), 'scratch', 'unmapped-punches.json');
+      if (fs.existsSync(filePath)) {
+        let list = [];
+        try {
+          const raw = fs.readFileSync(filePath, 'utf8');
+          list = JSON.parse(raw || "[]");
+        } catch (parseErr) {
+          list = [];
+        }
+        const punch = list.find((p: any) => p.id === punchId);
+        if (punch) {
+          const { format } = require('date-fns');
+          return {
+            success: true,
+            data: {
+              id: punch.id,
+              name: "Unmapped Biometric PIN",
+              code: "NOT REGISTERED",
+              biometricId: punch.biometricId,
+              time: format(new Date(punch.timestamp), "hh:mm a"),
+              type: "IN",
+              status: "Warning",
+              remarks: `PIN ${punch.biometricId} not mapped to any staff profile`,
+              photoUrl: null,
+              lateCount: 0,
+              lateMinutes: 0,
+              isUnmapped: true
+            }
+          };
+        }
+      }
+      throw new Error("PUNCH_NOT_FOUND");
+    }
+
+    // Case B: Mapped punch (stored in database StaffAttendance)
+    const punch = await prisma.staffAttendance.findFirst({
+      where: {
+        id: punchId,
+        schoolId: identity.schoolId,
+        branchId: identity.branchId
+      },
+      include: {
+        staff: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            staffCode: true,
+            photoUrl: true,
+            biometricId: true,
+            attendancePolicy: true
+          }
+        }
+      }
+    });
+
+    if (!punch) throw new Error("PUNCH_NOT_FOUND");
+
+    // Calculate late count in the current month for this employee
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const lateCount = await prisma.staffAttendance.count({
+      where: {
+        staffId: punch.staffId,
+        date: { gte: startOfMonth },
+        status: "Late"
+      }
+    });
+
+    // Check how late they are
+    let lateMinutes = 0;
+    if (punch.status === "Late" && punch.checkIn) {
+      const policy = punch.staff.attendancePolicy;
+      const startMinutes = policy?.startMinutes ?? 540;
+      const gracePeriod = policy?.gracePeriod ?? 15;
+      const lateThreshold = policy?.lateThresholdMinutes ?? (startMinutes + gracePeriod);
+      const checkInMinutes = punch.checkIn.getHours() * 60 + punch.checkIn.getMinutes();
+      lateMinutes = Math.max(0, checkInMinutes - lateThreshold);
+    }
+
+    const { format } = require('date-fns');
+    return {
+      success: true,
+      data: {
+        id: punch.id,
+        name: `${punch.staff.firstName} ${punch.staff.lastName}`,
+        code: punch.staff.staffCode,
+        biometricId: punch.staff.biometricId || "N/A",
+        time: format(new Date(punch.checkIn || punch.date), "hh:mm a"),
+        type: punch.checkOut ? "OUT" : "IN",
+        status: punch.status,
+        remarks: punch.remarks || "",
+        photoUrl: punch.staff.photoUrl,
+        lateCount,
+        lateMinutes,
+        isUnmapped: false
+      }
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

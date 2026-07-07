@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Mail, Send, History, Search, Filter, CheckCircle, XCircle, Info, Loader2, Users, Bell, DollarSign, Eye, Inbox } from "lucide-react";
-import { getCommunicationLogsAction, sendCustomEmailAction, sendBulkRemindersAction, getInboxLogsAction, markNoticeAsReadAction } from "@/lib/actions/communication-actions";
+import { getCommunicationLogsAction, sendCustomEmailAction, sendBulkRemindersAction, getInboxLogsAction, markNoticeAsReadAction, getClassListAction } from "@/lib/actions/communication-actions";
 import { getStudentListAction } from "@/lib/actions/student-actions";
 import { getStaffDirectoryAction } from "@/lib/actions/staff-actions";
 import { useTenant } from "@/context/tenant-context";
@@ -33,12 +33,13 @@ export function MailboxHub({ params }: MailboxHubProps) {
   const [searchRecipient, setSearchRecipient] = useState("");
 
   // Compose Form
-  const [targetGroup, setTargetGroup] = useState<"MANUAL" | "ALL_PARENTS" | "ALL_STAFF" | "ALL" | "STUDENT" | "STAFF">("MANUAL");
+  const [targetGroup, setTargetGroup] = useState<string>("MANUAL");
   const [isInternalOnly, setIsInternalOnly] = useState(true); // Default to Internal Portal Notice (Free)
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [parentId, setParentId] = useState<string | null>(null);
+  const [classesList, setClassesList] = useState<any[]>([]);
   
   // Smart Student Lookup Search
   const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -46,20 +47,20 @@ export function MailboxHub({ params }: MailboxHubProps) {
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [loadingStudents, setLoadingStudents] = useState(false);
-
+ 
   // Smart Staff Lookup Search
   const [allStaff, setAllStaff] = useState<any[]>([]);
   const [searchTermStaff, setSearchTermStaff] = useState("");
   const [filteredStaff, setFilteredStaff] = useState<any[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [loadingStaff, setLoadingStaff] = useState(false);
-
+ 
   // States
   const [sending, setSending] = useState(false);
   const [runningReminders, setRunningReminders] = useState(false);
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
-
+ 
   // Pre-fill state if redirect parameters are passed
   useEffect(() => {
     if (params) {
@@ -75,7 +76,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
       }
     }
   }, [params, canComposeAndManage]);
-
+ 
   useEffect(() => {
     if (activeTab === "logs" && canComposeAndManage) {
       fetchLogs();
@@ -83,15 +84,16 @@ export function MailboxHub({ params }: MailboxHubProps) {
       fetchInbox();
     }
   }, [activeTab, filterType, filterStatus, canComposeAndManage]);
-
+ 
   // Load directory details only if user has management capabilities
   useEffect(() => {
     if (canComposeAndManage) {
       loadStudents();
       loadStaff();
+      loadClasses();
     }
   }, [canComposeAndManage]);
-
+ 
   // When communication channel changes, adapt the target groups
   useEffect(() => {
     if (isInternalOnly) {
@@ -102,7 +104,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
       }
     }
   }, [isInternalOnly]);
-
+ 
   async function loadStudents() {
     setLoadingStudents(true);
     try {
@@ -115,7 +117,7 @@ export function MailboxHub({ params }: MailboxHubProps) {
     }
     setLoadingStudents(false);
   }
-
+ 
   async function loadStaff() {
     setLoadingStaff(true);
     try {
@@ -127,6 +129,17 @@ export function MailboxHub({ params }: MailboxHubProps) {
       console.error("Failed to load staff directory:", e);
     }
     setLoadingStaff(false);
+  }
+
+  async function loadClasses() {
+    try {
+      const res = await getClassListAction();
+      if (res.success && res.data) {
+        setClassesList(res.data);
+      }
+    } catch (e) {
+      console.error("Failed to load classes directory:", e);
+    }
   }
 
   // Handle local searching for student lookup
@@ -709,7 +722,23 @@ export function MailboxHub({ params }: MailboxHubProps) {
                   )}
 
                   <option value="STAFF">Select / Search from Staff Directory</option>
-                  <option value="ALL_STAFF">All Active Staff</option>
+                  
+                  <optgroup label="Staff Role Groups">
+                    <option value="ALL_STAFF">All Active Staff</option>
+                    <option value="TEACHERS">All Teachers</option>
+                    <option value="DRIVERS">All Drivers</option>
+                    <option value="ADMINS">All Admin/Management Staff</option>
+                  </optgroup>
+
+                  {classesList.length > 0 && (
+                    <optgroup label="Class-Wise Teachers (Class Teachers)">
+                      {classesList.map(cls => (
+                        <option key={cls.id} value={`CLASS_TEACHER_${cls.id}`}>
+                          {cls.name} Teachers
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -909,9 +938,20 @@ export function MailboxHub({ params }: MailboxHubProps) {
                     required
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
-                    placeholder={isInternalOnly ? "Target user email identifier..." : "e.g. parent@gmail.com"}
+                    placeholder={
+                      targetGroup === "MANUAL" 
+                        ? "Enter email addresses (use commas to separate multiple)" 
+                        : isInternalOnly 
+                        ? "Target user email identifier..." 
+                        : "e.g. parent@gmail.com"
+                    }
                     className="w-full rounded-xl border border-slate-200 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600"
                   />
+                  {targetGroup === "MANUAL" && (
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      Tip: You can enter multiple emails separated by commas (e.g. <code>staff.21@virtueschool.in, office@virtueschool.in</code>)
+                    </span>
+                  )}
                 </div>
               )}
 

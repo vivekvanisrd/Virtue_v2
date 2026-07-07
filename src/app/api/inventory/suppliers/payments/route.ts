@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const suppliers = await prisma.inventory_suppliers.findMany({
       where: {
         school_id: schoolId,
-        status: "Active",
+        status: "ACTIVE",
       },
       orderBy: { supplier_name: "asc" },
     });
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       where: {
         school_id: schoolId,
         academic_year_id: academicYearId,
-        status: "Active",
+        status: "ACTIVE",
       },
       _sum: {
         total_amount: true,

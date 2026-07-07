@@ -136,7 +136,8 @@ const menuItems: MenuItem[] = [
       { id: "transport-dashboard", name: "Transport Hub", component: "Transport" },
       { id: "transport-setup", name: "Fleet Setup", component: "Transport", requiredCapability: "ACADEMIC_CONFIG" },
       { id: "transport-live", name: "Live Tracking", component: "Transport" },
-      { id: "transport-replay", name: "Trip Replay", component: "Transport" }
+      { id: "transport-replay", name: "Trip Replay", component: "Transport" },
+      { id: "transport-analytics", name: "Fleet Analytics", component: "Transport" }
     ]
   },
   {

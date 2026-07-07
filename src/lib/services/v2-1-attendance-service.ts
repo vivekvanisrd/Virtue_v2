@@ -146,13 +146,13 @@ export class AttendanceServiceV21 {
       where: { branchId, date: today }
     });
 
-    const totalStaff = await prisma.staff.count({ where: { branchId, status: "Active" } });
+    const totalStaff = await prisma.staff.count({ where: { branchId, status: "ACTIVE" } });
 
     return {
-      present: records.filter(r => r.status === "Present" || r.status === "Late").length,
+      present: records.filter(r => r.status === "PRESENT" || r.status === "LATE").length,
       absent: totalStaff - records.length,
-      late: records.filter(r => r.status === "Late").length,
-      halfDay: records.filter(r => r.status === "Half-Day").length,
+      late: records.filter(r => r.status === "LATE").length,
+      halfDay: records.filter(r => r.status === "HALF_DAY").length,
       inside: records.filter(r => r.checkIn && !r.checkOut).length,
       overridden: records.filter(r => r.isOverridden).length,
       totalStaff

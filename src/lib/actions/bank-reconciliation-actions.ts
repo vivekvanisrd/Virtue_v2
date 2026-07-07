@@ -11,6 +11,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
+import { serializeDecimal } from "@/lib/utils/serialization";
 import { revalidatePath } from "next/cache";
 import * as XLSX from "xlsx";
 import { parseExcelStatement, parseBOBStatement, categorizeTxn, type ParsedStatement } from "@/lib/services/bank-parser";
@@ -92,8 +93,8 @@ export async function uploadBankStatementAction(params: {
     });
     if (existing) {
       // Delete old entries and re-import (idempotent re-upload)
-      await prisma.bankStatementEntry.deleteMany({ where: { statementId: existing.id } });
-      await prisma.bankStatement.delete({ where: { id: existing.id } });
+      await prisma.bankStatementEntry.deleteMany({ where: { statementId: existing.id, schoolId: context.schoolId } });
+      await prisma.bankStatement.delete({ where: { id: existing.id, schoolId: context.schoolId } });
     }
 
     // 4. Create the BankStatement record + all entries atomically
@@ -180,7 +181,7 @@ export async function getBankStatementsAction() {
       return { ...s, matchedCount: matched, totalCount: total };
     }));
 
-    return { success: true, data: serialize(withProgress) };
+    return { success: true, data: serializeDecimal(serialize(withProgress)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -202,7 +203,7 @@ export async function getStatementEntriesAction(statementId: string) {
       orderBy: { txnDate: "asc" }
     });
 
-    return { success: true, data: serialize(entries), statement: serialize(stmt) };
+    return { success: true, data: serializeDecimal(serialize(entries)), statement: serializeDecimal(serialize(stmt)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -241,7 +242,7 @@ export async function runAutoReconciliationAction(statementId: string) {
       // Auto-ignore internal transfers
       if (entry.category === "INTERNAL_TRANSFER") {
         await prisma.bankStatementEntry.update({
-          where: { id: entry.id },
+          where: { id: entry.id, schoolId: identity.schoolId },
           data: { matchStatus: "IGNORED", notes: "Auto-classified: Internal bank transfer" }
         });
         internalTransferCount++;
@@ -276,7 +277,7 @@ export async function runAutoReconciliationAction(statementId: string) {
 
         if (matchedLink) {
           await prisma.fee_payment_links.update({
-            where: { id: matchedLink.id },
+            where: { id: matchedLink.id, school_id: identity.schoolId },
             data: {
               status: "PAID",
               paid_at: entry.txnDate,
@@ -286,7 +287,7 @@ export async function runAutoReconciliationAction(statementId: string) {
           });
 
           await prisma.bankStatementEntry.update({
-            where: { id: entry.id },
+            where: { id: entry.id, schoolId: identity.schoolId },
             data: {
               matchStatus: "CONFIRMED",
               matchedTo: matchedLink.id,
@@ -304,7 +305,7 @@ export async function runAutoReconciliationAction(statementId: string) {
           });
           if (bankAccount) {
             await prisma.chartOfAccount.update({
-              where: { id: bankAccount.id },
+              where: { id: bankAccount.id, schoolId: identity.schoolId },
               data: { currentBalance: { increment: creditAmt } }
             });
           }
@@ -326,7 +327,7 @@ export async function runAutoReconciliationAction(statementId: string) {
         if (matchingCollections.length === 1) {
           // Unique match — high confidence
           await prisma.bankStatementEntry.update({
-            where: { id: entry.id },
+            where: { id: entry.id, schoolId: identity.schoolId },
             data: {
               matchStatus: "AUTO_MATCHED",
               matchedTo: matchingCollections[0].id,
@@ -339,7 +340,7 @@ export async function runAutoReconciliationAction(statementId: string) {
         } else if (matchingCollections.length > 1) {
           // Multiple matches — medium confidence, needs manual disambiguation
           await prisma.bankStatementEntry.update({
-            where: { id: entry.id },
+            where: { id: entry.id, schoolId: identity.schoolId },
             data: {
               matchStatus: "AUTO_MATCHED",
               matchedTo: matchingCollections[0].id,
@@ -369,7 +370,7 @@ export async function runAutoReconciliationAction(statementId: string) {
         if (matchingSlips.length === 1) {
           const slip = matchingSlips[0] as any;
           await prisma.bankStatementEntry.update({
-            where: { id: entry.id },
+            where: { id: entry.id, schoolId: identity.schoolId },
             data: {
               matchStatus: "AUTO_MATCHED",
               matchedTo: slip.id,
@@ -509,7 +510,7 @@ export async function ignoreEntryAction(entryId: string, notes?: string) {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
     await prisma.bankStatementEntry.update({
-      where: { id: entryId },
+      where: { id: entryId, schoolId: identity.schoolId },
       data: {
         matchStatus: "IGNORED",
         notes: notes || "Manually marked as not relevant",
@@ -536,7 +537,7 @@ export async function manualMatchAction(params: {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED");
 
     await prisma.bankStatementEntry.update({
-      where: { id: params.entryId },
+      where: { id: params.entryId, schoolId: identity.schoolId },
       data: {
         matchStatus: "MANUALLY_MATCHED",
         matchedTo: params.matchedTo,
@@ -605,7 +606,7 @@ export async function deleteStatementAction(statementId: string) {
     const stmt = await prisma.bankStatement.findFirst({ where: { id: statementId } });
     if (!stmt || stmt.schoolId !== identity.schoolId) throw new Error("Statement not found");
 
-    await prisma.bankStatement.delete({ where: { id: statementId } });
+    await prisma.bankStatement.delete({ where: { id: statementId, schoolId: identity.schoolId } });
 
     revalidatePath("/dashboard/finance");
     return { success: true };

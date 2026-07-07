@@ -10,23 +10,30 @@ import {
   getResolvedApprovalsAction, 
   resolveApprovalRequestAction 
 } from "@/lib/actions/approval-actions";
+import {
+  getPendingDiscountsAction,
+  approveDiscountAction,
+  rejectDiscountAction
+} from "@/lib/actions/discount-actions";
 import { useTenant } from "@/context/tenant-context";
 
 export function ApprovalsHub() {
   const { userRole } = useTenant();
   const isApprover = ["OWNER", "DEVELOPER", "PRINCIPAL", "ADMIN"].includes(userRole);
 
-  const [activeTab, setActiveTab] = useState<"my-requests" | "pending-reviews" | "review-history">("my-requests");
+  const [activeTab, setActiveTab] = useState<"my-requests" | "pending-reviews" | "review-history" | "discount-approvals">("my-requests");
   
   // State lists
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [historyRequests, setHistoryRequests] = useState<any[]>([]);
+  const [pendingDiscounts, setPendingDiscounts] = useState<any[]>([]);
   
   // Loaders
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [discountActionLoading, setDiscountActionLoading] = useState<string | null>(null);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -46,19 +53,64 @@ export function ApprovalsHub() {
     fetchData();
   }, [activeTab]);
 
+  async function handleApproveDiscount(id: string) {
+    if (!confirm("Are you sure you want to approve this student fee discount? This will update their financial record, ledger and accounts immediately.")) return;
+    setDiscountActionLoading(id);
+    try {
+      const res = await approveDiscountAction(id);
+      if (res.success) {
+        alert("Discount approved successfully.");
+        fetchData();
+      } else {
+        alert("Failed to approve discount: " + res.error);
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setDiscountActionLoading(null);
+    }
+  }
+
+  async function handleRejectDiscount(id: string) {
+    if (!confirm("Are you sure you want to reject this discount proposal?")) return;
+    setDiscountActionLoading(id);
+    try {
+      const res = await rejectDiscountAction(id);
+      if (res.success) {
+        alert("Discount proposal rejected.");
+        fetchData();
+      } else {
+        alert("Failed to reject discount: " + res.error);
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    } finally {
+      setDiscountActionLoading(null);
+    }
+  }
+
   async function fetchData() {
     setLoading(true);
     setFeedback(null);
     try {
+      if (isApprover) {
+        // Parallel load of pending reviews and discount approvals
+        const [requestsRes, discountsRes] = await Promise.all([
+          getPendingApprovalsAction(),
+          getPendingDiscountsAction()
+        ]);
+        if (requestsRes.success && requestsRes.data) setPendingRequests(requestsRes.data);
+        if (discountsRes.success && discountsRes.data) setPendingDiscounts(discountsRes.data);
+        
+        if (activeTab === "review-history") {
+          const res = await getResolvedApprovalsAction();
+          if (res.success && res.data) setHistoryRequests(res.data);
+        }
+      }
+      
       if (activeTab === "my-requests") {
         const res = await getStaffApprovalRequestsAction();
         if (res.success && res.data) setMyRequests(res.data);
-      } else if (activeTab === "pending-reviews" && isApprover) {
-        const res = await getPendingApprovalsAction();
-        if (res.success && res.data) setPendingRequests(res.data);
-      } else if (activeTab === "review-history" && isApprover) {
-        const res = await getResolvedApprovalsAction();
-        if (res.success && res.data) setHistoryRequests(res.data);
       }
     } catch (e) {
       console.error("Failed to load requests data:", e);
@@ -228,6 +280,17 @@ export function ApprovalsHub() {
           >
             <CheckCircle className="w-4 h-4" />
             History Log
+          </button>
+          <button
+            onClick={() => { setActiveTab("discount-approvals"); setShowForm(false); }}
+            className={`flex items-center gap-2 py-3 px-6 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === "discount-approvals"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            Discount Approvals ({pendingDiscounts.length})
           </button>
         </div>
       )}
@@ -489,6 +552,80 @@ export function ApprovalsHub() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        ) : activeTab === "discount-approvals" && isApprover ? (
+          /* PENDING STUDENT DISCOUNTS QUEUE */
+          <div className="p-6">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 pb-3 border-b border-slate-100 mb-4">Pending Student Discounts Queue</h4>
+            
+            {pendingDiscounts.length === 0 ? (
+              <div className="h-64 flex flex-col items-center justify-center gap-2 text-slate-400">
+                <CheckCircle className="w-10 h-10 stroke-[1.5] text-emerald-500 fill-emerald-50" />
+                <p className="text-sm font-medium">All clear! No pending student discounts to review.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingDiscounts.map((disc) => {
+                  const student = disc.financialRecord?.student;
+                  const isActing = discountActionLoading === disc.id;
+                  return (
+                    <div key={disc.id} className="border border-slate-200 rounded-2xl p-5 bg-white hover:border-slate-300 transition-all flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                          Pending
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-black block tracking-widest uppercase">Student Identity</span>
+                          <h5 className="font-extrabold text-indigo-900 text-sm">
+                            {student?.firstName} {student?.lastName}
+                          </h5>
+                          <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
+                            ID: {student?.admissionNumber || student?.registrationId || "N/A"}
+                          </span>
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Discount Details</span>
+                          <h6 className="font-extrabold text-slate-800 text-sm mt-0.5">{disc.discountType?.name}</h6>
+                          
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg w-max font-bold">
+                            <DollarSign className="w-3.5 h-3.5" />
+                            ₹{Number(disc.amount).toLocaleString()}
+                          </div>
+                          
+                          <p className="mt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 font-medium whitespace-pre-wrap leading-relaxed">
+                            Reason: {disc.reason || "No reason specified"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4 mt-4 flex justify-between items-center">
+                        <span className="text-[10px] text-slate-400 font-medium">Submitted {new Date(disc.createdAt || new Date()).toLocaleDateString()}</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleRejectDiscount(disc.id)}
+                            disabled={isActing}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-[11px] py-1.5 px-3.5 rounded-xl transition-all border border-rose-200"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => handleApproveDiscount(disc.id)}
+                            disabled={isActing}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] py-1.5 px-4 rounded-xl transition-all shadow-sm"
+                          >
+                            {isActing ? "Processing..." : "Approve"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

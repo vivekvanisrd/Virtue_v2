@@ -100,6 +100,7 @@ export async function importStudentsAction(records: any[], targetSchoolId: strin
             schoolId,
             admissionNumber: validated.admissionNumber,
             studentCode: validated.studentCode,
+            legacyId: validated.legacyId || null,
             firstName: validated.firstName,
             middleName: validated.middleName,
             lastName: validated.lastName,
@@ -114,7 +115,7 @@ export async function importStudentsAction(records: any[], targetSchoolId: strin
             usnSrnNumber: validated.usnSrnNumber,
             phone: validated.phone,
             email: validated.email,
-            status: "Active"
+            status: "PROVISIONAL"
           }
         });
 

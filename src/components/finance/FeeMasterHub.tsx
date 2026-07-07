@@ -115,6 +115,12 @@ export function FeeMasterHub() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Block transport fees — managed exclusively by Transport Hub
+    if (formData.name.toLowerCase().includes("transport")) {
+      setMessage({ type: "error", text: "Transport fees are managed in the Transport Hub, not the Fee Registry. Please configure routes and stops there." });
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     
     const res = await upsertFeeComponentMaster({
@@ -177,6 +183,17 @@ export function FeeMasterHub() {
         )}
       </AnimatePresence>
 
+      {/* 🚌 Transport Hub Notice */}
+      <div className="flex items-start gap-4 bg-amber-50 border border-amber-100 rounded-[2rem] px-7 py-5">
+        <Bus className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+        <div>
+          <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">Transport Fees — Managed in Transport Hub</p>
+          <p className="text-xs text-amber-700 font-medium mt-1 leading-relaxed">
+            Transport fees are now calculated automatically from route stop prices configured in the <strong>Transport Hub</strong> (Routes &amp; Stops). They no longer appear here or in the admission fee selector.
+          </p>
+        </div>
+      </div>
+
       {/* 📊 REGISTRY GRID */}
       {loading && masters.length === 0 ? (
         <div className="py-40 flex flex-col items-center justify-center opacity-20">
@@ -185,7 +202,7 @@ export function FeeMasterHub() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {masters.map((m) => {
+          {masters.filter(m => !m.name.toLowerCase().includes("transport")).map((m) => {
             const Icon = getIcon(m.name);
             return (
               <motion.div 

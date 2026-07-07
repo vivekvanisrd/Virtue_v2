@@ -155,7 +155,7 @@ export async function generateMonthlyEnterpriseInvoices(data: {
     return await prisma.$transaction(async (tx) => {
       // A. Fetch All Active Students with Locked Profiles
       const students = await tx.student.findMany({
-        where: { schoolId: data.schoolId, status: "Active" },
+        where: { schoolId: data.schoolId, status: "CONFIRMED" },
         include: { financial: { include: { components: { where: { isApplicable: true, isLocked: true } } } } }
       });
 

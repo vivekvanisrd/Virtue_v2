@@ -88,6 +88,40 @@ export async function POST(req: NextRequest) {
       const lines = rawBody.split(/\r?\n/);
       let successCount = 0;
 
+      // Determine punch date boundaries
+      const now = new Date();
+      const todayDate = new Date(now);
+      todayDate.setHours(0, 0, 0, 0);
+      const tomorrowDate = new Date(todayDate);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+
+      // Pre-fetch all active staff for this school to avoid N+1 queries
+      const allStaff = await prismaBypass.staff.findMany({
+        where: { schoolId: device.schoolId },
+        include: { attendancePolicy: true }
+      });
+      const staffMap = new Map();
+      for (const s of allStaff) {
+        if (s.biometricId) {
+          staffMap.set(s.biometricId.trim(), s);
+        }
+      }
+
+      // Pre-fetch all attendance records for today to avoid N+1 queries
+      const allTodayAttendance = await prismaBypass.staffAttendance.findMany({
+        where: {
+          schoolId: device.schoolId,
+          date: { gte: todayDate, lt: tomorrowDate }
+        }
+      });
+      const attendanceMap = new Map();
+      for (const att of allTodayAttendance) {
+        attendanceMap.set(att.staffId, att);
+      }
+
+      // Track unmapped punches to write them in a single batch at the end
+      const unmappedPunchesToLog: any[] = [];
+
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
@@ -95,7 +129,7 @@ export async function POST(req: NextRequest) {
         const parts = trimmed.split("\t");
         if (parts.length < 2) continue;
 
-        const pin = parts[0]; // Biometric ID / User ID
+        const pin = parts[0].trim(); // Biometric ID / User ID
         const timeStr = parts[1]; // Timestamp: YYYY-MM-DD HH:mm:ss
         const statusStr = parts[2] || "0"; // Punch status code (e.g. 0=IN, 1=OUT)
 
@@ -106,17 +140,19 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // 4. Look up Staff
-        const staff = await prismaBypass.staff.findFirst({
-          where: {
-            schoolId: device.schoolId,
-            biometricId: pin
-          },
-          include: { attendancePolicy: true }
-        });
+        // Look up Staff in pre-fetched map
+        const staff = staffMap.get(pin);
 
         if (!staff) {
           console.warn(`[iClock CData] No staff found with biometricId: ${pin} for school: ${device.schoolId}`);
+          unmappedPunchesToLog.push({
+            id: `unmapped-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+            biometricId: pin,
+            deviceCode: sn,
+            timestamp: punchTime.toISOString(),
+            schoolId: device.schoolId,
+            branchId: device.branchId
+          });
           continue;
         }
 
@@ -125,19 +161,8 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Determine punch date boundaries
-        const todayDate = new Date(punchTime);
-        todayDate.setHours(0, 0, 0, 0);
-        const tomorrowDate = new Date(todayDate);
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-
-        // Fetch existing attendance for this staff member on that day
-        const existing = await prismaBypass.staffAttendance.findFirst({
-          where: {
-            staffId: staff.id,
-            date: { gte: todayDate, lt: tomorrowDate }
-          }
-        });
+        // Fetch existing attendance from pre-fetched map
+        const existing = attendanceMap.get(staff.id);
 
         // Determine Action (IN vs OUT)
         let action: "IN" | "OUT" = "IN";
@@ -162,7 +187,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 5. Apply Punch Changes
+        // Apply Punch Changes
         if (action === "IN") {
           if (existing && existing.checkIn) {
             // Already checked in, skip or update to earlier check-in if valid
@@ -175,7 +200,7 @@ export async function POST(req: NextRequest) {
               const isLate = checkInMinutes > lateThreshold;
               const status = isLate ? "Late" : "Present";
 
-              await prismaBypass.staffAttendance.update({
+              const updated = await prismaBypass.staffAttendance.update({
                 where: { id: existing.id },
                 data: {
                   checkIn: punchTime,
@@ -183,6 +208,7 @@ export async function POST(req: NextRequest) {
                   remarks: (existing.remarks || "") + ` | Biometric IN updated via device ${sn}`
                 }
               });
+              attendanceMap.set(staff.id, updated);
             }
           } else {
             // Create brand new punch in
@@ -194,7 +220,7 @@ export async function POST(req: NextRequest) {
             const isLate = checkInMinutes > lateThreshold;
             const status = isLate ? "Late" : "Present";
 
-            await prismaBypass.staffAttendance.create({
+            const created = await prismaBypass.staffAttendance.create({
               data: {
                 staffId: staff.id,
                 date: todayDate,
@@ -205,21 +231,23 @@ export async function POST(req: NextRequest) {
                 remarks: `Biometric IN via device ${sn}${isLate ? ` | LATE by ${checkInMinutes - lateThreshold} min` : ""}`
               }
             });
+            attendanceMap.set(staff.id, created);
           }
         } else {
           // action === "OUT"
           if (existing) {
             // Update existing check-out
-            await prismaBypass.staffAttendance.update({
+            const updated = await prismaBypass.staffAttendance.update({
               where: { id: existing.id },
               data: {
                 checkOut: punchTime,
                 remarks: (existing.remarks || "") + ` | Biometric OUT via device ${sn}`
               }
             });
+            attendanceMap.set(staff.id, updated);
           } else {
             // Punched out without a punch-in, create a direct completed record
-            await prismaBypass.staffAttendance.create({
+            const created = await prismaBypass.staffAttendance.create({
               data: {
                 staffId: staff.id,
                 date: todayDate,
@@ -231,10 +259,39 @@ export async function POST(req: NextRequest) {
                 remarks: `Biometric OUT (no IN punch recorded) via device ${sn}`
               }
             });
+            attendanceMap.set(staff.id, created);
           }
         }
 
         successCount++;
+      }
+
+      // Batch write unmapped punches at the end to prevent race condition file locks
+      if (unmappedPunchesToLog.length > 0) {
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const dir = path.join(process.cwd(), 'scratch');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          const filePath = path.join(dir, 'unmapped-punches.json');
+          let punchesList = [];
+          if (fs.existsSync(filePath)) {
+            try {
+              punchesList = JSON.parse(fs.readFileSync(filePath, 'utf8') || "[]");
+            } catch (e) {
+              punchesList = [];
+            }
+          }
+          punchesList.push(...unmappedPunchesToLog);
+          if (punchesList.length > 100) punchesList = punchesList.slice(punchesList.length - 100);
+          
+          const tempPath = filePath + '.tmp';
+          fs.writeFileSync(tempPath, JSON.stringify(punchesList, null, 2), 'utf8');
+          fs.renameSync(tempPath, filePath);
+          console.log(`📝 [CData] Batch logged ${unmappedPunchesToLog.length} unmapped punches.`);
+        } catch (err) {
+          console.error('Failed to batch log unmapped punches:', err);
+        }
       }
 
       console.log(`[iClock CData] Processed ${successCount} attendance logs from device ${sn}`);

@@ -10,7 +10,7 @@ import {
   updateEnquiryFinancialsAction,
   getStaffContextAction
 } from "@/lib/actions/enquiry-actions";
-import { getTransportHubAction } from "@/lib/actions/transport-actions";
+import { getRoutesAction } from "@/lib/actions/transport-actions-v2";
 import { createPaymentLinkAction } from "@/lib/actions/payment-actions";
 import { checkUnlockStatusAction, requestUnlockAction } from "@/lib/actions/lock-actions";
 import { logFinancialAction } from "@/lib/actions/audit-actions";
@@ -151,11 +151,11 @@ export function EnquiryManager() {
         async function fetchTransport() {
             setLoading(true);
             const [tRes, sRes] = await Promise.all([
-                getTransportHubAction(),
+                getRoutesAction(),
                 getStaffContextAction()
             ]);
-            if (tRes.success) setTransportHub(tRes.data);
-            if (sRes.success) setStaffId(sRes.data.id);
+            if (tRes.success && 'data' in tRes) setTransportHub(tRes.data);
+            if (sRes.success && 'data' in sRes) setStaffId(sRes.data.id);
             setLoading(false);
         }
         fetchTransport();
@@ -597,7 +597,7 @@ export function EnquiryManager() {
                                     >
                                         <option value="">No Transport</option>
                                         {transportHub.map(route => (
-                                            <option key={route.id} value={route.id}>{route.name} ({route.vehicleNo})</option>
+                                            <option key={route.id} value={route.id}>{route.routeName || route.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -609,7 +609,12 @@ export function EnquiryManager() {
                                         disabled={!selectedRouteId}
                                         onChange={(e) => setSelectedStopId(e.target.value)}
                                     >
-                                        <option value="">Select Stop / Fair</option>
+                                        <option value="">Select Stop / Fare</option>
+                                        {transportHub.find(r => r.id === selectedRouteId)?.stops?.map((stop: any) => (
+                                            <option key={stop.id} value={stop.id}>
+                                                {stop.stopName || stop.name} (₹{Number(stop.monthlyFee || stop.fare || 0)})
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

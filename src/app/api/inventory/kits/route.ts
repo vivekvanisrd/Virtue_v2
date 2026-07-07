@@ -18,8 +18,9 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.warn("Fallback tenant lookup failed in kits api:", err);
     }
-    if (!schoolId) schoolId = "VIVES";
-    if (!branchId) branchId = "VIVES-RCB";
+    if (!schoolId || !branchId) {
+      return NextResponse.json({ error: "Missing tenancy context" }, { status: 401 });
+    }
   }
 
   try {
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
       where: {
         school_id: schoolId,
         branch_id: branchId,
-        status: "Active",
+        status: "ACTIVE",
       },
       include: {
         inventory_kit_items: {

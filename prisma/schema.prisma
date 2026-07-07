@@ -106,6 +106,7 @@ model School {
   driverDeviceLogs      DriverDeviceLog[]
   driverLoginAudits     DriverLoginAudit[]
   driverRefreshSessions DriverRefreshSession[]
+  transportSettings     TransportSettings?
 }
 
 model PlatformAdmin {
@@ -295,6 +296,7 @@ model Section {
   id              String              @id @default(uuid())
   name            String
   classId         String
+  capacity        Int                 @default(30)
   isGenesis       Boolean             @default(false)
   dnaVersion      String              @default("v1")
   source          String?
@@ -317,6 +319,7 @@ model Student {
   registrationId   String?                     @unique
   admissionNumber  String?
   studentCode      String?
+  legacyId         String?                     @unique
   firstName        String
   middleName       String?
   lastName         String?
@@ -1165,6 +1168,7 @@ model Route {
   driverAssignments  DriverAssignment[]
   tripSessions       TripSession[]
   polyline           RoutePolyline?
+  enquiries          Enquiry[]                    @relation("EnquiryRoute")
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
 
@@ -1221,6 +1225,7 @@ model VehicleStop {
   // V2 Relations
   pickupTransports  StudentTransport[]           @relation("PickupStopV2")
   dropTransports    StudentTransport[]           @relation("DropStopV2")
+  enquiries         Enquiry[]                    @relation("EnquiryStop")
   createdAt         DateTime                     @default(now())
   updatedAt         DateTime                     @updatedAt
 
@@ -1308,6 +1313,7 @@ model ExamResult {
   subject       Subject  @relation(fields: [subjectId], references: [id])
 
   @@index([branchId])
+  @@index([schoolId, studentId, examTypeId])
 }
 
 model Book {
@@ -1407,6 +1413,18 @@ model Enquiry {
   branchId         String?
   branch           Branch?  @relation("BranchEnquiries", fields: [branchId], references: [id])
   school           School   @relation(fields: [schoolId], references: [id])
+
+  // Financial and Transport estimation fields (V2 Upgrade)
+  tuitionDiscount     Decimal      @default(0) @db.Decimal(10, 2)
+  admissionWaiver     Decimal      @default(0) @db.Decimal(10, 2)
+  scholarshipAmount   Decimal      @default(0) @db.Decimal(10, 2)
+  scholarshipReason   String?
+  waiverReason        String?
+  isTransportRequired Boolean      @default(false)
+  requestedRouteId    String?
+  requestedRoute      Route?       @relation("EnquiryRoute", fields: [requestedRouteId], references: [id])
+  requestedStopId     String?
+  requestedStop       VehicleStop? @relation("EnquiryStop", fields: [requestedStopId], references: [id])
 
   @@index([branchId])
 }
@@ -1631,6 +1649,8 @@ model CreditNote {
   branchId  String?
   school    School? @relation(fields: [schoolId], references: [id])
   student   Student @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId, studentId])
 }
 
 model UnlockRequest {
@@ -2448,6 +2468,7 @@ model TripSession {
   school       School          @relation(fields: [schoolId], references: [id])
   attendance   BusAttendance[]
   incidents    VehicleIncident[]
+  simulationJob SimulationJob?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -2596,6 +2617,7 @@ model TransportNotification {
   deliveryStatus   String    @default("SENT") // SENT, DELIVERED, READ, FAILED
   isDeleted        Boolean   @default(false)
   deletedAt        DateTime?
+  statusLogs       NotificationStatusLog[]
 
   @@index([recipientId])
   @@index([schoolId])
@@ -2689,6 +2711,9 @@ model CommunicationLog {
   schoolId     String
   branchId     String?
   sender       String   // e.g. "office@virtueschool.in" or admin ID
+  authorEmail  String?
+  authorId     String?
+  recipientId  String?
   recipient    String   // Parent/Staff email
   subject      String
   body         String   @db.Text
@@ -2728,5 +2753,63 @@ model ApprovalRequest {
 
   @@index([schoolId])
   @@index([branchId])
+}
+
+enum SimulationStatus {
+  RUNNING
+  PAUSED
+  STOPPED
+  COMPLETED
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model TransportSettings {
+  id                   String   @id @default(uuid())
+  schoolId             String   @unique
+  approachRadius       Int      @default(1000)
+  gpsInterval          Int      @default(5)
+  gpsAccuracyThreshold Float    @default(100.0)
+  maxSpeedLimit        Float    @default(150.0)
+  heartbeatTimeout     Int      @default(5)
+  notificationsEnabled Boolean  @default(true)
+  simulatorEnabled     Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  school               School   @relation(fields: [schoolId], references: [id])
+  @@index([schoolId])
+}
+
+model SimulationJob {
+  id                   String           @id @default(uuid())
+  tripSessionId        String           @unique
+  status               SimulationStatus
+  currentPolylineIndex Int              @default(0)
+  lastExecutedAt       DateTime         @default(now())
+  startedBy            String
+  startedAt            DateTime         @default(now())
+  schoolId             String
+  branchId             String?
+
+  tripSession          TripSession      @relation(fields: [tripSessionId], references: [id], onDelete: Cascade)
+  @@index([schoolId])
+}
+
+model NotificationStatusLog {
+  id             String                     @id @default(uuid())
+  notificationId String
+  status         NotificationDeliveryStatus
+  changedAt      DateTime                   @default(now())
+  details        String?
+
+  notification   TransportNotification      @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  @@index([notificationId])
 }
 

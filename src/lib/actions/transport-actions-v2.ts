@@ -6,6 +6,8 @@ import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { revalidatePath as nextRevalidatePath } from "next/cache";
+import { initSimulationRunner, ROUTE_COORDINATES } from "@/lib/transport-simulator";
+import { SimulationStatus, NotificationDeliveryStatus } from "@prisma/client";
 
 function revalidatePath(path: string) {
   try {
@@ -15,6 +17,7 @@ function revalidatePath(path: string) {
   }
 }
 import { getSovereignIdentity } from "@/lib/auth/backbone";
+import { serializeDecimal } from "@/lib/utils/serialization";
 import {
   routeSchema,
   stopSchema,
@@ -187,7 +190,7 @@ export async function createRouteAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: route };
+    return { success: true, data: serializeDecimal(route) };
   } catch (e: any) {
     return handleError(e, "ROUTE_CREATE_FAILED");
   }
@@ -230,7 +233,7 @@ export async function updateRouteAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedRoute };
+    return { success: true, data: serializeDecimal(updatedRoute) };
   } catch (e: any) {
     return handleError(e, "ROUTE_UPDATE_FAILED");
   }
@@ -300,7 +303,7 @@ export async function getRouteAction(id: string) {
     if (!route) {
       return { success: false, error: { code: "ROUTE_NOT_FOUND", message: "Route not found" } };
     }
-    return { success: true, data: route };
+    return { success: true, data: serializeDecimal(route) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -319,7 +322,7 @@ export async function getRoutesAction() {
       },
       orderBy: { routeName: "asc" },
     });
-    return { success: true, data: routes };
+    return { success: true, data: serializeDecimal(routes) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -385,7 +388,7 @@ export async function createVehicleAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: vehicle };
+    return { success: true, data: serializeDecimal(vehicle) };
   } catch (e: any) {
     return handleError(e, "VEHICLE_CREATE_FAILED");
   }
@@ -446,7 +449,7 @@ export async function updateVehicleAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedVehicle };
+    return { success: true, data: serializeDecimal(updatedVehicle) };
   } catch (e: any) {
     return handleError(e, "VEHICLE_UPDATE_FAILED");
   }
@@ -517,7 +520,7 @@ export async function getVehicleAction(id: string) {
     if (!vehicle) {
       return { success: false, error: { code: "VEHICLE_NOT_FOUND", message: "Vehicle not found" } };
     }
-    return { success: true, data: vehicle };
+    return { success: true, data: serializeDecimal(vehicle) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -533,7 +536,7 @@ export async function getVehiclesAction() {
       },
       orderBy: { registrationNo: "asc" },
     });
-    return { success: true, data: vehicles };
+    return { success: true, data: serializeDecimal(vehicles) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -584,7 +587,7 @@ export async function createStopAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: stop };
+    return { success: true, data: serializeDecimal(stop) };
   } catch (e: any) {
     return handleError(e, "STOP_CREATE_FAILED");
   }
@@ -633,7 +636,7 @@ export async function updateStopAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedStop };
+    return { success: true, data: serializeDecimal(updatedStop) };
   } catch (e: any) {
     return handleError(e, "STOP_UPDATE_FAILED");
   }
@@ -687,7 +690,7 @@ export async function getStopAction(id: string) {
     if (!stop) {
       return { success: false, error: { code: "STOP_NOT_FOUND", message: "Stop not found" } };
     }
-    return { success: true, data: stop };
+    return { success: true, data: serializeDecimal(stop) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -703,7 +706,7 @@ export async function getStopsAction() {
       },
       orderBy: { stopName: "asc" },
     });
-    return { success: true, data: stops };
+    return { success: true, data: serializeDecimal(stops) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -776,7 +779,7 @@ export async function createDriverAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: { id: driver.id, name: driver.name, phone: driver.phone } };
+    return { success: true, data: serializeDecimal({ id: driver.id, name: driver.name, phone: driver.phone }) };
   } catch (e: any) {
     return handleError(e, "DRIVER_CREATE_FAILED");
   }
@@ -846,7 +849,7 @@ export async function updateDriverAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: { id: updatedDriver.id, name: updatedDriver.name } };
+    return { success: true, data: serializeDecimal({ id: updatedDriver.id, name: updatedDriver.name }) };
   } catch (e: any) {
     return handleError(e, "DRIVER_UPDATE_FAILED");
   }
@@ -1481,7 +1484,7 @@ export async function getDriverAction(id: string) {
     if (!driver) {
       return { success: false, error: { code: "DRIVER_NOT_FOUND", message: "Driver not found" } };
     }
-    return { success: true, data: driver };
+    return { success: true, data: serializeDecimal(driver) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -1502,7 +1505,7 @@ export async function getDriversAction() {
       },
       orderBy: { name: "asc" },
     });
-    return { success: true, data: drivers };
+    return { success: true, data: serializeDecimal(drivers) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -1542,7 +1545,7 @@ export async function assignDriverAction(rawInput: any) {
 
     // 3. Prevent two active drivers assigned to same vehicle
     const activeVehicleAssignment = await prisma.driverAssignment.findFirst({
-      where: { vehicleId: parsed.vehicleId, status: "Active", isDeleted: false },
+      where: { vehicleId: parsed.vehicleId, status: "ACTIVE", isDeleted: false },
     });
     if (activeVehicleAssignment) {
       return {
@@ -1553,7 +1556,7 @@ export async function assignDriverAction(rawInput: any) {
 
     // 4. Prevent two active vehicles assigned to same driver
     const activeDriverAssignment = await prisma.driverAssignment.findFirst({
-      where: { driverId: parsed.driverId, status: "Active", isDeleted: false },
+      where: { driverId: parsed.driverId, status: "ACTIVE", isDeleted: false },
     });
     if (activeDriverAssignment) {
       return {
@@ -1570,7 +1573,7 @@ export async function assignDriverAction(rawInput: any) {
           routeId: parsed.routeId,
           schoolId,
           branchId,
-          status: "Active",
+          status: "ACTIVE",
         },
       });
       return created;
@@ -1586,7 +1589,7 @@ export async function assignDriverAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: assignment };
+    return { success: true, data: serializeDecimal(assignment) };
   } catch (e: any) {
     return handleError(e, "DRIVER_ASSIGN_FAILED");
   }
@@ -1642,7 +1645,7 @@ export async function getDriverAssignmentsAction() {
       },
       orderBy: { assignedAt: "desc" },
     });
-    return { success: true, data: assignments };
+    return { success: true, data: serializeDecimal(assignments) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -1684,7 +1687,7 @@ export async function assignStudentTransportAction(rawInput: any) {
 
     // Constraint: Only one active transport assignment per student
     const activeAssignment = await prisma.studentTransport.findFirst({
-      where: { studentId: parsed.studentId, status: "Active", isDeleted: false },
+      where: { studentId: parsed.studentId, status: "ACTIVE", isDeleted: false },
     });
     if (activeAssignment) {
       return {
@@ -1702,31 +1705,11 @@ export async function assignStudentTransportAction(rawInput: any) {
           pickupStopId: parsed.pickupStopId,
           dropStopId: parsed.dropStopId,
           monthlyFee: parsed.monthlyFee,
-          status: "Active",
+          status: "ACTIVE",
           schoolId,
           branchId,
         },
       });
-
-      // 2. Compatibility Adapter: Sync to legacy TransportAssignment table
-      // Check if legacy assignment already exists to upsert, or create
-      await tx.transportAssignment.upsert({
-        where: { studentId: parsed.studentId },
-        update: {
-          routeId: parsed.routeId,
-          stopId: parsed.pickupStopId,
-          schoolId,
-          branchId,
-        },
-        create: {
-          studentId: parsed.studentId,
-          routeId: parsed.routeId,
-          stopId: parsed.pickupStopId,
-          schoolId,
-          branchId,
-        },
-      });
-
       return allocation;
     });
 
@@ -1740,7 +1723,7 @@ export async function assignStudentTransportAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: studentTransport };
+    return { success: true, data: serializeDecimal(studentTransport) };
   } catch (e: any) {
     return handleError(e, "STUDENT_ASSIGN_FAILED");
   }
@@ -1766,15 +1749,6 @@ export async function removeStudentTransportAction(id: string) {
         where: { id },
         data: { status: "Inactive", isDeleted: true, deletedAt: new Date() },
       });
-
-      // Also clean up legacy compatibility adapter link
-      try {
-        await tx.transportAssignment.delete({
-          where: { studentId: allocation.studentId },
-        });
-      } catch (err) {
-        console.warn("Legacy TransportAssignment cleanup warnings (safely ignored):", err.message);
-      }
     });
 
     await logTransportActivity({
@@ -1804,7 +1778,7 @@ export async function getStudentTransportAction(studentId: string) {
         dropStop: true,
       },
     });
-    return { success: true, data: allocation };
+    return { success: true, data: serializeDecimal(allocation) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -1866,7 +1840,7 @@ export async function createTripSessionAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: trip };
+    return { success: true, data: serializeDecimal(trip) };
   } catch (e: any) {
     return handleError(e, "TRIP_CREATE_FAILED");
   }
@@ -1898,7 +1872,7 @@ export async function updateTripSessionAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedTrip };
+    return { success: true, data: serializeDecimal(updatedTrip) };
   } catch (e: any) {
     return handleError(e, "TRIP_UPDATE_FAILED");
   }
@@ -1961,7 +1935,7 @@ export async function getTripSessionAction(id: string) {
     if (!trip) {
       return { success: false, error: { code: "TRIP_NOT_FOUND", message: "Trip session not found" } };
     }
-    return { success: true, data: trip };
+    return { success: true, data: serializeDecimal(trip) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -1979,7 +1953,38 @@ export async function getTripSessionsAction() {
       },
       orderBy: { createdAt: "desc" },
     });
-    return { success: true, data: trips };
+    return { success: true, data: serializeDecimal(trips) };
+  } catch (e: any) {
+    return handleError(e);
+  }
+}
+
+export async function getLiveTelemetryAction() {
+  try {
+    const { filter } = await getTenantFilter();
+    
+    // Hardened query: Only return telemetry for active trips, active drivers, and active vehicles
+    const liveGPS = await prisma.vehicleGPSLive.findMany({
+      where: {
+        schoolId: filter.schoolId,
+        branchId: filter.branchId || undefined,
+        vehicle: {
+          isDeleted: false,
+          onboardingStatus: "ACTIVE",
+          tripSessions: {
+            some: {
+              status: "ACTIVE",
+              isDeleted: false,
+              driver: {
+                status: "ACTIVE",
+                isDeleted: false
+              }
+            }
+          }
+        }
+      }
+    });
+    return { success: true, data: serializeDecimal(liveGPS) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -2020,7 +2025,7 @@ export async function createIncidentAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: incident };
+    return { success: true, data: serializeDecimal(incident) };
   } catch (e: any) {
     return handleError(e, "INCIDENT_CREATE_FAILED");
   }
@@ -2052,7 +2057,7 @@ export async function updateIncidentAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedIncident };
+    return { success: true, data: serializeDecimal(updatedIncident) };
   } catch (e: any) {
     return handleError(e, "INCIDENT_UPDATE_FAILED");
   }
@@ -2105,7 +2110,7 @@ export async function getIncidentAction(id: string) {
     if (!incident) {
       return { success: false, error: { code: "INCIDENT_NOT_FOUND", message: "Incident not found" } };
     }
-    return { success: true, data: incident };
+    return { success: true, data: serializeDecimal(incident) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -2122,7 +2127,7 @@ export async function getIncidentsAction() {
       },
       orderBy: { reportedAt: "desc" },
     });
-    return { success: true, data: incidents };
+    return { success: true, data: serializeDecimal(incidents) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -2164,7 +2169,7 @@ export async function createMaintenanceAction(rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: maintenance };
+    return { success: true, data: serializeDecimal(maintenance) };
   } catch (e: any) {
     return handleError(e, "MAINTENANCE_CREATE_FAILED");
   }
@@ -2204,7 +2209,7 @@ export async function updateMaintenanceAction(id: string, rawInput: any) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedMaintenance };
+    return { success: true, data: serializeDecimal(updatedMaintenance) };
   } catch (e: any) {
     return handleError(e, "MAINTENANCE_UPDATE_FAILED");
   }
@@ -2257,7 +2262,7 @@ export async function getMaintenanceAction(id: string) {
     if (!maintenance) {
       return { success: false, error: { code: "MAINTENANCE_NOT_FOUND", message: "Maintenance log not found" } };
     }
-    return { success: true, data: maintenance };
+    return { success: true, data: serializeDecimal(maintenance) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -2273,7 +2278,7 @@ export async function getMaintenancesAction() {
       },
       orderBy: { performedAt: "desc" },
     });
-    return { success: true, data: maintenances };
+    return { success: true, data: serializeDecimal(maintenances) };
   } catch (e: any) {
     return handleError(e);
   }
@@ -2332,7 +2337,7 @@ export async function startTripAction(rawInput: any, tokenOverride?: string) {
         driverId: parsed.driverId,
         vehicleId: parsed.vehicleId,
         routeId: parsed.routeId,
-        status: "Active",
+        status: "ACTIVE",
         isDeleted: false,
       },
       include: {
@@ -2352,7 +2357,7 @@ export async function startTripAction(rawInput: any, tokenOverride?: string) {
       };
     }
 
-    if (assignment.driver.status !== "Active" || assignment.driver.isDeleted) {
+    if (assignment.driver.status !== "ACTIVE" || assignment.driver.isDeleted) {
       return { success: false, error: { code: "DRIVER_INACTIVE", message: "Driver account status is not active." } };
     }
     if (assignment.vehicle.isDeleted) {
@@ -2390,7 +2395,7 @@ export async function startTripAction(rawInput: any, tokenOverride?: string) {
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: trip };
+    return { success: true, data: serializeDecimal(trip) };
   } catch (e: any) {
     return handleError(e, "TRIP_START_FAILED");
   }
@@ -2459,7 +2464,7 @@ export async function endTripAction(tripSessionId: string, tokenOverride?: strin
     });
 
     revalidatePath("/dashboard/transport");
-    return { success: true, data: updatedTrip };
+    return { success: true, data: serializeDecimal(updatedTrip) };
   } catch (e: any) {
     return handleError(e, "TRIP_END_FAILED");
   }
@@ -2527,7 +2532,7 @@ export async function checkTripHeartbeatsAction() {
       }
     }
 
-    return { success: true, data: results };
+    return { success: true, data: serializeDecimal(results) };
   } catch (e: any) {
     return handleError(e, "CHECK_HEARTBEATS_FAILED");
   }
@@ -2566,7 +2571,7 @@ export async function gpsPingAction(
       where: {
         driverId,
         vehicleId: data.vehicleId,
-        status: "Active",
+        status: "ACTIVE",
         isDeleted: false,
       }
     });
@@ -2831,3 +2836,558 @@ export async function gpsPingAction(
     return handleError(e, "GPS_PING_FAILED");
   }
 }
+
+// ============================================================================
+// ⚙️ SIMULATOR WORKER ACTIONS & SETTINGS (OWNER & DEVELOPER LOCKED)
+// ============================================================================
+
+export async function getTransportSettingsAction(schoolId: string) {
+  try {
+    let settings = await prisma.transportSettings.findUnique({
+      where: { schoolId }
+    });
+    if (!settings) {
+      settings = {
+        id: "DEFAULT",
+        schoolId,
+        approachRadius: process.env.TRANSPORT_APPROACH_RADIUS_METERS ? parseInt(process.env.TRANSPORT_APPROACH_RADIUS_METERS, 10) : 1000,
+        gpsInterval: 5,
+        gpsAccuracyThreshold: 100.0,
+        maxSpeedLimit: 150.0,
+        heartbeatTimeout: 5,
+        notificationsEnabled: true,
+        simulatorEnabled: process.env.ENABLE_GPS_SIMULATOR === "true",
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as any;
+    }
+    return { success: true, data: serializeDecimal(settings) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function startSimulationAction(tripSessionId: string) {
+  try {
+    const tenant = await enforcePermission("START_SIMULATION");
+    if (process.env.ENABLE_GPS_SIMULATOR !== "true") {
+      throw new Error("GPS Simulator is disabled in this environment.");
+    }
+
+    // Initialize/Ensure global interval timer is active
+    initSimulationRunner();
+
+    const now = new Date();
+    const job = await prisma.simulationJob.upsert({
+      where: { tripSessionId },
+      update: {
+        status: "RUNNING",
+        lastExecutedAt: now
+      },
+      create: {
+        tripSessionId,
+        status: "RUNNING",
+        startedBy: tenant.userId,
+        startedAt: now,
+        schoolId: tenant.schoolId,
+        branchId: tenant.branchId
+      }
+    });
+
+    await logTransportActivity({
+      userId: tenant.userId,
+      action: "SIMULATION_STARTED",
+      entityType: "SimulationJob",
+      entityId: job.id,
+      schoolId: tenant.schoolId,
+      branchId: tenant.branchId
+    });
+
+    return { success: true, data: serializeDecimal(job) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function pauseSimulationAction(tripSessionId: string) {
+  try {
+    const tenant = await enforcePermission("PAUSE_SIMULATION");
+    const job = await prisma.simulationJob.update({
+      where: { tripSessionId },
+      data: { status: "PAUSED" }
+    });
+
+    await logTransportActivity({
+      userId: tenant.userId,
+      action: "SIMULATION_PAUSED",
+      entityType: "SimulationJob",
+      entityId: job.id,
+      schoolId: tenant.schoolId,
+      branchId: tenant.branchId
+    });
+
+    return { success: true, data: serializeDecimal(job) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function resumeSimulationAction(tripSessionId: string) {
+  try {
+    const tenant = await enforcePermission("RESUME_SIMULATION");
+    const job = await prisma.simulationJob.update({
+      where: { tripSessionId },
+      data: { status: "RUNNING" }
+    });
+
+    await logTransportActivity({
+      userId: tenant.userId,
+      action: "SIMULATION_RESUMED",
+      entityType: "SimulationJob",
+      entityId: job.id,
+      schoolId: tenant.schoolId,
+      branchId: tenant.branchId
+    });
+
+    return { success: true, data: serializeDecimal(job) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function stopSimulationAction(tripSessionId: string) {
+  try {
+    const tenant = await enforcePermission("STOP_SIMULATION");
+    const job = await prisma.simulationJob.update({
+      where: { tripSessionId },
+      data: { status: "STOPPED" }
+    });
+
+    await logTransportActivity({
+      userId: tenant.userId,
+      action: "SIMULATION_STOPPED",
+      entityType: "SimulationJob",
+      entityId: job.id,
+      schoolId: tenant.schoolId,
+      branchId: tenant.branchId
+    });
+
+    return { success: true, data: serializeDecimal(job) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getSimulationStatusAction(tripSessionId: string) {
+  try {
+    await enforcePermission("GET_SIMULATION_STATUS");
+    const job = await prisma.simulationJob.findUnique({
+      where: { tripSessionId }
+    });
+    return { success: true, data: serializeDecimal(job) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// ============================================================================
+// 🔒 PARENT DATA RETRIEVAL & SECURITY GATE (ZERO-TRUST PARENT IDENTITIES)
+// ============================================================================
+
+// Haversine Distance helper for rolling ETA calculations
+function getDistance(p1: [number, number], p2: [number, number]): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((p2[0] - p1[0]) * Math.PI) / 180;
+  const dLon = ((p2[1] - p1[1]) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((p1[0] * Math.PI) / 180) *
+      Math.cos((p2[0] * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function calculateRemainingDistance(coords: [number, number][], currentIndex: number): number {
+  if (currentIndex < 0 || currentIndex >= coords.length) return 0;
+  let distance = 0;
+  for (let i = currentIndex; i < coords.length - 1; i++) {
+    distance += getDistance(coords[i], coords[i + 1]);
+  }
+  return distance;
+}
+
+export async function getParentTransportTelemetryAction() {
+  try {
+    const cookieStore = await cookies();
+    const session = cookieStore.get("v-session")?.value;
+    if (!session) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Parent authentication required." } };
+    }
+    const user = await decrypt(session);
+    if (!user || user.role !== "PARENT") {
+      return { success: false, error: { code: "FORBIDDEN", message: "Access forbidden: Parent credentials required." } };
+    }
+
+    const { email, phone } = user;
+    if (!email && !phone) {
+      return { success: false, error: { code: "FORBIDDEN", message: "Invalid parent credentials." } };
+    }
+
+    // Step 2. Verify student ownership derived directly from database relations
+    const familyDetails = await prisma.familyDetail.findMany({
+      where: {
+        OR: [
+          email ? { fatherEmail: email } : undefined,
+          email ? { motherEmail: email } : undefined,
+          phone ? { fatherPhone: phone } : undefined,
+          phone ? { motherPhone: phone } : undefined
+        ].filter(Boolean) as any
+      },
+      select: {
+        studentId: true
+      }
+    });
+
+    if (familyDetails.length === 0) {
+      return { success: true, data: serializeDecimal([]) };
+    }
+
+    const studentIds = familyDetails.map(fd => fd.studentId);
+
+    // Step 3. Query Active assignments strictly isolating tenant/branch
+    const transports = await prisma.studentTransport.findMany({
+      where: {
+        studentId: { in: studentIds },
+        status: "ACTIVE",
+        isDeleted: false
+      },
+      include: {
+        student: true,
+        route: true,
+        pickupStop: true,
+        dropStop: true
+      }
+    });
+
+    const results = [];
+
+    for (const t of transports) {
+      const assignment = await prisma.driverAssignment.findFirst({
+        where: {
+          routeId: t.routeId,
+          status: "ACTIVE",
+          isDeleted: false
+        },
+        include: {
+          vehicle: true,
+          driver: true
+        }
+      });
+
+      if (!assignment) {
+        results.push({
+          studentName: `${t.student.firstName} ${t.student.lastName || ""}`.trim(),
+          vehicleRegistration: "Not Assigned",
+          driverName: "Not Assigned",
+          driverPhone: "Not Assigned",
+          liveLatitude: 0,
+          liveLongitude: 0,
+          boardingStatus: "NOT_BOARDED",
+          lastUpdateTime: new Date().toISOString(),
+          etaMinutes: 0
+        });
+        continue;
+      }
+
+      const activeTrip = await prisma.tripSession.findFirst({
+        where: {
+          vehicleId: assignment.vehicleId,
+          driverId: assignment.driverId,
+          status: { in: ["ACTIVE", "STALE", "OFFLINE"] },
+          isDeleted: false
+        }
+      });
+
+      const liveGPS = await prisma.vehicleGPSLive.findUnique({
+        where: { vehicleId: assignment.vehicleId }
+      });
+
+      let etaMinutes = 0;
+      let boardingStatus = "NOT_BOARDED";
+
+      if (activeTrip && liveGPS) {
+        boardingStatus = "BOARDED";
+        const routeCode = t.route.routeCode;
+        const coords = ROUTE_COORDINATES[routeCode];
+
+        if (coords && coords.length > 0) {
+          const currentIndex = liveGPS.sequenceNo || 0;
+          
+          // 3-Tier Fallback ETA Calculation
+          // Tier 1: Rolling speed-average based calculation
+          const recentLogs = await prisma.vehicleGPSLog.findMany({
+            where: { tripSessionId: activeTrip.id },
+            orderBy: { serverTimestamp: "desc" },
+            take: 5,
+            select: { speed: true }
+          });
+
+          let avgSpeedKmh = 30.0; // Fallback: 30 km/h city average
+          if (recentLogs.length > 0) {
+            const speeds = recentLogs.map(l => l.speed);
+            const sum = speeds.reduce((a, b) => a + b, 0);
+            const avg = sum / recentLogs.length;
+            if (avg > 5.0) {
+              avgSpeedKmh = avg;
+            }
+          }
+
+          const remainingDistance = calculateRemainingDistance(coords, currentIndex);
+          etaMinutes = Math.round((remainingDistance / avgSpeedKmh) * 60);
+
+          if (etaMinutes <= 0) {
+            // Tier 2: Simulation progress ratio fallback
+            const remainingPoints = coords.length - currentIndex;
+            etaMinutes = Math.max(1, Math.round((remainingPoints / coords.length) * 15));
+          }
+        } else {
+          // Tier 3: Static fallback
+          etaMinutes = 10;
+        }
+      }
+
+      results.push({
+        studentName: `${t.student.firstName} ${t.student.lastName || ""}`.trim(),
+        vehicleRegistration: assignment.vehicle.registrationNo,
+        driverName: assignment.driver.name,
+        driverPhone: assignment.driver.phone,
+        liveLatitude: liveGPS?.latitude || 17.6000,
+        liveLongitude: liveGPS?.longitude || 78.1000,
+        boardingStatus,
+        lastUpdateTime: liveGPS?.updatedAt ? liveGPS.updatedAt.toISOString() : new Date().toISOString(),
+        etaMinutes
+      });
+    }
+
+    return { success: true, data: serializeDecimal(results) };
+  } catch (err: any) {
+    return { success: false, error: { code: "INTERNAL_ERROR", message: err.message } };
+  }
+}
+
+// ============================================================================
+// 📣 AUDITABLE NOTIFICATION EVENTS (APPEND-ONLY LOGGING)
+// ============================================================================
+
+export async function createTransportNotificationAction(data: {
+  schoolId: string;
+  branchId?: string | null;
+  recipientId: string;
+  notificationType: string;
+  title: string;
+  message: string;
+}) {
+  try {
+    const tenant = await enforcePermission("CREATE_NOTIFICATION");
+    const notification = await prisma.transportNotification.create({
+      data: {
+        schoolId: data.schoolId,
+        branchId: data.branchId || null,
+        recipientId: data.recipientId,
+        notificationType: data.notificationType,
+        title: data.title,
+        message: data.message,
+        deliveryStatus: "QUEUED"
+      }
+    });
+
+    await prisma.notificationStatusLog.create({
+      data: {
+        notificationId: notification.id,
+        status: "QUEUED",
+        details: "Notification initialized in queue."
+      }
+    });
+
+    return { success: true, data: serializeDecimal(notification) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateNotificationStatusAction(notificationId: string, status: NotificationDeliveryStatus, details?: string) {
+  try {
+    await enforcePermission("UPDATE_NOTIFICATION_STATUS");
+    const notification = await prisma.transportNotification.update({
+      where: { id: notificationId },
+      data: { deliveryStatus: status }
+    });
+
+    await prisma.notificationStatusLog.create({
+      data: {
+        notificationId,
+        status,
+        details: details || `Status changed to ${status}.`
+      }
+    });
+
+    return { success: true, data: serializeDecimal(notification) };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getTransportAnalyticsAction() {
+  try {
+    const { schoolId, branchId } = await enforcePermission("VEHICLE_VIEW");
+
+    // 1. Core Counts
+    const totalVehicles = await prisma.vehicle.count({
+      where: { schoolId, branchId: branchId || undefined, isDeleted: false }
+    });
+
+    const totalRoutes = await prisma.route.count({
+      where: { schoolId, isDeleted: false }
+    });
+
+    const totalAllocatedStudents = await prisma.studentTransport.count({
+      where: { schoolId, branchId: branchId || undefined, status: "ACTIVE", isDeleted: false }
+    });
+
+    const maintenanceSum = await prisma.vehicleMaintenance.aggregate({
+      where: { schoolId, branchId: branchId || undefined, isDeleted: false, status: "COMPLETED" },
+      _sum: { cost: true }
+    });
+    const totalMaintenanceCost = maintenanceSum._sum.cost ? Number(maintenanceSum._sum.cost) : 0;
+
+    const totalIncidents = await prisma.vehicleIncident.count({
+      where: { schoolId, branchId: branchId || undefined }
+    });
+
+    // 2. Route Occupancy / Utilization
+    const routes = await prisma.route.findMany({
+      where: { schoolId, isDeleted: false },
+      include: {
+        driverAssignments: {
+          where: { status: "ACTIVE", isDeleted: false },
+          include: { vehicle: true }
+        }
+      }
+    });
+
+    const routeUtilization = [];
+    for (const route of routes) {
+      const studentCount = await prisma.studentTransport.count({
+        where: { routeId: route.id, status: "ACTIVE", isDeleted: false }
+      });
+      const totalCapacity = route.driverAssignments.reduce((acc, a) => acc + (a.vehicle?.capacity || 0), 0);
+      const utilization = totalCapacity > 0 ? Math.round((studentCount / totalCapacity) * 100) : 0;
+
+      routeUtilization.push({
+        routeId: route.id,
+        routeName: route.routeName,
+        routeCode: route.routeCode,
+        studentCount,
+        totalCapacity,
+        utilization
+      });
+    }
+
+    // 3. Maintenance Category Cost Summaries
+    const maintenances = await prisma.vehicleMaintenance.findMany({
+      where: { schoolId, branchId: branchId || undefined, isDeleted: false, status: "COMPLETED" }
+    });
+
+    const maintenanceCosts: Record<string, number> = {
+      SERVICE: 0,
+      REPAIR: 0,
+      INSPECTION: 0
+    };
+
+    maintenances.forEach(m => {
+      const type = (m.maintenanceType || "SERVICE").toUpperCase();
+      const costVal = Number(m.cost || 0);
+      if (maintenanceCosts[type] !== undefined) {
+        maintenanceCosts[type] += costVal;
+      } else {
+        maintenanceCosts[type] = costVal;
+      }
+    });
+
+    // 4. Driver Performance Incidents Scorecard
+    const drivers = await prisma.driver.findMany({
+      where: { schoolId, isDeleted: false }
+    });
+
+    const driverPerformance = [];
+    for (const d of drivers) {
+      const completedTrips = await prisma.tripSession.count({
+        where: { driverId: d.id, status: "COMPLETED", isDeleted: false }
+      });
+      const overspeedCount = await prisma.vehicleIncident.count({
+        where: { driverId: d.id, incidentType: "OVERSPEED" }
+      });
+      const deviationCount = await prisma.vehicleIncident.count({
+        where: { driverId: d.id, incidentType: "ROUTE_DEVIATION" }
+      });
+
+      driverPerformance.push({
+        driverId: d.id,
+        driverName: d.name,
+        completedTrips,
+        overspeedCount,
+        deviationCount
+      });
+    }
+
+    // 5. Vehicle Run metrics
+    const vehicles = await prisma.vehicle.findMany({
+      where: { schoolId, branchId: branchId || undefined, isDeleted: false }
+    });
+
+    const vehicleRunMetrics = [];
+    for (const v of vehicles) {
+      const tripCount = await prisma.tripSession.count({
+        where: { vehicleId: v.id, isDeleted: false }
+      });
+      const incidentCount = await prisma.vehicleIncident.count({
+        where: { vehicleId: v.id }
+      });
+      const maintenanceCount = await prisma.vehicleMaintenance.count({
+        where: { vehicleId: v.id, isDeleted: false }
+      });
+
+      vehicleRunMetrics.push({
+        vehicleId: v.id,
+        registrationNo: v.registrationNo,
+        tripCount,
+        incidentCount,
+        maintenanceCount
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        kpis: {
+          totalVehicles,
+          totalRoutes,
+          totalAllocatedStudents,
+          totalMaintenanceCost,
+          totalIncidents
+        },
+        routeUtilization,
+        maintenanceCosts,
+        driverPerformance,
+        vehicleRunMetrics
+      }
+    };
+
+  } catch (e: any) {
+    return handleError(e);
+  }
+}
+
+
