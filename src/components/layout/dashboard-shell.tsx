@@ -78,6 +78,9 @@ const MailboxHub = dynamic(() => import("../dashboard/MailboxHub").then(mod => m
 const ApprovalsHub = dynamic(() => import("../dashboard/ApprovalsHub").then(mod => mod.ApprovalsHub), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
+const StaffProfileHub = dynamic(() => import("../staff/StaffProfileHub"), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -94,6 +97,10 @@ function WorkspaceRenderer() {
           {tab.id === "overview" && <OverviewContent />}
           {tab.id === "settings" && <InstitutionalSetupHub />}
           {tab.id === "students" && <StudentHub />}
+          {tab.id === "my-profile" && <StaffProfileHub />}
+          {tab.id.startsWith("staff-profile-") && (
+            <StaffProfileHub targetStaffId={tab.id.replace("staff-profile-", "")} />
+          )}
           {(tab.id === "students-all" || tab.id === "students-add" || tab.id === "students-promotion" || tab.id === "students-reports" || tab.id === "students-enquiries" || tab.id === "students-exams" || tab.id === "students-import") && (
             <StudentsContent tabId={tab.id} />
           )}
@@ -167,7 +174,7 @@ function WorkspaceRenderer() {
           )}
 
           {/* Fallback for truly unknown tabs */}
-          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings", "student", "fee", "class"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay|bank/i.test(tab.id)) && (
+          {!([ "overview", "students", "staff", "accounting", "teachers", "academics", "attendance", "activities", "library", "transport", "communication", "settings", "student", "fee", "class", "my-profile", "staff-profile"].some(pre => tab.id.toLowerCase().startsWith(pre)) || /fee|finance|salary|razorpay|bank/i.test(tab.id)) && (
             <div className="flex flex-col items-center justify-center h-full text-foreground opacity-30 py-40">
               <h2 className="text-2xl font-bold italic text-rose-500">Module Implementation Pending (HARD_OVERRIDE_V7)</h2>
               <p>The {tab.title} section (ID: {tab.id}) is coming soon.</p>

@@ -89,8 +89,9 @@ async function _upsertStandardRole(schoolId: string, roleName: string) {
     where: { schoolId, name: roleName, branchId: null }
   });
 
+  let roleRecord;
   if (existing) {
-    return prisma.sovereignRole.update({
+    roleRecord = await prisma.sovereignRole.update({
       where: { id: existing.id },
       data: {
         capabilities: STANDARD_ROLES[roleName] as any,
@@ -98,18 +99,25 @@ async function _upsertStandardRole(schoolId: string, roleName: string) {
         isCustom: false,
       }
     });
+  } else {
+    roleRecord = await prisma.sovereignRole.create({
+      data: {
+        name: roleName,
+        schoolId,
+        branchId: null,      // School-wide standard role
+        capabilities: STANDARD_ROLES[roleName] as any,
+        isSystem: true,
+        isCustom: false,
+      }
+    });
   }
 
-  return prisma.sovereignRole.create({
-    data: {
-      name: roleName,
-      schoolId,
-      branchId: null,      // School-wide standard role
-      capabilities: STANDARD_ROLES[roleName] as any,
-      isSystem: true,
-      isCustom: false,
-    }
-  });
+  try {
+    const { revalidateTag } = require("next/cache");
+    revalidateTag(`vitals-${schoolId}-${roleName}`);
+  } catch (e) {}
+
+  return roleRecord;
 }
 
 /**

@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 import { getSovereignIdentity } from "../auth/backbone";
 import { unstable_noStore as noStore } from "next/cache";
 
@@ -19,7 +19,7 @@ export async function getDashboardStatsAction() {
     const branchFilter = hasBranchContext ? { branchId: context.branchId } : {};
 
     // Resolve active academic year
-    const activeAY = await prisma.academicYear.findFirst({
+    const activeAY = await prismaBypass.academicYear.findFirst({
       where: { schoolId: context.schoolId, isCurrent: true }
     });
 
@@ -27,25 +27,22 @@ export async function getDashboardStatsAction() {
       throw new Error("Active academic year not found.");
     }
 
-    // 1-8. Parallel database queries via Promise.all
+    // Parallel database queries via Promise.all (reduced from 8 to 5 queries)
     const [
       studentCount,
       teacherCount,
       expectationStats,
-      collectionsStatsGroup,
-      dailyRevenue,
-      recentCollectionsRaw,
+      allCollections,
       classes,
       voidRequests
     ] = await Promise.all([
-      prisma.student.count({
+      prismaBypass.student.count({
         where: { schoolId: context.schoolId, status: "CONFIRMED", ...branchFilter }
       }),
-      prisma.staff.count({
+      prismaBypass.staff.count({
         where: { schoolId: context.schoolId, role: "TEACHER", ...branchFilter, status: "ACTIVE" }
       }),
-      // BUG-1 FIX: Use StudentFeeComponent as the source of truth (not legacy annualTuition)
-      prisma.studentFeeComponent.aggregate({
+      prismaBypass.studentFeeComponent.aggregate({
         where: {
           schoolId: context.schoolId,
           isApplicable: true,
@@ -60,22 +57,7 @@ export async function getDashboardStatsAction() {
         },
         _sum: { baseAmount: true, waiverAmount: true, discountAmount: true }
       }),
-      prisma.collection.groupBy({
-        by: ['paymentMode'],
-        where: { schoolId: context.schoolId, status: "Success", isDeleted: false, ...branchFilter },
-        _sum: { amountPaid: true, totalPaid: true }
-      }),
-      prisma.collection.aggregate({
-        where: { 
-          schoolId: context.schoolId,
-          paymentDate: { gte: today },
-          status: "Success",
-          isDeleted: false,
-          ...branchFilter
-        },
-        _sum: { totalPaid: true }
-      }),
-      prisma.collection.findMany({
+      prismaBypass.collection.findMany({
         where: { schoolId: context.schoolId, status: "Success", isDeleted: false, ...branchFilter },
         include: {
           student: {
@@ -85,10 +67,9 @@ export async function getDashboardStatsAction() {
             }
           }
         },
-        orderBy: { paymentDate: "desc" },
-        take: 5
+        orderBy: { paymentDate: "desc" }
       }),
-      prisma.class.findMany({
+      prismaBypass.class.findMany({
         where: { schoolId: context.schoolId, ...branchFilter },
         select: {
           id: true,
@@ -101,10 +82,8 @@ export async function getDashboardStatsAction() {
                   id: true,
                   financial: {
                     select: {
-                      // Legacy fallback fields (used only when components[] is empty)
                       annualTuition: true,
                       totalDiscount: true,
-                      // BUG-1 FIX: Include component-level sums for accurate per-student expected fee
                       components: {
                         where: { isApplicable: true },
                         select: {
@@ -127,7 +106,7 @@ export async function getDashboardStatsAction() {
           }
         }
       }),
-      prisma.collection.count({
+      prismaBypass.collection.count({
         where: { 
           schoolId: context.schoolId,
           status: "VoidRequested",
@@ -144,31 +123,32 @@ export async function getDashboardStatsAction() {
     const expectedDiscounts= Number(expectationStats._sum.discountAmount || 0);
     const expectedNet = expectedBase - expectedWaivers - expectedDiscounts;
     
-    // Parse consolidated collection stats from groupBy
+    // Process consolidated collection stats in memory to save roundtrips
     let lifetimeCollected = 0;
     let cashCollected = 0;
     let onlineCollected = 0;
+    let collectedToday = 0;
 
-    if (Array.isArray(collectionsStatsGroup)) {
-      collectionsStatsGroup.forEach((group: any) => {
-        const amt = Number(group._sum.amountPaid || 0);
-        lifetimeCollected += Number(group._sum.totalPaid || group._sum.amountPaid || 0);
-        
-        if (group.paymentMode === "Cash") {
-          cashCollected += amt;
-        } else if (group.paymentMode === "Razorpay") {
-          onlineCollected += amt;
-        } else {
-          // Count any other payment modes (e.g. Bank Transfer, cards) as online/other
-          onlineCollected += amt;
-        }
-      });
-    }
+    const startOfToday = today.getTime();
 
-    const collectedToday = Number(dailyRevenue._sum.totalPaid || 0);
+    allCollections.forEach((col: any) => {
+      const amt = Number(col.amountPaid || 0);
+      const totalPaid = Number(col.totalPaid || col.amountPaid || 0);
+      lifetimeCollected += totalPaid;
+      
+      if (col.paymentMode === "Cash") {
+        cashCollected += amt;
+      } else {
+        onlineCollected += amt;
+      }
 
-    // Map recent collections
-    const recentCollections = recentCollectionsRaw.map((col: any) => ({
+      if (col.paymentDate && new Date(col.paymentDate).getTime() >= startOfToday) {
+        collectedToday += totalPaid;
+      }
+    });
+
+    // Map recent collections in memory (first 5)
+    const recentCollections = allCollections.slice(0, 5).map((col: any) => ({
       id: col.id,
       receiptNumber: col.receiptNumber,
       studentId: col.studentId,
@@ -190,12 +170,10 @@ export async function getDashboardStatsAction() {
           if (st.financial) {
             const comps = (st.financial as any).components as { baseAmount: any; waiverAmount: any; discountAmount: any }[] | undefined;
             if (comps && comps.length > 0) {
-              // Authoritative path: sum of per-student fee components
               totalExpected += comps.reduce((sum, c) =>
                 sum + Number(c.baseAmount || 0) - Number(c.waiverAmount || 0) - Number(c.discountAmount || 0), 0
               );
             } else {
-              // Legacy fallback: for students without components yet
               totalExpected += Number(st.financial.annualTuition || 0) - Number(st.financial.totalDiscount || 0);
             }
           }

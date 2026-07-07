@@ -15,8 +15,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
   }
   
   // 🏛️ SOVEREIGN IDENTITY: Parallel cached fetch for institutional vitals
-  const getCachedVitals = unstable_cache(
-    async (schoolId: string, roleName: string) => {
+  const getCachedVitals = (schoolId: string, roleName: string) => unstable_cache(
+    async () => {
       return Promise.all([
         prismaBypass.school.findUnique({
           where: { id: schoolId },
@@ -42,9 +42,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
         })
       ]);
     },
-    ['dashboard-layout-vitals'],
-    { revalidate: 3600 } // Cache for 1 hour
-  );
+    ['dashboard-layout-vitals', schoolId, roleName],
+    { revalidate: 3600, tags: [`vitals-${schoolId}-${roleName}`] }
+  )();
 
   const [school, activeYear, branches, sovereignRole] = await getCachedVitals(
     identity.schoolId,

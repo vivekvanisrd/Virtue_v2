@@ -24,6 +24,7 @@ import { BranchSwitcher } from "./BranchSwitcher";
 import { signOutAction } from "@/lib/actions/auth-native";
 import { switchSchoolContextAction } from "@/app/developer/actions";
 import { changePasswordAction } from "@/lib/actions/change-password-action";
+import { useTabs } from "@/context/tab-context";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -48,6 +49,7 @@ export function Header({
   activeBranchId,
   activeBranchName
 }: HeaderProps) {
+  const { openTab } = useTabs();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -209,6 +211,12 @@ export function Header({
           </div>
 
           <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-slate-100 opacity-0 invisible group-hover/profile:opacity-100 group-hover/profile:visible transition-all duration-300 z-50 p-2 transform origin-top translate-y-2 group-hover/profile:translate-y-0">
+             <button 
+                onClick={() => openTab({ id: "my-profile", title: "My Profile", icon: User, component: "My Profile" })}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-black text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors uppercase tracking-widest italic mb-1"
+             >
+                <User className="w-4 h-4" /> My Profile
+             </button>
              <button 
                 onClick={() => setIsChangePasswordOpen(true)}
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-xs font-black text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors uppercase tracking-widest italic mb-1"

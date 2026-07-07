@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model School {
@@ -47,6 +47,7 @@ model School {
   discounts             Discount[]
   discountTypes         DiscountType[]
   docRecords            Document[]
+  staffDocuments        StaffDocument[]
   enquiries             Enquiry[]
   examResults           ExamResult[]
   examTypes             ExamType[]
@@ -131,6 +132,8 @@ model PlatformClass {
   platformAdminId String?
   platformAdmin   PlatformAdmin?    @relation(fields: [platformAdminId], references: [id])
   sections        PlatformSection[]
+
+  @@index([platformAdminId])
 }
 
 model PlatformSection {
@@ -138,6 +141,8 @@ model PlatformSection {
   name            String
   platformClassId String
   platformClass   PlatformClass @relation(fields: [platformClassId], references: [id])
+
+  @@index([platformClassId])
 }
 
 model PlatformAcademicYear {
@@ -148,6 +153,8 @@ model PlatformAcademicYear {
   createdAt       DateTime       @default(now())
   platformAdminId String?
   platformAdmin   PlatformAdmin? @relation(fields: [platformAdminId], references: [id])
+
+  @@index([platformAdminId])
 }
 
 model Branch {
@@ -247,6 +254,9 @@ model AcademicYear {
   financialYearId String?
   financialYear   FinancialYear?    @relation(fields: [financialYearId], references: [id])
   promotions      PromotionBatch[]
+
+  @@index([schoolId])
+  @@index([financialYearId])
 }
 
 model FinancialYear {
@@ -268,6 +278,8 @@ model FinancialYear {
   journals         JournalEntry[]
   ledgerEntries    LedgerEntry[]
   academicYears    AcademicYear[]
+
+  @@index([schoolId])
 }
 
 model Class {
@@ -290,6 +302,9 @@ model Class {
   classTeacher    Staff?              @relation("ClassTeacher")
   attendance      StudentAttendance[]
   subjects        Subject[]
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model Section {
@@ -312,6 +327,10 @@ model Section {
   classTeacher    Staff?              @relation("SectionTeacher", fields: [classTeacherId], references: [id])
   school          School              @relation(fields: [schoolId], references: [id])
   attendance      StudentAttendance[]
+
+  @@index([branchId])
+  @@index([classId])
+  @@index([schoolId])
 }
 
 model Student {
@@ -417,6 +436,11 @@ model AcademicHistory {
   @@unique([studentId, academicYearId])
   @@unique([schoolId, branchId, admissionNumber])
   @@index([branchId])
+
+  @@index([academicYearId])
+  @@index([classId])
+  @@index([sectionId])
+  @@index([promotionBatchId])
 }
 
 model AcademicRecord {
@@ -444,6 +468,12 @@ model AcademicRecord {
   school        School?  @relation(fields: [schoolId], references: [id])
   section       Section? @relation(fields: [sectionId], references: [id])
   student       Student  @relation(fields: [studentId], references: [id])
+
+  @@index([branchId])
+  @@index([classId])
+  @@index([schoolId])
+  @@index([sectionId])
+  @@index([academicYear])
 }
 
 model FamilyDetail {
@@ -475,6 +505,9 @@ model FamilyDetail {
 
   @@index([fatherPhone])
   @@index([motherPhone])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model Address {
@@ -493,6 +526,9 @@ model Address {
   student          Student @relation(fields: [studentId], references: [id])
 
   @@index([permanentAddress])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model TransportDetail {
@@ -508,6 +544,9 @@ model TransportDetail {
   branch            Branch?  @relation(fields: [branchId], references: [id])
   school            School?  @relation(fields: [schoolId], references: [id])
   student           Student  @relation(fields: [studentId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model MedicalRecord {
@@ -522,6 +561,9 @@ model MedicalRecord {
   branch            Branch? @relation(fields: [branchId], references: [id])
   school            School? @relation(fields: [schoolId], references: [id])
   student           Student @relation(fields: [studentId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model BankDetail {
@@ -536,6 +578,9 @@ model BankDetail {
   branch        Branch? @relation(fields: [branchId], references: [id])
   school        School? @relation(fields: [schoolId], references: [id])
   student       Student @relation(fields: [studentId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model PreviousSchool {
@@ -551,6 +596,9 @@ model PreviousSchool {
   branch           Branch?   @relation(fields: [branchId], references: [id])
   school           School?   @relation(fields: [schoolId], references: [id])
   student          Student   @relation(fields: [studentId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model Document {
@@ -565,6 +613,10 @@ model Document {
   school     School   @relation(fields: [schoolId], references: [id])
   staff      Staff?   @relation(fields: [staffId], references: [id])
   student    Student? @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([staffId])
+  @@index([studentId])
 }
 
 model FinancialRecord {
@@ -598,6 +650,11 @@ model FinancialRecord {
   school           School?               @relation(fields: [schoolId], references: [id])
   student          Student               @relation(fields: [studentId], references: [id])
   components       StudentFeeComponent[]
+
+  @@index([studentId])
+  @@index([feeStructureId])
+  @@index([schoolId])
+  @@index([branchId])
 }
 
 model Discount {
@@ -615,6 +672,13 @@ model Discount {
   discountType       DiscountType    @relation(fields: [discountTypeId], references: [id])
   school             School          @relation(fields: [schoolId], references: [id])
   financialRecord    FinancialRecord @relation(fields: [studentFinancialId], references: [id])
+
+  @@index([studentFinancialId])
+  @@index([discountTypeId])
+  @@index([schoolId])
+  @@index([branchId])
+
+  @@index([authorizerId])
 }
 
 model DiscountType {
@@ -629,6 +693,9 @@ model DiscountType {
   discounts   Discount[]
   branch      Branch?    @relation(fields: [branchId], references: [id])
   school      School     @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model FeeComponentMaster {
@@ -654,6 +721,8 @@ model FeeComponentMaster {
   studentComponents    StudentFeeComponent[]
 
   @@unique([schoolId, branchId, name])
+
+  @@index([branchId])
 }
 
 model FeeStructure {
@@ -682,6 +751,10 @@ model FeeStructure {
 
   @@unique([schoolId, structureCode])
   @@index([schoolId])
+
+  @@index([academicYearId])
+  @@index([branchId])
+  @@index([classId])
 }
 
 model FeeTemplateComponent {
@@ -696,6 +769,11 @@ model FeeTemplateComponent {
   masterComponent FeeComponentMaster @relation(fields: [componentId], references: [id])
   school          School?            @relation(fields: [schoolId], references: [id])
   template        FeeStructure       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([componentId])
+  @@index([schoolId])
+  @@index([branchId])
 }
 
 model StudentFeeComponent {
@@ -720,6 +798,13 @@ model StudentFeeComponent {
   masterComponent    FeeComponentMaster @relation(fields: [componentId], references: [id])
   school             School?            @relation(fields: [schoolId], references: [id])
   financialRecord    FinancialRecord    @relation(fields: [studentFinancialId], references: [id])
+
+  @@index([studentFinancialId])
+  @@index([schoolId])
+  @@index([branchId])
+
+  @@index([authorizerId])
+  @@index([componentId])
 }
 
 model LedgerEntry {
@@ -747,6 +832,11 @@ model LedgerEntry {
   @@index([studentId])
   @@index([schoolId])
   @@index([branchId])
+
+  @@index([academicYearId])
+  @@index([feeStructureId])
+  @@index([financialYearId])
+  @@index([journalEntryId])
 }
 
 model FeeInvoice {
@@ -772,6 +862,8 @@ model FeeInvoice {
 
   @@index([studentId])
   @@index([schoolId])
+
+  @@index([financialYearId])
 }
 
 model FeeInvoiceItem {
@@ -790,6 +882,8 @@ model FeeInvoiceItem {
   invoice         FeeInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+
+  @@index([componentId])
 }
 
 model CollectionAllocation {
@@ -802,6 +896,10 @@ model CollectionAllocation {
   collection    Collection     @relation(fields: [collectionId], references: [id])
   invoice       FeeInvoice     @relation(fields: [invoiceId], references: [id])
   invoiceItem   FeeInvoiceItem @relation(fields: [invoiceItemId], references: [id])
+
+  @@index([collectionId])
+  @@index([invoiceId])
+  @@index([invoiceItemId])
 }
 
 model AllocationPriority {
@@ -870,6 +968,8 @@ model Collection {
   @@index([receiptNumber])
   @@index([admissionId])
   @@index([studentId])
+
+  @@index([branchId])
 }
 
 model ChartOfAccount {
@@ -885,6 +985,8 @@ model ChartOfAccount {
   journals       JournalLine[]
 
   @@unique([schoolId, accountCode])
+
+  @@index([branchId])
 }
 
 model JournalEntry {
@@ -909,6 +1011,8 @@ model JournalEntry {
   @@unique([schoolId, branchId, entryCode])
   @@index([schoolId])
   @@index([branchId])
+
+  @@index([financialYearId])
 }
 
 model JournalLine {
@@ -920,6 +1024,9 @@ model JournalLine {
   debit          Decimal        @default(0) @db.Decimal(15, 2)
   account        ChartOfAccount @relation(fields: [accountId], references: [id])
   journalEntry   JournalEntry   @relation(fields: [journalEntryId], references: [id])
+
+  @@index([accountId])
+  @@index([journalEntryId])
 }
 
 model Expense {
@@ -952,6 +1059,8 @@ model PaymentApproval {
   comments         String?
   createdAt        DateTime       @default(now())
   paymentRequest   PaymentRequest @relation(fields: [paymentRequestId], references: [id])
+
+  @@index([paymentRequestId])
 }
 
 model PaymentExecution {
@@ -1022,6 +1131,11 @@ model Staff {
   employeeCategory    EmployeeCategory?
   employmentType      EmploymentType?
   identityVersion     String            @default("V1")
+  bloodGroup          String?
+  allergies           String?
+  emergencyName       String?
+  emergencyPhone      String?
+  staffDocuments      StaffDocument[]
   promotions          PromotionBatch[]
 
   @@unique([branchId, staffCode])
@@ -1029,6 +1143,11 @@ model Staff {
   @@unique([branchId, phone])
   @@unique([branchId, userId])
   @@index([schoolId])
+
+  @@index([attendancePolicyId])
+  @@index([categoryId])
+  @@index([departmentId])
+  @@index([sovereignRoleId])
 }
 
 model StaffProfessional {
@@ -1055,6 +1174,9 @@ model StaffProfessional {
   branch             Branch?  @relation(fields: [branchId], references: [id])
   school             School?  @relation(fields: [schoolId], references: [id])
   staff              Staff    @relation(fields: [staffId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model StaffAdvance {
@@ -1071,6 +1193,10 @@ model StaffAdvance {
   branch        Branch?  @relation(fields: [branchId], references: [id])
   school        School?  @relation(fields: [schoolId], references: [id])
   staff         Staff    @relation(fields: [staffId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
+  @@index([staffId])
 }
 
 model StaffStatutory {
@@ -1086,6 +1212,9 @@ model StaffStatutory {
   branch        Branch? @relation(fields: [branchId], references: [id])
   school        School? @relation(fields: [schoolId], references: [id])
   staff         Staff   @relation(fields: [staffId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model StaffBank {
@@ -1100,6 +1229,9 @@ model StaffBank {
   branch        Branch? @relation(fields: [branchId], references: [id])
   school        School? @relation(fields: [schoolId], references: [id])
   staff         Staff   @relation(fields: [staffId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model StaffAttendance {
@@ -1123,6 +1255,29 @@ model StaffAttendance {
 
   @@unique([staffId, date])
   @@index([schoolId, date])
+
+  @@index([branchId])
+}
+
+model StaffDocument {
+  id               String   @id @default(uuid())
+  staffId          String
+  documentType     String
+  customName       String?
+  originalFileName String
+  storedFileName   String
+  fileUrl          String
+  fileSize         Int
+  fileExtension    String
+  mimeType         String
+  uploadedDate     DateTime @default(now())
+  lastUpdatedDate  DateTime @updatedAt
+  schoolId         String
+  school           School   @relation(fields: [schoolId], references: [id])
+  staff            Staff    @relation(fields: [staffId], references: [id])
+
+  @@index([staffId])
+  @@index([schoolId])
 }
 
 model StudentAttendance {
@@ -1147,6 +1302,10 @@ model StudentAttendance {
   @@index([studentId])
   @@index([date])
   @@index([branchId])
+
+  @@index([classId])
+  @@index([schoolId])
+  @@index([sectionId])
 }
 
 model Route {
@@ -1231,6 +1390,8 @@ model VehicleStop {
 
   @@index([branchId])
   @@index([schoolId])
+
+  @@index([routeId])
 }
 
 model VehicleStaff {
@@ -1240,6 +1401,9 @@ model VehicleStaff {
   role      String
   staff     Staff   @relation(fields: [staffId], references: [id])
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([staffId])
+  @@index([vehicleId])
 }
 
 model StudentTransportAssignment {
@@ -1256,6 +1420,11 @@ model StudentTransportAssignment {
   route        Route       @relation(fields: [routeId], references: [id])
   school       School      @relation(fields: [schoolId], references: [id])
   student      Student     @relation(fields: [studentId], references: [id])
+
+  @@index([dropStopId])
+  @@index([pickupStopId])
+  @@index([routeId])
+  @@index([schoolId])
 }
 
 model Subject {
@@ -1271,6 +1440,9 @@ model Subject {
   school      School       @relation(fields: [schoolId], references: [id])
 
   @@index([branchId])
+
+  @@index([classId])
+  @@index([schoolId])
 }
 
 model ExamType {
@@ -1284,6 +1456,8 @@ model ExamType {
   school       School       @relation(fields: [schoolId], references: [id])
 
   @@index([branchId])
+
+  @@index([schoolId])
 }
 
 model GradeScale {
@@ -1293,6 +1467,8 @@ model GradeScale {
   maxScore Int
   schoolId String
   school   School @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
 }
 
 model ExamResult {
@@ -1314,6 +1490,10 @@ model ExamResult {
 
   @@index([branchId])
   @@index([schoolId, studentId, examTypeId])
+
+  @@index([examTypeId])
+  @@index([studentId])
+  @@index([subjectId])
 }
 
 model Book {
@@ -1357,6 +1537,9 @@ model IssueReturn {
   member     LibraryMember @relation(fields: [memberId], references: [id])
 
   @@index([branchId])
+
+  @@index([bookId])
+  @@index([memberId])
 }
 
 model BiometricTemplate {
@@ -1379,6 +1562,8 @@ model Notification {
   school    School   @relation(fields: [schoolId], references: [id])
 
   @@index([branchId])
+
+  @@index([schoolId])
 }
 
 model TenancyCounter {
@@ -1427,6 +1612,10 @@ model Enquiry {
   requestedStop       VehicleStop? @relation("EnquiryStop", fields: [requestedStopId], references: [id])
 
   @@index([branchId])
+
+  @@index([schoolId])
+  @@index([requestedRouteId])
+  @@index([requestedStopId])
 }
 
 model GlobalSetting {
@@ -1456,6 +1645,8 @@ model StudentConsent {
   student        Student      @relation(fields: [studentId], references: [id])
 
   @@unique([studentId, academicYearId])
+
+  @@index([academicYearId])
 }
 
 model ActivityLog {
@@ -1473,6 +1664,8 @@ model ActivityLog {
   school     School   @relation(fields: [schoolId], references: [id])
 
   @@index([branchId])
+
+  @@index([schoolId])
 }
 
 model PayrollRun {
@@ -1537,6 +1730,9 @@ model SalarySlip {
 
   @@unique([payrollRunId, staffId])
   @@index([branchId])
+
+  @@index([schoolId])
+  @@index([staffId])
 }
 
 model SovereignRole {
@@ -1560,6 +1756,8 @@ model SovereignRole {
   /// Composite unique: one role name per school (school-wide roles have null branchId)
   @@unique([schoolId, name])
   @@index([schoolId, branchId])
+
+  @@index([branchId])
 }
 
 model SovereignEvent {
@@ -1570,6 +1768,8 @@ model SovereignEvent {
   branchId  String?
   timestamp DateTime @default(now())
   school    School?  @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
 }
 
 /// @deprecated Use StaffStatutory for unified KYC tracking
@@ -1582,6 +1782,9 @@ model StaffKYC {
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id])
   school   School? @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model SalaryRevision {
@@ -1594,6 +1797,9 @@ model SalaryRevision {
   branchId String?
   branch   Branch?  @relation(fields: [branchId], references: [id])
   school   School?  @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model StaffAsset {
@@ -1606,6 +1812,9 @@ model StaffAsset {
   branchId  String?
   branch    Branch? @relation(fields: [branchId], references: [id])
   school    School? @relation(fields: [schoolId], references: [id])
+
+  @@index([branchId])
+  @@index([schoolId])
 }
 
 model TransportStop {
@@ -1617,6 +1826,8 @@ model TransportStop {
   branchId  String?
   fare      Decimal? @db.Decimal(10, 2)
   school    School?  @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
 }
 
 model TransportAssignment {
@@ -1628,6 +1839,8 @@ model TransportAssignment {
   branchId  String?
   school    School? @relation(fields: [schoolId], references: [id])
   student   Student @relation("NewTransport", fields: [studentId], references: [id])
+
+  @@index([schoolId])
 }
 
 model FinancialAuditLog {
@@ -1638,6 +1851,8 @@ model FinancialAuditLog {
   branchId  String?
   timestamp DateTime @default(now())
   school    School?  @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
 }
 
 model CreditNote {
@@ -1651,6 +1866,8 @@ model CreditNote {
   student   Student @relation(fields: [studentId], references: [id])
 
   @@index([schoolId, studentId])
+
+  @@index([studentId])
 }
 
 model UnlockRequest {
@@ -1663,6 +1880,9 @@ model UnlockRequest {
   studentId String
   school    School? @relation(fields: [schoolId], references: [id])
   student   Student @relation(fields: [studentId], references: [id])
+
+  @@index([schoolId])
+  @@index([studentId])
 }
 
 model TransportCollection {
@@ -1674,6 +1894,8 @@ model TransportCollection {
   schoolId  String?
   branchId  String?
   student   Student @relation("TransportHistory", fields: [studentId], references: [id])
+
+  @@index([studentId])
 }
 
 model StaffDepartment {
@@ -1715,6 +1937,8 @@ model AttendancePolicy {
   staff                Staff[]
 
   @@index([schoolId, branchId])
+
+  @@index([branchId])
 }
 
 model AttendanceException {
@@ -1725,6 +1949,8 @@ model AttendanceException {
   meta      Json
   createdAt DateTime @default(now())
   staff     Staff    @relation(fields: [staffId], references: [id])
+
+  @@index([staffId])
 }
 
 model StaffFaceProfile {
@@ -1834,6 +2060,8 @@ model SchoolCalendar {
   @@unique([schoolId, branchId, date])
   @@index([schoolId, date])
   @@index([schoolId, type])
+
+  @@index([branchId])
 }
 
 // Master list of public holidays — maintained by ERP admin once per year per state
@@ -1882,6 +2110,8 @@ model LeaveRequest {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   staff      Staff     @relation(fields: [staffId], references: [id])
+
+  @@index([staffId])
 }
 
 model fee_payment_links {
@@ -1926,6 +2156,8 @@ model inventory_adjustments {
   logged_by         String          @db.VarChar(255)
   created_at        DateTime?       @default(now()) @db.Timestamptz(6)
   inventory_items   inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([item_id])
 }
 
 model inventory_audit_logs {
@@ -1954,6 +2186,8 @@ model inventory_damaged_stock {
   logged_by        String          @db.VarChar(255)
   created_at       DateTime?       @default(now()) @db.Timestamptz(6)
   inventory_items  inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([item_id])
 }
 
 model inventory_goods_receipts {
@@ -1977,6 +2211,9 @@ model inventory_goods_receipts {
   inventory_grn_items       inventory_grn_items[]
 
   @@unique([school_id, grn_number])
+
+  @@index([po_id])
+  @@index([supplier_id])
 }
 
 model inventory_grn_items {
@@ -1990,6 +2227,8 @@ model inventory_grn_items {
   inventory_items          inventory_items          @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([grn_id, item_id])
+
+  @@index([item_id])
 }
 
 model inventory_issue_items {
@@ -2002,6 +2241,8 @@ model inventory_issue_items {
   inventory_items  inventory_items  @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([issue_id, item_id])
+
+  @@index([item_id])
 }
 
 model inventory_issues {
@@ -2023,6 +2264,8 @@ model inventory_issues {
   updated_at            DateTime?               @default(now()) @db.Timestamptz(6)
   inventory_issue_items inventory_issue_items[]
   inventory_kits        inventory_kits?         @relation(fields: [kit_id], references: [id], onUpdate: NoAction)
+
+  @@index([kit_id])
 }
 
 model inventory_items {
@@ -2067,6 +2310,8 @@ model inventory_kit_items {
   inventory_kits  inventory_kits  @relation(fields: [kit_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([kit_id, item_id])
+
+  @@index([item_id])
 }
 
 model inventory_kits {
@@ -2097,6 +2342,8 @@ model inventory_opening_stock {
   inventory_items  inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([school_id, item_id, academic_year_id])
+
+  @@index([item_id])
 }
 
 model inventory_po_items {
@@ -2111,6 +2358,8 @@ model inventory_po_items {
   inventory_purchase_orders inventory_purchase_orders @relation(fields: [po_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([po_id, item_id])
+
+  @@index([item_id])
 }
 
 model inventory_purchase_orders {
@@ -2131,6 +2380,8 @@ model inventory_purchase_orders {
   inventory_suppliers      inventory_suppliers        @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([school_id, po_number])
+
+  @@index([supplier_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -2146,6 +2397,8 @@ model inventory_reservations {
   status           String          @default("Reserved") @db.VarChar(50)
   created_at       DateTime?       @default(now()) @db.Timestamptz(6)
   inventory_items  inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([item_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -2163,6 +2416,8 @@ model inventory_sale_items {
   inventory_sales inventory_sales @relation(fields: [sale_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([sale_id, item_id])
+
+  @@index([item_id])
 }
 
 model inventory_sales {
@@ -2202,6 +2457,8 @@ model inventory_supplier_payments {
   created_by          String              @db.VarChar(255)
   created_at          DateTime?           @default(now()) @db.Timestamptz(6)
   inventory_suppliers inventory_suppliers @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([supplier_id])
 }
 
 model inventory_suppliers {
@@ -2235,6 +2492,8 @@ model inventory_transfer_items {
   inventory_transfers inventory_transfers @relation(fields: [transfer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([transfer_id, item_id])
+
+  @@index([item_id])
 }
 
 model inventory_transfers {
@@ -2269,6 +2528,8 @@ model inventory_year_end_snapshots {
   inventory_items   inventory_items @relation(fields: [item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([school_id, branch_id, item_id, academic_year_id])
+
+  @@index([item_id])
 }
 
 model inventory_returns {
@@ -2298,6 +2559,9 @@ model inventory_return_items {
   exchange_item     inventory_items?  @relation("ExchangeItem", fields: [exchange_item_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@unique([return_id, item_id])
+
+  @@index([item_id])
+  @@index([exchange_item_id])
 }
 
 enum Role {
@@ -2350,6 +2614,9 @@ model PromotionBatch {
   academicYear        AcademicYear       @relation(fields: [targetYearId], references: [id])
   records             PromotionRecord[]
   academicHistories   AcademicHistory[]
+
+  @@index([executedById])
+  @@index([targetYearId])
 }
 
 model PromotionRecord {
@@ -2362,6 +2629,9 @@ model PromotionRecord {
   
   batch            PromotionBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
   student          Student         @relation(fields: [studentId], references: [id])
+
+  @@index([batchId])
+  @@index([studentId])
 }
 
 // ==========================================
@@ -2420,6 +2690,9 @@ model DriverAssignment {
   @@unique([driverId, vehicleId, routeId, status])
   @@index([schoolId])
   @@index([branchId])
+
+  @@index([vehicleId])
+  @@index([routeId])
 }
 
 model StudentTransport {
@@ -2446,6 +2719,9 @@ model StudentTransport {
   @@index([routeId])
   @@index([schoolId])
   @@index([branchId])
+
+  @@index([pickupStopId])
+  @@index([dropStopId])
 }
 
 model TripSession {
@@ -2564,6 +2840,9 @@ model VehicleIncident {
   @@index([vehicleId])
   @@index([schoolId])
   @@index([branchId])
+
+  @@index([driverId])
+  @@index([tripSessionId])
 }
 
 model VehicleMaintenance {
@@ -2753,6 +3032,8 @@ model ApprovalRequest {
 
   @@index([schoolId])
   @@index([branchId])
+
+  @@index([staffId])
 }
 
 enum SimulationStatus {

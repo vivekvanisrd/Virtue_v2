@@ -10,18 +10,6 @@ export async function middleware(request: NextRequest) {
 
   // ⚡ eSSL / ZKTeco ADMS URL Rewrite: /iclock/:path -> /api/iclock/:path (stripping .aspx)
   if (pathname.startsWith('/iclock/')) {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const logDir = path.join(process.cwd(), 'scratch');
-      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-      const logFile = path.join(logDir, 'http-log.txt');
-      const logLine = `[${new Date().toISOString()}] ${request.method} ${request.url} (IP: ${request.headers.get('x-forwarded-for') || 'unknown'})\n`;
-      fs.appendFileSync(logFile, logLine, 'utf8');
-    } catch (e) {
-      // safe bypass
-    }
-
     const cleanPath = pathname.replace('.aspx', '');
     const newUrl = request.nextUrl.clone();
     newUrl.pathname = `/api${cleanPath}`;

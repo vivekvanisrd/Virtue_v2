@@ -712,6 +712,9 @@ export async function updateStaffRoleAction(staffId: string, newRole: string) {
         });
 
         try {
+            const { revalidateTag } = require("next/cache");
+            revalidateTag(`vitals-${identity.schoolId}-${newRole}`);
+            revalidateTag(`vitals-${identity.schoolId}-${targetStaff.role}`);
             revalidatePath("/", "layout");
         } catch (e) {}
         return { success: true, data: JSON.parse(JSON.stringify(staff)) };

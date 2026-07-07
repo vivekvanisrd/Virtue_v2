@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
 import { serializeDecimal } from "@/lib/utils/serialization";
@@ -693,54 +693,57 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
  * getStudentFeeStatus with Tenancy Guard & Term Isolation
  */
 export async function getStudentFeeStatus(studentId: string) {
+  const tStart = Date.now();
   try {
+    console.log(`⏱️ [FEE_DEBUG] getStudentFeeStatus started.`);
+    const t0 = Date.now();
     const identity = await getSovereignIdentity();
+    console.log(`⏱️ [FEE_DEBUG] getSovereignIdentity took ${Date.now() - t0}ms`);
+    
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
+    
+    const t1 = Date.now();
     const { calculateTermBreakdown } = await import("../utils/fee-utils");
+    console.log(`⏱️ [FEE_DEBUG] Import fee-utils took ${Date.now() - t1}ms`);
 
-    const student = await prisma.student.findFirst({
-      where: { 
-        id: studentId,
-        schoolId: context.schoolId
-      },
-      include: {
-        academic: { include: { class: true } },
-        financial: { 
-          include: { 
-            components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } }, 
-            discounts: { include: { discountType: true } },
-            feeStructure: { include: { components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } } } }
-          } 
+    const t2 = Date.now();
+    const [studentRecord, ledgerEntries, collections] = await Promise.all([
+      prismaBypass.student.findFirst({
+        where: { 
+          id: studentId,
+          schoolId: context.schoolId
         },
-        ledgerEntries: { 
-          orderBy: { createdAt: 'desc' }
-        },
-        collections: { 
-          where: { status: "Success" },
-          orderBy: { paymentDate: 'desc' } 
+        include: {
+          academic: { include: { class: true } },
+          financial: { 
+            include: { 
+              components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } }, 
+              discounts: { include: { discountType: true } },
+              feeStructure: { include: { components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } } } }
+            } 
+          }
         }
-      }
-    });
+      }),
+      prismaBypass.ledgerEntry.findMany({
+        where: { studentId },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prismaBypass.collection.findMany({
+        where: { studentId, status: "Success", isDeleted: false },
+        orderBy: { paymentDate: 'desc' }
+      })
+    ]);
+    console.log(`⏱️ [FEE_DEBUG] Parallel findFirst student, ledger, and collections took ${Date.now() - t2}ms`);
 
-    if (!student) throw new Error("Student not found or unauthorized.");
+    if (!studentRecord) throw new Error("Student not found or unauthorized.");
 
-    // Retrieve branchId and schoolId securely by bypassing RLS sanitization on the read result
-    let secureBranchId: string | null = null;
-    let secureSchoolId: string | null = null;
-    try {
-      const savedSkip = process.env.SKIP_TENANCY;
-      process.env.SKIP_TENANCY = "true";
-      const rawStudent = await prisma.student.findFirst({
-        where: { id: studentId },
-        select: { branchId: true, schoolId: true }
-      });
-      secureBranchId = rawStudent?.branchId || null;
-      secureSchoolId = rawStudent?.schoolId || null;
-      process.env.SKIP_TENANCY = savedSkip;
-    } catch (e) {
-      console.error("Failed to fetch secure branchId/schoolId:", e);
-    }
+    const student = studentRecord as any;
+    student.ledgerEntries = ledgerEntries;
+    student.collections = collections;
+
+    const secureBranchId = student.branchId || null;
+    const secureSchoolId = student.schoolId || null;
 
     // Calculate dynamic term status
     // TENANCY HARDENED: Resolve financial data with fallback to ledger charges if profile is missing

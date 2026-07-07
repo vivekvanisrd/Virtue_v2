@@ -24,6 +24,7 @@ import {
   MessageSquare,
   ShieldCheck,
   Terminal,
+  User,
   X
 } from "lucide-react";
 import Link from "next/link";
@@ -151,6 +152,12 @@ const menuItems: MenuItem[] = [
     name: "Approvals Hub",
     icon: ShieldCheck,
     component: "Approvals"
+  },
+  {
+    id: "my-profile",
+    name: "My Profile",
+    icon: User,
+    component: "My Profile"
   },
   { 
     id: "settings", 
