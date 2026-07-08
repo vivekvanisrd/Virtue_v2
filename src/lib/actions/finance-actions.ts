@@ -538,6 +538,45 @@ export async function recordFeeCollection(params: {
         }
       }
 
+      // 🔄 THE RENEWAL ENGINE (Existing Student Promotion Hook)
+      // Check if student has a PENDING renewal in any AcademicHistory record
+      const pendingRenewal = await tx.academicHistory.findFirst({
+        where: { studentId: student.id, renewalStatus: "PENDING" },
+        include: { academicYear: true }
+      });
+
+      if (pendingRenewal && student.financial) {
+        const plan = student.financial.paymentType || "Term-wise";
+        const threshold = plan === "Yearly" 
+          ? Number(student.financial.annualTuition || 0)
+          : Number(student.financial.term1Amount || 0);
+
+        if (newTotalPaid >= threshold && threshold > 0) {
+            console.log(`✅ [RENEWAL_ENGINE] Student ${student.firstName} ${student.lastName} cleared ${plan} threshold (${threshold}). Renewing enrollment status for ${pendingRenewal.academicYear.name}.`);
+            
+            await tx.academicHistory.update({
+                where: { id: pendingRenewal.id },
+                data: { renewalStatus: "RENEWED" }
+            });
+
+            // 📝 AUDIT LOG: Renewal Lifecycle Transition
+            await tx.activityLog.create({
+                data: {
+                    schoolId: context.schoolId,
+                    userId: context.staffId,
+                    action: "RENEWAL_PROMOTION",
+                    entityType: "STUDENT",
+                    entityId: student.id,
+                    details: `Renewal promoted from PENDING to RENEWED for ${pendingRenewal.academicYear.name} [Metadata: ${JSON.stringify({
+                        trigger: "THRESHOLD_REACHED",
+                        threshold: threshold,
+                        totalPaid: newTotalPaid
+                    })}]`
+                }
+            });
+        }
+      }
+
       return collection;
     }, { maxWait: 10000, timeout: 30000 });
 

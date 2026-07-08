@@ -376,6 +376,7 @@ export default function StudentPromotionWorkspace() {
                     <option value="">All Sections</option>
                     {targetSections.map(s => <option key={s.id} value={s.id}>Section {s.name}</option>)}
                   </select>
+
                 </div>
               </div>
 

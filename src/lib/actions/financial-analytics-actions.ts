@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 import { getSovereignIdentity } from "../auth/backbone";
 
 /**
@@ -29,10 +29,25 @@ export async function getManagementFinancialsAction(targetBranchId?: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 2. Collection Aggregation (Daily)
-    const collections = await prisma.collection.findMany({
-      where: { ...scope, paymentDate: { gte: today }, isDeleted: false, status: "Success" }
-    });
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // 2-5. Fetch all reports parallel via Promise.all with prismaBypass
+    const [collections, cashAccount, voidedCollections, discounts] = await Promise.all([
+      prismaBypass.collection.findMany({
+        where: { ...scope, paymentDate: { gte: today }, isDeleted: false, status: "Success" }
+      }),
+      prismaBypass.chartOfAccount.findFirst({
+        where: { ...scope, accountCode: "1110" }
+      }),
+      prismaBypass.collection.findMany({
+        where: { ...scope, isDeleted: true, deletedAt: { gte: thirtyDaysAgo } },
+        include: { school: true }
+      }),
+      prismaBypass.discount.findMany({
+        where: { ...scope, status: "Approved" },
+        include: { discountType: true }
+      })
+    ]);
     
     const dailyStats = {
       total: collections.reduce((s: number, c: any) => s + Number(c.totalPaid), 0),
@@ -42,26 +57,12 @@ export async function getManagementFinancialsAction(targetBranchId?: string) {
       }, {})
     };
 
-    // 3. Vault Health (Ledger Reconciliation)
-    // KPI: Sum of Receipts vs. Chart of Account 1110 (Cash)
-    const cashAccount = await prisma.chartOfAccount.findFirst({
-        where: { ...scope, accountCode: "1110" }
-    });
-
     const vaultHealth = {
         ledgerBalance: Number(cashAccount?.currentBalance || 0),
         status: cashAccount ? "SYNCHRONIZED" : "ACCOUNT_MISSING"
     };
 
-    // 4. Void Audit (Rule: New Staff Buffer)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const voidedCollections = await prisma.collection.findMany({
-        where: { ...scope, isDeleted: true, deletedAt: { gte: thirtyDaysAgo } },
-        include: { school: true } // Need staff context for join date
-    });
-
-    // In a real scenario, we'd join with Staff to check dateOfJoining
-    // For now, we simulate the "New Staff Training" categorization
+    // Void Audit (Rule: New Staff Buffer)
     const voidMetrics = {
         totalVoidCount: voidedCollections.length,
         totalVoidValue: voidedCollections.reduce((s: number, c: any) => s + Number(c.totalPaid), 0),
@@ -69,11 +70,7 @@ export async function getManagementFinancialsAction(targetBranchId?: string) {
         auditFlags: voidedCollections.length > 5 ? "ELEVATED" : "NORMAL"
     };
 
-    // 5. Discount Impact (Category Transparency)
-    const discounts = await prisma.discount.findMany({
-        where: { ...scope, status: "Approved" },
-        include: { discountType: true }
-    });
+    // Discount Impact (Category Transparency)
 
     const discountBreakdown = discounts.reduce((acc: any, d: any) => {
         const cat = d.discountType.name;

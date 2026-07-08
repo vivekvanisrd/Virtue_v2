@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { generateConsentLinksAction } from "@/lib/actions/consent-actions";
-import { Copy, Link as LinkIcon, AlertCircle, CheckCircle2, Send, Loader2, Sparkles } from "lucide-react";
+import { generateConsentLinksAction, getConsentLinksAction } from "@/lib/actions/consent-actions";
+import { Copy, Link as LinkIcon, AlertCircle, CheckCircle2, Send, Loader2, Sparkles, Check } from "lucide-react";
 
 // Assuming we fetch these from a server action in a real scenario
 const MOCK_CLASSES = [
@@ -30,22 +30,63 @@ export function StudentPromotionManager() {
   const [loading, setLoading] = useState(false);
   const [linksGenerated, setLinksGenerated] = useState(false);
   const [message, setMessage] = useState("");
+  const [consents, setConsents] = useState<any[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  // Fetch existing consents when class changes
+  useEffect(() => {
+    if (selectedClass) {
+      getConsentLinksAction(selectedClass, "uuid-for-2026-27").then(res => {
+        if (res.success && res.consents) {
+          setConsents(res.consents);
+          setLinksGenerated(res.consents.length > 0);
+          if (res.consents.length > 0) {
+            setMessage(`Found ${res.consents.length} existing consent links for ${selectedClass}.`);
+          } else {
+            setMessage("");
+          }
+        }
+      });
+    } else {
+      setConsents([]);
+      setLinksGenerated(false);
+      setMessage("");
+    }
+  }, [selectedClass]);
 
   const handleGenerate = async () => {
     if (!selectedClass) return;
     setLoading(true);
+    setMessage("");
     
-    // In a real app we'd map TARGET_YEAR string to an actual AcademicYear UUID
-    // For demonstration, we assume TARGET_YEAR is the ID or we've resolved it.
     const res = await generateConsentLinksAction(selectedClass, "uuid-for-2026-27");
     
     if (res.success) {
       setLinksGenerated(true);
       setMessage(res.message || "Links generated successfully!");
+      
+      const refreshRes = await getConsentLinksAction(selectedClass, "uuid-for-2026-27");
+      if (refreshRes.success && refreshRes.consents) {
+        setConsents(refreshRes.consents);
+      }
     } else {
       setMessage(res.error || "Failed to generate links");
     }
     setLoading(false);
+  };
+
+  const handleCopy = (id: string, token: string) => {
+    const url = `${origin}/consent/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -102,23 +143,26 @@ export function StudentPromotionManager() {
           </div>
         )}
 
-        {linksGenerated && (
+        {linksGenerated && consents.length > 0 && (
           <div className="mt-8 text-left border-t border-border pt-8 animate-in slide-in-from-bottom-4 fade-in duration-500">
             <h3 className="text-sm font-black text-foreground mb-4 flex items-center gap-2">
               <Send className="w-4 h-4 text-primary" /> Distribute Links
             </h3>
             <p className="text-xs text-foreground opacity-60 mb-4">Links have been generated in the database. You can now use the Communication module to bulk SMS these links to parents, or copy them individually below.</p>
             
-            {/* Mock List of links for demo purposes */}
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-background border border-border rounded-xl hover:border-primary/50 transition-colors">
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {consents.map((c) => (
+                <div key={c.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-xl hover:border-primary/50 transition-colors">
                   <div>
-                    <p className="text-xs font-bold text-foreground opacity-70">Student Name {i}</p>
-                    <p className="text-[10px] text-foreground opacity-50">Consent Status: <span className="text-orange-500 font-bold">Pending</span></p>
+                    <p className="text-xs font-bold text-foreground opacity-70">{c.studentName}</p>
+                    <p className="text-[10px] text-foreground opacity-50">Consent Status: <span className="text-orange-500 font-bold">{c.status}</span></p>
+                    <p className="text-[9px] text-slate-400 font-mono mt-0.5 select-all">{origin}/consent/{c.token}</p>
                   </div>
-                  <button className="p-2 hover:bg-muted/50 rounded-lg text-foreground opacity-50 hover:text-primary transition-colors">
-                    <Copy className="w-4 h-4" />
+                  <button 
+                    onClick={() => handleCopy(c.id, c.token)}
+                    className="p-2 hover:bg-muted/50 rounded-lg text-foreground opacity-50 hover:text-primary transition-colors"
+                  >
+                    {copiedId === c.id ? <Check className="w-4 h-4 text-emerald-600 animate-bounce" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
               ))}

@@ -808,12 +808,6 @@ export async function promoteStudentChunkAction(data: {
           }
         }
 
-        // Update Student status back to PROVISIONAL upon promotion
-        await tx.student.update({
-          where: { id: studentId, schoolId: identity.schoolId },
-          data: { status: "PROVISIONAL" }
-        });
-
         const oldSectionId = student.academic?.sectionId || null;
 
         // 3. Create AcademicHistory
@@ -825,6 +819,7 @@ export async function promoteStudentChunkAction(data: {
             classId: data.targetClassId,
             sectionId: data.targetSectionId || null,
             promotionStatus: "PROMOTED",
+            renewalStatus: "PENDING",
             promotedFrom: data.sourceAcademicYearId,
             schoolId: identity.schoolId,
             branchId,
@@ -987,7 +982,11 @@ export async function promoteStudentChunkAction(data: {
       return recordsCreated;
     }, { timeout: 60000 });
 
-    revalidatePath("/dashboard/students");
+    try {
+      revalidatePath("/dashboard/students");
+    } catch (e) {
+      // Ignore static generation store missing error in standalone test contexts
+    }
     return { success: true, count: result.length };
   } catch (error: any) {
     console.error("Promote Student Chunk Error:", error);

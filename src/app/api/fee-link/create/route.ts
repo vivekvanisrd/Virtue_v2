@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import prisma from "@/lib/prisma";
+import { getSovereignIdentity } from "@/lib/auth/backbone";
 
 function getEncryptionKey() {
   const key = process.env.BANKING_ENCRYPTION_KEY;
@@ -42,6 +43,18 @@ export async function POST(req: NextRequest) {
     // 1. Resolve tenancy context FIRST
     let schoolId = req.headers.get("x-v2-school-id") || body.schoolId;
     let branchId = req.headers.get("x-v2-branch-id") || body.branchId;
+
+    if (!schoolId || !branchId) {
+      try {
+        const identity = await getSovereignIdentity();
+        if (identity) {
+          schoolId = schoolId || identity.schoolId;
+          branchId = branchId || identity.branchId;
+        }
+      } catch (err) {
+        console.warn("Sovereign identity lookup failed:", err);
+      }
+    }
 
     if (!schoolId || !branchId) {
       try {
