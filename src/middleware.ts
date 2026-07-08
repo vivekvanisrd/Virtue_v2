@@ -22,10 +22,14 @@ export async function middleware(request: NextRequest) {
   
   // 1. Get Session Cookie
   const session = request.cookies.get('v-session')?.value;
+  const guardianSession = request.cookies.get('v-guardian-session')?.value;
   
   // 2. Decrypt/Verify
   const user = session ? await decrypt(session) : null;
+  const guardian = guardianSession ? await decrypt(guardianSession) : null;
+  
   if (user) console.log(`🕵️ [SENTINEL] Request for '${pathname}' from user '${user.email}' (Role: ${user.role})`);
+  if (guardian) console.log(`🕵️ [SENTINEL] Request for '${pathname}' from guardian '${guardian.phone}'`);
 
   // 🛡️ LOCK: COMPOUND RATE LIMITING (IP + User)
   const rateLimitKey = user ? `rl_u_${user.staffId}` : `rl_ip_${ip}`;
@@ -65,6 +69,19 @@ export async function middleware(request: NextRequest) {
     const url = new URL('/login', request.url);
     url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Redirect to parent login if accessing parent portal dashboard without guardian session
+  const isParentDashboard = pathname.startsWith('/parent/dashboard');
+  if (isParentDashboard && (!guardian || guardian.type !== 'GUARDIAN')) {
+    const url = new URL('/parent/login', request.url);
+    url.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Redirect to parent dashboard if trying to access login while already authenticated
+  if (pathname === '/parent/login' && guardian && guardian.type === 'GUARDIAN') {
+    return NextResponse.redirect(new URL('/parent/dashboard', request.url));
   }
 
   // 🛡️ LOCK: PASSWORD CHANGE FORCE FOR ONBOARDING

@@ -998,6 +998,7 @@ export async function getStudentListAction(filters?: {
               { admissionNumber: { contains: filters.search, mode: 'insensitive' } },
               { studentCode: { contains: filters.search, mode: 'insensitive' } },
               { legacyId: { contains: filters.search, mode: 'insensitive' } },
+              { bookId: { contains: filters.search, mode: 'insensitive' } },
             ]
           } : {},
           filters?.classId ? { academic: { classId: filters.classId } } : {},
@@ -1376,7 +1377,7 @@ export async function processStudentExit(studentId: string, data: { reason: stri
           tcNumber: data.tcNumber,
         }
       }),
-      prisma.academicHistory.updateMany({
+      prisma.studentAcademicYear.updateMany({
         where: { studentId, academicYearId: academicYear.id },
         data: {
           exitDate: new Date(data.exitDate),
@@ -1770,13 +1771,13 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
 
     // Update AcademicHistory (Set Official IDs)
     // Find the latest history record (should be the one created during enquiry)
-    const latestHistory = await db.academicHistory.findFirst({
+    const latestHistory = await db.studentAcademicYear.findFirst({
         where: { studentId },
         orderBy: { createdAt: 'desc' }
     });
 
     if (latestHistory) {
-        await db.academicHistory.update({
+        await db.studentAcademicYear.update({
             where: { id: latestHistory.id },
             data: {
                 admissionNumber,

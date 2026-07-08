@@ -118,6 +118,11 @@ export async function generateConsentLinksAction(classId: string, targetingAcade
                     { name: { contains: targetingAcademicYearId } }
                 ]
             }
+        }) || await prisma.academicYear.findFirst({
+            where: {
+                schoolId: context.schoolId,
+                name: { contains: "2026-27" }
+            }
         });
         if (targetAY) {
             resolvedTargetAYId = targetAY.id;
@@ -235,6 +240,11 @@ export async function getConsentLinksAction(classId: string, targetingAcademicYe
                     { id: targetingAcademicYearId },
                     { name: { contains: targetingAcademicYearId } }
                 ]
+            }
+        }) || await prisma.academicYear.findFirst({
+            where: {
+                schoolId: context.schoolId,
+                name: { contains: "2026-27" }
             }
         });
         if (targetAY) {

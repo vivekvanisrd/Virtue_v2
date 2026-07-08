@@ -16,7 +16,7 @@ export const SCHOOL_ID_DEPENDENTS = [
   { model: "notification", column: "schoolId" },
   { model: "tenancyCounter", column: "schoolId" },
   { model: "enquiry", column: "schoolId" },
-  { model: "academicHistory", column: "schoolId" },
+  { model: "studentAcademicYear", column: "schoolId" },
   { model: "academicRecord", column: "schoolId" },
   { model: "document", column: "schoolId" },
   { model: "financialRecord", column: "schoolId" },

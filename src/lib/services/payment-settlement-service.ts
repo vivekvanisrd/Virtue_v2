@@ -90,7 +90,7 @@ export const PaymentSettlementService = {
         });
         if (!student) throw new Error(`Student ${studentId} not found in school ${schoolId}.`);
 
-        const enrollment = await tx.academicHistory.findFirst({
+        const enrollment = await tx.studentAcademicYear.findFirst({
             where: { studentId, schoolId },
             include: { branch: { include: { school: true } } },
             orderBy: { createdAt: 'desc' }

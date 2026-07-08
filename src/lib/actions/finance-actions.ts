@@ -349,7 +349,7 @@ export async function recordFeeCollection(params: {
     }
 
     // 6. RESOLVE ENROLLMENT IDENTITY & CODES (FOR 2026-27 BRANDING)
-    const activeAdmission = await prisma.academicHistory.findFirst({
+    const activeAdmission = await prisma.studentAcademicYear.findFirst({
         where: { studentId: params.studentId, schoolId: context.schoolId },
         include: { 
           branch: { include: { school: true } },
@@ -540,7 +540,7 @@ export async function recordFeeCollection(params: {
 
       // 🔄 THE RENEWAL ENGINE (Existing Student Promotion Hook)
       // Check if student has a PENDING renewal in any AcademicHistory record
-      const pendingRenewal = await tx.academicHistory.findFirst({
+      const pendingRenewal = await tx.studentAcademicYear.findFirst({
         where: { studentId: student.id, renewalStatus: "PENDING" },
         include: { academicYear: true }
       });
@@ -554,7 +554,7 @@ export async function recordFeeCollection(params: {
         if (newTotalPaid >= threshold && threshold > 0) {
             console.log(`✅ [RENEWAL_ENGINE] Student ${student.firstName} ${student.lastName} cleared ${plan} threshold (${threshold}). Renewing enrollment status for ${pendingRenewal.academicYear.name}.`);
             
-            await tx.academicHistory.update({
+            await tx.studentAcademicYear.update({
                 where: { id: pendingRenewal.id },
                 data: { renewalStatus: "RENEWED" }
             });
@@ -1187,7 +1187,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
     if (!activeFY) throw new Error("No active Financial Year found for school.");
 
     // 4. Resolve branch from student's current enrollment (not a random findFirst)
-    const enrollment = await prisma.academicHistory.findFirst({
+    const enrollment = await prisma.studentAcademicYear.findFirst({
       where: { studentId: params.studentId, schoolId },
       select: { branchId: true },
       orderBy: { createdAt: "desc" }
@@ -1212,7 +1212,7 @@ export async function verifyPublicRazorpayPaymentAction(params: {
       const { CounterService } = await import("../services/counter-service");
 
       // Resolve enrollment for ID linking
-      const enrollment = await tx.academicHistory.findFirst({
+      const enrollment = await tx.studentAcademicYear.findFirst({
         where: { studentId: params.studentId, schoolId },
         include: {
           branch: { include: { school: true } },

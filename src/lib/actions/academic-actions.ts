@@ -425,7 +425,7 @@ export async function reassignStudentSectionAction(
         });
 
         // Log the reassignment in academic history for traceability
-        await prisma.academicHistory.create({
+        await prisma.studentAcademicYear.create({
             data: {
                 id: `RSECT-${Date.now()}-${studentId.slice(-6)}`,
                 studentId,
@@ -786,7 +786,7 @@ export async function promoteStudentChunkAction(data: {
 
       for (const studentId of data.studentIds) {
         // 1. Idempotency Check
-        const existingHistory = await tx.academicHistory.findUnique({
+        const existingHistory = await tx.studentAcademicYear.findUnique({
           where: { studentId_academicYearId: { studentId, academicYearId: data.targetAcademicYearId } }
         });
         if (existingHistory) continue;
@@ -811,7 +811,7 @@ export async function promoteStudentChunkAction(data: {
         const oldSectionId = student.academic?.sectionId || null;
 
         // 3. Create AcademicHistory
-        await tx.academicHistory.create({
+        await tx.studentAcademicYear.create({
           data: {
             id: `AH-${studentId}-${data.targetAcademicYearId}`,
             studentId,
@@ -1087,7 +1087,7 @@ export async function rollbackPromotionBatchAction(batchId: string) {
           }
         });
 
-        await tx.academicHistory.deleteMany({
+        await tx.studentAcademicYear.deleteMany({
           where: { studentId: rec.studentId, academicYearId: batch.targetYearId }
         });
 

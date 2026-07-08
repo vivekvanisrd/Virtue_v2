@@ -30,7 +30,7 @@ model School {
   academicYearStart     Int?      @default(6)
   academicYearEnd       Int?      @default(3)
   calendars             SchoolCalendar[]
-  academicHist          AcademicHistory[]
+  academicHist          StudentAcademicYear[]
   academicRecs          AcademicRecord[]
   academicYears         AcademicYear[]
   activityLogs          ActivityLog[]
@@ -175,7 +175,7 @@ model Branch {
   metadata             Json?
   tenantId             String?
   timezone             String                 @default("Asia/Kolkata")
-  academicHistory      AcademicHistory[]      @relation("BranchHistory")
+  academicHistory      StudentAcademicYear[]      @relation("BranchHistory")
   academicRecords      AcademicRecord[]
   activityLogs         ActivityLog[]          @relation("BranchLogs")
   Address              Address[]
@@ -246,7 +246,7 @@ model AcademicYear {
   metadata      Json?
   createdAt     DateTime          @default(now())
   schoolId      String
-  history       AcademicHistory[]
+  history       StudentAcademicYear[]
   school        School            @relation(fields: [schoolId], references: [id])
   feeStructures FeeStructure[]
   ledgerEntries LedgerEntry[]
@@ -293,7 +293,7 @@ model Class {
   triggeredBy     String?
   schoolId        String
   branchId        String
-  history         AcademicHistory[]
+  history         StudentAcademicYear[]
   academicRecords AcademicRecord[]
   branch          Branch              @relation(fields: [branchId], references: [id])
   school          School              @relation(fields: [schoolId], references: [id])
@@ -302,6 +302,7 @@ model Class {
   classTeacher    Staff?              @relation("ClassTeacher")
   attendance      StudentAttendance[]
   subjects        Subject[]
+  homeworks       Homework[]
 
   @@index([branchId])
   @@index([schoolId])
@@ -320,13 +321,14 @@ model Section {
   schoolId        String
   branchId        String
   classTeacherId  String?             @unique
-  history         AcademicHistory[]
+  history         StudentAcademicYear[]
   academicRecords AcademicRecord[]
   branch          Branch              @relation(fields: [branchId], references: [id])
   class           Class               @relation(fields: [classId], references: [id])
   classTeacher    Staff?              @relation("SectionTeacher", fields: [classTeacherId], references: [id])
   school          School              @relation(fields: [schoolId], references: [id])
   attendance      StudentAttendance[]
+  homeworks       Homework[]
 
   @@index([branchId])
   @@index([classId])
@@ -339,6 +341,7 @@ model Student {
   admissionNumber  String?
   studentCode      String?
   legacyId         String?                     @unique
+  bookId           String?                     @unique
   firstName        String
   middleName       String?
   lastName         String?
@@ -365,7 +368,7 @@ model Student {
   schoolId         String?
   branchId         String?
   status           String                      @default("Active")
-  history          AcademicHistory[]
+  history          StudentAcademicYear[]
   academic         AcademicRecord?
   address          Address?
   bank             BankDetail?
@@ -392,6 +395,10 @@ model Student {
   busAttendances   BusAttendance[]
   unlockRequests   UnlockRequest[]
   promotionRecords PromotionRecord[]
+  guardians        StudentGuardian[]
+  homeworkSubmissions HomeworkSubmission[]
+  feedbacks        Feedback[]
+  profileRequests  ProfileChangeRequest[]
 
   @@unique([schoolId, branchId, studentCode])
   @@unique([schoolId, branchId, admissionNumber])
@@ -401,7 +408,7 @@ model Student {
   @@index([registrationId])
 }
 
-model AcademicHistory {
+model StudentAcademicYear {
   id              String       @id
   studentId       String
   academicYearId  String
@@ -442,6 +449,7 @@ model AcademicHistory {
   @@index([classId])
   @@index([sectionId])
   @@index([promotionBatchId])
+  @@map("AcademicHistory")
 }
 
 model AcademicRecord {
@@ -957,7 +965,7 @@ model Collection {
   status              String                 @default("Success")
   isDeleted           Boolean                @default(false)
   deletedAt           DateTime?
-  admission           AcademicHistory?       @relation(fields: [admissionId], references: [id])
+  admission           StudentAcademicYear?       @relation(fields: [admissionId], references: [id])
   branch              Branch                 @relation(fields: [branchId], references: [id])
   journalEntry        JournalEntry?          @relation(fields: [journalEntryId], references: [id])
   school              School                 @relation(fields: [schoolId], references: [id])
@@ -2614,7 +2622,7 @@ model PromotionBatch {
   
   academicYear        AcademicYear       @relation(fields: [targetYearId], references: [id])
   records             PromotionRecord[]
-  academicHistories   AcademicHistory[]
+  academicHistories   StudentAcademicYear[]
 
   @@index([executedById])
   @@index([targetYearId])
@@ -3469,6 +3477,298 @@ model AICallLog {
   @@index([businessId, module])
   @@index([createdAt])
 }
+
+// ==========================================
+//           PARENTS MODULE MODELS
+// ==========================================
+
+model Guardian {
+  id             String            @id @default(uuid())
+  firstName      String
+  lastName       String?
+  phone          String            @unique
+  email          String?
+  aadhaarNumber  String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  schoolId       String
+  
+  // Relations
+  auth             GuardianAuth?
+  students         StudentGuardian[]
+  acknowledgements NoticeAcknowledgement[]
+  feedbacks        Feedback[]
+  profileRequests  ProfileChangeRequest[]
+  conversations    Conversation[]
+  appointments     Appointment[]
+}
+
+model StudentGuardian {
+  id                      String   @id @default(uuid())
+  studentId               String
+  guardianId              String
+  relationType            String   // e.g. "FATHER", "MOTHER", "GRANDPARENT", "GUARDIAN"
+  isPrimaryGuardian       Boolean  @default(false)
+  feeResponsibility       Boolean  @default(false)
+  emergencyContact        Boolean  @default(false)
+  pickupPermission        Boolean  @default(false)
+  portalAccess            Boolean  @default(true)
+  communicationPreference String   @default("SMS") // "SMS", "WHATSAPP", "EMAIL", "NONE"
+  activeStatus            String   @default("ACTIVE") // "ACTIVE", "INACTIVE"
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  schoolId                String
+  branchId                String
+
+  // Relations
+  student                 Student  @relation(fields: [studentId], references: [id])
+  guardian                Guardian @relation(fields: [guardianId], references: [id])
+
+  @@unique([studentId, guardianId])
+  @@index([guardianId])
+  @@index([studentId])
+}
+
+model GuardianAuth {
+  id             String            @id @default(uuid())
+  guardianId     String            @unique
+  passwordHash   String?           // Optional password backup
+  failedAttempts Int               @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  
+  // Relations
+  guardian       Guardian          @relation(fields: [guardianId], references: [id])
+  otps           GuardianOTP[]
+  sessions       GuardianSession[]
+}
+
+model GuardianOTP {
+  id             String            @id @default(uuid())
+  authId         String
+  phone          String
+  otpHash        String            // Secure SHA-256 hash of OTP
+  purpose        String            // "LOGIN", "PAYMENT_AUTH", "PROFILE_EDIT"
+  expiresAt      DateTime          @db.Timestamptz(6)
+  verifiedAt     DateTime?         @db.Timestamptz(6)
+  attemptCount   Int               @default(0)
+  ipAddress      String?
+  deviceInfo     String?
+  createdAt      DateTime          @default(now())
+
+  // Relations
+  auth           GuardianAuth      @relation(fields: [authId], references: [id])
+  
+  @@index([authId])
+}
+
+model GuardianSession {
+  id             String            @id @default(uuid())
+  authId         String
+  sessionToken   String            @unique
+  refreshToken   String            @unique
+  deviceName     String?
+  deviceType     String?           // "MOBILE", "DESKTOP", "TABLET"
+  browser        String?
+  ipAddress      String?
+  lastLogin      DateTime          @default(now())
+  expiresAt      DateTime          @db.Timestamptz(6)
+  revokedAt      DateTime?         @db.Timestamptz(6)
+  createdAt      DateTime          @default(now())
+
+  // Relations
+  auth           GuardianAuth      @relation(fields: [authId], references: [id])
+  
+  @@index([authId])
+}
+
+model Homework {
+  id             String               @id @default(uuid())
+  schoolId       String
+  branchId       String
+  academicYearId String
+  classId        String
+  sectionId      String?
+  subjectId      String
+  teacherId      String
+  homeworkDate   DateTime             @db.Timestamptz(6)
+  dueDate        DateTime             @db.Timestamptz(6)
+  title          String
+  description    String
+  attachment     String?              // URL/Key of attachment
+  status         String               @default("PUBLISHED") // "DRAFT", "PUBLISHED", "CLOSED"
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  createdBy      String
+  updatedBy      String
+
+  // Relations
+  submissions    HomeworkSubmission[]
+  class          Class                @relation(fields: [classId], references: [id])
+  section        Section?             @relation(fields: [sectionId], references: [id])
+}
+
+model HomeworkSubmission {
+  id               String      @id @default(uuid())
+  homeworkId       String
+  studentId        String
+  submittedAt      DateTime    @default(now()) @db.Timestamptz(6)
+  attachment       String?
+  teacherRemarks   String?
+  marks            Decimal?    @db.Decimal(5, 2)
+  submissionStatus String      @default("SUBMITTED") // "SUBMITTED", "EVALUATED", "LATE"
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  // Relations
+  homework         Homework    @relation(fields: [homeworkId], references: [id])
+  student          Student     @relation(fields: [studentId], references: [id])
+
+  @@unique([homeworkId, studentId])
+}
+
+model Notice {
+  id                     String                 @id @default(uuid())
+  schoolId               String
+  branchId               String
+  title                  String
+  content                String
+  audienceType           String                 // "ALL", "PARENTS", "STUDENTS", "TEACHERS", "CLASS", "SECTION", "TRANSPORT"
+  targetClassId          String?
+  targetSectionId        String?
+  publishFrom            DateTime               @db.Timestamptz(6)
+  publishTill            DateTime               @db.Timestamptz(6)
+  priority               String                 @default("NORMAL") // "LOW", "NORMAL", "HIGH", "CRITICAL"
+  requiresAcknowledgement Boolean               @default(false)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  createdBy              String
+
+  // Relations
+  attachments            NoticeAttachment[]
+  acknowledgements       NoticeAcknowledgement[]
+}
+
+model NoticeAttachment {
+  id        String   @id @default(uuid())
+  noticeId  String
+  fileUrl   String
+  fileName  String
+  createdAt DateTime @default(now())
+
+  // Relations
+  notice    Notice   @relation(fields: [noticeId], references: [id])
+}
+
+model NoticeAcknowledgement {
+  id              String   @id @default(uuid())
+  noticeId        String
+  guardianId      String
+  acknowledgedAt  DateTime @default(now()) @db.Timestamptz(6)
+  ipAddress       String?
+  deviceInfo      String?
+
+  // Relations
+  notice          Notice   @relation(fields: [noticeId], references: [id])
+  guardian        Guardian @relation(fields: [guardianId], references: [id])
+
+  @@unique([noticeId, guardianId])
+}
+
+model Feedback {
+  id               String   @id @default(uuid())
+  schoolId         String
+  branchId         String
+  studentId        String?
+  guardianId       String
+  category         String   // "ACADEMIC", "TEACHER", "SCHOOL", "TRANSPORT", "APP", "FEE", "GENERAL"
+  targetType       String   // "Teacher", "Branch", "School", "Application"
+  targetId         String?  // UUID of the teacher or branch
+  rating           Int?     // 1 to 5 stars
+  comment          String
+  isAnonymous      Boolean  @default(false)
+  moderationStatus String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  createdAt        DateTime @default(now())
+
+  // Relations
+  student          Student? @relation(fields: [studentId], references: [id])
+  guardian         Guardian @relation(fields: [guardianId], references: [id])
+}
+
+model ProfileChangeRequest {
+  id           String    @id @default(uuid())
+  studentId    String?
+  guardianId   String
+  requestType  String    // "PHONE", "EMAIL", "ADDRESS", "PHOTO", "EMERGENCY_CONTACT"
+  oldValue     String
+  newValue     String
+  attachment   String?   // Verification document URL
+  status       String    @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  approvedBy   String?
+  approvedAt   DateTime? @db.Timestamptz(6)
+  remarks      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  schoolId     String
+  branchId     String
+
+  // Relations
+  student      Student?  @relation(fields: [studentId], references: [id])
+  guardian     Guardian  @relation(fields: [guardianId], references: [id])
+}
+
+model Conversation {
+  id           String       @id @default(uuid())
+  schoolId     String
+  branchId     String
+  teacherId    String
+  guardianId   String
+  isClosed     Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  messages     Message[]
+  guardian     Guardian     @relation(fields: [guardianId], references: [id])
+  
+  @@unique([teacherId, guardianId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderType     String       // "TEACHER", "GUARDIAN"
+  senderId       String
+  content        String
+  attachment     String?
+  readAt         DateTime?    @db.Timestamptz(6)
+  createdAt      DateTime     @default(now())
+
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+}
+
+model Appointment {
+  id             String    @id @default(uuid())
+  schoolId       String
+  branchId       String
+  guardianId     String
+  teacherId      String
+  meetingType    String    // "ONLINE", "OFFLINE"
+  scheduledDate  DateTime  @db.Timestamptz(6)
+  durationMin    Int       @default(15)
+  purpose        String
+  status         String    @default("PENDING") // "PENDING", "ACCEPTED", "DECLINED", "COMPLETED"
+  meetingLink    String?   // Zoom/Meet URL
+  remarks        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  guardian       Guardian  @relation(fields: [guardianId], references: [id])
+}
+
 
 
 
