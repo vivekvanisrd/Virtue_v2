@@ -90,7 +90,7 @@ export async function submitConsentAction(token: string, data: { updatedPhone?: 
 }
 
 // 3. Admin generates consent links for a specific class/year
-export async function generateConsentLinksAction(classId: string, targetingAcademicYearId: string) {
+export async function generateConsentLinksAction(classId: string, targetingAcademicYearId: string, sourceAcademicYearId?: string) {
     try {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
@@ -113,38 +113,67 @@ export async function generateConsentLinksAction(classId: string, targetingAcade
         const targetAY = await prisma.academicYear.findFirst({
             where: {
                 schoolId: context.schoolId,
-                name: { contains: "2026-27" }
-            }
-        }) || await prisma.academicYear.findFirst({
-            where: {
-                schoolId: context.schoolId,
-                isCurrent: false
+                OR: [
+                    { id: targetingAcademicYearId },
+                    { name: { contains: targetingAcademicYearId } }
+                ]
             }
         });
         if (targetAY) {
             resolvedTargetAYId = targetAY.id;
         }
 
-        // 3. Resolve Current Academic Year to find students currently in this class
-        const currentAY = await prisma.academicYear.findFirst({
+        // 3. Resolve Source Academic Year
+        let resolvedSourceAYId = sourceAcademicYearId;
+        if (!resolvedSourceAYId) {
+            const currentAY = await prisma.academicYear.findFirst({
+                where: {
+                    schoolId: context.schoolId,
+                    isCurrent: true
+                }
+            });
+            resolvedSourceAYId = currentAY?.id;
+        }
+
+        const sourceAY = await prisma.academicYear.findFirst({
             where: {
                 schoolId: context.schoolId,
-                isCurrent: true
+                OR: [
+                    { id: resolvedSourceAYId },
+                    { name: resolvedSourceAYId }
+                ]
             }
         });
 
-        // 4. Retrieve students currently enrolled in the source class
+        // 4. Retrieve students currently enrolled in the source class in the source academic year
+        // We look in AcademicRecord (current placement) OR AcademicHistory (past year archives)
+        // to comprehensively locate all students who studied in that class & year.
+        // We also filter out students who are inactive or left.
         const students = await prisma.student.findMany({
             where: {
                 schoolId: context.schoolId,
-                academic: {
-                    classId: resolvedClassId,
-                    OR: currentAY ? [
-                        { academicYear: currentAY.id },
-                        { academicYear: `AY-${currentAY.name}-${context.schoolId}` },
-                        { academicYear: currentAY.name }
-                    ] : []
-                }
+                status: { in: ["Active", "CONFIRMED", "PROVISIONAL"] },
+                isDeleted: false,
+                OR: [
+                    {
+                        academic: {
+                            classId: resolvedClassId,
+                            OR: sourceAY ? [
+                                { academicYear: sourceAY.id },
+                                { academicYear: `AY-${sourceAY.name}-${context.schoolId}` },
+                                { academicYear: sourceAY.name }
+                            ] : []
+                        }
+                    },
+                    {
+                        history: {
+                            some: {
+                                classId: resolvedClassId,
+                                academicYearId: sourceAY?.id || ""
+                            }
+                        }
+                    }
+                ]
             }
         });
 
@@ -179,7 +208,7 @@ export async function generateConsentLinksAction(classId: string, targetingAcade
     }
 }
 
-export async function getConsentLinksAction(classId: string, targetingAcademicYearId: string) {
+export async function getConsentLinksAction(classId: string, targetingAcademicYearId: string, sourceAcademicYearId?: string) {
     try {
         const identity = await getSovereignIdentity();
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
@@ -202,24 +231,65 @@ export async function getConsentLinksAction(classId: string, targetingAcademicYe
         const targetAY = await prisma.academicYear.findFirst({
             where: {
                 schoolId: context.schoolId,
-                name: { contains: "2026-27" }
-            }
-        }) || await prisma.academicYear.findFirst({
-            where: {
-                schoolId: context.schoolId,
-                isCurrent: false
+                OR: [
+                    { id: targetingAcademicYearId },
+                    { name: { contains: targetingAcademicYearId } }
+                ]
             }
         });
         if (targetAY) {
             resolvedTargetAYId = targetAY.id;
         }
 
+        // Resolve Source Academic Year
+        let resolvedSourceAYId = sourceAcademicYearId;
+        if (!resolvedSourceAYId) {
+            const currentAY = await prisma.academicYear.findFirst({
+                where: {
+                    schoolId: context.schoolId,
+                    isCurrent: true
+                }
+            });
+            resolvedSourceAYId = currentAY?.id;
+        }
+
+        const sourceAY = await prisma.academicYear.findFirst({
+            where: {
+                schoolId: context.schoolId,
+                OR: [
+                    { id: resolvedSourceAYId },
+                    { name: resolvedSourceAYId }
+                ]
+            }
+        });
+
         const consents = await prisma.studentConsent.findMany({
             where: {
                 academicYearId: resolvedTargetAYId,
                 student: {
                     schoolId: context.schoolId,
-                    academic: { classId: resolvedClassId }
+                    status: { in: ["Active", "CONFIRMED", "PROVISIONAL"] },
+                    isDeleted: false,
+                    OR: [
+                        {
+                            academic: {
+                                classId: resolvedClassId,
+                                OR: sourceAY ? [
+                                    { academicYear: sourceAY.id },
+                                    { academicYear: `AY-${sourceAY.name}-${context.schoolId}` },
+                                    { academicYear: sourceAY.name }
+                                ] : []
+                            }
+                        },
+                        {
+                            history: {
+                                some: {
+                                    classId: resolvedClassId,
+                                    academicYearId: sourceAY?.id || ""
+                                }
+                            }
+                        }
+                    ]
                 }
             },
             include: {

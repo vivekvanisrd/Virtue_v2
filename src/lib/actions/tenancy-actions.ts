@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 
 /**
  * 🏛️ TENANCY ACTION: Sets the active branch context
@@ -83,7 +83,7 @@ export async function getBranchesAction() {
 
 export async function getVivesBranchesAction() {
     try {
-        const branches = await prisma.branch.findMany({
+        const branches = await prismaBypass.branch.findMany({
             where: { schoolId: "VIVES" },
             select: { id: true, name: true, code: true }
         });

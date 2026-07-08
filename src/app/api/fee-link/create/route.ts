@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
 
 function getEncryptionKey() {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     if (!branchId) {
       try {
-        const firstBranch = await prisma.branch.findFirst({
+        const firstBranch = await prismaBypass.branch.findFirst({
           where: { schoolId: "VIVES" },
           select: { id: true }
         });
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     let keySecret = "";
 
     try {
-      const providerSetting = await prisma.globalSetting.findFirst({
+      const providerSetting = await prismaBypass.globalSetting.findFirst({
         where: { schoolId, key: `BRANCH_${branchId}_GATEWAY_PROVIDER` }
       });
       if (providerSetting) {
@@ -86,10 +86,10 @@ export async function POST(req: NextRequest) {
       }
 
       if (gatewayProvider === "Razorpay") {
-        const rzpKeyId = await prisma.globalSetting.findFirst({
+        const rzpKeyId = await prismaBypass.globalSetting.findFirst({
           where: { schoolId, key: { in: [`BRANCH_${branchId}_KEY_ID`, `BRANCH_${branchId}_KEYID`] } }
         });
-        const rzpKeySecret = await prisma.globalSetting.findFirst({
+        const rzpKeySecret = await prismaBypass.globalSetting.findFirst({
           where: { schoolId, key: { in: [`BRANCH_${branchId}_KEY_SECRET`, `BRANCH_${branchId}_KEYSECRET`] } }
         });
         if (rzpKeyId && rzpKeySecret) {

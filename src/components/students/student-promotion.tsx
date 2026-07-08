@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { generateConsentLinksAction, getConsentLinksAction } from "@/lib/actions/consent-actions";
+import { getAcademicYearsAction } from "@/lib/actions/academic-actions";
 import { Copy, Link as LinkIcon, AlertCircle, CheckCircle2, Send, Loader2, Sparkles, Check } from "lucide-react";
 
 // Assuming we fetch these from a server action in a real scenario
@@ -23,7 +24,6 @@ const MOCK_CLASSES = [
   "11th Grade",
   "12th Grade"
 ];
-const TARGET_YEAR = "2026-27";
 
 export function StudentPromotionManager() {
   const [selectedClass, setSelectedClass] = useState<string>("");
@@ -34,16 +34,39 @@ export function StudentPromotionManager() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
 
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [sourceYear, setSourceYear] = useState<string>("");
+  const [targetYear, setTargetYear] = useState<string>("");
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
     }
+
+    getAcademicYearsAction().then((res) => {
+      if (res.success && res.data) {
+        setAcademicYears(res.data);
+        const current = res.data.find((y: any) => y.isCurrent);
+        if (current) {
+          setTargetYear(current.id);
+          const currentIndex = res.data.findIndex((y: any) => y.id === current.id);
+          if (currentIndex !== -1 && currentIndex + 1 < res.data.length) {
+            setSourceYear(res.data[currentIndex + 1].id);
+          } else {
+            setSourceYear(current.id);
+          }
+        } else if (res.data.length > 0) {
+          setTargetYear(res.data[0].id);
+          setSourceYear(res.data[0].id);
+        }
+      }
+    });
   }, []);
 
-  // Fetch existing consents when class changes
+  // Fetch existing consents when class or years change
   useEffect(() => {
-    if (selectedClass) {
-      getConsentLinksAction(selectedClass, "uuid-for-2026-27").then(res => {
+    if (selectedClass && targetYear && sourceYear) {
+      getConsentLinksAction(selectedClass, targetYear, sourceYear).then(res => {
         if (res.success && res.consents) {
           setConsents(res.consents);
           setLinksGenerated(res.consents.length > 0);
@@ -59,20 +82,20 @@ export function StudentPromotionManager() {
       setLinksGenerated(false);
       setMessage("");
     }
-  }, [selectedClass]);
+  }, [selectedClass, targetYear, sourceYear]);
 
   const handleGenerate = async () => {
-    if (!selectedClass) return;
+    if (!selectedClass || !targetYear || !sourceYear) return;
     setLoading(true);
     setMessage("");
     
-    const res = await generateConsentLinksAction(selectedClass, "uuid-for-2026-27");
+    const res = await generateConsentLinksAction(selectedClass, targetYear, sourceYear);
     
     if (res.success) {
       setLinksGenerated(true);
       setMessage(res.message || "Links generated successfully!");
       
-      const refreshRes = await getConsentLinksAction(selectedClass, "uuid-for-2026-27");
+      const refreshRes = await getConsentLinksAction(selectedClass, targetYear, sourceYear);
       if (refreshRes.success && refreshRes.consents) {
         setConsents(refreshRes.consents);
       }
@@ -103,8 +126,34 @@ export function StudentPromotionManager() {
         <h2 className="text-3xl font-black text-foreground tracking-tight mb-2">Year-End Promotions & Consent</h2>
         <p className="text-foreground opacity-60 font-medium mb-10">Generate unique, secure re-admission consent links for parents. This automates the fee generation and profile update process for the upcoming academic year.</p>
 
-        <div className="bg-muted/50 p-6 rounded-2xl border border-border flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1 text-left">
+        <div className="bg-muted/50 p-6 rounded-2xl border border-border flex flex-col gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="text-left">
+              <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block">Source Academic Year (Students Studying In)</label>
+              <select 
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-bold opacity-80 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                value={sourceYear}
+                onChange={(e) => setSourceYear(e.target.value)}
+              >
+                <option value="" disabled>Select Year</option>
+                {academicYears.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
+              </select>
+            </div>
+
+            <div className="text-left">
+              <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block">Target Academic Year (Promotion Target)</label>
+              <select 
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-bold opacity-80 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                value={targetYear}
+                onChange={(e) => setTargetYear(e.target.value)}
+              >
+                <option value="" disabled>Select Year</option>
+                {academicYears.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="text-left">
             <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block">Target Class to Promote</label>
             <select 
               className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground font-bold opacity-80 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
@@ -115,18 +164,11 @@ export function StudentPromotionManager() {
               {MOCK_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-
-          <div className="flex-1 text-left">
-            <label className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-50 mb-2 block">Target Academic Year</label>
-            <div className="w-full bg-background/50 border border-border rounded-xl px-4 py-3 text-foreground font-black opacity-90 cursor-not-allowed">
-              {TARGET_YEAR}
-            </div>
-          </div>
         </div>
 
         <button 
           onClick={handleGenerate}
-          disabled={!selectedClass || loading}
+          disabled={!selectedClass || !targetYear || !sourceYear || loading}
           className="w-full py-4 bg-primary hover:bg-primary/90 text-white font-black rounded-xl transition-all shadow-xl shadow-primary/10 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
