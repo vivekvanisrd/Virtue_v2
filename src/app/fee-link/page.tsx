@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   Link2, Copy, CheckCheck, Share2, User, Phone,
   IndianRupee, FileText, BookOpen, Loader2, RefreshCw, Sparkles
 } from "lucide-react";
+import { getVivesBranchesAction } from "@/lib/actions/tenancy-actions";
 
 type FormData = {
   studentName: string;
@@ -31,6 +32,19 @@ export default function AdminGeneratePage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
+
+  useEffect(() => {
+    getVivesBranchesAction().then((res) => {
+      if (res.success && res.data) {
+        setBranches(res.data);
+        if (res.data.length > 0) {
+          setSelectedBranch(res.data[0].id);
+        }
+      }
+    });
+  }, []);
 
   const set = (k: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -50,6 +64,7 @@ export default function AdminGeneratePage() {
           amount: form.amount,
           description: form.description,
           pendingItems: form.pendingItems,
+          branchId: selectedBranch,
         }),
       });
       const data = await res.json();
@@ -139,6 +154,22 @@ export default function AdminGeneratePage() {
                   <IndianRupee className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
                   <input className={`${inputClass} pl-10`} placeholder="e.g. 5000" value={form.amount} onChange={set("amount")} required type="number" min="1" step="any" />
                 </div>
+              </div>
+
+              {/* Branch Selection Dropdown */}
+              <div className="md:col-span-2">
+                <label className={labelClass}>Select School Branch</label>
+                <select
+                  className={inputClass}
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select target campus branch</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

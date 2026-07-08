@@ -40,33 +40,34 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
     const callbackUrl = `${baseUrl}/api/fee-link/verify`;
 
-    // 1. Resolve tenancy context FIRST
-    let schoolId = req.headers.get("x-v2-school-id") || body.schoolId;
+    // 1. Force VIVES and resolve branch context
+    const schoolId = "VIVES";
     let branchId = req.headers.get("x-v2-branch-id") || body.branchId;
 
-    if (!schoolId || !branchId) {
+    if (!branchId) {
       try {
         const identity = await getSovereignIdentity();
         if (identity) {
-          schoolId = schoolId || identity.schoolId;
-          branchId = branchId || identity.branchId;
+          branchId = identity.branchId;
         }
       } catch (err) {
         console.warn("Sovereign identity lookup failed:", err);
       }
     }
 
-    if (!schoolId || !branchId) {
+    if (!branchId) {
       try {
-        const firstBranch = await prisma.branch.findFirst({ select: { id: true, schoolId: true } });
+        const firstBranch = await prisma.branch.findFirst({
+          where: { schoolId: "VIVES" },
+          select: { id: true }
+        });
         if (firstBranch) {
-          schoolId = schoolId || firstBranch.schoolId;
-          branchId = branchId || firstBranch.id;
+          branchId = firstBranch.id;
         }
       } catch (err) {
-        console.warn("Fallback tenant lookup failed:", err);
+        console.warn("Fallback branch lookup failed:", err);
       }
-      if (!schoolId || !branchId) {
+      if (!branchId) {
         return NextResponse.json({ error: "Unable to resolve institution context." }, { status: 400 });
       }
     }

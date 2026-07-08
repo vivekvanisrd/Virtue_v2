@@ -80,3 +80,16 @@ export async function getBranchesAction() {
         return { success: false, error: e.message };
     }
 }
+
+export async function getVivesBranchesAction() {
+    try {
+        const branches = await prisma.branch.findMany({
+            where: { schoolId: "VIVES" },
+            select: { id: true, name: true, code: true }
+        });
+        return { success: true, data: branches };
+    } catch (e: any) {
+        console.error("[TENANCY ERROR] Failed to fetch VIVES branches:", e);
+        return { success: false, error: e.message };
+    }
+}
