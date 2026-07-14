@@ -421,37 +421,46 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
         </div>
 
         <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between gap-6">
-            <div className="space-y-6">
+            <div className="space-y-5">
                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Gross Inventory</p>
-                    <p className="text-2xl font-black text-slate-900 tracking-tight italic">
-                      {formatCurrency((Number(studentData.feeBreakdown?.annualNet) || 0) + (Number(studentData.financial?.totalDiscount) || 0))}
-                    </p>
+                  <div>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Financial Breakdown</p>
+                     <h4 className="text-xs font-bold text-slate-900 tracking-tight">Active Billing Period</h4>
                   </div>
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 border border-slate-100">
-                    <TrendingUp className="w-5 h-5" />
+                  <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 border border-slate-100">
+                    <TrendingUp className="w-4 h-4" />
                   </div>
                </div>
                
-               <div className="h-px bg-slate-50" />
+               <div className="h-px bg-slate-100/70" />
 
-                <div className="flex items-center justify-between">
-                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Policy Savings</p>
-                     <div className="flex items-center gap-2">
-                        <p className="text-2xl font-black text-emerald-600 tracking-tight italic">-{formatCurrency(studentData.financial?.totalDiscount)}</p>
-                     </div>
-                   </div>
-                   <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 border border-emerald-100">
-                     <Zap className="w-5 h-5 fill-emerald-500/10" />
-                   </div>
-                </div>
+               <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs">
+                     <span className="font-semibold text-slate-500">Actual Fee (Gross)</span>
+                     <span className="font-black text-slate-900">{formatCurrency(grandTotalFee + (Number(studentData.financial?.totalDiscount) || 0))}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                     <span className="font-semibold text-slate-500">Policy Discount</span>
+                     <span className="font-black text-emerald-600">-{formatCurrency(Number(studentData.financial?.totalDiscount) || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-dashed border-slate-100 pt-2">
+                     <span className="font-bold text-slate-800">Total Payable</span>
+                     <span className="font-black text-slate-900">{formatCurrency(grandTotalFee)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                     <span className="font-semibold text-slate-500">Total Paid</span>
+                     <span className="font-black text-emerald-600">{formatCurrency(totalCollected)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-slate-100 pt-2">
+                     <span className="font-bold text-slate-800">Remaining Due</span>
+                     <span className="font-black text-rose-500">{formatCurrency(outstanding)}</span>
+                  </div>
+               </div>
             </div>
 
             <button 
               onClick={handleOpenDiscountModal}
-              className="w-full py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all"
+              className="w-full py-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all"
             >
               Modify Policy Discounts
             </button>

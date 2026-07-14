@@ -113,6 +113,7 @@ export function StudentForm() {
       country: "India",
       state: "Telangana",
       transportRequired: false,
+      tuitionFee: 0,
       admissionFee: 0,
       cautionDeposit: 0,
       libraryFee: 0,
@@ -120,6 +121,9 @@ export function StudentForm() {
       sportsFee: 0,
       developmentFee: 0,
       examFee: 0,
+      computerFee: 0,
+      miscellaneousFee: 0,
+      transportFee: 0,
     },
   });
 
@@ -561,6 +565,10 @@ export function StudentForm() {
         dbStudentId={submittedData.id} // Actual Student ID from DB
         schoolName={refData.schoolName}
         onReset={handleReset} 
+        classes={refData.classes}
+        sections={sections}
+        branches={refData.branches}
+        academicYears={refData.academicYears}
       />
     );
   }
@@ -1586,6 +1594,10 @@ export function StudentForm() {
                   studentData={watch()} 
                   isReviewMode={true}
                   onEditStep={(stepId) => setCurrentStep(stepId)}
+                  classes={refData.classes}
+                  sections={sections}
+                  branches={refData.branches}
+                  academicYears={refData.academicYears}
                 />
 
                 {/* 🔒 Institutional Safety Lock */}

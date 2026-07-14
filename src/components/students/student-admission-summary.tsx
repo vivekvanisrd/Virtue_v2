@@ -20,12 +20,34 @@ interface SummaryProps {
   isReviewMode?: boolean;
   onEditStep?: (stepId: number) => void;
   dbStudentId?: string; // The Actual DB ID for redirection
+  classes?: any[];
+  sections?: any[];
+  branches?: any[];
+  academicYears?: any[];
 }
 
-export function StudentAdmissionSummary({ studentData, admissionId, schoolName, onReset, isReviewMode, onEditStep, dbStudentId }: SummaryProps) {
+export function StudentAdmissionSummary({ 
+  studentData, 
+  admissionId, 
+  schoolName, 
+  onReset, 
+  isReviewMode, 
+  onEditStep, 
+  dbStudentId,
+  classes,
+  sections,
+  branches,
+  academicYears
+}: SummaryProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const { openTab } = useTabs();
   const router = useRouter();
+
+  // Resolve academic placement names from lookup lists
+  const displayClass = classes?.find(c => c.id === studentData.classId)?.name || studentData.className || studentData.classId || "N/A";
+  const displaySection = sections?.find(s => s.id === studentData.sectionId)?.name || studentData.sectionName || studentData.sectionId || "N/A";
+  const displayBranch = branches?.find(b => b.id === studentData.branchId)?.name || studentData.branchName || studentData.branchId || "N/A";
+  const displayAcademicYear = academicYears?.find(y => y.id === studentData.academicYearId)?.name || studentData.academicYearName || studentData.academicYearId || "N/A";
 
   const handleProceedToPayment = () => {
     console.log("[ADMISSION_SUMMARY] Proceeding to Payment Hub. StudentID:", dbStudentId);
@@ -272,11 +294,11 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
             <div>
               <SectionHeader icon={School} title="Academic Placement" />
               <div className="bg-muted/50/50 p-4 print:p-3 rounded-xl border border-border/50">
-                <InfoRow label="Class" value={studentData.className || studentData.classId} targetStep={2} />
-                <InfoRow label="Section" value={studentData.sectionName || studentData.sectionId} targetStep={2} />
-                <InfoRow label="Academic Year" value={studentData.academicYearId} targetStep={2} />
+                <InfoRow label="Class" value={displayClass} targetStep={2} />
+                <InfoRow label="Section" value={displaySection} targetStep={2} />
+                <InfoRow label="Academic Year" value={displayAcademicYear} targetStep={2} />
                 <InfoRow label="Admission Date" value={studentData.admissionDate} targetStep={2} />
-                <InfoRow label="Branch" value={studentData.branchName || studentData.branchId} targetStep={2} />
+                <InfoRow label="Branch" value={displayBranch} targetStep={2} />
                 <InfoRow label="PEN Number" value={studentData.penNumber} targetStep={2} />
               </div>
             </div>
@@ -307,15 +329,15 @@ export function StudentAdmissionSummary({ studentData, admissionId, schoolName, 
                     <span className="text-slate-400">Amount (₹)</span>
                   </div>
                   <hr className="border-slate-200" />
-                  <InfoRow label="Tuition Fee Charge" value={`+${studentData.tuitionFee}`} className="border-0 !py-0.5" targetStep={5} />
-                  <InfoRow label="Admission Fee Charge" value={`+${studentData.admissionFee}`} className="border-0 !py-0.5" targetStep={5} />
-                  {Number(studentData.cautionDeposit || 0) > 0 && <InfoRow label="Caution Deposit" value={`+${studentData.cautionDeposit}`} className="border-0 !py-0.5" targetStep={5} />}
-                  {Number(studentData.libraryFee || 0) > 0 && <InfoRow label="Library Fee" value={`+${studentData.libraryFee}`} className="border-0 !py-0.5" targetStep={5} />}
+                  <InfoRow label="Tuition Fee Charge" value={`+${Number(studentData.tuitionFee || 0)}`} className="border-0 !py-0.5" targetStep={5} />
+                  <InfoRow label="Admission Fee Charge" value={`+${Number(studentData.admissionFee || 0)}`} className="border-0 !py-0.5" targetStep={5} />
+                  {Number(studentData.cautionDeposit || 0) > 0 && <InfoRow label="Caution Deposit" value={`+${Number(studentData.cautionDeposit)}`} className="border-0 !py-0.5" targetStep={5} />}
+                  {Number(studentData.libraryFee || 0) > 0 && <InfoRow label="Library Fee" value={`+${Number(studentData.libraryFee)}`} className="border-0 !py-0.5" targetStep={5} />}
                   <hr className="border-slate-200 mt-2" />
                   <div className="flex justify-between items-center pt-2">
                     <span className="text-[10px] font-black text-slate-900 uppercase tracking-tight">Opening Ledger Balance</span>
                     <span className="text-base font-black text-slate-900">
-                      ₹{Number(studentData.tuitionFee || 0) + Number(studentData.admissionFee || 0) + Number(studentData.cautionDeposit || 0) + Number(studentData.libraryFee || 0) + Number(studentData.labFee || 0) + Number(studentData.sportsFee || 0) + Number(studentData.developmentFee || 0) + Number(studentData.examFee || 0)}
+                      ₹{(Number(studentData.tuitionFee || 0) + Number(studentData.admissionFee || 0) + Number(studentData.cautionDeposit || 0) + Number(studentData.libraryFee || 0) + Number(studentData.labFee || 0) + Number(studentData.sportsFee || 0) + Number(studentData.developmentFee || 0) + Number(studentData.examFee || 0)).toLocaleString()}
                     </span>
                   </div>
                 </div>
