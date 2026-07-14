@@ -133,6 +133,7 @@ export async function recordFeeCollection(params: {
   amountPaid: number;      // System-calculated sum of selected terms (base tuition)
   paymentMode: string;
   paymentReference?: string;
+  bookReceiptNo?: string;  // Physical receipt book/bill number
   lateFeePaid: number;
   lateFeeWaived: boolean;
   waiverReason?: string;
@@ -376,18 +377,21 @@ export async function recordFeeCollection(params: {
       }, tx);
 
       const gatewayFee = params.convenienceFee || 0;
-      const basePlusLate = params.amountPaid + params.lateFeePaid;
+      const ancillaryTotal = params.ancillaryItems?.reduce((sum, item) => sum + item.amount, 0) || 0;
+      const totalBasePaid = params.amountPaid + ancillaryTotal;
+      const basePlusLate = totalBasePaid + params.lateFeePaid;
       const totalInBank = basePlusLate + gatewayFee;
 
       const collection = await tx.collection.create({
         data: {
           receiptNumber,
+          bookReceiptNo: params.bookReceiptNo,
           studentId: params.studentId,
           admissionId: activeAdmission.id,
           financialYearId: activeFY.id,
           schoolId: context.schoolId,
           branchId: context.branchId,
-          amountPaid: params.amountPaid,
+          amountPaid: totalBasePaid,
           lateFeePaid: params.lateFeePaid,
           convenienceFee: gatewayFee,
           totalPaid: totalInBank,
@@ -398,10 +402,10 @@ export async function recordFeeCollection(params: {
           status: "Success",
           allocatedTo: {
             terms: params.selectedTerms,
-            ancillaryPaid: params.ancillaryItems || [], // BUG-4 FIX: Persist which ancillary fees were settled
+            ancillaryPaid: params.ancillaryItems || [],
             lateFeeWaived: params.lateFeeWaived,
             waiverReason: params.waiverReason,
-            admissionWaived: params.waiveAdmissionFee || false, // Rule: Track waivers for audit
+            admissionWaived: params.waiveAdmissionFee || false,
             bankRrn: params.bankRrn,
             customerContact: params.customerContact,
             customerEmail: params.customerEmail,
@@ -414,6 +418,95 @@ export async function recordFeeCollection(params: {
         }
       });
 
+      // 🚀 TRANSACTIONAL FEE ALLOCATIONS
+      const activeInvoice = await tx.feeInvoice.findFirst({
+        where: { studentId: params.studentId, schoolId: context.schoolId, status: { in: ["PENDING", "PARTIALLY_PAID"] } },
+        include: { items: true }
+      });
+
+      if (activeInvoice) {
+        if (params.amountPaid > 0) {
+          const tuitionItem = activeInvoice.items.find((item: any) => 
+            item.componentType === "TUTION" || item.componentName.toLowerCase().includes("tuition")
+          );
+          if (tuitionItem) {
+            await tx.feeInvoiceItem.update({
+              where: { id: tuitionItem.id },
+              data: {
+                paidAmount: { increment: params.amountPaid },
+                balance: { decrement: params.amountPaid }
+              }
+            });
+
+            await tx.collectionAllocation.create({
+              data: {
+                collectionId: collection.id,
+                invoiceId: activeInvoice.id,
+                invoiceItemId: tuitionItem.id,
+                amount: params.amountPaid
+              }
+            });
+          }
+        }
+
+        if (params.ancillaryItems && params.ancillaryItems.length > 0) {
+          for (const item of params.ancillaryItems) {
+            let itemType = "";
+            const key = item.key.toLowerCase();
+            if (key.includes("transport")) itemType = "TRANSPORT";
+            else if (key.includes("admission")) itemType = "ADMISSION";
+            else itemType = "ANCILLARY";
+
+            const matchingItem = activeInvoice.items.find((invItem: any) => 
+              (itemType && invItem.componentType === itemType) || 
+              invItem.componentName.toLowerCase().includes(item.key.toLowerCase()) ||
+              item.key.toLowerCase().includes(invItem.componentName.toLowerCase())
+            );
+
+            if (matchingItem) {
+              await tx.feeInvoiceItem.update({
+                where: { id: matchingItem.id },
+                data: {
+                  paidAmount: { increment: item.amount },
+                  balance: { decrement: item.amount }
+                }
+              });
+
+              await tx.collectionAllocation.create({
+                data: {
+                  collectionId: collection.id,
+                  invoiceId: activeInvoice.id,
+                  invoiceItemId: matchingItem.id,
+                  amount: item.amount
+                }
+              });
+            }
+          }
+        }
+
+        const updatedInvoice = await tx.feeInvoice.update({
+          where: { id: activeInvoice.id },
+          data: {
+            paidAmount: { increment: totalBasePaid },
+            balance: { decrement: totalBasePaid }
+          }
+        });
+
+        const newBalance = Number(updatedInvoice.balance || 0);
+        const newPaidAmount = Number(updatedInvoice.paidAmount || 0);
+        let newStatus = "PENDING";
+        if (newBalance <= 0) {
+          newStatus = "PAID";
+        } else if (newPaidAmount > 0) {
+          newStatus = "PARTIALLY_PAID";
+        }
+
+        await tx.feeInvoice.update({
+          where: { id: activeInvoice.id },
+          data: { status: newStatus }
+        });
+      }
+
       // AUDIT-SAFE LEDGER POSTING
       // 1. Student Ledger (Account Statement)
       await tx.ledgerEntry.create({
@@ -424,10 +517,10 @@ export async function recordFeeCollection(params: {
           financialYearId: activeFY.id,
           academicYearId: activeAdmission.academicYearId,
           type: "PAYMENT",
-          amount: params.amountPaid,
+          amount: totalBasePaid,
           reason: `Fee Payment (${params.selectedTerms.join(', ')}) - Ref: ${receiptNumber}`,
           createdBy: context.name || context.role,
-          journalEntryId: null // Optional link if needed
+          journalEntryId: null
         }
       });
 
@@ -755,6 +848,9 @@ export async function getStudentFeeStatus(studentId: string) {
         },
         include: {
           academic: { include: { class: true } },
+          history: { include: { academicYear: true } },
+          studentTransport: { include: { route: true, pickupStop: true, dropStop: true } },
+          backboneInvoices: { include: { items: true } },
           financial: { 
             include: { 
               components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } }, 
@@ -770,6 +866,7 @@ export async function getStudentFeeStatus(studentId: string) {
       }),
       prismaBypass.collection.findMany({
         where: { studentId, status: "Success", isDeleted: false },
+        include: { backboneAllocations: { include: { invoiceItem: true } } },
         orderBy: { paymentDate: 'desc' }
       })
     ]);
@@ -784,48 +881,97 @@ export async function getStudentFeeStatus(studentId: string) {
     const secureBranchId = student.branchId || null;
     const secureSchoolId = student.schoolId || null;
 
-    // Calculate dynamic term status
-    // TENANCY HARDENED: Resolve financial data with fallback to ledger charges if profile is missing
-    const components = student.financial?.components || [];
-    const tuition = components.length > 0 
-        ? components
-            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
-                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
-                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
-                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
-            .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
-        : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
-    const discount = components.length > 0 
-        ? components
-            .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
-                         !c.masterComponent?.name?.toLowerCase().includes("admission") &&
-                         !c.masterComponent?.name?.toLowerCase().includes("caution") &&
-                         !c.masterComponent?.name?.toLowerCase().includes("deposit"))
-            .reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
-        : Number(student.financial?.totalDiscount || 0);
+    // 1. RESOLVE INVOICE-BASED OR PROFILE-BASED BASE VALUES
+    const activeInvoice = student.backboneInvoices?.[0]; // Get the warded invoice
+    
+    let tuition = 0;
+    let discount = 0;
+    let transportFeeVal = 0;
+    let admissionFeeVal = 0;
+    
+    if (activeInvoice) {
+      activeInvoice.items.forEach((item: any) => {
+        const type = item.componentType;
+        const name = item.componentName.toLowerCase();
+        const amt = Number(item.amount);
+        
+        if (type === "TUTION" || name.includes("tuition")) {
+          tuition = amt;
+        } else if (type === "CONCESSION" || name.includes("concession")) {
+          discount = Math.abs(amt);
+        } else if (type === "TRANSPORT" || name.includes("transport")) {
+          transportFeeVal = amt;
+        } else if (type === "ADMISSION" || name.includes("admission")) {
+          admissionFeeVal = amt;
+        }
+      });
+    } else {
+      const components = student.financial?.components || [];
+      tuition = components.length > 0 
+          ? components
+              .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                           !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+              .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
+          : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
+      discount = components.length > 0 
+          ? components
+              .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                           !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+              .reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
+          : Number(student.financial?.totalDiscount || 0);
+    }
+
     const paymentType = student.financial?.paymentType || "Term-wise";
     
-    // If tuition is recorded as 0 but ledger has charges, use ledger sum as fallback for visibility
-    const ledgerTuition = tuition === 0 && student.ledgerEntries && student.ledgerEntries.length > 0
-        ? student.ledgerEntries.reduce((sum, entry) => sum + Number(entry.amount), 0)
-        : tuition;
+    const ledgerTuition = activeInvoice 
+        ? tuition
+        : (tuition === 0 && student.ledgerEntries && student.ledgerEntries.length > 0
+            ? student.ledgerEntries.reduce((sum, entry) => sum + Number(entry.amount), 0)
+            : tuition);
 
     const breakdown = calculateTermBreakdown(ledgerTuition, discount, paymentType);
 
-    // Sync isPaid status and calculate dynamic balances from cumulative payments
-    const totalPaid = student.collections.reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
-    let remainingPaid = totalPaid;
+    // 2. CATEGORIZE CUMULATIVE PAYMENT ALLOCATIONS (BY COMPONENT TYPE)
+    let tuitionPaid = 0;
+    let transportPaid = 0;
+    let admissionPaid = 0;
+
+    student.collections.forEach((col: any) => {
+      if (col.backboneAllocations && col.backboneAllocations.length > 0) {
+        col.backboneAllocations.forEach((alloc: any) => {
+          const type = alloc.invoiceItem?.componentType;
+          const amt = Number(alloc.amount || 0);
+          if (type === "TUTION") tuitionPaid += amt;
+          else if (type === "TRANSPORT") transportPaid += amt;
+          else if (type === "ADMISSION") admissionPaid += amt;
+        });
+      } else {
+        // Fallback for legacy collections without allocations
+        const totalColPaid = Number(col.amountPaid || 0);
+        const mode = (col.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
+        if (mode.includes("transport")) transportPaid += totalColPaid;
+        else if (mode.includes("admission")) admissionPaid += totalColPaid;
+        else tuitionPaid += totalColPaid;
+      }
+    });
+
+    // 3. MAP TUITION PAYMENTS TO TERM INSTALLMENTS
+    let remainingTuitionPaid = tuitionPaid;
 
     breakdown.installments.forEach(inst => {
       const amt = Number(inst.amount);
-      if (remainingPaid >= amt) {
+      if (remainingTuitionPaid >= amt) {
         inst.isPaid = true;
         (inst as any).balance = 0;
-        remainingPaid -= amt;
-      } else if (remainingPaid > 0) {
+        remainingTuitionPaid -= amt;
+      } else if (remainingTuitionPaid > 0) {
         inst.isPaid = false;
-        (inst as any).balance = amt - remainingPaid;
-        remainingPaid = 0;
+        (inst as any).balance = amt - remainingTuitionPaid;
+        remainingTuitionPaid = 0;
       } else {
         inst.isPaid = false;
         (inst as any).balance = amt;
@@ -842,7 +988,6 @@ export async function getStudentFeeStatus(studentId: string) {
       
       const termsFromList = allocated.terms || [];
       const legacyTerms = ["term1", "term2", "term3"].filter(t => (allocated as any)[t] > 0);
-      // BUG-4 FIX: Extract ancillary payment keys so ancillary fees correctly reflect as paid
       const ancillaryPaid = Array.isArray(allocated.ancillaryPaid)
         ? allocated.ancillaryPaid.map((a: any) => (typeof a === "string" ? a : a.key)).filter(Boolean)
         : [];
@@ -850,22 +995,54 @@ export async function getStudentFeeStatus(studentId: string) {
       return [...new Set([...termsFromList, ...legacyTerms, ...ancillaryPaid])];
     });
 
-    // 4. MAP ANCILLARY FEES (Multi-Source Resilience)
+    // Inject payment keys for warded components
+    if (tuitionPaid >= (breakdown.annualNet || tuition - discount)) {
+      paidTerms.push("tuitionFee");
+    }
+    if (transportPaid >= transportFeeVal && transportFeeVal > 0) {
+      paidTerms.push("transportFee");
+    }
+    if (admissionPaid >= admissionFeeVal && admissionFeeVal > 0) {
+      paidTerms.push("admissionFee");
+    }
+
     const ancillary: Record<string, any> = {};
     const fin = student.financial;
-    const ancillaryFields = [
-      { key: "admissionFee", label: "Admission Fee" },
-      { key: "cautionDeposit", label: "Caution Deposit" },
-      { key: "transportFee", label: "Transport Fee" },
-      { key: "examFee", label: "Exam Fee" },
-      { key: "computerFee", label: "Computer Fee" },
-      { key: "libraryFee", label: "Library Fee" },
-      { key: "sportsFee", label: "Sports Fee" },
-      { key: "activityFee", label: "Activity Fee" },
-      { key: "booksFee", label: "Books & Stationaries" },
-      { key: "uniformFee", label: "Uniform Fee" },
-      { key: "miscellaneousFee", label: "Misc Fee" }
-    ];
+
+    // Priority -1: AUTHORITATIVE ACTIVE INVOICE ITEMS
+    if (activeInvoice?.items) {
+      activeInvoice.items.forEach((item: any) => {
+        const type = item.componentType;
+        const name = item.componentName.toLowerCase();
+        
+        if (type === "TUTION" || name.includes("tuition") || type === "CONCESSION" || name.includes("concession")) {
+          // tuition and concession are core, handled separately
+          return;
+        }
+
+        let key = "";
+        if (type === "ADMISSION" || name.includes("admission")) key = "admissionFee";
+        else if (name.includes("caution") || name.includes("deposit")) key = "cautionDeposit";
+        else if (type === "TRANSPORT" || name.includes("transport")) key = "transportFee";
+        else if (name.includes("library")) key = "libraryFee";
+        else if (name.includes("exam")) key = "examFee";
+        else if (name.includes("computer")) key = "computerFee";
+        else if (name.includes("sports")) key = "sportsFee";
+        else if (name.includes("activity")) key = "activityFee";
+        else if (name.includes("book")) key = "booksFee";
+        else if (name.includes("uniform")) key = "uniformFee";
+        else key = `inv_${item.id}`;
+
+        if (key && !ancillary[key]) {
+          ancillary[key] = {
+            amount: Number(item.amount),
+            isPaid: Number(item.balance) <= 0,
+            label: item.componentName,
+            dueDate: null
+          };
+        }
+      });
+    }
 
     // Priority 0: AUTHORITATIVE TEMPLATE (Fee Structure)
     // This ensures boxes show up immediately upon enrollment, even before heavy processing
@@ -1008,6 +1185,7 @@ export async function getStudentFeeStatus(studentId: string) {
         schoolId: secureSchoolId,
         academic: student.academic ? {
           ...student.academic,
+          academicYear: student.history?.[0]?.academicYear?.name || (typeof student.academic?.academicYear === 'string' ? student.academic.academicYear : null) || null,
           branchId: secureBranchId,
           schoolId: secureSchoolId
         } : null,

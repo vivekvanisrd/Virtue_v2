@@ -1257,33 +1257,39 @@ export async function updateStudentProfile(studentId: string, data: any) {
         }
       });
 
-      // 2. Update Related Tables if data provided
+       // 2. Update Related Tables if data provided
       if (data.family) {
+        const { id, studentId: fStudentId, schoolId, branchId, ...familyData } = data.family;
         await tx.familyDetail.update({
           where: { studentId },
           data: {
-            ...data.family,
-            fatherPhone: data.family.fatherPhone ? cleanPhone(data.family.fatherPhone) : undefined,
-            fatherAltPhone: data.family.fatherAltPhone ? cleanPhone(data.family.fatherAltPhone) : undefined,
-            motherPhone: data.family.motherPhone ? cleanPhone(data.family.motherPhone) : undefined,
-            motherAltPhone: data.family.motherAltPhone ? cleanPhone(data.family.motherAltPhone) : undefined,
-            whatsappNumber: data.family.whatsappNumber ? cleanPhone(data.family.whatsappNumber) : undefined,
-            emergencyPhone: data.family.emergencyPhone ? cleanPhone(data.family.emergencyPhone) : undefined,
+            ...familyData,
+            fatherPhone: familyData.fatherPhone ? cleanPhone(familyData.fatherPhone) : undefined,
+            fatherAltPhone: familyData.fatherAltPhone ? cleanPhone(familyData.fatherAltPhone) : undefined,
+            motherPhone: familyData.motherPhone ? cleanPhone(familyData.motherPhone) : undefined,
+            motherAltPhone: familyData.motherAltPhone ? cleanPhone(familyData.motherAltPhone) : undefined,
+            whatsappNumber: familyData.whatsappNumber ? cleanPhone(familyData.whatsappNumber) : undefined,
+            emergencyPhone: familyData.emergencyPhone ? cleanPhone(familyData.emergencyPhone) : undefined,
           }
         });
       }
 
       if (data.address) {
+        const { id, studentId: aStudentId, schoolId, branchId, pinCode, pincode, ...addressData } = data.address;
         await tx.address.update({
           where: { studentId },
-          data: data.address
+          data: {
+            ...addressData,
+            pincode: pinCode || pincode,
+          }
         });
       }
 
       if (data.academic) {
+        const { id, studentId: acStudentId, schoolId, branchId, ...academicData } = data.academic;
         await tx.academicRecord.update({
           where: { studentId },
-          data: data.academic
+          data: academicData
         });
       }
 

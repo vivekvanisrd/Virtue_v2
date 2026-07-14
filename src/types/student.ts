@@ -72,11 +72,8 @@ export const studentAdmissionSchema = z.object({
   motherEmail: globalEmailSchema.nullable().optional().or(z.literal("")).transform(toLowerCase),
   motherOccupation: z.string().nullable().optional().transform(toTitleCase),
   motherQualification: z.string().nullable().optional().transform(toTitleCase),
-  // Mother's Aadhaar is MANDATORY per institution policy
-  motherAadhaar: z.string()
-    .trim()
-    .min(1, "Mother's Aadhaar is required")
-    .regex(/^\d{12}$/, "Mother's Aadhaar must be exactly 12 digits"),
+  // Mother's Aadhaar — optional during onboarding, enforced via 30-day compliance check
+  motherAadhaar: globalAadhaarSchema.nullable().optional().or(z.literal("")).transform(trim),
   whatsappNumber: globalPhoneSchema.nullable().optional().or(z.literal("")).transform(trim),
   emergencyContactName: z.string().nullable().optional().transform(toTitleCase),
   emergencyContactPhone: globalPhoneSchema.nullable().optional().or(z.literal("")).transform(trim),

@@ -91,7 +91,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     upiId: "",
     transactionId: "",
     paymentLink: "",
-    linkLoading: false
+    linkLoading: false,
+    bookReceiptNo: ""
   });
   const { setTabDirty, openTab } = useTabs();
   const loadedStudentIdRef = useRef<string | null>(null);
@@ -389,8 +390,20 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       finalTargetTotal = tallyTotal;
     }
 
-    const lateFeePaid = settlements[0].waivedLateFee ? 0 : Math.min(totals.lateFees, finalTargetTotal);
-    const amountPaid = Math.max(0, finalTargetTotal - lateFeePaid);
+    // Build ancillary items list
+    const selectedAncillaryKeys = settlements[0].selectedTerms.filter(t => ANCILLARY_KEYS.includes(t));
+    const ancillaryItems = selectedAncillaryKeys.map(key => {
+      const fee = fb.ancillary?.[key];
+      const amount = (fee?.amount === 0 && settlements[0].adHocAmounts[key])
+        ? settlements[0].adHocAmounts[key]
+        : (fee?.amount || 0);
+      return { key, amount, label: fee?.label || key };
+    });
+
+    const ancillaryTotalPaid = ancillaryItems.reduce((sum, item) => sum + item.amount, 0);
+
+    const lateFeePaid = settlements[0].waivedLateFee ? 0 : Math.min(totals.lateFees, Math.max(0, finalTargetTotal - ancillaryTotalPaid));
+    const amountPaid = Math.max(0, finalTargetTotal - ancillaryTotalPaid - lateFeePaid);
 
     // Format payment reference mapping
     let reference = "";
@@ -402,16 +415,6 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       reference = `${paymentDetails.bankName} - Chq: ${paymentDetails.chequeNo}`;
     }
 
-    // Build ancillary items list
-    const selectedAncillaryKeys = settlements[0].selectedTerms.filter(t => ANCILLARY_KEYS.includes(t));
-    const ancillaryItems = selectedAncillaryKeys.map(key => {
-      const fee = fb.ancillary?.[key];
-      const amount = (fee?.amount === 0 && settlements[0].adHocAmounts[key])
-        ? settlements[0].adHocAmounts[key]
-        : (fee?.amount || 0);
-      return { key, amount, label: fee?.label || key };
-    });
-
     const result = await recordFeeCollection({
       studentId: settlements[0].student.id,
       selectedTerms: settlements[0].selectedTerms,
@@ -421,6 +424,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       waiverReason: settlements[0].waivedLateFee ? (settlements[0].waiverReason || "Waived by cashier") : undefined,
       paymentMode,
       paymentReference: reference,
+      bookReceiptNo: paymentDetails.bookReceiptNo,
       ancillaryItems
     });
 
@@ -840,6 +844,25 @@ export function FeeCollectionForm({ params }: { params?: any }) {
           </div>
           
           <div className="col-span-6 space-y-4">
+            {/* Physical Receipt Book Number */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-3 animate-in fade-in slide-in-from-top-4">
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Physical Receipt Book / Bill No (Optional Reference)</p>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={paymentDetails.bookReceiptNo || ""} 
+                  onChange={(e) => {
+                    setPaymentDetails(p => ({
+                      ...p,
+                      bookReceiptNo: e.target.value
+                    }));
+                  }}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-4 text-xs font-black outline-none focus:border-primary focus:bg-white transition-all text-slate-900"
+                  placeholder="e.g. 305, 427..."
+                />
+              </div>
+            </div>
+
             {/* Amount to Pay Input */}
             <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-3">
               <div className="flex justify-between items-center">

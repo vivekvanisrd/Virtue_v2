@@ -18,6 +18,11 @@ export interface StudentImportRow {
   guardianEmail?: string;
   relationType?: string; // "FATHER", "MOTHER", "GUARDIAN"
   address?: string;
+  tuitionFee?: string;
+  admissionFee?: string;
+  concession?: string;
+  transportStop?: string;
+  transportFee?: string;
 }
 
 export async function importStudentsAction(rows: StudentImportRow[], targetSchoolId?: string) {
@@ -183,14 +188,269 @@ export async function importStudentsAction(rows: StudentImportRow[], targetSchoo
             }
           });
 
-          // E. Create Address record if available
-          if (row.address) {
-            await tx.address.create({
+          // E. Create FamilyDetail record
+          await tx.familyDetail.create({
+            data: {
+              studentId: student.id,
+              fatherName: row.relationType?.toUpperCase() === "FATHER" || !row.relationType ? `${row.guardianFirstName} ${row.guardianLastName || ""}`.trim() : null,
+              fatherPhone: row.relationType?.toUpperCase() === "FATHER" || !row.relationType ? normPhone : null,
+              fatherEmail: row.relationType?.toUpperCase() === "FATHER" || !row.relationType ? normEmail : null,
+              motherName: row.relationType?.toUpperCase() === "MOTHER" ? `${row.guardianFirstName} ${row.guardianLastName || ""}`.trim() : null,
+              motherPhone: row.relationType?.toUpperCase() === "MOTHER" ? normPhone : null,
+              motherEmail: row.relationType?.toUpperCase() === "MOTHER" ? normEmail : null,
+              emergencyName: `${row.guardianFirstName} ${row.guardianLastName || ""}`.trim(),
+              emergencyPhone: normPhone,
+              emergencyRelation: "FATHER"
+            }
+          });
+
+          // F. Create Address record
+          await tx.address.create({
+            data: {
+              studentId: student.id,
+              currentAddress: row.address?.trim() || "VIVES Campus Student Address",
+              permanentAddress: row.address?.trim() || "VIVES Campus Student Address",
+              city: "Hyderabad",
+              state: "Telangana",
+              country: "India",
+              pincode: "500001"
+            }
+          });
+
+          // G. Parse optional fee variables
+          const tFee = Number(row.tuitionFee || 0);
+          const aFee = Number(row.admissionFee || 0);
+          const cFee = Number(row.concession || 0);
+          const transFee = Number(row.transportFee || 0);
+          const totalFee = tFee + aFee + transFee - cFee;
+
+          // H. Create FinancialRecord & StudentFeeComponent (if billing details are provided)
+          const financial = await tx.financialRecord.create({
+            data: {
+              studentId: student.id,
+              schoolId,
+              paymentType: "Term-wise",
+              tuitionFee: tFee,
+              admissionFee: aFee,
+              cautionDeposit: 0,
+              transportFee: transFee,
+              annualTuition: totalFee,
+              term1Amount: totalFee * 0.50,
+              term2Amount: totalFee * 0.25,
+              term3Amount: totalFee * 0.25,
+              totalDiscount: cFee
+            }
+          });
+
+          // Link fee components
+          const tuitionMaster = await tx.feeComponentMaster.findFirst({ where: { schoolId, name: "Tuition Fee" } });
+          const admissionMaster = await tx.feeComponentMaster.findFirst({ where: { schoolId, name: "Admission Fee" } });
+          const transportMaster = await tx.feeComponentMaster.findFirst({ where: { schoolId, name: "Transport Fee" } });
+
+          if (tFee > 0 && tuitionMaster) {
+            await tx.studentFeeComponent.create({
               data: {
-                studentId: student.id,
-                currentAddress: row.address.trim()
+                studentFinancialId: financial.id,
+                componentId: tuitionMaster.id,
+                schoolId,
+                branchId,
+                baseAmount: tFee,
+                discountAmount: cFee,
+                waiverAmount: 0,
+                isApplicable: true
               }
             });
+          }
+
+          if (aFee > 0 && admissionMaster) {
+            await tx.studentFeeComponent.create({
+              data: {
+                studentFinancialId: financial.id,
+                componentId: admissionMaster.id,
+                schoolId,
+                branchId,
+                baseAmount: aFee,
+                discountAmount: 0,
+                waiverAmount: 0,
+                isApplicable: true
+              }
+            });
+          }
+
+          if (transFee > 0 && transportMaster) {
+            await tx.studentFeeComponent.create({
+              data: {
+                studentFinancialId: financial.id,
+                componentId: transportMaster.id,
+                schoolId,
+                branchId,
+                baseAmount: transFee,
+                discountAmount: 0,
+                waiverAmount: 0,
+                isApplicable: true
+              }
+            });
+          }
+
+          // I. Link StudentTransport (if transport stop details are provided)
+          if (transFee > 0 && row.transportStop && row.transportStop !== "SELF") {
+            const stopCode = row.transportStop.includes("-") ? row.transportStop.split("-")[0].trim() : row.transportStop.trim();
+
+            let route = await tx.route.findFirst({ where: { routeCode: stopCode, schoolId } });
+            if (!route) {
+              route = await tx.route.create({
+                data: {
+                  routeName: `Route ${stopCode}`,
+                  routeCode: stopCode,
+                  schoolId,
+                  branchId
+                }
+              });
+            }
+
+            let stop = await tx.vehicleStop.findFirst({ where: { stopName: `${stopCode} Stop`, routeId: route.id } });
+            if (!stop) {
+              stop = await tx.vehicleStop.create({
+                data: {
+                  stopName: `${stopCode} Stop`,
+                  routeId: route.id,
+                  pickupTime: "08:00 AM",
+                  dropTime: "04:30 PM",
+                  monthlyFee: transFee / 10,
+                  schoolId,
+                  branchId
+                }
+              });
+            }
+
+            await tx.studentTransport.create({
+              data: {
+                studentId: student.id,
+                routeId: route.id,
+                pickupStopId: stop.id,
+                dropStopId: stop.id,
+                monthlyFee: transFee / 10,
+                schoolId,
+                branchId,
+                status: "Active"
+              }
+            });
+          }
+
+          // J. Generate FeeInvoice & Items dynamically
+          if (totalFee > 0) {
+            const invoiceNum = `INV-2627-${row.studentCode.trim()}`;
+            const activeFY = await tx.financialYear.findFirst({ where: { schoolId, isCurrent: true } });
+            if (activeFY) {
+              const invoice = await tx.feeInvoice.create({
+                data: {
+                  invoiceNumber: invoiceNum,
+                  studentId: student.id,
+                  academicYearId: activeAY.id,
+                  financialYearId: activeFY.id,
+                  totalAmount: totalFee,
+                  paidAmount: 0,
+                  balance: totalFee,
+                  dueDate: new Date("2026-06-30"),
+                  status: "PENDING",
+                  schoolId,
+                  branchId
+                }
+              });
+
+              if (tFee > 0) {
+                await tx.feeInvoiceItem.create({
+                  data: {
+                    invoiceId: invoice.id,
+                    componentName: "Tuition Fee",
+                    componentType: "TUTION",
+                    amount: tFee,
+                    balance: tFee
+                  }
+                });
+              }
+
+              if (aFee > 0) {
+                await tx.feeInvoiceItem.create({
+                  data: {
+                    invoiceId: invoice.id,
+                    componentName: "Admission Fee",
+                    componentType: "ADMISSION",
+                    amount: aFee,
+                    balance: aFee
+                  }
+                });
+              }
+
+              if (transFee > 0 && row.transportStop) {
+                await tx.feeInvoiceItem.create({
+                  data: {
+                    invoiceId: invoice.id,
+                    componentName: `Transport Fee (${row.transportStop})`,
+                    componentType: "TRANSPORT",
+                    amount: transFee,
+                    balance: transFee
+                  }
+                });
+              }
+
+              if (cFee > 0) {
+                await tx.feeInvoiceItem.create({
+                  data: {
+                    invoiceId: invoice.id,
+                    componentName: "Fee Concession",
+                    componentType: "CONCESSION",
+                    amount: -cFee,
+                    balance: -cFee
+                  }
+                });
+              }
+
+              // K. Generate Income Accrual Journal Entry
+              const coaAR = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "1200" } });
+              const coaIncome = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4100" } })
+                            || await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "3001" } });
+              const coaOneTime = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4200" } })
+                            || await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "3002" } });
+              const coaTransIncome = await tx.chartOfAccount.findFirst({ where: { schoolId, accountCode: "4300" } });
+
+              if (coaAR && coaIncome) {
+                const creditLines: any[] = [];
+                if (tFee > 0) creditLines.push({ accountId: coaIncome.id, debit: 0, credit: tFee });
+                if (aFee > 0 && coaOneTime) creditLines.push({ accountId: coaOneTime.id, debit: 0, credit: aFee });
+                if (transFee > 0 && coaTransIncome) creditLines.push({ accountId: coaTransIncome.id, debit: 0, credit: transFee });
+                if (cFee > 0) {
+                  creditLines.push({ accountId: coaIncome.id, debit: cFee, credit: 0 });
+                }
+
+                const totalDebitVal = totalFee + (cFee > 0 ? cFee : 0);
+                const totalCreditVal = (tFee > 0 ? tFee : 0) + (aFee > 0 ? aFee : 0) + (transFee > 0 ? transFee : 0);
+
+                if (totalDebitVal > 0 && totalCreditVal > 0) {
+                  await tx.journalEntry.create({
+                    data: {
+                      schoolId,
+                      financialYearId: activeFY.id,
+                      entryType: "ADMISSION_ACCRUAL",
+                      totalDebit: totalDebitVal,
+                      totalCredit: totalCreditVal,
+                      description: `Initial Fee Accrual for Bulk Student: ${row.studentCode} (${row.firstName})`,
+                      lines: {
+                        create: [
+                          { accountId: coaAR.id, debit: totalFee, credit: 0 },
+                          ...creditLines
+                        ]
+                      }
+                    }
+                  });
+
+                  await tx.chartOfAccount.update({
+                    where: { id: coaAR.id },
+                    data: { currentBalance: { increment: totalFee } }
+                  });
+                }
+              }
+            }
           }
         });
 

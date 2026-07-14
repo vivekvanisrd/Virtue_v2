@@ -946,6 +946,7 @@ model FinancialPeriod {
 model Collection {
   id                  String                 @id @default(uuid())
   receiptNumber       String
+  bookReceiptNo       String?
   studentId           String
   admissionId         String?
   financialYearId     String

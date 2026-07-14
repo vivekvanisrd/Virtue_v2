@@ -5,7 +5,7 @@ import {
   User, School, Users, MapPin, CreditCard, Info, 
   Heart, Building, ShieldCheck, ShieldAlert,
   ArrowLeft, ArrowRight, Mail, Phone, Calendar, Download, Send,
-  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit, Zap, Plus
+  ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit, Zap, Plus, Save
 } from "lucide-react";
 import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit, promoteStudentAction } from "@/lib/actions/student-actions";
 import { formatCurrency } from "@/lib/utils/fee-utils";
@@ -159,11 +159,17 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
   const isActive = status === "ACTIVE" || status === "CONFIRMED";
   const isProvisional = status === "PROVISIONAL";
   
-  const isDataIncomplete = (isActive || isProvisional) && (
+  // 30-day compliance grace period for new admissions
+  const enrollmentAgeDays = student.createdAt 
+    ? Math.floor((Date.now() - new Date(student.createdAt).getTime()) / (1000 * 60 * 60 * 24)) 
+    : 999;
+  const isGracePeriod = enrollmentAgeDays <= 30;
+  const missingCompliance = (isActive || isProvisional) && (
     !student.aadhaarNumber || 
     !student.academic?.apaarId || 
     !student.family?.fatherPhone
   );
+  const isDataIncomplete = missingCompliance && !isGracePeriod;
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -277,6 +283,39 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
           >
             <ShieldAlert className="w-3.5 h-3.5" /> Medical ID
           </button>
+          {isEditing && (
+            <button 
+              onClick={() => handleUpdate({
+                firstName: student.firstName,
+                lastName: student.lastName,
+                email: student.email,
+                phone: student.phone,
+                family: {
+                  id: student.family?.id,
+                  fatherName: student.family?.fatherName,
+                  fatherPhone: student.family?.fatherPhone,
+                  fatherEmail: student.family?.fatherEmail,
+                  fatherAadhaar: student.family?.fatherAadhaar,
+                  motherName: student.family?.motherName,
+                  motherPhone: student.family?.motherPhone,
+                  motherEmail: student.family?.motherEmail,
+                  motherAadhaar: student.family?.motherAadhaar,
+                },
+                address: {
+                  id: student.address?.id,
+                  currentAddress: student.address?.currentAddress,
+                  city: student.address?.city,
+                  state: student.address?.state,
+                  pinCode: student.address?.pinCode,
+                }
+              })}
+              disabled={isUpdating}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
+            >
+              {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Profile
+            </button>
+          )}
           <button 
             onClick={() => setIsEditing(!isEditing)}
             className={cn(
@@ -315,7 +354,30 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
       {/* ─── Content Area ─── */}
       <div className={cn("grid grid-cols-12 gap-4 relative", activeTab === "financial" ? "" : "h-[650px]")}>
         
-        {/* LOCKDOWN OVERLAY */}
+        {/* GRACE PERIOD AMBER BANNER (within 30 days of enrollment) */}
+        {missingCompliance && isGracePeriod && !isEditing && (
+          <div className="col-span-12 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-4 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center border border-amber-200 shrink-0">
+                <ShieldAlert className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-amber-800 uppercase tracking-wide">Compliance Data Incomplete</p>
+                <p className="text-[10px] text-amber-600 font-medium mt-0.5">
+                  {30 - enrollmentAgeDays} days remaining to submit missing documents (Aadhaar, APAAR, Parent Phone).
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition-all shrink-0"
+            >
+              Complete Now
+            </button>
+          </div>
+        )}
+
+        {/* HARD LOCKDOWN OVERLAY (after 30-day grace period) */}
         {isDataIncomplete && !isEditing && (
           <div className="absolute inset-0 z-[50] bg-slate-900/95 backdrop-blur-md rounded-2xl flex items-center justify-center p-8 text-center animate-in fade-in duration-300">
             <div className="max-w-md space-y-6">
@@ -325,7 +387,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               <div>
                 <h3 className="text-2xl font-black text-white tracking-tight mb-2 uppercase">Compliance Lockdown</h3>
                 <p className="text-rose-200/70 text-sm font-medium leading-relaxed">
-                  This student record is currently **Incomplete**. Critical mandatory fields (Aadhaar, APAAR, Parent Phone) are missing from the repository.
+                  This student record is currently **Incomplete**. Critical mandatory fields (Aadhaar, APAAR, Parent Phone) are missing from the repository. The 30-day grace period has expired.
                 </p>
               </div>
               <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-left space-y-2">
@@ -496,8 +558,12 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                             id: student.family?.id,
                             fatherName: student.family?.fatherName,
                             fatherPhone: student.family?.fatherPhone,
+                            fatherEmail: student.family?.fatherEmail,
+                            fatherAadhaar: student.family?.fatherAadhaar,
                             motherName: student.family?.motherName,
                             motherPhone: student.family?.motherPhone,
+                            motherEmail: student.family?.motherEmail,
+                            motherAadhaar: student.family?.motherAadhaar,
                           },
                           address: {
                             id: student.address?.id,
@@ -907,12 +973,12 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                        <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Pincode & Country</p>
                        {isEditing ? (
                           <input 
-                            value={student.address?.pinCode || ""}
+                            value={student.address?.pinCode ?? student.address?.pincode ?? ""}
                             onChange={(e) => setStudent({...student, address: {...student.address, pinCode: e.target.value}})}
                             className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
                           />
                        ) : (
-                         <p className="text-sm font-bold text-slate-800 mt-1">{student.address?.pinCode || "-"} | {student.address?.country || "India"}</p>
+                         <p className="text-sm font-bold text-slate-800 mt-1">{(student.address?.pinCode ?? student.address?.pincode) || "-"} | {student.address?.country || "India"}</p>
                        )}
                     </div>
                   </div>

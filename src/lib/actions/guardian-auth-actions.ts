@@ -5,26 +5,34 @@ import { encrypt } from "@/lib/auth/session";
 import { getGuardianIdentity } from "@/lib/auth/guardian-backbone";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 function hashOtp(otp: string): string {
     return crypto.createHash("sha256").update(otp).digest("hex");
 }
 
-export async function requestGuardianOtpAction(email: string) {
+export async function requestGuardianOtpAction(identifier: string) {
     try {
-        if (!email) {
-            return { success: false, error: "Email address is required." };
+        if (!identifier) {
+            return { success: false, error: "Email address or Mobile number is required." };
         }
 
-        const normalizedEmail = email.trim().toLowerCase();
+        const cleanInput = identifier.trim().toLowerCase();
+        const numericPhone = cleanInput.replace(/[\s\-+().]/g, "").slice(-10);
 
-        // 1. Resolve Guardian
+        // 1. Resolve Guardian (by email or phone)
         const guardian = await prismaBypass.guardian.findFirst({
-            where: { email: normalizedEmail }
+            where: {
+                OR: [
+                    { email: cleanInput },
+                    { phone: cleanInput },
+                    { phone: { endsWith: numericPhone } }
+                ]
+            }
         });
 
         if (!guardian) {
-            return { success: false, error: "Email address is not registered as a student guardian in our system." };
+            return { success: false, error: "The provided identifier is not registered as a student guardian in our system." };
         }
 
         // 2. Resolve or Create GuardianAuth
@@ -51,36 +59,43 @@ export async function requestGuardianOtpAction(email: string) {
         const otpRecord = await prismaBypass.guardianOTP.create({
             data: {
                 authId: auth.id,
-                phone: normalizedEmail, // Save email identifier inside phone column
+                phone: cleanInput, // Save the identifier used to request OTP
                 otpHash,
                 purpose: "LOGIN",
                 expiresAt
             }
         });
 
-        // 5. Send Mock Email via Server Console Log
+        // 5. Send Mock Email / SMS via Server Console Log
         console.log(`\n📧 ========================================`);
-        console.log(`[MOCK_EMAIL] OTP for ${normalizedEmail}: ${otpCode}`);
+        console.log(`[MOCK_NOTIFICATION] OTP for ${cleanInput} (${guardian.firstName} ${guardian.lastName || ""}): ${otpCode}`);
         console.log(`========================================\n`);
 
-        return { success: true, trackingId: otpRecord.id, message: "OTP sent successfully." };
+        return { success: true, trackingId: otpRecord.id, message: "Verification code generated successfully." };
     } catch (error: any) {
         console.error("Request Guardian OTP Error:", error);
         return { success: false, error: "Failed to process request." };
     }
 }
 
-export async function verifyGuardianOtpAction(email: string, otpCode: string) {
+export async function verifyGuardianOtpAction(identifier: string, otpCode: string) {
     try {
-        if (!email || !otpCode) {
-            return { success: false, error: "Email and verification code are required." };
+        if (!identifier || !otpCode) {
+            return { success: false, error: "Identifier and verification code are required." };
         }
 
-        const normalizedEmail = email.trim().toLowerCase();
+        const cleanInput = identifier.trim().toLowerCase();
+        const numericPhone = cleanInput.replace(/[\s\-+().]/g, "").slice(-10);
 
         // 1. Find Guardian & Auth Profile
         const guardian = await prismaBypass.guardian.findFirst({
-            where: { email: normalizedEmail }
+            where: {
+                OR: [
+                    { email: cleanInput },
+                    { phone: cleanInput },
+                    { phone: { endsWith: numericPhone } }
+                ]
+            }
         });
         if (!guardian) {
             return { success: false, error: "Guardian profile not found." };
@@ -102,7 +117,7 @@ export async function verifyGuardianOtpAction(email: string, otpCode: string) {
         const latestOtp = await prismaBypass.guardianOTP.findFirst({
             where: {
                 authId: auth.id,
-                phone: normalizedEmail,
+                phone: cleanInput,
                 purpose: "LOGIN",
                 expiresAt: { gt: new Date() },
                 verifiedAt: null
@@ -123,7 +138,7 @@ export async function verifyGuardianOtpAction(email: string, otpCode: string) {
                     failedAttempts: 0
                 }
             });
-            return { success: false, error: "Too many incorrect attempts. This email session has been locked for 15 minutes." };
+            return { success: false, error: "Too many incorrect attempts. This session has been locked for 15 minutes." };
         }
 
         // 3. Verify Match
@@ -251,5 +266,116 @@ export async function getGuardianSiblingsAction() {
     } catch (error: any) {
         console.error("Get Guardian Siblings Error:", error);
         return { success: false, error: "Failed to load sibling profiles." };
+    }
+}
+
+export async function loginGuardianWithPasswordAction(identifier: string, pass: string) {
+    try {
+        if (!identifier || !pass) {
+            return { success: false, error: "Email/Mobile and password are required." };
+        }
+
+        const cleanInput = identifier.trim().toLowerCase();
+        const numericPhone = cleanInput.replace(/[\s\-+().]/g, "").slice(-10);
+
+        // 1. Resolve Guardian
+        const guardian = await prismaBypass.guardian.findFirst({
+            where: {
+                OR: [
+                    { email: cleanInput },
+                    { phone: cleanInput },
+                    { phone: { endsWith: numericPhone } }
+                ]
+            }
+        });
+
+        if (!guardian) {
+            return { success: false, error: "Invalid email/mobile or password." };
+        }
+
+        // 2. Resolve or Create GuardianAuth
+        let auth = await prismaBypass.guardianAuth.findUnique({
+            where: { guardianId: guardian.id }
+        });
+        if (!auth) {
+            auth = await prismaBypass.guardianAuth.create({
+                data: { guardianId: guardian.id }
+            });
+        }
+
+        // Check if account is locked
+        if (auth.lockedUntil && auth.lockedUntil > new Date()) {
+            return { success: false, error: "Account is temporarily locked due to excessive failed attempts. Please try again later." };
+        }
+
+        // 3. Match Password (fallback to default "Parent@123")
+        const isValid = auth.passwordHash
+            ? await bcrypt.compare(pass, auth.passwordHash)
+            : (pass === "Parent@123");
+
+        if (!isValid) {
+            // Increment failed attempts
+            const newFails = auth.failedAttempts + 1;
+            const isLocking = newFails >= 5;
+            await prismaBypass.guardianAuth.update({
+                where: { id: auth.id },
+                data: {
+                    failedAttempts: newFails,
+                    ...(isLocking && { lockedUntil: new Date(Date.now() + 15 * 60 * 1000) })
+                }
+            });
+
+            if (isLocking) {
+                return { success: false, error: "Too many incorrect attempts. This account has been locked for 15 minutes." };
+            }
+            return { success: false, error: `Invalid email/mobile or password. Attempts remaining before lock: ${5 - newFails}` };
+        }
+
+        // 4. Reset Failed Attempts
+        await prismaBypass.guardianAuth.update({
+            where: { id: auth.id },
+            data: { failedAttempts: 0 }
+        });
+
+        // 5. Create GuardianSession
+        const sessionToken = crypto.randomUUID();
+        const refreshToken = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days session
+
+        await prismaBypass.guardianSession.create({
+            data: {
+                authId: auth.id,
+                sessionToken,
+                refreshToken,
+                expiresAt,
+                deviceType: "WEB"
+            }
+        });
+
+        // 6. Sign JWT & Set Cookie
+        const token = await encrypt({
+            type: "GUARDIAN",
+            guardianId: guardian.id,
+            phone: guardian.phone,
+            name: `${guardian.firstName} ${guardian.lastName || ""}`.trim(),
+            schoolId: guardian.schoolId
+        });
+
+        try {
+            const cookieStore = await cookies();
+            cookieStore.set("v-guardian-session", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 30 * 24 * 60 * 60, // 30 days
+                path: "/"
+            });
+        } catch (e: any) {
+            console.warn("⚠️ [next-cookies] Skipping cookies set (executed outside request context):", e.message);
+        }
+
+        return { success: true, message: "Logged in successfully." };
+    } catch (error: any) {
+        console.error("Login Guardian Password Error:", error);
+        return { success: false, error: "Failed to authenticate." };
     }
 }

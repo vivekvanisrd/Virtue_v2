@@ -1041,8 +1041,9 @@ export function StudentForm() {
                   <Field label="Qualification" error={errors.motherQualification?.message}>
                     <input {...register("motherQualification")} placeholder="Qualification" className={inputCls} />
                   </Field>
-                  <Field label="Aadhaar Number *" error={errors.motherAadhaar?.message}>
+                  <Field label="Aadhaar Number" error={errors.motherAadhaar?.message}>
                     <input {...register("motherAadhaar")} placeholder="XXXX XXXX XXXX" className={inputCls} />
+                    <p className="text-[9px] font-bold text-amber-500/80 mt-1 px-1 tracking-wide">Can be submitted within 30 days of admission</p>
                   </Field>
                 </div>
                 <p className="text-[10px] font-bold text-orange-400/70 uppercase tracking-wider mt-2">Emergency Contact</p>

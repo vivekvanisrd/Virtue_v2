@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, Phone, BookOpen, Loader2, AlertCircle, IndianRupee, QrCode, CheckCircle } from "lucide-react";
+import { Shield, Phone, BookOpen, Loader2, AlertCircle, IndianRupee, QrCode, CheckCircle, ChevronRight, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { cn } from "@/lib/utils";
 
 type PaymentData = {
   studentName: string;
@@ -16,11 +17,14 @@ type PaymentData = {
   isUPI: boolean;
   upiVpa: string;
   upiMerchantName: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  bankIfsc?: string;
 };
 
 type Props = { token: string };
 
-type Step = "phone" | "details" | "upi_pay" | "redirecting";
+type Step = "phone" | "details" | "upi_pay" | "bank_pay" | "redirecting";
 
 export default function ParentPayClient({ token }: Props) {
   const [step, setStep] = useState<Step>("phone");
@@ -32,6 +36,7 @@ export default function ParentPayClient({ token }: Props) {
   const [paying, setPaying] = useState(false);
   const [utr, setUtr] = useState("");
   const [confirmDetails, setConfirmDetails] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "upi_qr" | "bank_transfer">("online");
 
   async function verifyPhone(e: React.FormEvent) {
     e.preventDefault();
@@ -66,20 +71,24 @@ export default function ParentPayClient({ token }: Props) {
     if (!data || !acknowledged) return;
     setPaying(true);
 
-    if (data.isUPI) {
-      // Direct UPI QR payment screen
+    if (paymentMethod === "online") {
+      if (data.isMock) {
+        // Demo mode: simulate payment
+        await fetch("/api/fee-link/mock-pay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        window.location.href = `/fee-pay/thank-you?status=success&token=${token}`;
+      } else {
+        window.location.href = data.razorpayShortUrl;
+      }
+    } else if (paymentMethod === "upi_qr") {
       setStep("upi_pay");
       setPaying(false);
-    } else if (data.isMock) {
-      // Demo mode: simulate payment
-      await fetch("/api/fee-link/mock-pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      window.location.href = `/fee-pay/thank-you?status=success&token=${token}`;
-    } else {
-      window.location.href = data.razorpayShortUrl;
+    } else if (paymentMethod === "bank_transfer") {
+      setStep("bank_pay");
+      setPaying(false);
     }
   }
 
@@ -227,15 +236,86 @@ export default function ParentPayClient({ token }: Props) {
               </div>
             )}
 
-            <button
-              onClick={handlePay}
-              disabled={paying || (!!data.pendingItems && !acknowledged)}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-5 rounded-2xl transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-indigo-200"
-            >
-              {paying
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
-                : <><IndianRupee className="w-5 h-5" /> {data.isUPI ? "Proceed to Scan QR" : (data.isMock ? "Simulate Payment (Demo)" : `Pay Real ₹${Number(data.amount).toLocaleString("en-IN")}`)}</>}
-            </button>
+            <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 space-y-6">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Select Payment Method</h4>
+              
+              <div className="space-y-3">
+                {/* Mode 1: Online (Razorpay) */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("online")}
+                  className={cn(
+                    "w-full p-4 border-2 rounded-2xl text-left flex items-center justify-between transition-all outline-none",
+                    paymentMethod === "online" ? "border-indigo-600 bg-indigo-50/20" : "border-slate-100 hover:border-slate-200"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900">Pay Online (Card / NetBanking / UPI)</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">Instant settlement via Secure Gateway</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* Mode 2: UPI QR (Zero Fee) */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("upi_qr")}
+                  className={cn(
+                    "w-full p-4 border-2 rounded-2xl text-left flex items-center justify-between transition-all outline-none",
+                    paymentMethod === "upi_qr" ? "border-indigo-600 bg-indigo-50/20" : "border-slate-100 hover:border-slate-200"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <QrCode className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900">Scan UPI QR Code (Zero Charges)</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">GPay / PhonePe / Paytm (requires UTR code)</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+
+                {/* Mode 3: Bank Transfer */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("bank_transfer")}
+                  className={cn(
+                    "w-full p-4 border-2 rounded-2xl text-left flex items-center justify-between transition-all outline-none",
+                    paymentMethod === "bank_transfer" ? "border-indigo-600 bg-indigo-50/20" : "border-slate-100 hover:border-slate-200"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                      <IndianRupee className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900">Direct Bank Transfer (NEFT / IMPS)</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">Transfer directly to School Bank Account</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </button>
+              </div>
+
+              <button
+                onClick={handlePay}
+                disabled={paying || (!!data.pendingItems && !acknowledged)}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-5 rounded-2xl transition-all flex items-center justify-center gap-2 text-base shadow-lg shadow-indigo-100"
+              >
+                {paying ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Preparing Gateway...</>
+                ) : (
+                  "Continue to Pay →"
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -320,6 +400,75 @@ export default function ParentPayClient({ token }: Props) {
                   maxLength={12}
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block leading-normal">Required to automatically match your payment in our daily bank statements.</span>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-red-600 text-xs font-semibold">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={paying || utr.length !== 12}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl transition-all text-sm uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                {paying ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting UTR...</> : "Submit UTR & Complete"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ── STEP 4: Bank Transfer Pay Form ── */}
+        {step === "bank_pay" && data && (
+          <div className="space-y-4 animate-fade-up">
+            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 space-y-5">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Direct Bank Transfer</span>
+                <h3 className="text-lg font-black text-slate-900 mt-0.5">School Account Details</h3>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl space-y-3 text-sm">
+                <div className="flex justify-between border-b border-slate-200/60 pb-2">
+                  <span className="text-slate-400 text-xs">Beneficiary Name</span>
+                  <span className="font-black text-slate-900">{data.upiMerchantName || "PaVa-EDUX Academy"}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 pb-2">
+                  <span className="text-slate-400 text-xs">Bank Name</span>
+                  <span className="font-bold text-slate-700">{data.bankName || "Yes Bank Ltd"}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/60 pb-2">
+                  <span className="text-slate-400 text-xs">Account Number</span>
+                  <span className="font-black text-indigo-700 font-mono tracking-wider">{data.bankAccountNo || "000190100004829"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 text-xs">IFSC Code</span>
+                  <span className="font-black text-indigo-700 font-mono tracking-wider">{data.bankIfsc || "YESB0000001"}</span>
+                </div>
+              </div>
+
+              <div className="bg-cyan-50 border border-cyan-100 p-4 rounded-xl text-left">
+                <p className="text-[10px] text-cyan-800 font-bold leading-normal uppercase tracking-wider">
+                  Transfer exactly <span className="font-black">₹{Number(data.amount).toLocaleString("en-IN")}</span> via IMPS / NEFT, then submit the 12-digit transaction ID (UTR) below for manual verification.
+                </p>
+              </div>
+            </div>
+
+            {/* UTR Entry Form */}
+            <form onSubmit={submitUtr} className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Enter 12-Digit Transfer Reference (UTR) *</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-4 border border-slate-200 rounded-2xl text-slate-900 text-lg font-semibold tracking-wide text-center focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50"
+                  placeholder="e.g. 614839201827"
+                  value={utr}
+                  onChange={e => setUtr(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                  maxLength={12}
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block leading-normal">Your UTR is critical for the finance team to reconcile the bank credit.</span>
               </div>
 
               {error && (

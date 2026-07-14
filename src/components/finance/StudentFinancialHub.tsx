@@ -78,6 +78,7 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   });
   const [adjustmentTarget, setAdjustmentTarget] = useState<any>(null); // { id, name, amount }
   const [adjustmentLoading, setAdjustmentLoading] = useState(false);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<{ key: string; label: string; amount: number; isPaid: boolean; isCore: boolean; data: any } | null>(null);
 
   const loadData = async () => {
     if (view === 'audit') return; // Skip student data in audit view
@@ -320,8 +321,16 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
 
   if (!studentData) return <div>Failed to load financial profile.</div>;
   
-  // 🛡️ RE-CALIBRATED OUTSTANDING: Annual Net (minus) Total Collections
-  const outstanding = (Number(studentData.feeBreakdown?.annualNet) || 0) - (studentData.collections?.reduce((acc: number, curr: any) => acc + Number(curr.amountPaid), 0) || 0);
+  // 🛡️ RE-CALIBRATED OUTSTANDING: Sum all warded components (Tuition + Ancillary) minus Collections
+  const tuitionNet = Number(studentData.feeBreakdown?.annualNet) || 0;
+  const ancillaryTotal = (Object.values(studentData.feeBreakdown?.ancillary || {}) as any[])
+    .reduce((sum: number, comp: any) => sum + (Number(comp.amount) || 0), 0);
+  const grandTotalFee = tuitionNet + ancillaryTotal;
+  const totalCollected = ((studentData.collections as any[]) || [])
+    .reduce((acc: number, curr: any) => acc + Number(curr.amountPaid || 0), 0);
+  
+  const outstanding = Math.max(0, grandTotalFee - totalCollected);
+  const tuitionOutstanding = studentData.feeBreakdown?.installments?.some((i: any) => !i.isPaid);
 
   const firstUnpaid = studentData.feeBreakdown?.installments?.find((inst: any) => !inst.isPaid);
 
@@ -482,7 +491,7 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
              </div>
              <div className="flex items-center gap-3">
                 <div className="px-4 py-2 bg-white rounded-xl border border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest hidden md:block">
-                   AY: {studentData.financial?.feeStructure?.academicYear?.name || "2024-25"}
+                   AY: {studentData.academic?.academicYear?.name || studentData.financial?.feeStructure?.academicYear?.name || "2024-25"}
                 </div>
              </div>
           </div>
@@ -501,18 +510,24 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                <tbody className="divide-y divide-slate-50">
                   {/* Tuition Breakdown Row */}
                   <tr className="group hover:bg-slate-50/50 transition-colors">
-                     <td className="px-10 py-6">
+                     <td 
+                        onClick={() => setSelectedInventoryItem({ key: "tuitionFee", label: "Tuition & Operations Fee", amount: Number(studentData.feeBreakdown?.annualNet), isPaid: !tuitionOutstanding, isCore: true, data: null })}
+                        className="px-10 py-6 cursor-pointer"
+                     >
                         <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 bg-indigo-50 text-primary rounded-xl flex items-center justify-center border border-indigo-100">
+                           <div className="w-10 h-10 bg-indigo-50 text-primary rounded-xl flex items-center justify-center border border-indigo-100 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20 transition-all">
                               <School className="w-5 h-5" />
                            </div>
                            <div>
-                              <p className="text-sm font-black text-slate-900 tracking-tight">Tuition & Operations Fee</p>
+                              <p className="text-sm font-black text-slate-900 tracking-tight group-hover:text-primary transition-colors">Tuition & Operations Fee</p>
                               <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Annual Instructional Base</p>
                            </div>
                         </div>
                      </td>
-                     <td className="px-10 py-6">
+                     <td 
+                        onClick={() => setSelectedInventoryItem({ key: "tuitionFee", label: "Tuition & Operations Fee", amount: Number(studentData.feeBreakdown?.annualNet), isPaid: !tuitionOutstanding, isCore: true, data: null })}
+                        className="px-10 py-6 cursor-pointer"
+                     >
                         <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-tight">Core Academic</span>
                      </td>
                      <td className="px-10 py-6 text-right">
@@ -520,9 +535,9 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                      </td>
                      <td className="px-10 py-6 text-center">
                         <div className="flex items-center justify-center gap-2">
-                           <div className={cn("w-2 h-2 rounded-full", outstanding <= 0 ? "bg-emerald-500" : "bg-amber-400 animate-pulse")} />
-                           <span className={cn("text-[10px] font-black uppercase tracking-widest", outstanding <= 0 ? "text-emerald-600" : "text-amber-600")}>
-                              {outstanding <= 0 ? "Settled" : "Installments Active"}
+                           <div className={cn("w-2 h-2 rounded-full", !tuitionOutstanding ? "bg-emerald-500" : "bg-amber-400 animate-pulse")} />
+                           <span className={cn("text-[10px] font-black uppercase tracking-widest", !tuitionOutstanding ? "text-emerald-600" : "text-amber-600")}>
+                              {!tuitionOutstanding ? "Settled" : "Installments Active"}
                            </span>
                         </div>
                      </td>
@@ -536,18 +551,24 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                      .filter(([_, comp]: [string, any]) => comp.amount > 0 || comp.isPaid)
                      .map(([key, comp]: [string, any]) => (
                      <tr key={key} className="group hover:bg-slate-50/50 transition-colors">
-                        <td className="px-10 py-6">
+                        <td 
+                           onClick={() => setSelectedInventoryItem({ key, label: comp.label, amount: comp.amount, isPaid: comp.isPaid, isCore: false, data: comp })}
+                           className="px-10 py-6 cursor-pointer"
+                        >
                            <div className="flex items-center gap-4">
                               <div className="w-10 h-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center border border-slate-200 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20 transition-all">
                                  <Plus className="w-5 h-5" />
                               </div>
                               <div>
-                                 <p className="text-sm font-black text-slate-900 tracking-tight">{comp.label}</p>
+                                 <p className="text-sm font-black text-slate-900 tracking-tight group-hover:text-primary transition-colors">{comp.label}</p>
                                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">{comp.isAdHoc ? "Registry Potential" : "Institutional Component"}</p>
                               </div>
                            </div>
                         </td>
-                        <td className="px-10 py-6">
+                        <td 
+                           onClick={() => setSelectedInventoryItem({ key, label: comp.label, amount: comp.amount, isPaid: comp.isPaid, isCore: false, data: comp })}
+                           className="px-10 py-6 cursor-pointer"
+                        >
                            <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[9px] font-black uppercase tracking-tight border border-amber-100/50">Ancillary</span>
                         </td>
                         <td className="px-10 py-6 text-right">
@@ -1029,6 +1050,178 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
           </div>
         </div>
       )}
+
+      {/* 📊 INVENTORY COMPONENT DETAILS MODAL (Registry-Synced Breakdown) */}
+      {selectedInventoryItem && (
+        <InventoryDetailsModal 
+          item={selectedInventoryItem} 
+          onClose={() => setSelectedInventoryItem(null)} 
+          formatCurrency={formatCurrency}
+          studentData={studentData}
+        />
+      )}
+    </div>
+  );
+}
+
+function InventoryDetailsModal({ item, onClose, formatCurrency, studentData }: any) {
+  const isTuition = item.isCore;
+  const isTransport = item.key === "transportFee";
+
+  return (
+    <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-xl rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Modal Header */}
+        <div className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", 
+              isTuition ? "bg-indigo-50 text-indigo-600 border-indigo-100" : 
+              isTransport ? "bg-cyan-50 text-cyan-600 border-cyan-100" : 
+              "bg-amber-50 text-amber-600 border-amber-100"
+            )}>
+              {isTuition ? <School className="w-5 h-5" /> : <CreditCard className="w-5 h-5" />}
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900 tracking-tight">{item.label}</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fee Component Breakdown</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-slate-950 hover:bg-slate-100 rounded-xl transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="p-8 space-y-6">
+          {isTuition ? (
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Installments Schedule</p>
+              <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden shadow-inner bg-slate-50/50">
+                {(studentData?.feeBreakdown?.installments || []).map((inst: any) => {
+                  const amt = Number(inst.amount) || 0;
+                  const bal = inst.balance !== undefined ? inst.balance : amt;
+                  const paid = inst.isPaid;
+                  
+                  return (
+                    <div key={inst.key} className="p-5 flex items-center justify-between bg-white/60 hover:bg-white transition-colors">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">{inst.label}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Academic Session 2026-27</p>
+                      </div>
+                      <div className="text-right flex items-center gap-6">
+                        <div>
+                          <p className="text-sm font-black text-slate-900 tracking-tight">{formatCurrency(amt)}</p>
+                          {bal < amt && bal > 0 && (
+                            <p className="text-[10px] font-bold text-amber-500">Balance: {formatCurrency(bal)}</p>
+                          )}
+                        </div>
+                        <span className={cn("text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-lg border",
+                          paid ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                          bal < amt ? "bg-amber-50 text-amber-600 border-amber-100" :
+                          "bg-slate-50 text-slate-400 border-slate-100"
+                        )}>
+                          {paid ? "Cleared" : bal < amt ? "Partial" : "Awaiting"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : isTransport ? (
+            <div className="space-y-6">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Transport Routing Stop Allocation</p>
+              {studentData?.studentTransport ? (
+                <div className="bg-slate-50 border border-slate-100 p-6 rounded-2xl space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-bold">Route Name</span>
+                      <p className="text-sm font-black text-slate-900 mt-1">{studentData.studentTransport.route?.routeName || "N/A"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-bold">Monthly Charge</span>
+                      <p className="text-sm font-black text-slate-900 mt-1">{formatCurrency(studentData.studentTransport.monthlyFee)}</p>
+                    </div>
+                    <div className="col-span-2 pt-2 border-t border-slate-200/60">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-bold">Pickup Stop Location</span>
+                      <p className="text-sm font-bold text-slate-700 mt-1">{studentData.studentTransport.pickupStop?.stopName || "N/A"}</p>
+                    </div>
+                    <div className="col-span-2 pt-2 border-t border-slate-200/60">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-bold">Drop Stop Location</span>
+                      <p className="text-sm font-bold text-slate-700 mt-1">{studentData.studentTransport.dropStop?.stopName || "N/A"}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 pt-4 border-t border-slate-200 text-cyan-600 text-[10px] font-black uppercase tracking-widest font-bold">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Allocated & Active Route Assignment</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-slate-400 font-bold uppercase tracking-widest border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                  No Route Stops Allocated
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Component Pricing Parameters</p>
+              <div className="bg-slate-50 border border-slate-100 p-6 rounded-2xl space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-bold">Subtotal Amount</span>
+                    <p className="text-sm font-black text-slate-900 mt-1">{formatCurrency(item.amount)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-bold">Payment Status</span>
+                    <p className={cn("text-sm font-black mt-1", item.isPaid ? "text-emerald-600" : "text-rose-500")}>
+                      {item.isPaid ? "Paid & Settled" : item.amount > 0 ? "Unpaid & Outstanding" : "Unassigned / Registry"}
+                    </p>
+                  </div>
+                </div>
+                
+                {(() => {
+                  const rawComp = studentData?.financial?.components?.find((c: any) => c.masterComponent?.name === item.label);
+                  if (rawComp && (Number(rawComp.discountAmount) > 0 || Number(rawComp.waiverAmount) > 0)) {
+                    return (
+                      <div className="pt-4 border-t border-slate-200/60 grid grid-cols-2 gap-4">
+                        {Number(rawComp.discountAmount) > 0 && (
+                          <div>
+                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest font-bold">Discount Deduction</span>
+                            <p className="text-sm font-black text-emerald-600 mt-1">-{formatCurrency(rawComp.discountAmount)}</p>
+                          </div>
+                        )}
+                        {Number(rawComp.waiverAmount) > 0 && (
+                          <div>
+                            <span className="text-[9px] font-black text-teal-500 uppercase tracking-widest font-bold">Waiver Applied</span>
+                            <p className="text-sm font-black text-teal-600 mt-1">-{formatCurrency(rawComp.waiverAmount)}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+          >
+            Close Details
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }

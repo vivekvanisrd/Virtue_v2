@@ -4,7 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { 
   User, GraduationCap, CreditCard, BookOpen, 
-  MessageSquare, FileText, ChevronRight, HelpCircle 
+  MessageSquare, FileText, ChevronRight, HelpCircle, AlertTriangle, ShieldAlert 
 } from "lucide-react";
 
 interface Sibling {
@@ -21,12 +21,21 @@ interface Sibling {
   schoolName: string;
 }
 
+interface ComplianceStatus {
+  isCompliant: boolean;
+  isGracePeriod: boolean;
+  daysRemaining: number;
+  enrollmentAgeDays: number;
+  missingFields: string[];
+}
+
 interface DashboardContentClientProps {
   siblings: Sibling[];
   activeStudentId: string;
+  compliance?: ComplianceStatus | null;
 }
 
-export function DashboardContentClient({ siblings, activeStudentId }: DashboardContentClientProps) {
+export function DashboardContentClient({ siblings, activeStudentId, compliance }: DashboardContentClientProps) {
   const router = useRouter();
   
   // Find selected student details
@@ -104,6 +113,63 @@ export function DashboardContentClient({ siblings, activeStudentId }: DashboardC
           </div>
         </div>
       </div>
+
+      {/* Compliance Alert (if applicable) */}
+      {compliance && !compliance.isCompliant && (
+        <div className={`border rounded-3xl p-6 shadow-sm ${
+          compliance.isGracePeriod 
+            ? "bg-amber-50/60 border-amber-200" 
+            : "bg-rose-50/60 border-rose-200"
+        }`}>
+          <div className="flex items-start gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              compliance.isGracePeriod 
+                ? "bg-amber-100 border border-amber-200" 
+                : "bg-rose-100 border border-rose-200"
+            }`}>
+              {compliance.isGracePeriod 
+                ? <AlertTriangle className="w-6 h-6 text-amber-600" />
+                : <ShieldAlert className="w-6 h-6 text-rose-600" />
+              }
+            </div>
+            <div className="flex-1">
+              <h3 className={`text-sm font-black uppercase tracking-wider ${
+                compliance.isGracePeriod ? "text-amber-800" : "text-rose-800"
+              }`}>
+                {compliance.isGracePeriod 
+                  ? `Action Required — ${compliance.daysRemaining} Days Remaining` 
+                  : "Urgent: Compliance Documents Overdue"}
+              </h3>
+              <p className={`text-xs font-medium mt-1 leading-relaxed ${
+                compliance.isGracePeriod ? "text-amber-700/80" : "text-rose-700/80"
+              }`}>
+                {compliance.isGracePeriod 
+                  ? "The following documents are required to complete your ward's enrollment. Please submit them to the school office within the grace period."
+                  : "The 30-day grace period has expired. The following documents must be submitted immediately to avoid restricted access to school services."}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {compliance.missingFields.map((field) => (
+                  <span 
+                    key={field} 
+                    className={`text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full border ${
+                      compliance.isGracePeriod
+                        ? "bg-amber-100 border-amber-200 text-amber-700"
+                        : "bg-rose-100 border-rose-200 text-rose-700"
+                    }`}
+                  >
+                    ✗ {field}
+                  </span>
+                ))}
+              </div>
+              <p className={`text-[10px] font-semibold mt-3 italic ${
+                compliance.isGracePeriod ? "text-amber-600/70" : "text-rose-600/70"
+              }`}>
+                Please visit the school office or contact the administration to submit the missing documents.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid of Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

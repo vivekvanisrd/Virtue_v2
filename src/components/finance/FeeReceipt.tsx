@@ -297,18 +297,48 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            <tr className="text-sm font-bold text-slate-700">
-              <td className="py-6 px-2">
-                Consolidated Fee Payment
-                <p className="text-[10px] text-slate-400 font-medium">Academic Session 2024-25</p>
-              </td>
-              <td className="py-6 px-2 text-right uppercase tracking-tighter">
-                {receipt.allocatedTo?.terms?.map((t: string) => t.toUpperCase()).join(", ") || "N/A"}
-              </td>
-              <td className="py-6 px-2 text-right font-black">
-                {formatCurrency(receipt.amountPaid || 0)}
-              </td>
-            </tr>
+            {(() => {
+              const academicYearName = student.academic?.academicYear || "2026-27";
+              const ancillaryPaidList = receipt.allocatedTo?.ancillaryPaid || [];
+              const ancillaryTotalPaid = ancillaryPaidList.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+              const tuitionPaid = Math.max(0, Number(receipt.amountPaid || 0) - ancillaryTotalPaid);
+
+              return (
+                <>
+                  {/* A. Tuition Fee Row */}
+                  {tuitionPaid > 0 && (
+                    <tr className="text-sm font-bold text-slate-700">
+                      <td className="py-6 px-2">
+                        Consolidated Tuition Fee Payment
+                        <p className="text-[10px] text-slate-400 font-medium">Academic Session {academicYearName}</p>
+                      </td>
+                      <td className="py-6 px-2 text-right uppercase tracking-tighter">
+                        {receipt.allocatedTo?.terms?.map((t: string) => t.toUpperCase()).join(", ") || "N/A"}
+                      </td>
+                      <td className="py-6 px-2 text-right font-black">
+                        {formatCurrency(tuitionPaid)}
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* B. Ancillary Fee Rows */}
+                  {ancillaryPaidList.map((item: any, idx: number) => (
+                    <tr key={idx} className="text-sm font-bold text-slate-700">
+                      <td className="py-6 px-2">
+                        {item.label || item.key}
+                        <p className="text-[10px] text-slate-400 font-medium">Academic Session {academicYearName}</p>
+                      </td>
+                      <td className="py-6 px-2 text-right uppercase tracking-tighter">
+                        ANCILLARY
+                      </td>
+                      <td className="py-6 px-2 text-right font-black">
+                        {formatCurrency(item.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              );
+            })()}
             {receipt.lateFeePaid > 0 && (
               <tr className="text-sm font-bold text-rose-600 bg-rose-50/30">
                 <td className="py-4 px-2">Late Payment Surcharge</td>
