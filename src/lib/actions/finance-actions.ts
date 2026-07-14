@@ -3,6 +3,7 @@
 import prisma, { prismaBypass } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSovereignIdentity } from "../auth/backbone";
+import { getGuardianIdentity } from "../auth/guardian-backbone";
 import { serializeDecimal } from "@/lib/utils/serialization";
 import { getTenancyFilters } from "../utils/tenancy";
 import { CounterService } from "../services/counter-service";
@@ -2580,6 +2581,418 @@ export async function removeAdHocFeeAction(params: {
 
     revalidatePath("/dashboard/finance");
     return { success: true, data: serializeDecimal(serialize(result)) };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * getParentStudentFeeStatus
+ * 
+ * Secure parent portal action to retrieve warded student fee structure and collections.
+ */
+export async function getParentStudentFeeStatus(studentId: string) {
+  try {
+    const identity = await getGuardianIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Parent session required.");
+
+    // Verify mapping
+    const mapping = await prismaBypass.studentGuardian.findFirst({
+      where: {
+        guardianId: identity.guardianId,
+        studentId: studentId,
+        activeStatus: "ACTIVE"
+      }
+    });
+    if (!mapping) throw new Error("UNAUTHORIZED_ACCESS: You are not linked to this student.");
+
+    const { calculateTermBreakdown } = await import("../utils/fee-utils");
+
+    const [studentRecord, ledgerEntries, collections] = await Promise.all([
+      prismaBypass.student.findFirst({
+        where: { id: studentId },
+        include: {
+          academic: { include: { class: true } },
+          history: { include: { academicYear: true } },
+          studentTransport: { include: { route: true, pickupStop: true, dropStop: true } },
+          backboneInvoices: { include: { items: true } },
+          financial: { 
+            include: { 
+              components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } }, 
+              discounts: { include: { discountType: true } },
+              feeStructure: { include: { components: { include: { masterComponent: { select: { id: true, name: true, type: true, accountCode: true } } } } } }
+            } 
+          }
+        }
+      }),
+      prismaBypass.ledgerEntry.findMany({
+        where: { studentId },
+        orderBy: { createdAt: "desc" }
+      }),
+      prismaBypass.collection.findMany({
+        where: { studentId, status: "Success", isDeleted: false },
+        include: { backboneAllocations: { include: { invoiceItem: true } } },
+        orderBy: { paymentDate: "desc" }
+      })
+    ]);
+
+    if (!studentRecord) throw new Error("Student not found.");
+
+    const student = studentRecord as any;
+    student.ledgerEntries = ledgerEntries;
+    student.collections = collections;
+
+    const secureBranchId = student.branchId || null;
+    const secureSchoolId = student.schoolId || null;
+
+    // 1. RESOLVE INVOICE-BASED OR PROFILE-BASED BASE VALUES
+    const activeInvoice = student.backboneInvoices?.[0];
+    
+    let tuition = 0;
+    let discount = 0;
+    let transportFeeVal = 0;
+    let admissionFeeVal = 0;
+    
+    if (activeInvoice) {
+      activeInvoice.items.forEach((item: any) => {
+        const type = item.componentType;
+        const name = item.componentName.toLowerCase();
+        const amt = Number(item.amount);
+        
+        if (type === "TUTION" || name.includes("tuition")) {
+          tuition = amt;
+        } else if (type === "CONCESSION" || name.includes("concession")) {
+          discount = Math.abs(amt);
+        } else if (type === "TRANSPORT" || name.includes("transport")) {
+          transportFeeVal = amt;
+        } else if (type === "ADMISSION" || name.includes("admission")) {
+          admissionFeeVal = amt;
+        }
+      });
+    } else {
+      const components = student.financial?.components || [];
+      tuition = components.length > 0 
+          ? components
+              .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                           !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+              .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
+          : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
+      discount = components.length > 0 
+          ? components
+              .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
+                           !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                           !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+              .reduce((sum, c) => sum + Number(c.discountAmount || 0), 0)
+          : Number(student.financial?.totalDiscount || 0);
+
+      const financialDiscounts = student.financial?.discounts || [];
+      const discountSum = financialDiscounts.reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
+      discount = discount + discountSum;
+
+      transportFeeVal = components
+        .filter(c => c.masterComponent?.type === "TRANSPORT" || c.masterComponent?.name?.toLowerCase().includes("transport"))
+        .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0);
+      admissionFeeVal = components
+        .filter(c => c.masterComponent?.name?.toLowerCase().includes("admission"))
+        .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0);
+    }
+
+    const paymentType = student.financial?.paymentType || "Term-wise";
+    
+    const ledgerTuition = activeInvoice 
+        ? tuition
+        : (tuition === 0 && student.ledgerEntries && student.ledgerEntries.length > 0
+            ? student.ledgerEntries.reduce((sum, entry) => sum + Number(entry.amount), 0)
+            : tuition);
+
+    const breakdown = calculateTermBreakdown(ledgerTuition, discount, paymentType);
+
+    // 2. CATEGORIZE CUMULATIVE PAYMENT ALLOCATIONS (BY COMPONENT TYPE)
+    let tuitionPaid = 0;
+    let transportPaid = 0;
+    let admissionPaid = 0;
+
+    student.collections.forEach((col: any) => {
+      if (col.backboneAllocations && col.backboneAllocations.length > 0) {
+        col.backboneAllocations.forEach((alloc: any) => {
+          const type = alloc.invoiceItem?.componentType;
+          const amt = Number(alloc.amount || 0);
+          if (type === "TUTION") tuitionPaid += amt;
+          else if (type === "TRANSPORT") transportPaid += amt;
+          else if (type === "ADMISSION") admissionPaid += amt;
+        });
+      } else {
+        const totalColPaid = Number(col.amountPaid || 0);
+        const mode = (col.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
+        if (mode.includes("transport")) transportPaid += totalColPaid;
+        else if (mode.includes("admission")) admissionPaid += totalColPaid;
+        else tuitionPaid += totalColPaid;
+      }
+    });
+
+    // 3. MAP TUITION PAYMENTS TO TERM INSTALLMENTS
+    let remainingTuitionPaid = tuitionPaid;
+
+    breakdown.installments.forEach(inst => {
+      const amt = Number(inst.amount);
+      if (remainingTuitionPaid >= amt) {
+        inst.isPaid = true;
+        (inst as any).balance = 0;
+        remainingTuitionPaid -= amt;
+      } else if (remainingTuitionPaid > 0) {
+        inst.isPaid = false;
+        (inst as any).balance = amt - remainingTuitionPaid;
+        remainingTuitionPaid = 0;
+      } else {
+        inst.isPaid = false;
+        (inst as any).balance = amt;
+      }
+    });
+
+    breakdown.term1.isPaid = breakdown.installments.find(i => i.key === "term1")?.isPaid || false;
+    breakdown.term2.isPaid = breakdown.installments.find(i => i.key === "term2")?.isPaid || false;
+    breakdown.term3.isPaid = breakdown.installments.find(i => i.key === "term3")?.isPaid || false;
+
+    const paidTerms = student.collections.flatMap((c: any) => {
+      const allocated = c.allocatedTo as any;
+      if (!allocated) return [];
+      
+      const termsFromList = allocated.terms || [];
+      const legacyTerms = ["term1", "term2", "term3"].filter(t => (allocated as any)[t] > 0);
+      const ancillaryPaid = Array.isArray(allocated.ancillaryPaid)
+        ? allocated.ancillaryPaid.map((a: any) => (typeof a === "string" ? a : a.key)).filter(Boolean)
+        : [];
+      
+      return [...new Set([...termsFromList, ...legacyTerms, ...ancillaryPaid])];
+    });
+
+    if (tuitionPaid >= (breakdown.annualNet || tuition - discount)) {
+      paidTerms.push("tuitionFee");
+    }
+    if (transportPaid >= transportFeeVal && transportFeeVal > 0) {
+      paidTerms.push("transportFee");
+    }
+    if (admissionPaid >= admissionFeeVal && admissionFeeVal > 0) {
+      paidTerms.push("admissionFee");
+    }
+
+    const ancillary: Record<string, any> = {};
+    const fin = student.financial;
+
+    if (activeInvoice?.items) {
+      activeInvoice.items.forEach((item: any) => {
+        const type = item.componentType;
+        const name = item.componentName.toLowerCase();
+        
+        if (type === "TUTION" || name.includes("tuition") || type === "CONCESSION" || name.includes("concession")) {
+          return;
+        }
+
+        let key = "";
+        if (type === "ADMISSION" || name.includes("admission")) key = "admissionFee";
+        else if (name.includes("caution") || name.includes("deposit")) key = "cautionDeposit";
+        else if (type === "TRANSPORT" || name.includes("transport")) key = "transportFee";
+        else if (name.includes("library")) key = "libraryFee";
+        else if (name.includes("exam")) key = "examFee";
+        else if (name.includes("computer")) key = "computerFee";
+        else if (name.includes("sports")) key = "sportsFee";
+        else if (name.includes("activity")) key = "activityFee";
+        else if (name.includes("book")) key = "booksFee";
+        else if (name.includes("uniform")) key = "uniformFee";
+        else key = `inv_${item.id}`;
+
+        if (key && !ancillary[key]) {
+          ancillary[key] = {
+            amount: Number(item.amount),
+            isPaid: Number(item.balance) <= 0,
+            label: item.componentName,
+            dueDate: null
+          };
+        }
+      });
+    }
+
+    if (fin?.feeStructure?.components) {
+       fin.feeStructure.components.forEach((comp: any) => {
+          const name = comp.masterComponent?.name?.toLowerCase() || "";
+          if (name.includes("tuition")) return;
+
+          let key = "";
+          if (name.includes("admission")) key = "admissionFee";
+          else if (name.includes("caution") || name.includes("deposit")) key = "cautionDeposit";
+          else if (name.includes("transport") || name.includes("bus")) key = "transportFee";
+          else if (name.includes("library")) key = "libraryFee";
+          else if (name.includes("exam")) key = "examFee";
+          else if (name.includes("computer")) key = "computerFee";
+          else if (name.includes("sports") || name.includes("gym")) key = "sportsFee";
+          else if (name.includes("activity")) key = "activityFee";
+          else if (name.includes("book") || name.includes("stationary")) key = "booksFee";
+          else if (name.includes("uniform") || name.includes("kit")) key = "uniformFee";
+          else if (name.includes("miscellaneous")) key = "miscellaneousFee";
+          else key = `tmpl_${comp.id}`;
+
+          if (key && !ancillary[key]) {
+             ancillary[key] = {
+                amount: Number(comp.amount),
+                isPaid: paidTerms.includes(key) || paidTerms.includes(comp.masterComponent.name),
+                label: comp.masterComponent.name,
+                dueDate: null
+             };
+          }
+       });
+    }
+
+    if (fin?.components) {
+      fin.components.forEach((comp: any) => {
+        const name = comp.masterComponent?.name?.toLowerCase();
+        if (!name || name.includes("tuition")) return;
+        let key = "";
+        
+        if (name.includes("admission")) key = "admissionFee";
+        else if (name.includes("caution") || name.includes("deposit")) key = "cautionDeposit";
+        else if (name.includes("transport") || name.includes("bus")) key = "transportFee";
+        else if (name.includes("library")) key = "libraryFee";
+        else if (name.includes("exam")) key = "examFee";
+        else if (name.includes("computer")) key = "computerFee";
+        else if (name.includes("sports")) key = "sportsFee";
+        else if (name.includes("activity")) key = "activityFee";
+        else if (name.includes("book")) key = "booksFee";
+        else if (name.includes("uniform")) key = "uniformFee";
+        else key = `comp_${comp.id}`;
+
+        if (key && !ancillary[key]) {
+          ancillary[key] = {
+            amount: Number(comp.baseAmount),
+            isPaid: paidTerms.includes(key) || paidTerms.includes(comp.masterComponent.name),
+            label: comp.masterComponent.name,
+            dueDate: null
+          };
+        }
+      });
+    }
+
+    breakdown.ancillary = ancillary;
+
+    return {
+      success: true,
+      data: serialize({
+        student: {
+          id: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          studentCode: student.studentCode,
+          admissionNumber: student.admissionNumber,
+          className: student.academic?.class?.name || "N/A",
+          branchId: secureBranchId,
+          schoolId: secureSchoolId
+        },
+        feeBreakdown: breakdown,
+        collections: collections.map(c => ({
+          id: c.id,
+          receiptNumber: c.receiptNumber,
+          amountPaid: Number(c.amountPaid || 0),
+          lateFeePaid: Number(c.lateFeePaid || 0),
+          convenienceFee: Number(c.convenienceFee || 0),
+          totalPaid: Number(c.totalPaid || 0),
+          paymentMode: c.paymentMode,
+          paymentReference: c.paymentReference,
+          paymentDate: c.paymentDate
+        }))
+      })
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * createParentRazorpayOrderAction
+ * 
+ * Secure parent portal action to create an order with Razorpay.
+ */
+export async function createParentRazorpayOrderAction(params: {
+  amountPaid: number;
+  studentId: string;
+  selectedTerms: string[];
+  lateFeePaid?: number;
+}) {
+  try {
+    const identity = await getGuardianIdentity();
+    if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Parent session required.");
+
+    // Verify mapping
+    const mapping = await prismaBypass.studentGuardian.findFirst({
+      where: {
+        guardianId: identity.guardianId,
+        studentId: params.studentId,
+        activeStatus: "ACTIVE"
+      }
+    });
+    if (!mapping) throw new Error("UNAUTHORIZED_ACCESS: You are not linked to this student.");
+
+    const student = await prismaBypass.student.findUnique({
+      where: { id: params.studentId },
+      select: { schoolId: true }
+    });
+    if (!student) throw new Error("Student not found.");
+    const schoolId = student.schoolId;
+
+    // IDEMPOTENCY GUARD: Check if ANY term in this order is already paid
+    const existingSuccessfulCollection = await prismaBypass.collection.findFirst({
+      where: {
+        studentId: params.studentId,
+        status: "Success",
+        allocatedTo: {
+          path: ["terms"],
+          array_contains: params.selectedTerms 
+        }
+      }
+    });
+
+    if (existingSuccessfulCollection) {
+      throw new Error(`Double Payment Blocked: Term(s) ${params.selectedTerms.join(", ")} are already paid or in-process.`);
+    }
+
+    // 1.5% Gateway Fee + 18% GST (1.77% multiplier)
+    const baseAmount = params.amountPaid;
+    const lateFee = params.lateFeePaid || 0;
+    
+    const gatewayFee = (baseAmount + lateFee) * 0.015;
+    const gst = gatewayFee * 0.18;
+    const totalConvenience = gatewayFee + gst;
+    const totalAmountIncludingFee = baseAmount + lateFee + totalConvenience;
+
+    const order = await razorpay.orders.create({
+      amount: Math.round(totalAmountIncludingFee * 100), // paisa
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}`,
+      notes: {
+        studentId: params.studentId,
+        schoolId: schoolId,
+        terms: params.selectedTerms.join(","),
+        baseAmount: baseAmount.toString(),
+        lateFee: lateFee.toString(),
+        convenienceFee: totalConvenience.toFixed(2),
+        gatewayFee: gatewayFee.toFixed(2),
+        gst: gst.toFixed(2),
+        type: "FEE_COLLECTION_V2_TAXED"
+      }
+    });
+
+    return { 
+      success: true, 
+      data: {
+        id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        baseAmount,
+        lateFee,
+        convenienceFee: totalConvenience
+      }
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

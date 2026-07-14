@@ -3,7 +3,7 @@ import { getGuardianIdentity } from "@/lib/auth/guardian-backbone";
 import { getGuardianSiblingsAction } from "@/lib/actions/guardian-auth-actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LogOut, GraduationCap, Home, ShieldAlert } from "lucide-react";
+import { LogOut, GraduationCap, Home, ShieldAlert, CreditCard } from "lucide-react";
 import { logoutGuardianAction } from "@/lib/actions/guardian-auth-actions";
 
 export default async function ParentDashboardLayout({
@@ -69,6 +69,12 @@ export default async function ParentDashboardLayout({
                 className="flex items-center gap-3 px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
               >
                 <Home className="w-4 h-4 text-primary" /> Dashboard
+              </Link>
+              <Link
+                href="/parent/dashboard/fees"
+                className="flex items-center gap-3 px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
+              >
+                <CreditCard className="w-4 h-4 text-primary" /> Fees & Payments
               </Link>
             </nav>
           </div>

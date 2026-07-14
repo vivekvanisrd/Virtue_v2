@@ -33,9 +33,10 @@ interface DashboardContentClientProps {
   siblings: Sibling[];
   activeStudentId: string;
   compliance?: ComplianceStatus | null;
+  feeStatus?: any | null;
 }
 
-export function DashboardContentClient({ siblings, activeStudentId, compliance }: DashboardContentClientProps) {
+export function DashboardContentClient({ siblings, activeStudentId, compliance, feeStatus }: DashboardContentClientProps) {
   const router = useRouter();
   
   // Find selected student details
@@ -44,6 +45,9 @@ export function DashboardContentClient({ siblings, activeStudentId, compliance }
   const handleSiblingChange = (studentId: string) => {
     router.push(`/parent/dashboard?studentId=${studentId}`);
   };
+
+  const paidTotal = feeStatus?.feeBreakdown?.paidTotal ?? 0;
+  const dueTotal = feeStatus?.feeBreakdown?.dueTotal ?? 0;
 
   if (!siblings || siblings.length === 0) {
     return (
@@ -188,16 +192,19 @@ export function DashboardContentClient({ siblings, activeStudentId, compliance }
             <div className="space-y-3 my-6">
               <div className="flex justify-between items-center py-1">
                 <span className="text-xs opacity-50 font-bold">Total Paid to Date</span>
-                <span className="text-sm font-black text-emerald-500">₹10,000</span>
+                <span className="text-sm font-black text-emerald-500">₹{paidTotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center py-1 border-t border-border/50">
                 <span className="text-xs opacity-50 font-bold">Outstanding Balance</span>
-                <span className="text-sm font-black text-rose-500">₹15,000</span>
+                <span className="text-sm font-black text-rose-500">₹{dueTotal.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
-          <button className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 mt-2 cursor-pointer">
+          <button 
+            onClick={() => router.push(`/parent/dashboard/fees?studentId=${activeStudent.studentId}`)}
+            className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 mt-2 cursor-pointer"
+          >
             View Statement & Pay Now <ChevronRight className="w-4 h-4" />
           </button>
         </div>

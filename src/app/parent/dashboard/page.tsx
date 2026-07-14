@@ -1,6 +1,7 @@
 import React from "react";
 import { getGuardianIdentity } from "@/lib/auth/guardian-backbone";
 import { getGuardianSiblingsAction } from "@/lib/actions/guardian-auth-actions";
+import { getParentStudentFeeStatus } from "@/lib/actions/finance-actions";
 import { redirect } from "next/navigation";
 import { DashboardContentClient } from "./dashboard-content-client";
 import prisma from "@/lib/prisma";
@@ -61,11 +62,16 @@ export default async function ParentDashboardPage({ searchParams }: PageProps) {
   // Fetch compliance status for the active student
   const compliance = activeStudentId ? await getComplianceStatus(activeStudentId) : null;
 
+  // Fetch real-time fee summary for the dashboard widget
+  const feeRes = activeStudentId ? await getParentStudentFeeStatus(activeStudentId) : null;
+  const feeStatus = feeRes?.success ? feeRes.data : null;
+
   return (
     <DashboardContentClient
       siblings={siblings}
       activeStudentId={activeStudentId}
       compliance={compliance}
+      feeStatus={feeStatus}
     />
   );
 }

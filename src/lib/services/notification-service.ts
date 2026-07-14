@@ -7,7 +7,7 @@
  */
 
 import nodemailer from "nodemailer";
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 
 export interface NotificationPayload {
   to: string;
@@ -36,7 +36,7 @@ class LoggerNotificationProvider implements INotificationProvider {
     // Also write mock log to DB for tracking consistency in Local Dev
     if (context) {
       try {
-        await prisma.communicationLog.create({
+        await prismaBypass.communicationLog.create({
           data: {
             schoolId: context.schoolId,
             branchId: context.branchId || null,
@@ -99,7 +99,7 @@ class EmailNotificationProvider implements INotificationProvider {
       // Write mock success log to DB
       if (context) {
         try {
-          await prisma.communicationLog.create({
+          await prismaBypass.communicationLog.create({
             data: {
               schoolId: context.schoolId,
               branchId: context.branchId || null,
@@ -215,7 +215,7 @@ class EmailNotificationProvider implements INotificationProvider {
 
       // Write Success Log
       if (context) {
-        await prisma.communicationLog.create({
+        await prismaBypass.communicationLog.create({
           data: {
             schoolId: context.schoolId,
             branchId: context.branchId || null,
@@ -237,7 +237,7 @@ class EmailNotificationProvider implements INotificationProvider {
       // Write Failure Log
       if (context) {
         try {
-          await prisma.communicationLog.create({
+          await prismaBypass.communicationLog.create({
             data: {
               schoolId: context.schoolId,
               branchId: context.branchId || null,
@@ -306,13 +306,13 @@ export const NotificationService = {
     }, { schoolId: context.schoolId, branchId: context.branchId, type: "REMINDER", authorEmail: context.authorEmail });
   },
 
-  async sendCustomEmail(to: string, subject: string, body: string, context: { schoolId: string; branchId?: string; parentId?: string; sender?: string; authorEmail?: string }) {
+  async sendCustomEmail(to: string, subject: string, body: string, context: { schoolId: string; branchId?: string; type?: string; parentId?: string; sender?: string; authorEmail?: string }) {
     const provider = to.includes("@") ? new EmailNotificationProvider() : new LoggerNotificationProvider();
     return await provider.send({
       to,
       title: subject,
       body,
-    }, { schoolId: context.schoolId, branchId: context.branchId, type: "CUSTOM", parentId: context.parentId, sender: context.sender, authorEmail: context.authorEmail });
+    }, { schoolId: context.schoolId, branchId: context.branchId, type: context.type || "CUSTOM", parentId: context.parentId, sender: context.sender, authorEmail: context.authorEmail });
   },
 
   async sendAdmissionAlert(to: string, studentName: string, admissionNumber: string, tempCredentials?: { username: string; tempPass: string }, context?: { schoolId: string; branchId?: string }) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prismaBypass as prisma } from "@/lib/prisma";
 
 /**
  * COMPLIANCE REMINDER CRON ENDPOINT
