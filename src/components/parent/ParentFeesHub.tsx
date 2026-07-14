@@ -91,17 +91,54 @@ export function ParentFeesHub({ siblings, activeStudentId }: ParentFeesHubProps)
     setSelectedTerms(newSelected);
   };
 
+  // Combine installments and any assigned ancillary fees into a unified ledger list
+  const getLedgerItems = () => {
+    if (!feeData || !feeData.feeBreakdown) return [];
+    
+    const items: any[] = [];
+    
+    // Add core tuition installments
+    (feeData.feeBreakdown.installments || []).forEach((inst: any) => {
+      items.push({
+        key: inst.key,
+        name: inst.label || inst.key.toUpperCase(),
+        amount: inst.amount,
+        balance: inst.balance !== undefined ? inst.balance : (inst.isPaid ? 0 : inst.amount),
+        isPaid: inst.isPaid,
+        type: "tuition"
+      });
+    });
+
+    // Add assigned active ancillary items
+    if (feeData.feeBreakdown.ancillary) {
+      Object.entries(feeData.feeBreakdown.ancillary).forEach(([key, comp]: [string, any]) => {
+        if (comp.amount > 0 || comp.isPaid) {
+          items.push({
+            key: key,
+            name: comp.label,
+            amount: comp.amount,
+            balance: comp.isPaid ? 0 : comp.amount,
+            isPaid: comp.isPaid,
+            type: "ancillary"
+          });
+        }
+      });
+    }
+
+    return items;
+  };
+
   // Calculations for selected terms
   const getSelectedTotals = () => {
     if (!feeData || !feeData.feeBreakdown) return { base: 0, late: 0, total: 0 };
     let base = 0;
     let late = 0;
 
+    const ledgerItems = getLedgerItems();
     selectedTerms.forEach(termKey => {
-      const term = feeData.feeBreakdown.terms.find((t: any) => t.key === termKey);
-      if (term) {
-        base += Number(term.netTuitionDue || 0) + Number(term.ancillaryDue || 0);
-        late += Number(term.lateFeeDue || 0);
+      const item = ledgerItems.find((i: any) => i.key === termKey);
+      if (item) {
+        base += Number(item.balance || 0);
       }
     });
 
@@ -319,7 +356,7 @@ export function ParentFeesHub({ siblings, activeStudentId }: ParentFeesHubProps)
           <div className="bg-card/40 border border-border/80 rounded-3xl p-6 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-wider opacity-50">Total Discounts</p>
-              <p className="text-2xl font-black mt-2 text-primary">{formatCurrency(feeData.feeBreakdown.annualDiscount)}</p>
+              <p className="text-2xl font-black mt-2 text-primary">{formatCurrency(feeData.feeBreakdown.totalDiscount || 0)}</p>
               <p className="text-[10px] opacity-40 font-bold mt-1">Concessions and scholarships</p>
             </div>
             <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
@@ -339,14 +376,14 @@ export function ParentFeesHub({ siblings, activeStudentId }: ParentFeesHubProps)
         </div>
 
         <div className="divide-y divide-border/60">
-          {feeData?.feeBreakdown?.terms?.map((term: any) => {
-            const isPaid = term.status === "Paid" || term.dueTotal === 0;
-            const isSelected = selectedTerms.has(term.key);
+          {getLedgerItems().map((item: any) => {
+            const isPaid = item.isPaid || item.balance === 0;
+            const isSelected = selectedTerms.has(item.key);
 
             return (
               <div 
-                key={term.key}
-                onClick={() => toggleTermSelection(term.key, isPaid)}
+                key={item.key}
+                onClick={() => toggleTermSelection(item.key, isPaid)}
                 className={`p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${
                   isPaid 
                     ? "opacity-60 bg-slate-50/20" 
@@ -364,19 +401,20 @@ export function ParentFeesHub({ siblings, activeStudentId }: ParentFeesHubProps)
                     )}
                   </div>
                   <div>
-                    <h4 className="font-black text-sm uppercase tracking-wider">{term.name}</h4>
+                    <h4 className="font-black text-sm uppercase tracking-wider">{item.name}</h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs opacity-60 font-semibold">
-                      <span>Tuition Due: {formatCurrency(term.netTuitionDue)}</span>
-                      {term.ancillaryDue > 0 && <span>Ancillary: {formatCurrency(term.ancillaryDue)}</span>}
-                      {term.lateFeeDue > 0 && <span className="text-rose-500">Late Fee: {formatCurrency(term.lateFeeDue)}</span>}
+                      <span>Total Amount: {formatCurrency(item.amount)}</span>
+                      {item.balance > 0 && item.balance !== item.amount && (
+                        <span className="text-amber-600">Pending Balance: {formatCurrency(item.balance)}</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-6 justify-between md:justify-end">
                   <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-wider opacity-45">Term Total</p>
-                    <p className="font-black text-sm">{formatCurrency(term.totalDue || 0)}</p>
+                    <p className="text-[10px] font-black uppercase tracking-wider opacity-45">Outstanding</p>
+                    <p className="font-black text-sm">{formatCurrency(item.balance)}</p>
                   </div>
                   <div>
                     {isPaid ? (

@@ -4,7 +4,7 @@ import { getGuardianSiblingsAction } from "@/lib/actions/guardian-auth-actions";
 import { getParentStudentFeeStatus } from "@/lib/actions/finance-actions";
 import { redirect } from "next/navigation";
 import { DashboardContentClient } from "./dashboard-content-client";
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 
 interface PageProps {
   searchParams: Promise<{ studentId?: string }>;
@@ -12,7 +12,7 @@ interface PageProps {
 
 async function getComplianceStatus(studentId: string) {
   try {
-    const student = await prisma.student.findUnique({
+    const student = await prismaBypass.student.findUnique({
       where: { id: studentId },
       select: {
         id: true,

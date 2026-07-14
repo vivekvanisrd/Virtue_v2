@@ -1,0 +1,4 @@
+- `[x]` Create server actions `getParentNotificationsAction`, `markParentNotificationAsReadAction`, and `getUnreadParentNotificationsCountAction` in `src/lib/actions/guardian-notification-actions.ts`.
+- `[x]` Create Next.js route page at `src/app/parent/dashboard/notifications/page.tsx`.
+- `[x]` Create client-side inbox component `ParentNotificationsHub.tsx` in `src/components/parent/`.
+- `[x]` Update parent portal sidebar layout `src/app/parent/dashboard/layout.tsx` to include the notifications navigation item and unread badge.

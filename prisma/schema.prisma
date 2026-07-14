@@ -3770,6 +3770,235 @@ model Appointment {
   guardian       Guardian  @relation(fields: [guardianId], references: [id])
 }
 
+// ==========================================
+// ECP (Enterprise Communication Platform)
+// ==========================================
+
+enum EcpUserType {
+  GUARDIAN
+  STAFF
+  ADMIN
+  STUDENT
+  DRIVER
+  CUSTOMER
+  VENDOR
+}
+
+enum EcpChannelType {
+  PUSH
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+  VOICE
+}
+
+enum EcpDeliveryStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  CLICKED
+  READ
+  BOUNCED
+  SKIPPED
+}
+
+enum EcpNotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  EMERGENCY
+}
+
+enum EcpTokenStatus {
+  ACTIVE
+  INVALID
+  EXPIRED
+  BLOCKED
+}
+
+enum EcpPushPlatform {
+  ANDROID
+  IOS
+  WEB
+  WINDOWS
+  MACOS
+}
+
+// Represents the business-level message intent
+model OutboundMessage {
+  id               String                  @id @default(uuid())
+  businessId       String                  // Tenant identifier (multi-tenant boundary)
+  campaignId       String?                 // Optional: links message to a campaign
+  templateId       String?                 // Optional: links message to a versioned template
+  subject          String?
+  body             String?                 @db.Text
+  payload          Json?                   // Custom structured parameters (deep-links, routing ids)
+  priority         EcpNotificationPriority @default(NORMAL)
+  idempotencyKey   String                  @unique // Guard against duplicate broadcast inputs
+  scheduledFor     DateTime                @default(now())
+  createdAt        DateTime                @default(now())
+
+  campaign         Campaign?               @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  template         OutboundMessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  recipients       OutboundMessageRecipient[]
+  attachments      OutboundMessageAttachment[]
+
+  @@index([businessId])
+  @@index([scheduledFor])
+}
+
+// Links a Message to multiple polymorphic recipients
+model OutboundMessageRecipient {
+  id           String             @id @default(uuid())
+  messageId    String
+  recipientId  String             // Polymorphic Reference (Guardian ID, Staff ID, Customer ID, etc.)
+  recipientType EcpUserType
+  email        String?            // Target email
+  phone        String?            // Target phone (for SMS / WhatsApp / Voice)
+  preferredLang String            @default("en")
+  timezone     String             @default("UTC")
+  createdAt    DateTime           @default(now())
+
+  message      OutboundMessage    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  deliveries   OutboundMessageDelivery[]
+
+  @@unique([messageId, recipientId, recipientType])
+  @@index([recipientId, recipientType])
+}
+
+// Granular delivery log of a message to a recipient via a specific channel
+model OutboundMessageDelivery {
+  id               String           @id @default(uuid())
+  recipientId      String           // Links back to OutboundMessageRecipient
+  channel          EcpChannelType
+  provider         String           // e.g. "FCM", "WEBPUSH", "SES", "TWILIO", "INFOBIP"
+  destination      String           // Target email address, phone number, or device UUID
+  deliveryStatus   EcpDeliveryStatus @default(PENDING)
+  retryCount       Int              @default(0)
+  sentAt           DateTime?
+  deliveredAt      DateTime?
+  clickedAt        DateTime?
+  readAt           DateTime?
+  providerResponse Json?            // Complete raw response payloads returned by vendors
+  failureReason    String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  recipient        OutboundMessageRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([deliveryStatus])
+  @@index([channel])
+}
+
+// Devices registry ledger (decoupled from strict tables)
+model PushDevice {
+  id           String          @id @default(uuid())
+  businessId   String
+  userId       String          // Polymorphic reference (Guardian ID, Staff ID, etc.)
+  userType     EcpUserType
+  deviceId     String          // Stable hardware signature hash
+  pushToken    String          @unique @db.Text
+  provider     String          // e.g. "FCM", "WEBPUSH", "ONESIGNAL"
+  platform     EcpPushPlatform
+  browser      String?
+  appVersion   String?
+  osVersion    String?
+  isActive     Boolean         @default(true)
+  tokenStatus  EcpTokenStatus  @default(ACTIVE)
+  lastSeenAt   DateTime        @default(now())
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([businessId, deviceId])
+  @@index([userId, userType])
+}
+
+// Message templates supporting placeholder interpolation, versioning, and localization
+model OutboundMessageTemplate {
+  id             String         @id @default(uuid())
+  businessId     String
+  code           String         // e.g., "FEE_DUE_REMINDER", "OTP_VERIFICATION"
+  version        Int            @default(1)
+  language       String         @default("en") // ISO code (en, hi, te, etc.)
+  channel        EcpChannelType
+  subject        String?        // Template subject placeholder
+  body           String         @db.Text // Contains placeholder variables (e.g. {{ParentName}})
+  htmlBody       String?        @db.Text // Optional html format template
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  messages       OutboundMessage[]
+
+  @@unique([businessId, code, version, language, channel])
+}
+
+// Enterprise marketing and notice broadcast campaigns ledger
+model Campaign {
+  id             String         @id @default(uuid())
+  businessId     String
+  name           String
+  description    String?        @db.Text
+  audienceQuery  Json?          // Target selection rules metadata
+  scheduledStart DateTime?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+
+  messages       OutboundMessage[]
+
+  @@index([businessId])
+}
+
+// Attachments metadata ledger (separate from body sizes)
+model OutboundMessageAttachment {
+  id             String         @id @default(uuid())
+  messageId      String
+  fileName       String
+  fileSize       Int
+  mimeType       String
+  storageUrl     String         @db.Text
+  createdAt      DateTime       @default(now())
+
+  message        OutboundMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+// Per-user preference switches (controls delivery policies)
+model UserCommunicationPreference {
+  id               String         @id @default(uuid())
+  businessId       String
+  userId           String
+  userType         EcpUserType
+  category         String         // e.g. "FINANCIAL", "ACADEMIC", "MARKETING"
+  channel          EcpChannelType
+  isEnabled        Boolean        @default(true)
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([businessId, userId, userType, category, channel])
+}
+
+// Transactional Outbox pattern ledger (guarantees delivery durability)
+model TransactionalOutbox {
+  id             String         @id @default(uuid())
+  businessId     String
+  eventCode      String         // e.g., "ORDER_COMPLETED", "STUDENT_ABSENT"
+  payload        Json           // Event metadata
+  isProcessed    Boolean        @default(false)
+  retryCount     Int            @default(0)
+  errorMessage   String?        @db.Text
+  createdAt      DateTime       @default(now())
+  processedAt    DateTime?
+
+  @@index([isProcessed])
+  @@index([createdAt])
+}
+
+
 
 
 

@@ -1178,6 +1178,16 @@ export async function getStudentFeeStatus(studentId: string) {
     
     breakdown.ancillary = ancillary;
 
+    // Calculate total paid and total due dynamically
+    const totalCollected = collections.reduce((sum, c) => sum + Number(c.amountPaid || 0), 0);
+    const tuitionNet = Number(breakdown.annualNet) || 0;
+    const ancillaryTotal = Object.values(ancillary).reduce((sum, comp: any) => sum + Number(comp.amount || 0), 0);
+    const grandTotalFee = tuitionNet + ancillaryTotal;
+    const dueTotal = Math.max(0, grandTotalFee - totalCollected);
+
+    (breakdown as any).paidTotal = totalCollected;
+    (breakdown as any).dueTotal = dueTotal;
+
     return { 
       success: true, 
       data: serialize({
@@ -2875,6 +2885,16 @@ export async function getParentStudentFeeStatus(studentId: string) {
     }
 
     breakdown.ancillary = ancillary;
+
+    // Calculate total paid and total due dynamically
+    const totalCollected = collections.reduce((sum, c) => sum + Number(c.amountPaid || 0), 0);
+    const tuitionNet = Number(breakdown.annualNet) || 0;
+    const ancillaryTotal = Object.values(ancillary).reduce((sum, comp: any) => sum + Number(comp.amount || 0), 0);
+    const grandTotalFee = tuitionNet + ancillaryTotal;
+    const dueTotal = Math.max(0, grandTotalFee - totalCollected);
+
+    (breakdown as any).paidTotal = totalCollected;
+    (breakdown as any).dueTotal = dueTotal;
 
     return {
       success: true,

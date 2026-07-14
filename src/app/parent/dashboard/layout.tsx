@@ -3,8 +3,10 @@ import { getGuardianIdentity } from "@/lib/auth/guardian-backbone";
 import { getGuardianSiblingsAction } from "@/lib/actions/guardian-auth-actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LogOut, GraduationCap, Home, ShieldAlert, CreditCard } from "lucide-react";
+import { LogOut, GraduationCap, Home, ShieldAlert, CreditCard, Bell } from "lucide-react";
 import { logoutGuardianAction } from "@/lib/actions/guardian-auth-actions";
+import { getUnreadParentNotificationsCountAction } from "@/lib/actions/guardian-notification-actions";
+import { PushNotificationRegistry } from "@/components/parent/PushNotificationRegistry";
 
 export default async function ParentDashboardLayout({
   children,
@@ -19,6 +21,9 @@ export default async function ParentDashboardLayout({
   const siblingsRes = await getGuardianSiblingsAction();
   const siblings = siblingsRes.success ? siblingsRes.siblings || [] : [];
 
+  const unreadRes = await getUnreadParentNotificationsCountAction();
+  const unreadCount = unreadRes.success ? unreadRes.count || 0 : 0;
+
   const handleLogout = async () => {
     "use server";
     await logoutGuardianAction();
@@ -27,6 +32,7 @@ export default async function ParentDashboardLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <PushNotificationRegistry />
       {/* Top Navbar */}
       <header className="bg-card border-b border-border/80 backdrop-blur-md sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -75,6 +81,19 @@ export default async function ParentDashboardLayout({
                 className="flex items-center gap-3 px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
               >
                 <CreditCard className="w-4 h-4 text-primary" /> Fees & Payments
+              </Link>
+              <Link
+                href="/parent/dashboard/notifications"
+                className="flex items-center justify-between px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Bell className="w-4 h-4 text-primary" /> Notifications
+                </div>
+                {unreadCount > 0 && (
+                  <span className="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-black tracking-wide animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             </nav>
           </div>
