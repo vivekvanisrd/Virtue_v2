@@ -92,6 +92,21 @@ export async function importStudentsAction(rows: StudentImportRow[], targetSchoo
               }
             });
           }
+        } else {
+          // Auto-allocate first available section
+          const classSections = await prisma.section.findMany({
+            where: { classId: targetClass.id, schoolId },
+            include: {
+              _count: {
+                select: { academicRecords: true }
+              }
+            }
+          });
+          if (classSections.length > 0) {
+            targetSection = classSections.find(
+              s => (s._count.academicRecords ?? 0) < (s.capacity ?? 30)
+            ) ?? classSections[0];
+          }
         }
 
         // 3. Check for student duplication

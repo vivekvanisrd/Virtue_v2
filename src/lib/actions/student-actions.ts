@@ -582,6 +582,24 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
       }
     }
 
+    let finalSectionId = validatedData.sectionId || null;
+    if (!finalSectionId && validatedData.classId) {
+      const classSections = await prisma.section.findMany({
+        where: { classId: validatedData.classId, schoolId: context.schoolId },
+        include: {
+          _count: {
+            select: { academicRecords: true }
+          }
+        }
+      });
+      if (classSections.length > 0) {
+        const firstAvailable = classSections.find(
+          s => (s._count.academicRecords ?? 0) < (s.capacity ?? 30)
+        ) ?? classSections[0];
+        finalSectionId = firstAvailable.id;
+      }
+    }
+
     // 3. ATOMIC TRANSACTION (Sovereign Shield)
     const result = await prisma.$transaction(async (tx: any) => {
       // Create Student Profile
@@ -597,7 +615,7 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
           academic: {
             create: {
               schoolId: context.schoolId, branchId, academicYear: activeAY.id,
-              classId: validatedData.classId, sectionId: validatedData.sectionId,
+              classId: validatedData.classId, sectionId: finalSectionId,
               admissionDate: new Date(),
               penNumber: validatedData.penNumber,
               apaarId: validatedData.apaarId,
@@ -1291,6 +1309,17 @@ export async function updateStudentProfile(studentId: string, data: any) {
           where: { studentId },
           data: academicData
         });
+        const activeAY = await tx.academicYear.findFirst({
+          where: { schoolId: context.schoolId, isCurrent: true }
+        });
+        if (activeAY && academicData.sectionId !== undefined) {
+          await tx.studentAcademicYear.updateMany({
+            where: { studentId, academicYearId: activeAY.id },
+            data: {
+              sectionId: academicData.sectionId
+            }
+          });
+        }
       }
 
       return student;

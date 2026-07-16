@@ -19,7 +19,11 @@ export default async function ParentNotificationsPage() {
         <h1 className="text-2xl font-black tracking-tight">Notifications & Bulletins</h1>
         <p className="text-xs opacity-55 mt-1 font-semibold">Stay updated with official school communications, fee alerts, and transaction records</p>
       </div>
-      <ParentNotificationsHub initialNotifications={initialNotifications} />
+      <ParentNotificationsHub 
+        initialNotifications={initialNotifications} 
+        parentEmail={identity.email}
+        parentPhone={identity.phone}
+      />
     </div>
   );
 }

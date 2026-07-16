@@ -36,7 +36,9 @@ export const getSovereignIdentity = cache(async (): Promise<SovereignIdentity | 
             role: process.env.TEST_ROLE || "DEVELOPER",
             schoolId: process.env.TEST_SCHOOL_ID || "",
             branchId: process.env.TEST_BRANCH_ID || "",
-            isGlobalDev: process.env.TEST_GLOBAL_DEV === 'true'
+            isGlobalDev: process.env.TEST_GLOBAL_DEV === 'true',
+            email: process.env.TEST_EMAIL || "pavan@virtueschool.in",
+            name: process.env.TEST_NAME || "PAVAN KUMAR"
         };
     }
 

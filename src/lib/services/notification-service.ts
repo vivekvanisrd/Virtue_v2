@@ -8,6 +8,7 @@
 
 import nodemailer from "nodemailer";
 import prisma, { prismaBypass } from "@/lib/prisma";
+import crypto from "crypto";
 
 export interface NotificationPayload {
   to: string;
@@ -89,6 +90,8 @@ class EmailNotificationProvider implements INotificationProvider {
     const fromEmail = process.env.SMTP_USER || "office@virtueschool.in";
     const googleReviewUrl = process.env.GOOGLE_REVIEW_URL || "https://g.page/r/your-school-profile/review";
 
+    const logId = crypto.randomUUID();
+
     if (!this.transporter) {
       console.log(`\n--- [SMTP MOCK (CREDENTIALS MISSING)] ---`);
       console.log(`TO: ${payload.to}`);
@@ -101,6 +104,7 @@ class EmailNotificationProvider implements INotificationProvider {
         try {
           await prismaBypass.communicationLog.create({
             data: {
+              id: logId,
               schoolId: context.schoolId,
               branchId: context.branchId || null,
               sender: context.sender || fromEmail,
@@ -204,6 +208,9 @@ class EmailNotificationProvider implements INotificationProvider {
       <p style="font-size: 12px; font-style: italic; color: #555555; text-align: center; margin: 0;">
         Thank you for being a valued member of the <strong>Virtue School</strong> family. ❤️
       </p>
+
+      <!-- Transparent 1x1 Read Receipt tracking pixel -->
+      <img src="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/communication/track/${logId}/pixel.png" width="1" height="1" style="display:none;" />
     </div>
   </div>
 </body>
@@ -217,6 +224,7 @@ class EmailNotificationProvider implements INotificationProvider {
       if (context) {
         await prismaBypass.communicationLog.create({
           data: {
+            id: logId,
             schoolId: context.schoolId,
             branchId: context.branchId || null,
             sender: context.sender || fromEmail,
@@ -239,6 +247,7 @@ class EmailNotificationProvider implements INotificationProvider {
         try {
           await prismaBypass.communicationLog.create({
             data: {
+              id: logId,
               schoolId: context.schoolId,
               branchId: context.branchId || null,
               sender: context.sender || fromEmail,

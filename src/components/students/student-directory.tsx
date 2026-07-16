@@ -316,7 +316,7 @@ export function StudentDirectory() {
                                {student.academic?.class?.name || "Class X"}
                             </span>
                             <span className="text-[10px] font-black px-2.5 py-1 bg-slate-50 text-slate-500 border border-slate-100 rounded-lg uppercase tracking-widest">
-                               {student.academic?.section?.name || "Section A"}
+                               {student.academic?.section?.name ? `Section ${student.academic.section.name}` : "Unassigned"}
                             </span>
                          </div>
                       </div>

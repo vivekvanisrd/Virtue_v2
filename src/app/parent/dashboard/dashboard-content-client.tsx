@@ -240,7 +240,10 @@ export function DashboardContentClient({ siblings, activeStudentId, compliance, 
             </div>
           </div>
 
-          <button className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+          <button 
+            onClick={() => router.push(`/parent/dashboard/homework?studentId=${activeStudent.studentId}`)}
+            className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
             View All Assignments <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -265,7 +268,10 @@ export function DashboardContentClient({ siblings, activeStudentId, compliance, 
             </div>
           </div>
 
-          <button className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+          <button 
+            onClick={() => router.push(`/parent/dashboard/notifications`)}
+            className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
             View Bulletin Board <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -281,7 +287,10 @@ export function DashboardContentClient({ siblings, activeStudentId, compliance, 
             </p>
           </div>
 
-          <button className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+          <button 
+            onClick={() => router.push(`/parent/dashboard/feedback?studentId=${activeStudent.studentId}`)}
+            className="w-full py-3 bg-background hover:opacity-90 border border-border text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
             Submit Feedback <ChevronRight className="w-4 h-4" />
           </button>
         </div>

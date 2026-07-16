@@ -1,4 +1,9 @@
-- `[x]` Create server actions `getParentNotificationsAction`, `markParentNotificationAsReadAction`, and `getUnreadParentNotificationsCountAction` in `src/lib/actions/guardian-notification-actions.ts`.
-- `[x]` Create Next.js route page at `src/app/parent/dashboard/notifications/page.tsx`.
-- `[x]` Create client-side inbox component `ParentNotificationsHub.tsx` in `src/components/parent/`.
-- `[x]` Update parent portal sidebar layout `src/app/parent/dashboard/layout.tsx` to include the notifications navigation item and unread badge.
+# Task Checklist: Split Mailbox & Messaging Modules
+
+- [x] Update `guardian-notification-actions.ts` to add `sendParentChatAction()` server action
+- [x] Update `sendCustomEmailAction()` in `communication-actions.ts` to support CHAT types
+- [x] Add mode selector and split logic in `MailboxHub.tsx`
+- [x] Add mode selector and split logic in `ParentNotificationsHub.tsx`
+- [x] Verify everything compiles successfully with `npx tsc --noEmit`
+- [x] Add `getGuardianStudentTeachersAction` to `guardian-notification-actions.ts`
+- [x] Add Start New Chat button and modal to `ParentNotificationsHub.tsx`

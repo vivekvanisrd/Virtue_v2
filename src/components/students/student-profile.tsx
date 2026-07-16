@@ -8,6 +8,7 @@ import {
   ExternalLink, Loader2, TramFront, FileText, CheckCircle2, Clock, PlusCircle, Wallet, AlertCircle, Edit, Zap, Plus, Save
 } from "lucide-react";
 import { getStudentFullProfile, updateStudentProfile, uploadStudentDocument, getTCPrintData, processStudentExit, promoteStudentAction } from "@/lib/actions/student-actions";
+import { getSectionsByClass } from "@/lib/actions/reference-actions";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
 import { TCTemplate } from "./tc-template";
@@ -29,6 +30,25 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [tcPreviewData, setTCPreviewData] = useState<any>(null);
   const [showTCPreview, setShowTCPreview] = useState(false);
+  const [sectionsList, setSectionsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadSections() {
+      if (student?.academic?.classId) {
+        try {
+          const res = await getSectionsByClass(student.academic.classId, student.academic.branchId);
+          if (res.success && res.data) {
+            setSectionsList(res.data);
+          }
+        } catch (e) {
+          console.error("Failed to load sections for class:", e);
+        }
+      }
+    }
+    if (isEditing) {
+      loadSections();
+    }
+  }, [isEditing, student?.academic?.classId]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -307,6 +327,10 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   city: student.address?.city,
                   state: student.address?.state,
                   pinCode: student.address?.pinCode,
+                },
+                academic: {
+                  sectionId: student.academic?.sectionId || null,
+                  rollNumber: student.academic?.rollNumber || null
                 }
               })}
               disabled={isUpdating}
@@ -571,6 +595,10 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                             city: student.address?.city,
                             state: student.address?.state,
                             pinCode: student.address?.pinCode,
+                          },
+                          academic: {
+                            sectionId: student.academic?.sectionId || null,
+                            rollNumber: student.academic?.rollNumber || null
                           }
                         })}
                         disabled={isUpdating}
@@ -645,7 +673,46 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   ].map(item => (
                     <div key={item.label} className="bg-muted/50 p-3 rounded-lg border border-border">
                       <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">{item.label}</p>
-                      <p className="text-sm font-black text-foreground underline decoration-primary/20 decoration-2 underline-offset-4">{item.value}</p>
+                      {item.label === "Section" && isEditing ? (
+                        <select
+                          value={student.academic?.sectionId || ""}
+                          onChange={(e) => {
+                            const secId = e.target.value || null;
+                            const secName = sectionsList.find(s => s.id === secId)?.name || "";
+                            setStudent({
+                              ...student,
+                              academic: {
+                                ...student.academic,
+                                sectionId: secId,
+                                section: secId ? { id: secId, name: secName } : null
+                              }
+                            });
+                          }}
+                          className="w-full bg-background border border-border rounded px-2 py-0.5 mt-1 text-xs font-bold shadow-inner focus:outline-none"
+                        >
+                          <option value="">Select Section</option>
+                          {sectionsList.map(s => (
+                            <option key={s.id} value={s.id}>Section {s.name}</option>
+                          ))}
+                        </select>
+                      ) : item.label === "Roll Number" && isEditing ? (
+                        <input
+                          type="text"
+                          value={student.academic?.rollNumber || ""}
+                          onChange={(e) => {
+                            setStudent({
+                              ...student,
+                              academic: {
+                                ...student.academic,
+                                rollNumber: e.target.value
+                              }
+                            });
+                          }}
+                          className="w-full bg-background border border-border rounded px-2 py-0.5 mt-1 text-xs font-bold shadow-inner focus:outline-none"
+                        />
+                      ) : (
+                        <p className="text-sm font-black text-foreground underline decoration-primary/20 decoration-2 underline-offset-4">{item.value}</p>
+                      )}
                     </div>
                   ))}
                 </div>

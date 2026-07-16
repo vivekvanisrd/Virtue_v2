@@ -12,7 +12,8 @@ export async function getCommunicationLogsAction(filters?: { type?: string; reci
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId, email, staffId } = identity;
+    const { schoolId, branchId, email, staffId, role } = identity;
+    const isAdmin = ["OWNER", "DEVELOPER", "PRINCIPAL", "ADMIN"].includes(role);
 
     const logs = await prisma.communicationLog.findMany({
       where: {
@@ -25,7 +26,11 @@ export async function getCommunicationLogsAction(filters?: { type?: string; reci
             authorEmail: null,
             authorId: null,
             sender: { contains: email || "unknown-sender" }
-          }
+          },
+          ...(isAdmin ? [
+            { type: "CHAT" },
+            { recipient: { contains: "office@virtueschool.in" } }
+          ] : [])
         ],
         ...(filters?.type ? { type: filters.type } : {}),
         ...(filters?.recipient ? { recipient: { contains: filters.recipient, mode: 'insensitive' } } : {}),
@@ -53,6 +58,7 @@ export async function sendCustomEmailAction(data: {
   body: string; 
   isInternalOnly: boolean; 
   parentId?: string;
+  type?: string;
 }) {
   try {
     const identity = await getSovereignIdentity();
@@ -64,7 +70,7 @@ export async function sendCustomEmailAction(data: {
     }
 
     // Resolve targets
-    const recipients: { email: string; staffId?: string; name?: string | null }[] = [];
+    const recipients: { email: string; staffId?: string; name?: string | null; parentId?: string }[] = [];
 
     if (data.targetGroup === "MANUAL" || data.targetGroup === "STUDENT" || data.targetGroup === "STAFF") {
       const targetEmails = data.recipient.split(",").map(e => e.trim()).filter(e => e.includes("@"));
@@ -72,12 +78,34 @@ export async function sendCustomEmailAction(data: {
         throw new Error("INVALID_EMAIL: Please provide at least one valid recipient email address.");
       }
       for (const targetEmail of targetEmails) {
+        let cleanEmail = targetEmail;
+        let extractedName: string | null = null;
+
+        // Parse Name (email) format
+        const parenMatch = targetEmail.match(/^(.*?)\(([^)]+)\)$/);
+        if (parenMatch) {
+          extractedName = parenMatch[1].trim();
+          cleanEmail = parenMatch[2].trim();
+        }
+
         const matchedStaff = await prisma.staff.findFirst({
-          where: { schoolId, email: targetEmail },
+          where: { schoolId, email: cleanEmail },
           select: { id: true, firstName: true, lastName: true }
         });
         const staffName = matchedStaff ? `${matchedStaff.firstName} ${matchedStaff.lastName || ""}`.trim() : null;
-        recipients.push({ email: targetEmail, staffId: matchedStaff?.id, name: staffName });
+
+        const matchedGuardian = await prisma.guardian.findFirst({
+          where: { schoolId, email: cleanEmail },
+          select: { id: true, firstName: true, lastName: true }
+        });
+        const guardianName = matchedGuardian ? `${matchedGuardian.firstName} ${matchedGuardian.lastName || ""}`.trim() : null;
+
+        recipients.push({ 
+          email: cleanEmail, 
+          staffId: matchedStaff?.id, 
+          name: extractedName || staffName || guardianName || null,
+          parentId: matchedGuardian?.id
+        });
       }
     } else if (data.targetGroup.startsWith("CLASS_TEACHER_")) {
       const targetClassId = data.targetGroup.replace("CLASS_TEACHER_", "");
@@ -187,16 +215,21 @@ export async function sendCustomEmailAction(data: {
             status: "CONFIRMED",
             ...(branchId ? { branchId } : {})
           },
-          select: { email: true, firstName: true, lastName: true }
+          select: { id: true, email: true, firstName: true, lastName: true }
         });
-        students.forEach(s => {
+        for (const s of students) {
           if (s.email && s.email.includes("@")) {
+            const studentGuardian = await prisma.studentGuardian.findFirst({
+              where: { schoolId, studentId: s.id, isPrimaryGuardian: true },
+              select: { guardianId: true }
+            });
             recipients.push({ 
               email: s.email.trim(), 
-              name: `${s.firstName} ${s.lastName || ""}`.trim() 
+              name: `${s.firstName} ${s.lastName || ""}`.trim(),
+              parentId: studentGuardian?.guardianId || undefined
             });
           }
-        });
+        }
 
         // Fetch parent details
         const families = await prisma.familyDetail.findMany({
@@ -206,19 +239,35 @@ export async function sendCustomEmailAction(data: {
           },
           select: { fatherEmail: true, motherEmail: true, fatherName: true, motherName: true }
         });
-        families.forEach(f => {
+        for (const f of families) {
           if (f.fatherEmail && f.fatherEmail.includes("@")) {
-            recipients.push({ email: f.fatherEmail.trim(), name: f.fatherName?.trim() });
+            const matchedGuardian = await prisma.guardian.findFirst({
+              where: { schoolId, email: f.fatherEmail.trim() },
+              select: { id: true }
+            });
+            recipients.push({ 
+              email: f.fatherEmail.trim(), 
+              name: f.fatherName?.trim(),
+              parentId: matchedGuardian?.id
+            });
           }
           if (f.motherEmail && f.motherEmail.includes("@")) {
-            recipients.push({ email: f.motherEmail.trim(), name: f.motherName?.trim() });
+            const matchedGuardian = await prisma.guardian.findFirst({
+              where: { schoolId, email: f.motherEmail.trim() },
+              select: { id: true }
+            });
+            recipients.push({ 
+              email: f.motherEmail.trim(), 
+              name: f.motherName?.trim(),
+              parentId: matchedGuardian?.id
+            });
           }
-        });
+        }
       }
     }
 
     // De-duplicate recipients by email address
-    const uniqueRecipientsMap = new Map<string, { email: string; staffId?: string; name?: string | null }>();
+    const uniqueRecipientsMap = new Map<string, { email: string; staffId?: string; name?: string | null; parentId?: string }>();
     recipients.forEach(r => {
       uniqueRecipientsMap.set(r.email.toLowerCase(), r);
     });
@@ -249,9 +298,9 @@ export async function sendCustomEmailAction(data: {
               recipientId: r.staffId || null,
               subject: data.subject,
               body: data.body,
-              type: "CUSTOM",
+              type: data.type || "CUSTOM",
               status: "SUCCESS",
-              parentId: data.parentId || null
+              parentId: r.parentId || data.parentId || null
             }
           });
           successCount++;
@@ -272,7 +321,7 @@ export async function sendCustomEmailAction(data: {
               r.email,
               data.subject,
               data.body,
-              { schoolId, branchId: branchId || undefined, parentId: data.parentId, sender: senderDisplay, authorEmail: senderEmail }
+              { schoolId, branchId: branchId || undefined, parentId: r.parentId || data.parentId, sender: senderDisplay, authorEmail: senderEmail, type: data.type }
             );
             if (success) successCount++;
           } catch (err) {
@@ -409,21 +458,28 @@ export async function getInboxLogsAction() {
   try {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-    const { schoolId, branchId, email, staffId } = identity;
+    const { schoolId, branchId, email, staffId, role } = identity;
+    const isAdmin = ["OWNER", "DEVELOPER", "PRINCIPAL", "ADMIN"].includes(role);
 
     const logs = await prisma.communicationLog.findMany({
       where: {
         schoolId,
         ...(branchId ? { branchId } : {}),
         OR: [
-          { recipient: email },
-          ...(staffId ? [{ recipientId: staffId }] : [])
+          { recipient: { contains: email } },
+          ...(staffId ? [{ recipientId: staffId }] : []),
+          { authorEmail: email || "unknown-sender" },
+          ...(staffId ? [{ authorId: staffId }] : []),
+          ...(isAdmin ? [
+            { type: "CHAT" },
+            { recipient: { contains: "office@virtueschool.in" } }
+          ] : [])
         ]
       },
       orderBy: {
         createdAt: "desc"
       },
-      take: 100
+      take: 200
     });
 
     return { success: true, data: JSON.parse(JSON.stringify(logs)) };
@@ -454,7 +510,7 @@ export async function markNoticeAsReadAction(logId: string) {
       throw new Error("NOTICE_NOT_FOUND");
     }
 
-    const isRecipient = log.recipient === email || (staffId && log.recipientId === staffId);
+    const isRecipient = log.recipient.includes(email) || (staffId && log.recipientId === staffId ? true : false);
     if (!isRecipient) {
       throw new Error("UNAUTHORIZED_ACCESS: Recipient identity does not match this user.");
     }

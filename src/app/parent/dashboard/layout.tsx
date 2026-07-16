@@ -2,11 +2,11 @@ import React from "react";
 import { getGuardianIdentity } from "@/lib/auth/guardian-backbone";
 import { getGuardianSiblingsAction } from "@/lib/actions/guardian-auth-actions";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { LogOut, GraduationCap, Home, ShieldAlert, CreditCard, Bell } from "lucide-react";
+import { LogOut, GraduationCap, ShieldAlert } from "lucide-react";
 import { logoutGuardianAction } from "@/lib/actions/guardian-auth-actions";
 import { getUnreadParentNotificationsCountAction } from "@/lib/actions/guardian-notification-actions";
 import { PushNotificationRegistry } from "@/components/parent/PushNotificationRegistry";
+import { ParentSidebarNav } from "@/components/parent/ParentSidebarNav";
 
 export default async function ParentDashboardLayout({
   children,
@@ -36,26 +36,21 @@ export default async function ParentDashboardLayout({
       {/* Top Navbar */}
       <header className="bg-card border-b border-border/80 backdrop-blur-md sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-primary to-accent rounded-xl flex items-center justify-center text-primary-foreground shadow-lg">
-            <GraduationCap className="w-6 h-6" />
-          </div>
+          <GraduationCap className="w-8 h-8 text-primary animate-pulse" />
           <div>
-            <h1 className="text-lg font-black tracking-tight">PaVa-EDUX</h1>
-            <p className="text-[10px] opacity-60 font-bold uppercase tracking-wider">Parent Portal</p>
+            <span className="text-xs text-muted-foreground uppercase tracking-widest font-black">Virtue Sovereign</span>
+            <h1 className="text-base font-black tracking-tight leading-none mt-0.5">Parent Portal</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="hidden md:block text-right">
-            <p className="text-xs font-black">Welcome, {identity.name}</p>
-            <p className="text-[10px] opacity-60 font-bold">{identity.phone}</p>
-          </div>
-
+        <div className="flex items-center gap-4">
+          <span className="text-xs font-black tracking-wide bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-xl">
+            {identity.name}
+          </span>
           <form action={handleLogout}>
             <button
               type="submit"
-              className="p-2.5 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 text-rose-500 rounded-xl transition-all cursor-pointer"
-              title="Log Out"
+              className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 hover:border-rose-500/30 text-rose-400 rounded-xl transition-all flex items-center gap-2 font-bold text-xs"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -69,33 +64,7 @@ export default async function ParentDashboardLayout({
         <aside className="w-full md:w-64 bg-card/40 border-r border-border/40 p-6 flex flex-col gap-6">
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 block">Roster Navigation</label>
-            <nav className="space-y-1.5">
-              <Link
-                href="/parent/dashboard"
-                className="flex items-center gap-3 px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
-              >
-                <Home className="w-4 h-4 text-primary" /> Dashboard
-              </Link>
-              <Link
-                href="/parent/dashboard/fees"
-                className="flex items-center gap-3 px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
-              >
-                <CreditCard className="w-4 h-4 text-primary" /> Fees & Payments
-              </Link>
-              <Link
-                href="/parent/dashboard/notifications"
-                className="flex items-center justify-between px-4 py-3 bg-card border border-border/80 rounded-xl font-bold text-sm hover:border-primary/50 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <Bell className="w-4 h-4 text-primary" /> Notifications
-                </div>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 bg-rose-500 text-white rounded-full text-[10px] font-black tracking-wide animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
-            </nav>
+            <ParentSidebarNav unreadCount={unreadCount} />
           </div>
 
           {siblings.length === 0 && (

@@ -475,8 +475,25 @@ export function StudentForm() {
     else if (currentStep === 2) {
       if (refData.branches.length > 0) setValue("branchId", refData.branches[0].id);
       if (refData.academicYears.length > 0) setValue("academicYearId", refData.academicYears[0].id);
-      if (refData.classes.length > 0) setValue("classId", refData.classes[0].id);
-      if (sections.length > 0) setValue("sectionId", sections[0].id);
+      if (refData.classes.length > 0) {
+        const cid = refData.classes[0].id;
+        setValue("classId", cid);
+        const selectedBranchId = watch("branchId") || refData.branches[0]?.id;
+        getSectionsByClass(cid, selectedBranchId || undefined).then((res) => {
+          if (res.success && res.data) {
+            const sectionsList = res.data as any[];
+            setSections(sectionsList);
+            const firstAvailable = sectionsList.find(
+              s => (s.studentCount ?? 0) < (s.capacity ?? 30)
+            ) ?? sectionsList[0];
+            if (firstAvailable) {
+              setTimeout(() => {
+                setValue("sectionId", firstAvailable.id, { shouldValidate: true, shouldDirty: true });
+              }, 50);
+            }
+          }
+        });
+      }
       
       setValue("admissionDate", new Date().toISOString().split("T")[0]);
       setValue("admissionNumber", "ADM-" + randomString(5));
