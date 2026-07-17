@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import prisma, { prismaBypass } from "@/lib/prisma";
@@ -166,23 +165,22 @@ export async function POST(req: NextRequest) {
       razorpayShortUrl = `${baseUrl}/fee-pay/mock?token=${token}`;
     }
 
-    // Save billing link details in supabase database table
-    const { error: dbErr } = await supabase.from("fee_payment_links").insert({
-      token,
-      student_name: studentName.trim(),
-      parent_name: parentName.trim(),
-      phone: phone.trim(),
-      amount: parseFloat(amount),
-      description: description?.trim() || null,
-      pending_items: pendingItems?.trim() || null,
-      razorpay_link_id: razorpayLinkId,
-      razorpay_short_url: razorpayShortUrl,
-      status: "PENDING",
-      school_id: schoolId,
-      branch_id: branchId,
+    await prisma.fee_payment_links.create({
+      data: {
+        token,
+        student_name: studentName.trim(),
+        parent_name: parentName.trim(),
+        phone: phone.trim(),
+        amount: parseFloat(amount),
+        description: description?.trim() || null,
+        pending_items: pendingItems?.trim() || null,
+        razorpay_link_id: razorpayLinkId,
+        razorpay_short_url: razorpayShortUrl,
+        status: "PENDING",
+        school_id: schoolId,
+        branch_id: branchId,
+      }
     });
-
-    if (dbErr) throw new Error(dbErr.message);
 
     return NextResponse.json({
       success: true,

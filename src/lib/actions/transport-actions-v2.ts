@@ -2472,6 +2472,10 @@ export async function endTripAction(tripSessionId: string, tokenOverride?: strin
 
 export async function checkTripHeartbeatsAction() {
   try {
+    const identity = await getSovereignIdentity();
+    if (!identity) {
+      throw new Error("UNAUTHORIZED: Active session required to run offline check.");
+    }
     const now = new Date();
     // 1. Fetch active or stale trips
     const activeTrips = await prisma.tripSession.findMany({
@@ -2841,8 +2845,10 @@ export async function gpsPingAction(
 // ⚙️ SIMULATOR WORKER ACTIONS & SETTINGS (OWNER & DEVELOPER LOCKED)
 // ============================================================================
 
-export async function getTransportSettingsAction(schoolId: string) {
+export async function getTransportSettingsAction() {
   try {
+    const tenant = await getTenantFilter();
+    const schoolId = tenant.schoolId;
     let settings = await prisma.transportSettings.findUnique({
       where: { schoolId }
     });

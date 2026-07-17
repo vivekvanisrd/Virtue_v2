@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
+import prisma from "@/lib/prisma";
 
 const OWNER_PASSWORD = "owner@virtue2025";
 
@@ -12,20 +12,19 @@ export async function GET(req: NextRequest) {
     const branchId = req.headers.get("x-v2-branch-id");
     const role = req.headers.get("x-v2-role");
 
-    let queryBuilder = supabase.from("fee_payment_links").select("*");
-
+    const whereClause: any = {};
     if (schoolId) {
-      queryBuilder = queryBuilder.eq("school_id", schoolId);
+      whereClause.school_id = schoolId;
     }
     if (branchId && role !== "PLATFORM_ADMIN" && role !== "DEVELOPER" && role !== "OWNER") {
-      queryBuilder = queryBuilder.eq("branch_id", branchId);
+      whereClause.branch_id = branchId;
     }
 
-    const { data, error } = await queryBuilder.order("created_at", { ascending: false });
+    const records = await prisma.fee_payment_links.findMany({
+      where: whereClause,
+      orderBy: { created_at: "desc" }
+    });
 
-    if (error) throw new Error(error.message);
-
-    const records = data || [];
     const paid = records.filter((r: any) => r.status === "PAID");
     const summary = {
       total: records.length,

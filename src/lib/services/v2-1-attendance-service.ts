@@ -18,8 +18,15 @@ export class AttendanceServiceV21 {
    * @param statusOverride - If provided, skips automatic calculation and forces this status (e.g., LP, A, HD)
    */
   static async markAttendance(staffId: string, timestamp: Date = new Date(), source: "MANUAL" | "FACE" | "BIOMETRIC" = "MANUAL", statusOverride?: string) {
-    const today = new Date(timestamp);
-    today.setHours(0, 0, 0, 0);
+    // Zero-Drift local Indian calendar date (12:00:00 AM IST)
+    const localDateStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(timestamp);
+    const [mm, dd, yyyy] = localDateStr.split('/');
+    const today = new Date(`${yyyy}-${mm}-${dd}T00:00:00+05:30`);
 
     return await prisma.$transaction(async (tx) => {
       // 1. Fetch Staff with their specific policy or Branch default
@@ -52,7 +59,16 @@ export class AttendanceServiceV21 {
       if (!existing) {
         // --- CHECK-IN LOGIC ---
         const checkInTime = timestamp;
-        const startTotalMinutes = (checkInTime.getHours() * 60) + checkInTime.getMinutes();
+        
+        // Zero-Drift local Indian check-in time hours and minutes calculation
+        const localTimeStr = checkInTime.toLocaleTimeString("en-US", {
+          timeZone: "Asia/Kolkata",
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+        const [h, m] = localTimeStr.split(":");
+        const startTotalMinutes = parseInt(h, 10) * 60 + parseInt(m, 10);
         
         // Handle Policy Logic (if not explicitly overridden)
         let finalStatus = statusOverride;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabase } from "@/lib/supabase/client";
+import prisma from "@/lib/prisma";
 import { InventoryService } from "@/lib/services/inventory-service";
 
 export async function POST(req: NextRequest) {
@@ -62,13 +62,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (token && paymentId) {
-        await supabase.from("fee_payment_links").update({
-          status: "PAID",
-          razorpay_payment_id: paymentId,
-          paid_at: new Date().toISOString(),
-          payment_method: method,
-          payment_details: details,
-        }).eq("token", token);
+        await prisma.fee_payment_links.update({
+          where: { token },
+          data: {
+            status: "PAID",
+            razorpay_payment_id: paymentId,
+            paid_at: new Date(),
+            payment_method: method,
+            payment_details: details,
+          }
+        });
 
         try {
           await InventoryService.reserveInventoryForPayment(token);

@@ -26,7 +26,7 @@ export interface CalendarDay {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function toDateOnly(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d);
 }
 
 function isSecondSaturday(date: Date): boolean {

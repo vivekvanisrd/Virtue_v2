@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabase } from "@/lib/supabase/client";
+import prisma from "@/lib/prisma";
 import { razorpay } from "@/lib/razorpay";
 
 export async function GET(req: NextRequest) {
@@ -62,13 +62,16 @@ export async function GET(req: NextRequest) {
   }
 
   if (referenceId) {
-    await supabase.from("fee_payment_links").update({
-      status: "PAID",
-      razorpay_payment_id: paymentId,
-      paid_at: new Date().toISOString(),
-      payment_method: method,
-      payment_details: details,
-    }).eq("token", referenceId);
+    await prisma.fee_payment_links.update({
+      where: { token: referenceId },
+      data: {
+        status: "PAID",
+        razorpay_payment_id: paymentId,
+        paid_at: new Date(),
+        payment_method: method,
+        payment_details: details,
+      }
+    });
   }
 
   return NextResponse.redirect(`${thankYou}?status=success&token=${referenceId}`);

@@ -88,12 +88,48 @@ export async function POST(req: NextRequest) {
       const lines = rawBody.split(/\r?\n/);
       let successCount = 0;
 
-      // Determine punch date boundaries
-      const now = new Date();
-      const todayDate = new Date(now);
-      todayDate.setHours(0, 0, 0, 0);
-      const tomorrowDate = new Date(todayDate);
-      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      // 1. Parse and validate logs, extracting unique local dates
+      const parsedPunches = [];
+      const uniqueDates = new Set<string>();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        const parts = trimmed.split("\t");
+        if (parts.length < 2) continue;
+
+        const pin = parts[0].trim();
+        const timeStr = parts[1].trim();
+        const statusStr = parts[2] || "0";
+
+        // Parse Time: Expected format "YYYY-MM-DD HH:mm:ss"
+        const match = timeStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+        if (!match) {
+          console.warn(`[iClock CData] Skipping line due to malformed timestamp format: ${timeStr}`);
+          continue;
+        }
+
+        const [_, yyyy, mm, dd, hh, min, ss] = match;
+        // Parse time strictly in Asia/Kolkata timezone (India GMT+5:30)
+        const punchTime = new Date(`${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}+05:30`);
+        if (isNaN(punchTime.getTime())) {
+          console.warn(`[iClock CData] Invalid timestamp: ${timeStr} for PIN: ${pin}`);
+          continue;
+        }
+
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        uniqueDates.add(dateStr);
+
+        parsedPunches.push({
+          pin,
+          timeStr,
+          punchTime,
+          dateStr,
+          statusStr,
+          punchDate: new Date(`${dateStr}T00:00:00+05:30`)
+        });
+      }
 
       // Pre-fetch all active staff for this school to avoid N+1 queries
       const allStaff = await prismaBypass.staff.findMany({
@@ -107,40 +143,25 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Pre-fetch all attendance records for today to avoid N+1 queries
+      // Pre-fetch all attendance records matching the exact dates in the parsed batch
+      const dateArray = Array.from(uniqueDates).map(d => new Date(`${d}T00:00:00+05:30`));
       const allTodayAttendance = await prismaBypass.staffAttendance.findMany({
         where: {
           schoolId: device.schoolId,
-          date: { gte: todayDate, lt: tomorrowDate }
+          date: { in: dateArray }
         }
       });
       const attendanceMap = new Map();
       for (const att of allTodayAttendance) {
-        attendanceMap.set(att.staffId, att);
+        const dateKey = att.date.toISOString().split("T")[0];
+        attendanceMap.set(`${dateKey}_${att.staffId}`, att);
       }
 
       // Track unmapped punches to write them in a single batch at the end
       const unmappedPunchesToLog: any[] = [];
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        const parts = trimmed.split("\t");
-        if (parts.length < 2) continue;
-
-        const pin = parts[0].trim(); // Biometric ID / User ID
-        const timeStr = parts[1]; // Timestamp: YYYY-MM-DD HH:mm:ss
-        const statusStr = parts[2] || "0"; // Punch status code (e.g. 0=IN, 1=OUT)
-
-        // Parse Time
-        const punchTime = new Date(timeStr.replace(/-/g, "/")); // cross-env safe date parsing
-        if (isNaN(punchTime.getTime())) {
-          console.warn(`[iClock CData] Invalid timestamp: ${timeStr} for PIN: ${pin}`);
-          continue;
-        }
-
-        // Look up Staff in pre-fetched map
+      for (const punch of parsedPunches) {
+        const { pin, timeStr, punchTime, dateStr, statusStr, punchDate } = punch;
         const staff = staffMap.get(pin);
 
         if (!staff) {
@@ -162,7 +183,8 @@ export async function POST(req: NextRequest) {
         }
 
         // Fetch existing attendance from pre-fetched map
-        const existing = attendanceMap.get(staff.id);
+        const key = `${dateStr}_${staff.id}`;
+        const existing = attendanceMap.get(key);
 
         // Determine Action (IN vs OUT)
         let action: "IN" | "OUT" = "IN";
@@ -208,7 +230,7 @@ export async function POST(req: NextRequest) {
                   remarks: (existing.remarks || "") + ` | Biometric IN updated via device ${sn}`
                 }
               });
-              attendanceMap.set(staff.id, updated);
+              attendanceMap.set(key, updated);
             }
           } else {
             // Create brand new punch in
@@ -223,7 +245,7 @@ export async function POST(req: NextRequest) {
             const created = await prismaBypass.staffAttendance.create({
               data: {
                 staffId: staff.id,
-                date: todayDate,
+                date: punchDate,
                 status,
                 schoolId: device.schoolId,
                 branchId: device.branchId,
@@ -231,7 +253,7 @@ export async function POST(req: NextRequest) {
                 remarks: `Biometric IN via device ${sn}${isLate ? ` | LATE by ${checkInMinutes - lateThreshold} min` : ""}`
               }
             });
-            attendanceMap.set(staff.id, created);
+            attendanceMap.set(key, created);
           }
         } else {
           // action === "OUT"
@@ -244,13 +266,13 @@ export async function POST(req: NextRequest) {
                 remarks: (existing.remarks || "") + ` | Biometric OUT via device ${sn}`
               }
             });
-            attendanceMap.set(staff.id, updated);
+            attendanceMap.set(key, updated);
           } else {
             // Punched out without a punch-in, create a direct completed record
             const created = await prismaBypass.staffAttendance.create({
               data: {
                 staffId: staff.id,
-                date: todayDate,
+                date: punchDate,
                 status: "Present",
                 schoolId: device.schoolId,
                 branchId: device.branchId,
@@ -259,7 +281,7 @@ export async function POST(req: NextRequest) {
                 remarks: `Biometric OUT (no IN punch recorded) via device ${sn}`
               }
             });
-            attendanceMap.set(staff.id, created);
+            attendanceMap.set(key, created);
           }
         }
 

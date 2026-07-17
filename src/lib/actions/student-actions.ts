@@ -586,15 +586,22 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
     if (!finalSectionId && validatedData.classId) {
       const classSections = await prisma.section.findMany({
         where: { classId: validatedData.classId, schoolId: context.schoolId },
-        include: {
-          _count: {
-            select: { academicRecords: true }
+        select: {
+          id: true,
+          capacity: true,
+          academicRecords: {
+            where: {
+              student: {
+                status: { notIn: ["EXITED", "DRAFT"] }
+              }
+            },
+            select: { id: true }
           }
         }
       });
       if (classSections.length > 0) {
         const firstAvailable = classSections.find(
-          s => (s._count.academicRecords ?? 0) < (s.capacity ?? 30)
+          s => (s.academicRecords?.length ?? 0) < (s.capacity ?? 30)
         ) ?? classSections[0];
         finalSectionId = firstAvailable.id;
       }
@@ -680,7 +687,7 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
               branchId,
               academicYearId: activeAY.id,
               classId: validatedData.classId,
-              sectionId: validatedData.sectionId,
+              sectionId: finalSectionId,
               admissionNumber,
               studentCode,
               admissionDate: new Date(),
@@ -1419,6 +1426,14 @@ export async function processStudentExit(studentId: string, data: { reason: stri
           tcNumber: data.tcNumber,
           leavingReason: data.reason,
           promotionStatus: "Exited"
+        }
+      }),
+      prisma.studentTransport.updateMany({
+        where: { studentId, isDeleted: false },
+        data: {
+          isDeleted: true,
+          status: "Suspended",
+          deletedAt: new Date()
         }
       })
     ]);

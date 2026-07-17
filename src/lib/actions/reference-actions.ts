@@ -142,7 +142,14 @@ export async function getSectionsByClass(classId: string, formBranchId?: string)
                 id: true,
                 name: true,
                 capacity: true,
-                _count: { select: { academicRecords: true } }
+                academicRecords: {
+                    where: {
+                        student: {
+                            status: { notIn: ["EXITED", "DRAFT"] }
+                        }
+                    },
+                    select: { id: true }
+                }
             }
         });
 
@@ -153,7 +160,7 @@ export async function getSectionsByClass(classId: string, formBranchId?: string)
             id: s.id,
             name: s.name,
             capacity: (s.capacity as number) ?? 30,
-            studentCount: (s._count?.academicRecords as number) ?? 0
+            studentCount: s.academicRecords?.length ?? 0
         }));
         
         return { success: true, data: uniqueSections };

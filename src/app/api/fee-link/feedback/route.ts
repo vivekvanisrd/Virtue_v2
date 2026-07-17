@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -8,17 +7,19 @@ export async function POST(req: NextRequest) {
     if (!token || !rating) return NextResponse.json({ error: "Token and rating required" }, { status: 400 });
     if (!["GREAT", "OKAY", "POOR"].includes(rating)) return NextResponse.json({ error: "Invalid rating" }, { status: 400 });
 
-    const { data: record } = await supabase
-      .from("fee_payment_links")
-      .select("status, feedback_rating, razorpay_payment_id")
-      .eq("token", token)
-      .single();
+    const record = await prisma.fee_payment_links.findUnique({
+      where: { token },
+      select: { status: true, feedback_rating: true, razorpay_payment_id: true }
+    });
 
     if (!record) return NextResponse.json({ error: "Invalid token" }, { status: 404 });
     if (record.status !== "PAID") return NextResponse.json({ error: "Feedback only allowed after payment" }, { status: 400 });
 
     if (!record.feedback_rating) {
-      await supabase.from("fee_payment_links").update({ feedback_rating: rating, feedback_note: note?.trim() || null }).eq("token", token);
+      await prisma.fee_payment_links.update({
+        where: { token },
+        data: { feedback_rating: rating, feedback_note: note?.trim() || null }
+      });
     }
 
     // Look up the collection's receipt numbers associated with this payment ID

@@ -731,7 +731,10 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
 
     const collection = await prisma.collection.findUnique({
       where: { id: collectionId },
-      include: { journalEntry: { include: { lines: true } } }
+      include: {
+        journalEntry: { include: { lines: true } },
+        backboneAllocations: true // Load CollectionAllocation records
+      }
     });
 
     if (!collection || collection.schoolId !== context.schoolId) {
@@ -754,6 +757,54 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
       });
 
       if (!activeFY) throw new Error("No active financial year for reversal.");
+
+      // 1.5. REVERT INVOICE AND INVOICE ITEM ALLOCATIONS
+      if (collection.backboneAllocations && collection.backboneAllocations.length > 0) {
+        for (const alloc of collection.backboneAllocations) {
+          const amount = Number(alloc.amount);
+
+          // Revert Invoice Item Balance
+          await tx.feeInvoiceItem.update({
+            where: { id: alloc.invoiceItemId },
+            data: {
+              paidAmount: { decrement: amount },
+              balance: { increment: amount }
+            }
+          });
+
+          // Revert Main Invoice Balance
+          await tx.feeInvoice.update({
+            where: { id: alloc.invoiceId },
+            data: {
+              paidAmount: { decrement: amount },
+              balance: { increment: amount }
+            }
+          });
+        }
+
+        // Re-evaluate invoice statuses
+        const uniqueInvoiceIds = Array.from(new Set(collection.backboneAllocations.map(a => a.invoiceId)));
+        for (const invId of uniqueInvoiceIds) {
+          const updatedInv = await tx.feeInvoice.findUnique({
+            where: { id: invId }
+          });
+          if (updatedInv) {
+            const newBalance = Number(updatedInv.balance || 0);
+            const newPaidAmount = Number(updatedInv.paidAmount || 0);
+            let newStatus = "PENDING";
+            if (newBalance <= 0) {
+              newStatus = "PAID";
+            } else if (newPaidAmount > 0) {
+              newStatus = "PARTIALLY_PAID";
+            }
+
+            await tx.feeInvoice.update({
+              where: { id: invId },
+              data: { status: newStatus }
+            });
+          }
+        }
+      }
 
       // 2. CREATE REVERSING JOURNAL ENTRY (The Offset)
       if (collection.journalEntry) {
