@@ -132,7 +132,6 @@ export async function createStaffAction(data: any) {
             // Principals are spatially jailed to their OWN campus. 
             // If the form sends a missing or mismatched branch, we AUTO-REPAIR it.
             if (!data.branchId || data.branchId !== identity.branchId) {
-                console.log(`🛡️ [StaffActions] Identity sentinel: Force-lining branch ${identity.branchId} for ${identity.role}`);
                 data.branchId = identity.branchId;
             }
         }
@@ -490,13 +489,9 @@ export async function transferStaffBranchAction(staffId: string, targetBranchId:
     } catch(e: any) { return { success: false, error: e.message }; }
 }
 export async function updateStaffAction(staffId: string, data: any) {
-    console.log(`🧬 [StaffActions:updateStaffAction] Request initiated for staffId: ${staffId}`);
     try {
         const identity = await getSovereignIdentity();
-        console.log(`🧬 [StaffActions:updateStaffAction] Sovereign Identity:`, JSON.stringify(identity));
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
-
-        console.log(`🧬 [StaffActions:updateStaffAction] Incoming Form Data:`, JSON.stringify(data));
 
         if (data && data.role) {
             data.role = data.role.toUpperCase().replace(/\s+/g, '_');
@@ -506,10 +501,8 @@ export async function updateStaffAction(staffId: string, data: any) {
         const validated = staffOnboardingSchema.partial().safeParse(data);
         if (!validated.success) {
             const errorMsg = validated.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-            console.error(`❌ [StaffActions:updateStaffAction] Validation Failed: ${errorMsg}`, JSON.stringify(validated.error.issues));
             return { success: false, error: `VALIDATION_FAILED: ${errorMsg}` };
         }
-        console.log(`🧬 [StaffActions:updateStaffAction] Validation Succeeded.`);
 
         const schoolId = identity.schoolId;
 
@@ -517,7 +510,6 @@ export async function updateStaffAction(staffId: string, data: any) {
         const currentStaff = await prisma.staff.findUnique({
             where: { id: staffId, schoolId } // Rule 2.1: Always jail by schoolId
         });
-        console.log(`🧬 [StaffActions:updateStaffAction] Current DB record:`, currentStaff ? `Found (${currentStaff.firstName} ${currentStaff.lastName}, Role: ${currentStaff.role})` : "NOT FOUND");
 
         if (!currentStaff) throw new Error("STAFF_NOT_FOUND: Record does not exist in your institution.");
 
@@ -527,20 +519,17 @@ export async function updateStaffAction(staffId: string, data: any) {
                 throw new Error("ACCESS_DENIED: Principals are restricted to modifying staff within their own campus.");
             }
             if (!data.branchId || data.branchId !== identity.branchId) {
-                console.log(`🛡️ [StaffActions:updateStaffAction] Identity sentinel: Force-lining branch ${identity.branchId} for update`);
                 data.branchId = identity.branchId;
             }
         }
 
         // 3. Prevent Executive Role Escalation via standard form
         if (data.role && (data.role === "PRINCIPAL" || data.role === "OWNER") && currentStaff.role !== data.role) {
-             console.log(`🛡️ [StaffActions:updateStaffAction] Checking escalation from ${currentStaff.role} to ${data.role}`);
              if (identity.role !== "OWNER") {
                 throw new Error("ACCESS_DENIED: Only Owners can appoint or modify Executive roles.");
              }
         }
 
-        console.log(`🧬 [StaffActions:updateStaffAction] Starting multi-layer transaction...`);
         const result = await prisma.$transaction(async (tx: any) => {
             // A. Base Record Update (ID & School remain immutable)
             const staff = await tx.staff.update({
@@ -649,20 +638,15 @@ export async function updateStaffAction(staffId: string, data: any) {
                 }
             });
 
-            console.log(`🧬 [StaffActions:updateStaffAction] Transaction nested operations completed successfully.`);
             return staff;
         }, { timeout: 20000 });
 
-        console.log(`🧬 [StaffActions:updateStaffAction] Transaction committed successfully to DB. Result ID: ${result.id}`);
-        console.log(`🧬 [StaffActions:updateStaffAction] Calling revalidatePath...`);
         try {
             revalidatePath("/", "layout");
         } catch (e) {}
-        console.log(`🧬 [StaffActions:updateStaffAction] revalidatePath completed. Returning success.`);
         return { success: true, data: JSON.parse(JSON.stringify(result)) };
 
     } catch (e: any) {
-        console.error("❌ [StaffActions:updateStaffAction:UPDATE_STAFF_ERROR]", e);
         return { success: false, error: e.message };
     }
 }
@@ -719,7 +703,6 @@ export async function updateStaffRoleAction(staffId: string, newRole: string) {
         } catch (e) {}
         return { success: true, data: JSON.parse(JSON.stringify(staff)) };
     } catch (e: any) {
-        console.error("❌ [ROLE_UPDATE_ERROR]", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -793,7 +776,6 @@ export async function getStaffFinancialSummaryAction(staffId: string) {
             }))
         };
     } catch (e: any) {
-        console.error("❌ [FINANCIAL_SUMMARY_ERROR]", e.message);
         return { success: false, error: e.message || "INTERNAL_DATA_ERROR" };
     }
 }
@@ -846,7 +828,6 @@ export async function toggleStaffStatusAction(staffId: string) {
         } catch (e) {}
         return { success: true, status: newStatus };
     } catch (e: any) {
-        console.error("❌ [TOGGLE_STATUS_ERROR]", e.message);
         return { success: false, error: e.message };
     }
 }

@@ -97,7 +97,7 @@ export function DailyCollectionSummary() {
               </div>
               <div className="flex items-center gap-2">
                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                 <span className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Audited for FY 2023-24</span>
+                 <span className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Audited for FY <span className="text-foreground opacity-100">{data?.fyName || "Current FY"}</span></span>
               </div>
            </div>
            

@@ -59,15 +59,6 @@ export async function getAdmissionReferenceData() {
             })
         ]);
 
-        console.log("[DEBUG] Ref Data Success:", {
-            branches: branches.length,
-            academicYears: academicYears.length,
-            classes: classes.length,
-            feeSchedules: feeSchedules.length,
-            discountTypes: discountTypes.length,
-            schoolFound: !!school
-        });
-
         // 🛡️ Raw SQL Fallback: Fetch feeMasters directly to bypass Prisma client schema drift
         // This ensures that isActive, amount, description etc. are always returned correctly
         let feeMasters: any[] = [];

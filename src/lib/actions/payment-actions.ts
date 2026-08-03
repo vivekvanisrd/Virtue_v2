@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import prisma, { prismaBypass } from "@/lib/prisma";
 import { razorpay } from "@/lib/razorpay";
 import { getSovereignIdentity } from "../auth/backbone";
 
@@ -123,7 +123,7 @@ export async function saveReceiptFeedbackAction(
       }
     };
 
-    await prisma.collection.update({
+    await prismaBypass.collection.update({
       where: { id: collection.id },
       data: {
         allocatedTo: updatedAllocated

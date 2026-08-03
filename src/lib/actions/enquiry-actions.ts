@@ -404,7 +404,7 @@ export async function convertEnquiryToStudentAction(enquiryId: string) {
             });
 
             // B. Migrate Lead Payments to Student Profile
-            await tx.collection.updateMany({
+            await prismaBypass.collection.updateMany({
                 where: { studentId: enquiryId, schoolId: context.schoolId },
                 data: { 
                     studentId: newStu.id, 

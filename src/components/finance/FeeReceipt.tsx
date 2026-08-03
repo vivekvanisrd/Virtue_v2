@@ -286,6 +286,20 @@ export function FeeReceipt({ student, receipt, schoolInfo }: FeeReceiptProps) {
         </div>
       )}
 
+      {/* 📌 PARTIAL PAYMENT BALANCE NOTICE */}
+      {Number(receipt.allocatedTo?.remainingTermBalance) > 0 && (
+        <div className="mb-10 bg-amber-50/50 p-6 rounded-[2.5rem] border border-amber-200 flex items-center justify-between shadow-inner">
+          <div className="space-y-1">
+            <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">Part Payment Notice</p>
+            <p className="text-xs font-bold text-amber-900">This receipt reflects a partial settlement towards installment dues.</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">Remaining Term Due</p>
+            <p className="text-xl font-black text-amber-700 tracking-tighter italic">{formatCurrency(receipt.allocatedTo.remainingTermBalance)}</p>
+          </div>
+        </div>
+      )}
+
       {/* Ledger Table */}
       <div className="mb-12">
         <table className="w-full">

@@ -289,7 +289,6 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
             }, { timeout: 10000 }); // Fast 10s per-person timeout
 
         } catch (err: any) {
-            console.warn(`⚠️ Row failed: ${err.message}`);
             result.errors.push({
                 row: rowId,
                 name: `${data.firstName} ${data.lastName}`,
@@ -315,7 +314,6 @@ export async function importStaffEliteBulkAction(records: any[]): Promise<BulkIm
     return result;
 
   } catch (e: any) {
-    console.error("❌ [SYSTEM_CRITICAL_FAILURE]", e.message);
     return { ...result, success: false, errors: [{ row: 0, name: "System", reason: e.message }] };
   }
 }

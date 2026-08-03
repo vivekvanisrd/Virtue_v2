@@ -286,47 +286,53 @@ export async function changePasswordAction(data: ChangePasswordPayload) {
                 process.env.SKIP_TENANCY = originalSkip;
             }
 
-            // Validate onboarding details
-            if (!data.onboarding) {
-                return { success: false, error: "Onboarding profile details are required." };
-            }
+            // ── GRACE PERIOD LOGIC ──────────────────────────────────────────
+            // Staff have 60 days from account creation to complete their profile.
+            // On first login we only enforce: username + new password.
+            // Everything else (phone, DOB, bank, Aadhaar) is optional during grace.
+            // After 60 days, middleware will redirect them back to complete it.
+            const ob: {
+                firstName?: string; lastName?: string; middleName?: string;
+                phone?: string; email?: string; dob?: string; gender?: string; address?: string;
+                aadhaarNumber?: string; panNumber?: string;
+                accountName?: string; accountNumber?: string; ifscCode?: string; bankName?: string;
+            } = data.onboarding || {};
 
-            const ob = data.onboarding;
+            // Only name is always enforced (it's pre-filled anyway from import)
             if (!ob.firstName || ob.firstName.trim().length === 0) {
                 return { success: false, error: "First Name is required." };
             }
             if (!ob.lastName || ob.lastName.trim().length === 0) {
                 return { success: false, error: "Last Name is required." };
             }
-            if (!ob.phone || !/^\d{10}$/.test(ob.phone.trim())) {
+
+            // Phone — optional during grace, validate format only if provided
+            if (ob.phone && !/^\d{10}$/.test(ob.phone.trim())) {
                 return { success: false, error: "Phone number must be exactly 10 digits." };
             }
-            if (!ob.dob) {
-                return { success: false, error: "Date of Birth is required." };
-            }
-            if (!ob.gender) {
-                return { success: false, error: "Gender is required." };
-            }
-            if (!ob.address || ob.address.trim().length === 0) {
-                return { success: false, error: "Residential Address is required." };
-            }
-            if (!ob.aadhaarNumber || !/^\d{12}$/.test(ob.aadhaarNumber.trim())) {
+
+            // Aadhaar — optional during grace, validate format only if provided
+            if (ob.aadhaarNumber && !/^\d{12}$/.test(ob.aadhaarNumber.trim())) {
                 return { success: false, error: "Aadhaar number must be exactly 12 digits." };
             }
+
+            // PAN — optional always, validate format only if provided
             if (ob.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(ob.panNumber.trim())) {
                 return { success: false, error: "PAN number must be in a valid format (e.g. ABCDE1234F)." };
             }
-            if (!ob.accountName || ob.accountName.trim().length === 0) {
-                return { success: false, error: "Bank Account Holder Name is required." };
-            }
-            if (!ob.accountNumber || ob.accountNumber.trim().length < 5) {
-                return { success: false, error: "Bank Account Number is invalid." };
-            }
-            if (!ob.ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(ob.ifscCode.trim())) {
-                return { success: false, error: "IFSC code must be valid (11 characters, e.g. SBIN0001234)." };
-            }
-            if (!ob.bankName || ob.bankName.trim().length === 0) {
-                return { success: false, error: "Bank Name is required." };
+
+            // Bank — validate only if at least one bank field was filled in
+            const hasBankData = ob.accountNumber || ob.ifscCode || ob.bankName;
+            if (hasBankData) {
+                if (!ob.accountNumber || ob.accountNumber.trim().length < 5) {
+                    return { success: false, error: "Bank Account Number is invalid." };
+                }
+                if (!ob.ifscCode || !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(ob.ifscCode.trim())) {
+                    return { success: false, error: "IFSC code must be valid (11 characters, e.g. SBIN0001234)." };
+                }
+                if (!ob.bankName || ob.bankName.trim().length === 0) {
+                    return { success: false, error: "Bank Name is required when providing bank details." };
+                }
             }
 
             // Execute transaction
@@ -354,18 +360,19 @@ export async function changePasswordAction(data: ChangePasswordPayload) {
                         employeeCategory = "SUPPORT";
                     }
 
-                    // 1. Update Staff Base
+                    // 1. Update Staff Base (always save name/username; others only if provided)
                     await tx.staff.update({
                         where: { id: identity.staffId },
                         data: {
                             firstName: ob.firstName.trim(),
                             lastName: ob.lastName.trim(),
                             middleName: ob.middleName?.trim() || null,
-                            phone: ob.phone.trim(),
-                            email: ob.email?.trim().toLowerCase() || null,
-                            dob: new Date(ob.dob),
-                            gender: ob.gender,
-                            address: ob.address.trim(),
+                            // Only overwrite if provided during grace period
+                            ...(ob.phone?.trim() && { phone: ob.phone.trim() }),
+                            ...(ob.email?.trim() && { email: ob.email.trim().toLowerCase() }),
+                            ...(ob.dob && { dob: new Date(ob.dob) }),
+                            ...(ob.gender && { gender: ob.gender }),
+                            ...(ob.address?.trim() && { address: ob.address.trim() }),
                             username: cleanUser,
                             ...(newHash && { passwordHash: newHash }),
                             onboardingStatus: "JOINED",
@@ -374,41 +381,45 @@ export async function changePasswordAction(data: ChangePasswordPayload) {
                         }
                     });
 
-                    // 2. Upsert Statutory Details
-                    await tx.staffStatutory.upsert({
-                        where: { staffId: identity.staffId },
-                        create: {
-                            staffId: identity.staffId,
-                            aadhaarNumber: ob.aadhaarNumber.trim(),
-                            panNumber: ob.panNumber?.trim().toUpperCase() || null,
-                            schoolId: currentStaff.schoolId,
-                            branchId: currentStaff.branchId,
-                        },
-                        update: {
-                            aadhaarNumber: ob.aadhaarNumber.trim(),
-                            panNumber: ob.panNumber?.trim().toUpperCase() || null,
-                        }
-                    });
+                    // 2. Upsert Statutory Details (only if Aadhaar or PAN was provided)
+                    if (ob.aadhaarNumber || ob.panNumber) {
+                        await tx.staffStatutory.upsert({
+                            where: { staffId: identity.staffId },
+                            create: {
+                                staffId: identity.staffId,
+                                aadhaarNumber: ob.aadhaarNumber?.trim() || null,
+                                panNumber: ob.panNumber?.trim().toUpperCase() || null,
+                                schoolId: currentStaff.schoolId,
+                                branchId: currentStaff.branchId,
+                            },
+                            update: {
+                                aadhaarNumber: ob.aadhaarNumber?.trim() || null,
+                                panNumber: ob.panNumber?.trim().toUpperCase() || null,
+                            }
+                        });
+                    }
 
-                    // 3. Upsert Bank Details
-                    await tx.staffBank.upsert({
-                        where: { staffId: identity.staffId },
-                        create: {
-                            staffId: identity.staffId,
-                            accountName: ob.accountName.trim(),
-                            accountNumber: ob.accountNumber.trim(),
-                            ifscCode: ob.ifscCode.trim().toUpperCase(),
-                            bankName: ob.bankName.trim(),
-                            schoolId: currentStaff.schoolId,
-                            branchId: currentStaff.branchId,
-                        },
-                        update: {
-                            accountName: ob.accountName.trim(),
-                            accountNumber: ob.accountNumber.trim(),
-                            ifscCode: ob.ifscCode.trim().toUpperCase(),
-                            bankName: ob.bankName.trim(),
-                        }
-                    });
+                    // 3. Upsert Bank Details (only if account number was provided)
+                    if (hasBankData && ob.accountNumber?.trim()) {
+                        await tx.staffBank.upsert({
+                            where: { staffId: identity.staffId },
+                            create: {
+                                staffId: identity.staffId,
+                                accountName: ob.accountName?.trim() || `${ob.firstName} ${ob.lastName}`,
+                                accountNumber: ob.accountNumber.trim(),
+                                ifscCode: ob.ifscCode.trim().toUpperCase(),
+                                bankName: ob.bankName.trim(),
+                                schoolId: currentStaff.schoolId,
+                                branchId: currentStaff.branchId,
+                            },
+                            update: {
+                                accountName: ob.accountName?.trim() || `${ob.firstName} ${ob.lastName}`,
+                                accountNumber: ob.accountNumber.trim(),
+                                ifscCode: ob.ifscCode.trim().toUpperCase(),
+                                bankName: ob.bankName.trim(),
+                            }
+                        });
+                    }
                 });
             } finally {
                 process.env.SKIP_TENANCY = originalSkip;
@@ -443,8 +454,7 @@ export async function changePasswordAction(data: ChangePasswordPayload) {
         return { success: true };
 
     } catch (error: any) {
-        console.error("❌ [CHANGE_PASSWORD] Error:", error.message);
-        return { success: false, error: "Failed to update profile onboarding. Please try again." };
+        return { success: false, error: "Failed to update profile. Please try again." };
     }
 }
 

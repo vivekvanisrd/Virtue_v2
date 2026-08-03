@@ -251,14 +251,19 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
 
                     // 🔒 LOCKDOWN: Audit & Financial Immutability
                     if (['ActivityLog', 'FinancialAuditLog', 'JournalEntry', 'Collection', 'JournalLine'].includes(model)) {
-                        if (['update', 'delete', 'updateMany', 'deleteMany', 'upsert'].includes(operation)) {
-                            // Immutability is Absolute for Financial Records
+                        // Deletion of financial transactions is strictly forbidden (Immutability Policy)
+                        if (['delete', 'deleteMany'].includes(operation)) {
                             if (['JournalEntry', 'Collection', 'JournalLine'].includes(model)) {
                                 throw new Error(`SECURITY_VIOLATION: NON_EDITABLE_RECORD. Financial transactions are immutable and cannot be modified or removed. Use Reversals for corrections.`);
                             }
-                            
+                        }
+                        // Journal Entries & Lines are fully read-only; Collections allow status/allocation updates via system
+                        if (['update', 'updateMany', 'upsert'].includes(operation)) {
+                            if (['JournalEntry', 'JournalLine'].includes(model)) {
+                                throw new Error(`SECURITY_VIOLATION: NON_EDITABLE_RECORD. Financial transactions are immutable and cannot be modified or removed. Use Reversals for corrections.`);
+                            }
                             // Audit logs are read-only for standard institutional roles
-                            if (tenant?.role !== 'PLATFORM_ADMIN' && tenant?.role !== 'DEVELOPER') {
+                            if (['ActivityLog', 'FinancialAuditLog'].includes(model) && tenant?.role !== 'PLATFORM_ADMIN' && tenant?.role !== 'DEVELOPER') {
                                 throw new Error(`SECURITY_VIOLATION: Forensic audit logs are read-only for ${tenant?.role}.`);
                             }
                         }

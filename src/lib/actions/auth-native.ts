@@ -89,7 +89,9 @@ export async function signInAction(data: { identifier: string; password: string 
             role: staff.role,
             schoolId: staff.schoolId,
             branchId: staff.branchId,
-            onboardingStatus: staff.onboardingStatus
+            onboardingStatus: staff.onboardingStatus,
+            // Grace period: 60 days from account creation to complete profile
+            profileDeadline: new Date((staff as any).createdAt).getTime() + (60 * 24 * 60 * 60 * 1000)
         })
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()
@@ -173,7 +175,8 @@ export async function refreshSessionAction() {
             role: staff.role,
             schoolId: staff.schoolId,
             branchId: staff.branchId,
-            onboardingStatus: staff.onboardingStatus
+            onboardingStatus: staff.onboardingStatus,
+            profileDeadline: new Date((staff as any).createdAt).getTime() + (60 * 24 * 60 * 60 * 1000)
         })
             .setProtectedHeader({ alg: "HS256" })
             .setIssuedAt()

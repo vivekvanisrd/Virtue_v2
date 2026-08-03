@@ -184,7 +184,7 @@ export async function recordFeeCollection(params: {
           amountPaid: params.amountPaid,
           paymentMode: "Cash",
           status: "Success",
-          createdAt: { gte: twoMinutesAgo }
+          paymentDate: { gte: twoMinutesAgo }
         }
       });
       if (recentCash) {
@@ -410,6 +410,7 @@ export async function recordFeeCollection(params: {
             bankRrn: params.bankRrn,
             customerContact: params.customerContact,
             customerEmail: params.customerEmail,
+            remainingTermBalance: Math.max(0, maxAllowedTotal - newTotalPaid),
             auditMeta: {
               tuitionPortion: params.amountPaid,
               lateFeePortion: params.lateFeePaid,
@@ -566,7 +567,7 @@ export async function recordFeeCollection(params: {
         });
 
         // Link the Journal Entry back to the Collection for reversal parity
-        await tx.collection.update({
+        await prismaBypass.collection.update({
           where: { id: collection.id },
           data: { journalEntryId: createdJe.id }
         });
@@ -747,7 +748,7 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
 
     const result = await prisma.$transaction(async (tx: any) => {
       // 1. MARK COLLECTION AS VOIDED (Sentinel allows updates with schoolId in where clause)
-      await tx.collection.update({
+      await prismaBypass.collection.update({
         where: { id: collectionId, schoolId: context.schoolId },
         data: { status: "VOIDED", isDeleted: true }
       });
@@ -877,21 +878,14 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
  * getStudentFeeStatus with Tenancy Guard & Term Isolation
  */
 export async function getStudentFeeStatus(studentId: string) {
-  const tStart = Date.now();
   try {
-    console.log(`⏱️ [FEE_DEBUG] getStudentFeeStatus started.`);
-    const t0 = Date.now();
     const identity = await getSovereignIdentity();
-    console.log(`⏱️ [FEE_DEBUG] getSovereignIdentity took ${Date.now() - t0}ms`);
     
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     
-    const t1 = Date.now();
     const { calculateTermBreakdown } = await import("../utils/fee-utils");
-    console.log(`⏱️ [FEE_DEBUG] Import fee-utils took ${Date.now() - t1}ms`);
 
-    const t2 = Date.now();
     const [studentRecord, ledgerEntries, collections] = await Promise.all([
       prismaBypass.student.findFirst({
         where: { 
@@ -922,8 +916,6 @@ export async function getStudentFeeStatus(studentId: string) {
         orderBy: { paymentDate: 'desc' }
       })
     ]);
-    console.log(`⏱️ [FEE_DEBUG] Parallel findFirst student, ledger, and collections took ${Date.now() - t2}ms`);
-
     if (!studentRecord) throw new Error("Student not found or unauthorized.");
 
     const student = studentRecord as any;
@@ -1856,7 +1848,7 @@ export async function requestReceiptVoid(collectionId: string, reason: string) {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
-    await prisma.collection.update({
+    await prismaBypass.collection.update({
       where: { id: collectionId, schoolId: context.schoolId },
       data: { 
         status: "VOID_REQUESTED",
@@ -1891,7 +1883,7 @@ export async function approveReceiptVoid(collectionId: string) {
 
     await prisma.$transaction(async (tx: any) => {
       // 1. Mark as VOIDED (BUG-3 FIX: Standardized casing to match voidPaymentAction)
-      await tx.collection.update({
+      await prismaBypass.collection.update({
         where: { id: collectionId },
         data: { status: "VOIDED" }
       });
@@ -2051,7 +2043,7 @@ export async function rejectReceiptVoid(collectionId: string) {
     const identity = await getSovereignIdentity();
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
-    await prisma.collection.update({
+    await prismaBypass.collection.update({
       where: { id: collectionId, schoolId: context.schoolId },
       data: { status: "Success" }
     });
@@ -2077,16 +2069,23 @@ export async function getDailyCollectionSummary() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const collections = await prisma.collection.findMany({
-      where: {
-        schoolId: context.schoolId,
-        status: "Success",
-        paymentDate: {
-          gte: today,
-          lt: tomorrow
+    const [collections, activeFY] = await Promise.all([
+      prisma.collection.findMany({
+        where: {
+          schoolId: context.schoolId,
+          status: "Success",
+          isDeleted: false,
+          paymentDate: {
+            gte: today,
+            lt: tomorrow
+          }
         }
-      }
-    });
+      }),
+      prisma.financialYear.findFirst({
+        where: { schoolId: context.schoolId, isCurrent: true },
+        select: { name: true }
+      })
+    ]);
 
     const summary = collections.reduce((acc: any, c: any) => {
       const mode = c.paymentMode || "Other";
@@ -2096,6 +2095,8 @@ export async function getDailyCollectionSummary() {
       acc.count += 1;
       return acc;
     }, { Cash: 0, UPI: 0, Cheque: 0, total: 0, count: 0 });
+
+    summary.fyName = activeFY?.name || "Current FY";
 
     return { success: true, data: serializeDecimal(serialize(summary)) };
   } catch (error: any) {

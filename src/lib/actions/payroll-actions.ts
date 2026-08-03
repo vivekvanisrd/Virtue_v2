@@ -384,7 +384,6 @@ export async function savePayrollDraftAction(payrollRunId: string, slipsUpdates:
 
     return { success: true, message: `Draft saved securely. Total Extracted Net: ${totalNet}` };
   } catch (error: any) {
-    console.error("Save Draft Error:", error);
     return { success: false, error: error.message };
   }
 }
@@ -498,7 +497,6 @@ export async function finalizePayrollAction(payrollRunId: string) {
     revalidatePath("/dashboard");
     return { success: true, data: serializeDecimal(result) };
   } catch (error: any) {
-    console.error("Disbursement Error:", error);
     return { success: false, error: error.message };
   }
 }
@@ -703,7 +701,6 @@ export async function exportBankCSVAction(payrollRunId: string, format: "GENERIC
 
     return { success: true, csvData };
   } catch (error: any) {
-    console.error("CSV Export Bank Mapper Error:", error);
     return { success: false, error: error.message };
   }
 }

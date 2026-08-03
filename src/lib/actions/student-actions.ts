@@ -1595,11 +1595,9 @@ export async function getStudentHubStats() {
  * Standalone session-free logic to avoid getTenantContext restrictions.
  */
 export async function publicSubmitEnquiryAction(formData: any) {
-  console.log("🔵 DEBUG: publicSubmitEnquiryAction received raw data:", formData);
   try {
     const { publicEnquirySchema } = await import("@/types/student");
     const cleanedData = formDataCleaner(formData);
-    console.log("🔵 DEBUG: data after formDataCleaner:", cleanedData);
     
     // 1. Resolve Branch Identity (PRIORITY: explicitly passed branchId)
     // We use the full unique branch ID to prevent school-to-school leakage
@@ -1608,8 +1606,6 @@ export async function publicSubmitEnquiryAction(formData: any) {
       return { success: false, error: "Missing Branch Identification (ID)." };
     }
 
-    console.log("🔵 DEBUG: Resolving branch context with ID:", branchId);
-
     const branch = await prisma.branch.findUnique({
       where: { id: branchId },
       include: {
@@ -1617,16 +1613,12 @@ export async function publicSubmitEnquiryAction(formData: any) {
       }
     });
 
-    console.log("🔵 DEBUG: Branch lookup result:", branch);
-
     if (!branch) {
-      console.warn("🔴 DEBUG ERROR: Branch not found for ID:", branchId);
       return { success: false, error: `Invalid branch identification: ${branchId}` };
     }
 
     // 2. Validate with Lean Public Schema
     const validatedData = publicEnquirySchema.parse(cleanedData);
-    console.log("🔵 DEBUG: data after Zod parse:", validatedData);
 
     const schoolId = branch.schoolId;
 
@@ -1636,15 +1628,10 @@ export async function publicSubmitEnquiryAction(formData: any) {
       select: { id: true, name: true }
     });
 
-    console.log("🔵 DEBUG: Active Academic Year lookup result:", activeAY);
-
     if (!activeAY) {
-      console.warn("🔴 DEBUG ERROR: No active academic year found for schoolId:", schoolId);
       return { success: false, error: "Enrollment is currently closed for this branch." };
     }
 
-    // 4. Atomic Transaction for Enquiry Record (CRM Staging)
-    console.log("🔵 DEBUG: Starting database transaction for Enquiry...");
     const enquiry = await prisma.enquiry.create({
       data: {
         schoolId,
@@ -1661,8 +1648,6 @@ export async function publicSubmitEnquiryAction(formData: any) {
         source: "Public Portal"
       }
     });
-
-    console.log("✅ DEBUG: Enquiry created successfully:", enquiry.id);
 
     return { 
       success: true, 
@@ -1682,8 +1667,6 @@ export async function publicSubmitEnquiryAction(formData: any) {
         const path = i.path ? i.path.join(".") : "unknown";
         return `[${path}]: ${i.message}`;
       }).join("; ");
-      
-      console.warn("🔴 DEBUG: Zod Validation Issues:", messages);
       return { success: false, error: `Validation Error: ${messages}` };
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AlertTriangle, Wallet, ArrowRight, ShieldAlert, CheckCircle2, User, ReceiptText, Settings2 } from "lucide-react";
+import { AlertTriangle, Wallet, ArrowRight, ShieldAlert, CheckCircle2, User, ReceiptText, Settings2, Loader2, Landmark, TrendingUp, X } from "lucide-react";
 import { FeeCollectionForm } from "../finance/FeeCollectionForm";
 import { FeeStructureManager } from "../finance/FeeStructureManager";
 import { DailyCollectionSummary } from "../finance/DailyCollectionSummary";
@@ -17,6 +17,7 @@ import {
   getPendingVoidRequests, 
   getCollectionHistory 
 } from "@/lib/actions/finance-actions";
+import { getManagementFinancialsAction } from "@/lib/actions/financial-analytics-actions";
 import { formatCurrency } from "@/lib/utils/fee-utils";
 import { cn } from "@/lib/utils";
 
@@ -29,16 +30,22 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
   const [leakage, setLeakage] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [voids, setVoids] = useState<any[]>([]);
+  const [resolvedCount, setResolvedCount] = useState<number | null>(null);
+  const [auditData, setAuditData] = useState<any>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
   const { openTab } = useTabs();
 
   useEffect(() => {
     async function loadAudit() {
-      const [report, pendingVoids] = await Promise.all([
+      const [report, pendingVoids, history] = await Promise.all([
         getRevenueLeakageReport(),
-        getPendingVoidRequests()
+        getPendingVoidRequests(),
+        getCollectionHistory(500)
       ]);
       if (report.success) setLeakage(report.data);
       if (pendingVoids.success) setVoids(pendingVoids.data);
+      if (history.success) setResolvedCount((history.data as any[]).filter((c: any) => c.status === "Success").length);
     }
     if (!tabId || tabId === "finance") loadAudit();
   }, [tabId]);
@@ -65,6 +72,15 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
        component: "Students",
        params: { studentId }
     });
+  };
+
+  const handleRunSafetyAudit = async () => {
+    if (showAudit && auditData) { setShowAudit(false); return; }
+    setAuditLoading(true);
+    setShowAudit(true);
+    const res = await getManagementFinancialsAction();
+    if (res.success) setAuditData(res.data);
+    setAuditLoading(false);
   };
 
   // Detect if we should FORCE the Fee Collection form (DeepLink Mode)
@@ -174,7 +190,7 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
               <div className="space-y-4">
                 <div className="flex justify-between items-end border-b border-slate-50 pb-4">
                    <span className="text-xs font-bold opacity-40">Resolved Collections</span>
-                   <span className="text-2xl font-black">214</span>
+                   <span className="text-2xl font-black">{resolvedCount !== null ? resolvedCount : "—"}</span>
                 </div>
                 <div className="flex justify-between items-end border-b border-slate-50 pb-4 relative group">
                    <span className="text-xs font-bold opacity-40">Void Requests</span>
@@ -185,13 +201,93 @@ export function FinanceContent({ tabId, params }: FinanceContentProps) {
               </div>
            </div>
 
-           <button className="w-full mt-8 py-5 bg-muted rounded-[2rem] text-[10px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-primary hover:text-white transition-all">
-              Run Safety Audit
+           <button onClick={handleRunSafetyAudit} disabled={auditLoading} className="w-full mt-8 py-5 bg-muted rounded-[2rem] text-[10px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2 disabled:cursor-wait">
+              {auditLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+              {showAudit && auditData ? "Hide Audit" : "Run Safety Audit"}
            </button>
         </div>
       </div>
 
+      {/* Safety Audit Results Panel */}
+      {showAudit && (
+        <div className="bg-slate-950 rounded-[3rem] p-10 space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl flex items-center justify-center">
+                  <ShieldAlert className="w-6 h-6 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-white tracking-tight">Safety Audit Report</h3>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Live Institutional Financial Snapshot</p>
+                </div>
+              </div>
+              <button onClick={() => setShowAudit(false)} className="p-2 hover:bg-white/5 rounded-xl transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            {auditLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+              </div>
+            ) : auditData ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Vault Health */}
+                <div className={cn("p-6 rounded-3xl border", auditData.vaultHealth?.status === "SYNCHRONIZED" ? "bg-emerald-950/30 border-emerald-500/20" : "bg-rose-950/30 border-rose-500/20")}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Landmark className="w-4 h-4 text-emerald-400" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vault Status</span>
+                  </div>
+                  <p className={cn("text-lg font-black", auditData.vaultHealth?.status === "SYNCHRONIZED" ? "text-emerald-400" : "text-rose-400")}>
+                    {auditData.vaultHealth?.status || "UNKNOWN"}
+                  </p>
+                  <p className="text-white text-sm font-bold mt-1">{formatCurrency(auditData.vaultHealth?.ledgerBalance || 0)}</p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Cash Ledger Balance</p>
+                </div>
+
+                {/* Void Risk */}
+                <div className={cn("p-6 rounded-3xl border", (auditData.riskFlags?.length || 0) > 0 ? "bg-rose-950/30 border-rose-500/20" : "bg-slate-900 border-white/5")}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Void Flags (30d)</span>
+                  </div>
+                  <p className={cn("text-4xl font-black", (auditData.riskFlags?.length || 0) > 0 ? "text-rose-400" : "text-emerald-400")}>
+                    {auditData.riskFlags?.length || 0}
+                  </p>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+                    {(auditData.riskFlags?.length || 0) > 0 ? "Elevated — Review Required" : "Pattern: Secure"}
+                  </p>
+                </div>
+
+                {/* Concession Impact */}
+                <div className="p-6 rounded-3xl border bg-slate-900 border-white/5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="w-4 h-4 text-indigo-400" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Concession Impact</span>
+                  </div>
+                  {auditData.impact?.grossPotential > 0 ? (
+                    <>
+                      <p className={cn("text-4xl font-black", ((auditData.impact.totalDiscounts / auditData.impact.grossPotential) * 100) > 15 ? "text-rose-400" : "text-emerald-400")}>
+                        {((auditData.impact.totalDiscounts / auditData.impact.grossPotential) * 100).toFixed(1)}%
+                      </p>
+                      <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">of {formatCurrency(auditData.impact.grossPotential)} gross</p>
+                    </>
+                  ) : (
+                    <p className="text-slate-400 text-sm font-bold">No fee structure found</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-500 text-center font-bold py-8">Audit data unavailable — check your access level.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Void Requests Panel */}
+
       {voids.length > 0 && (
         <div className="space-y-6">
            <div className="flex items-center gap-3">

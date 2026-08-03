@@ -28,10 +28,8 @@ export async function middleware(request: NextRequest) {
   const user = session ? await decrypt(session) : null;
   const guardian = guardianSession ? await decrypt(guardianSession) : null;
   
-  if (user) console.log(`🕵️ [SENTINEL] Request for '${pathname}' from user '${user.email}' (Role: ${user.role})`);
-  if (guardian) console.log(`🕵️ [SENTINEL] Request for '${pathname}' from guardian '${guardian.phone}'`);
 
-  // 🛡️ LOCK: COMPOUND RATE LIMITING (IP + User)
+  // 2. Decrypt/Verify
   const rateLimitKey = user ? `rl_u_${user.staffId}` : `rl_ip_${ip}`;
   const now = Date.now();
   const limit = rateLimitMap.get(rateLimitKey) || { count: 0, resetAt: now + 60000 };
@@ -87,8 +85,18 @@ export async function middleware(request: NextRequest) {
   // 🛡️ LOCK: PASSWORD CHANGE FORCE FOR ONBOARDING
   if (user && user.onboardingStatus === 'PASSWORD_CHANGE_REQUIRED') {
     if (pathname !== '/change-password') {
-      console.log(`🛡️ [SENTINEL] Redirecting '${user.email || user.staffId}' to /change-password (status: PASSWORD_CHANGE_REQUIRED)`);
       return NextResponse.redirect(new URL('/change-password', request.url));
+    }
+  }
+
+  // 🛡️ GRACE PERIOD: After 60 days, force incomplete-profile staff to complete their profile
+  // Applies to staff who have logged in (JOINED) but still have missing critical fields.
+  if (user && user.onboardingStatus === 'JOINED' && user.profileDeadline) {
+    const deadlineMs = typeof user.profileDeadline === 'number' ? user.profileDeadline : Number(user.profileDeadline);
+    const isPastDeadline = Date.now() > deadlineMs;
+    const isCompleteProfilePath = pathname === '/complete-profile';
+    if (isPastDeadline && !isCompleteProfilePath && !pathname.startsWith('/api') && pathname !== '/change-password') {
+      return NextResponse.redirect(new URL('/complete-profile', request.url));
     }
   }
 
@@ -102,7 +110,6 @@ export async function middleware(request: NextRequest) {
   // Block Driver role from accessing admin dashboards
   if (user && user.role === 'DRIVER') {
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/developer') || pathname.startsWith('/registry')) {
-      console.warn(`🛡️ [SENTINEL] BLOCKED: Driver '${user.email || user.phone}' attempted to access admin path '${pathname}'`);
       return new NextResponse(
         JSON.stringify({ error: "ACCESS_DENIED", message: "Access denied: Drivers are not allowed to access administrative dashboards." }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -115,7 +122,6 @@ export async function middleware(request: NextRequest) {
   const hasAdminRole = user?.role === 'PLATFORM_ADMIN' || user?.role === 'DEVELOPER';
 
   if (isAdminPath && !hasAdminRole) {
-    console.warn(`🛡️ [SENTINEL] BLOCKED: Path '${pathname}' requires Admin but user has role '${user?.role}'`);
     return new NextResponse(
       JSON.stringify({ error: "ACCESS_DENIED", message: "Access denied: Platform Admin or Developer privilege required.", status: 403 }),
       { status: 403, headers: { 'Content-Type': 'application/json' } }
@@ -128,10 +134,8 @@ export async function middleware(request: NextRequest) {
   
   if (isProtectedRoute && !hasAdminRole && !user?.schoolId && !isSetupPath) {
     if (user?.role === 'OWNER') {
-        console.log(`🛡️ [SENTINEL] REDIRECT: OWNER '${user?.email}' to Setup Genesis.`);
         return NextResponse.redirect(new URL('/dashboard/setup', request.url));
     }
-    console.error(`🛡️ [SENTINEL] REDIRECT: Sovereign Identity Violation for ${user?.email}. (hasAdminRole: ${hasAdminRole}, schoolId: ${user?.schoolId})`);
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

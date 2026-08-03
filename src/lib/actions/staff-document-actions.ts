@@ -10,19 +10,13 @@ import bcrypt from "bcryptjs";
  * Fetch staff profile details along with banking, statutory, professional, documents, and all staff profiles (if admin)
  */
 export async function getStaffProfileDetailsAction(targetStaffId?: string) {
-    const tStart = Date.now();
     try {
-        console.log(`⏱️ [PROFILE_DEBUG] getStaffProfileDetailsAction started.`);
-        const t0 = Date.now();
         const identity = await getSovereignIdentity();
-        console.log(`⏱️ [PROFILE_DEBUG] getSovereignIdentity took ${Date.now() - t0}ms`);
-        
         if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
 
         const isAuthorizedAdmin = ["PRINCIPAL", "OWNER", "DEVELOPER"].includes(identity.role);
-        let resolvedStaffId = (isAuthorizedAdmin && targetStaffId) ? targetStaffId : identity.staffId;
+        const resolvedStaffId = (isAuthorizedAdmin && targetStaffId) ? targetStaffId : identity.staffId;
 
-        const t1 = Date.now();
         // 1. Fetch the target staff and the list of active staff profiles in parallel (Max 2 concurrent connections)
         const [staffRecord, rawStaffList] = await Promise.all([
             prismaBypass.staff.findUnique({
@@ -46,20 +40,17 @@ export async function getStaffProfileDetailsAction(targetStaffId?: string) {
                   })
                 : Promise.resolve([])
         ]);
-        console.log(`⏱️ [PROFILE_DEBUG] Parallel findUnique and findMany took ${Date.now() - t1}ms`);
 
         let staff = staffRecord;
         let staffList = rawStaffList;
 
         // If the staff member resolved belongs to a different school, clear it to force fallback to the active school context
         if (staff && staff.schoolId !== identity.schoolId && isAuthorizedAdmin) {
-            console.log(`⏱️ [PROFILE_DEBUG] School mismatch detected (Staff School: ${staff.schoolId}, Active: ${identity.schoolId}). Clearing for fallback.`);
             staff = null;
         }
 
         // 2. SELF-HEALING FALLBACK: If developer/owner does not have a personal staff record, fetch the first available staff member of the active school (sequential fallback)
         if (!staff && isAuthorizedAdmin) {
-            const t2 = Date.now();
             staff = await prismaBypass.staff.findFirst({
                 where: { schoolId: identity.schoolId },
                 include: {
@@ -73,19 +64,16 @@ export async function getStaffProfileDetailsAction(targetStaffId?: string) {
                     }
                 }
             });
-            console.log(`⏱️ [PROFILE_DEBUG] Sequential findFirst fallback took ${Date.now() - t2}ms`);
         }
 
         if (!staff) throw new Error("Staff profile not found. There are no staff accounts in this institution.");
 
-        console.log(`⏱️ [PROFILE_DEBUG] Total action execution time: ${Date.now() - tStart}ms`);
         return { 
             success: true, 
             data: JSON.parse(JSON.stringify(staff)),
             staffList: JSON.parse(JSON.stringify(staffList))
         };
     } catch (e: any) {
-        console.error("Error fetching staff profile details:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -117,7 +105,6 @@ export async function updateStaffPersonalDetailsAction(data: {
 
         return { success: true, data: JSON.parse(JSON.stringify(updated)) };
     } catch (e: any) {
-        console.error("Error updating personal details:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -163,7 +150,6 @@ export async function updateStaffBankDetailsAction(data: {
 
         return { success: true, data: JSON.parse(JSON.stringify(bankRecord)) };
     } catch (e: any) {
-        console.error("Error updating bank details:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -197,7 +183,6 @@ export async function updateStaffHealthDetailsAction(data: {
 
         return { success: true, data: JSON.parse(JSON.stringify(updated)) };
     } catch (e: any) {
-        console.error("Error updating health details:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -248,7 +233,6 @@ export async function updateStaffPasswordAction(data: {
 
         return { success: true, message: "Password updated successfully." };
     } catch (e: any) {
-        console.error("Error updating password:", e.message);
         return { success: false, error: e.message };
     }
 }
@@ -289,7 +273,6 @@ export async function deleteStaffDocumentAction(docId: string) {
 
         return { success: true, message: "Document deleted successfully." };
     } catch (e: any) {
-        console.error("Error deleting staff document:", e.message);
         return { success: false, error: e.message };
     }
 }
