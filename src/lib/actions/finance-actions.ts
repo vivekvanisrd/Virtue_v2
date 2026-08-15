@@ -565,7 +565,7 @@ export async function recordFeeCollection(params: {
         });
 
         // Link the Journal Entry back to the Collection for reversal parity
-        await prismaBypass.collection.update({
+        await tx.collection.update({
           where: { id: collection.id },
           data: { journalEntryId: createdJe.id }
         });
@@ -745,9 +745,9 @@ export async function voidPaymentAction(collectionId: string, reason: string) {
     }
 
     const result = await prisma.$transaction(async (tx: any) => {
-      // 1. MARK COLLECTION AS VOIDED (Sentinel allows updates with schoolId in where clause)
-      await prismaBypass.collection.update({
-        where: { id: collectionId, schoolId: context.schoolId },
+      // 1. MARK COLLECTION AS VOIDED
+      await tx.collection.update({
+        where: { id: collectionId },
         data: { status: "VOIDED", isDeleted: true }
       });
 
@@ -1847,7 +1847,7 @@ export async function requestReceiptVoid(collectionId: string, reason: string) {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     await prismaBypass.collection.update({
-      where: { id: collectionId, schoolId: context.schoolId },
+      where: { id: collectionId },
       data: { 
         status: "VOID_REQUESTED",
         allocatedTo: {
@@ -1873,15 +1873,15 @@ export async function approveReceiptVoid(collectionId: string) {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     const collection = await prisma.collection.findUnique({
-      where: { id: collectionId, schoolId: context.schoolId },
+      where: { id: collectionId },
       include: { journalEntry: { include: { lines: true } } }
     });
 
-    if (!collection || collection.status !== "VOID_REQUESTED") throw new Error("Invalid request.");
+    if (!collection || collection.schoolId !== context.schoolId || collection.status !== "VOID_REQUESTED") throw new Error("Invalid request.");
 
     await prisma.$transaction(async (tx: any) => {
       // 1. Mark as VOIDED (BUG-3 FIX: Standardized casing to match voidPaymentAction)
-      await prismaBypass.collection.update({
+      await tx.collection.update({
         where: { id: collectionId },
         data: { status: "VOIDED" }
       });
@@ -2042,7 +2042,7 @@ export async function rejectReceiptVoid(collectionId: string) {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED: Operation restricted to verified personnel.");
     const context = identity;
     await prismaBypass.collection.update({
-      where: { id: collectionId, schoolId: context.schoolId },
+      where: { id: collectionId },
       data: { status: "Success" }
     });
     revalidatePath("/admin/fees");
@@ -2531,7 +2531,7 @@ export async function upsertDiscountTypeAction(params: {
     };
 
     const result = params.id 
-      ? await prisma.discountType.update({ where: { id: params.id, schoolId: context.schoolId }, data })
+      ? await prisma.discountType.update({ where: { id: params.id }, data })
       : await prisma.discountType.create({ data });
 
     revalidatePath("/dashboard/finance/settings");
