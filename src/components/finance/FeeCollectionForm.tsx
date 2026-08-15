@@ -525,8 +525,10 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     );
   }
 
+  const annualNet = fb?.annualNet || 0;
   const totalPaid = (student?.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
-  const paidPercent = (fb && fb.annualNet > 0) ? (totalPaid / fb.annualNet) * 100 : 0;
+  const totalDue = Math.max(0, annualNet - totalPaid);
+  const paidPercent = annualNet > 0 ? Math.min(100, Math.round((totalPaid / annualNet) * 100)) : 0;
 
   const paymentModes = ["Cash", "Bank QR", "Card Swipe", "Razorpay"];
 
@@ -543,12 +545,12 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         {/* 🏆 COMPACT TOP SECTION */}
         <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-white">
           <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-4 space-y-6">
+            <div className="col-span-4 space-y-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-lg border border-slate-50 flex items-center justify-center text-slate-900"><User className="w-8 h-8" /></div>
+                <div className="w-14 h-14 bg-white rounded-2xl shadow-md border border-slate-100 flex items-center justify-center text-slate-900 shrink-0"><User className="w-7 h-7" /></div>
                 <div>
-                  <h2 className="text-xl font-black tracking-tight text-slate-900 leading-none mb-1">{student.firstName} {student.lastName}</h2>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-full">{student.academic?.class?.name || "8th Grade"}</span>
+                  <h2 className="text-lg font-black tracking-tight text-slate-900 leading-none mb-1">{student.firstName} {student.lastName}</h2>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-full">{student.academic?.class?.name || "Grade"}</span>
                 </div>
                 <button 
                   onClick={() => {
@@ -567,9 +569,32 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-50 shadow-sm space-y-2">
-                <div className="flex items-center justify-between"><p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Annual Fee Template</p><p className="text-[10px] font-black text-slate-900">₹{(fb.annualNet || 0).toLocaleString()}</p></div>
-                <div className="h-2 bg-slate-50 rounded-full overflow-hidden"><div className="h-full bg-primary/40 rounded-full" style={{ width: `${Math.min(100, Math.max(0, paidPercent))}%` }} /></div>
+
+              {/* 📊 FINANCIAL LEDGER SUMMARY CARDS */}
+              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-3 shadow-inner">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                    <p className="text-[7px] font-black uppercase tracking-wider text-slate-400">Total Net Fee</p>
+                    <p className="text-xs font-black text-slate-900 tracking-tight">₹{annualNet.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
+                    <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Total Paid</p>
+                    <p className="text-xs font-black text-emerald-700 tracking-tight">₹{totalPaid.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-rose-50 p-2 rounded-xl border border-rose-100 shadow-sm">
+                    <p className="text-[7px] font-black uppercase tracking-wider text-rose-600">Remaining Due</p>
+                    <p className="text-xs font-black text-rose-700 tracking-tight">₹{totalDue.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Settlement Progress</span>
+                    <span className="text-[9px] font-black text-emerald-600">{paidPercent}% Paid</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${paidPercent}%` }} />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="col-span-8">
