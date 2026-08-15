@@ -94,6 +94,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     linkLoading: false,
     bookReceiptNo: ""
   });
+  const [viewingReceipt, setViewingReceipt] = useState<{ student: any; receipt: any } | null>(null);
   const { setTabDirty, openTab } = useTabs();
   const loadedStudentIdRef = useRef<string | null>(null);
  
@@ -150,11 +151,6 @@ export function FeeCollectionForm({ params }: { params?: any }) {
       }
     }
   }, [params?.studentId]);
-
-  // Reset custom amount whenever selected terms or late fee options change
-  useEffect(() => {
-    setCustomAmount(null);
-  }, [settlements]);
 
   const selectStudent = async (id: string) => {
     loadedStudentIdRef.current = id;
@@ -626,10 +622,25 @@ export function FeeCollectionForm({ params }: { params?: any }) {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-50">
+          <div className="grid grid-cols-5 gap-4 mt-6 pt-4 border-t border-slate-50">
             <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Total Discount</p><p className="text-sm font-black text-slate-900 italic">₹{(fb.totalDiscount || 0).toLocaleString()}</p></div>
             <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Annual Net</p><p className="text-lg font-black text-primary tracking-tight italic">₹{(fb.annualNet || 0).toLocaleString()}</p></div>
             <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Payment Type</p><p className="text-sm font-black text-slate-900 italic">{fb.paymentType}</p></div>
+            <div>
+              <p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Late Fee Option</p>
+              <button 
+                type="button" 
+                onClick={() => setSettlements(prev => prev.map((s, idx) => idx === 0 ? { ...s, waivedLateFee: !s.waivedLateFee } : s))}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider border-2 transition-all flex items-center gap-1.5",
+                  settlements[0]?.waivedLateFee 
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm" 
+                    : "bg-amber-50 border-amber-300 text-amber-700"
+                )}
+              >
+                {settlements[0]?.waivedLateFee ? "✓ Waived / Disabled" : "Late Fee Active"}
+              </button>
+            </div>
             <div className="text-right"><p className="text-[8px] font-black uppercase text-primary mb-0.5">Selection Total</p><p className="text-2xl font-black text-slate-900 tracking-tighter italic">₹{(grandTotal || 0).toLocaleString()}</p></div>
           </div>
         </div>
@@ -995,9 +1006,117 @@ export function FeeCollectionForm({ params }: { params?: any }) {
             </button>
           </div>
         </div>
+
+        {/* 📜 PAYMENT HISTORY & RECEIPT LEDGER */}
+        {student && (
+          <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-white space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black tracking-tight text-slate-900">Payment History & Receipt Ledger</h3>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Previous Fee Collections & Receipts for {student.firstName} {student.lastName}</p>
+              </div>
+              <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-3 py-1 rounded-full uppercase">
+                {student.collections?.length || 0} Receipts Recorded
+              </span>
+            </div>
+
+            {(!student.collections || student.collections.length === 0) ? (
+              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">No prior collections recorded for this student</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50/50">
+                      <th className="py-3 px-4 rounded-l-xl">Sl No</th>
+                      <th className="py-3 px-4">Date & Time</th>
+                      <th className="py-3 px-4">Receipt No</th>
+                      <th className="py-3 px-4">Payment Mode & Ref</th>
+                      <th className="py-3 px-4">Purpose / Dues Settled</th>
+                      <th className="py-3 px-4 text-right">Amount Paid</th>
+                      <th className="py-3 px-4 text-center rounded-r-xl">Receipt Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-xs font-bold">
+                    {student.collections.map((c: any, index: number) => {
+                      const termsCovered = Array.isArray(c.allocatedTo?.terms) 
+                        ? c.allocatedTo.terms.join(", ") 
+                        : (c.allocatedTo?.description || "Tuition / Fee Settlement");
+                      const isCash = c.paymentMode === "Cash";
+
+                      return (
+                        <tr key={c.id || index} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-4 text-slate-400 font-mono">#{index + 1}</td>
+                          <td className="py-3 px-4 text-slate-700">
+                            {new Date(c.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                            <span className="block text-[9px] font-medium text-slate-400">
+                              {new Date(c.paymentDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-mono text-slate-900 font-black">{c.receiptNumber}</span>
+                            {c.bookReceiptNo && (
+                              <span className="block text-[9px] font-black text-blue-600 uppercase">Book #{c.bookReceiptNo}</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider inline-block mb-0.5",
+                              isCash ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
+                            )}>
+                              {c.paymentMode}
+                            </span>
+                            {c.paymentReference && (
+                              <span className="block text-[9px] font-mono text-slate-500 truncate max-w-[150px]">
+                                {c.paymentReference}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 max-w-[200px]">
+                            <span className="font-medium text-slate-900 capitalize">{termsCovered}</span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-sm font-black text-slate-900 tracking-tight">₹{Number(c.amountPaid || 0).toLocaleString()}</span>
+                            {Number(c.lateFeePaid || 0) > 0 && (
+                              <span className="block text-[9px] font-medium text-amber-600">+₹{Number(c.lateFeePaid)} Late Fee</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setViewingReceipt({ student, receipt: c })}
+                              className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-sm"
+                            >
+                              View Receipt
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
+        {viewingReceipt && (
+          <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[#101420]/95 backdrop-blur-2xl p-4 overflow-y-auto">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[3rem] p-8 max-w-4xl w-full shadow-2xl border-8 border-white relative my-8">
+              <button 
+                onClick={() => setViewingReceipt(null)}
+                className="absolute top-6 right-6 z-10 w-10 h-10 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center hover:bg-slate-200 transition-all font-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <FeeReceipt student={viewingReceipt.student} receipt={viewingReceipt.receipt} />
+            </motion.div>
+          </div>
+        )}
+
         {showParentMsg && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#101420]/95 backdrop-blur-2xl p-4">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[3.5rem] p-12 max-w-2xl w-full shadow-2xl border-[12px] border-white text-center">
