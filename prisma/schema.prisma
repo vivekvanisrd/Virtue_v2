@@ -3998,6 +3998,36 @@ model TransactionalOutbox {
   @@index([createdAt])
 }
 
+// 🚨 Centralized System Error & Crash Log Ledger
+model SystemErrorLog {
+  id           String   @id @default(uuid())
+  schoolId     String?
+  branchId     String?
+  userId       String?
+  userName     String?
+  userRole     String?
+  source       String   @default("SERVER") // "CLIENT" | "SERVER"
+  errorName    String   @default("Error")
+  message      String   @db.Text
+  stack        String?  @db.Text
+  digest       String?
+  route        String?
+  component    String?
+  metadata     Json?
+  severity     String   @default("HIGH") // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  status       String   @default("UNRESOLVED") // "UNRESOLVED" | "INVESTIGATING" | "RESOLVED" | "IGNORED"
+  emailSent    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([branchId])
+  @@index([createdAt])
+  @@index([severity])
+  @@index([status])
+}
+
+
 
 
 

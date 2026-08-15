@@ -14,7 +14,8 @@ const SYSTEM_MODELS = [
     "School", "GlobalSetting", "TenancyCounter", "PlatformAdmin",
     "PlatformClass", "PlatformSection", "PlatformAcademicYear", "PlatformFinancialYear",
     "AttendanceException",
-    "PublicHolidayMaster" // Global lookup table — no schoolId/branchId fields
+    "PublicHolidayMaster", // Global lookup table — no schoolId/branchId fields
+    "SystemErrorLog" // System Error Logging Ledger
 ];
 
 /**

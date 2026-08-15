@@ -332,7 +332,29 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   };
 
   const processPayment = async () => {
-    if (settlements.length === 0 || settlements.every(s => s.selectedTerms.length === 0)) return;
+    if (!settlements[0]) return;
+
+    let targetTerms = settlements[0].selectedTerms;
+    // Auto-select first unpaid term if cashier did not explicitly check an installment box
+    if (targetTerms.length === 0) {
+      const insts = fb?.installments || [];
+      const firstUnpaidInst = insts.find((inst: any) => !inst.isPaid);
+      if (firstUnpaidInst) {
+        targetTerms = [firstUnpaidInst.key];
+      } else {
+        const ancillaryKeys = Object.keys(fb?.ancillary || {}).filter(k => !fb?.ancillary?.[k]?.isPaid);
+        if (ancillaryKeys.length > 0) {
+          targetTerms = [ancillaryKeys[0]];
+        }
+      }
+    }
+
+    if (targetTerms.length === 0) {
+      setError("Please select at least one fee installment or ancillary item to collect payment.");
+      setCollectionLoading(false);
+      return;
+    }
+
     setCollectionLoading(true);
     setError(null);
 
@@ -391,7 +413,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     }
 
     // Build ancillary items list
-    const selectedAncillaryKeys = settlements[0].selectedTerms.filter(t => ANCILLARY_KEYS.includes(t));
+    const selectedAncillaryKeys = targetTerms.filter(t => ANCILLARY_KEYS.includes(t));
     const ancillaryItems = selectedAncillaryKeys.map(key => {
       const fee = fb.ancillary?.[key];
       const amount = (fee?.amount === 0 && settlements[0].adHocAmounts[key])
@@ -417,7 +439,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
 
     const result = await recordFeeCollection({
       studentId: settlements[0].student.id,
-      selectedTerms: settlements[0].selectedTerms,
+      selectedTerms: targetTerms,
       amountPaid: amountPaid,
       lateFeePaid: lateFeePaid,
       lateFeeWaived: settlements[0].waivedLateFee,
@@ -906,6 +928,23 @@ export function FeeCollectionForm({ params }: { params?: any }) {
             {/* Confirmation Button */}
             <button 
               onClick={async () => {
+                // Ensure active unpaid term is selected if none checked yet
+                let currentTerms = settlements[0]?.selectedTerms || [];
+                if (currentTerms.length === 0) {
+                  const insts = fb?.installments || [];
+                  const firstUnpaidInst = insts.find((inst: any) => !inst.isPaid);
+                  if (firstUnpaidInst) {
+                    currentTerms = [firstUnpaidInst.key];
+                    setSettlements(prev => prev.map((s, idx) => idx === 0 ? { ...s, selectedTerms: [firstUnpaidInst.key] } : s));
+                  } else {
+                    const ancillaryKeys = Object.keys(fb?.ancillary || {}).filter(k => !fb?.ancillary?.[k]?.isPaid);
+                    if (ancillaryKeys.length > 0) {
+                      currentTerms = [ancillaryKeys[0]];
+                      setSettlements(prev => prev.map((s, idx) => idx === 0 ? { ...s, selectedTerms: [ancillaryKeys[0]] } : s));
+                    }
+                  }
+                }
+
                 if (paymentMode === "Razorpay" && !paymentDetails.paymentLink) {
                   console.log("🚀 INITIALIZING RAZORPAY LINK GENERATION:", { studentId: student.id, amount: targetTotal });
                   setPaymentDetails(p => ({ ...p, linkLoading: true }));
@@ -914,7 +953,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                       studentId: student.id, 
                       studentName: `${student.firstName} ${student.lastName}`,
                       amount: targetTotal, 
-                      terms: settlements[0].selectedTerms,
+                      terms: currentTerms,
                       notes: `Fee Settlement for ${student.firstName}`,
                       email: student.parentEmail || undefined,
                       contact: student.parentPhone || undefined

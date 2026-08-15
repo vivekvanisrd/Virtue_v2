@@ -281,14 +281,12 @@ export async function recordFeeCollection(params: {
         threshold = Number(student.financial.term1Amount || 0);
       }
 
-      // Only enforce after the grace window has elapsed
+      // Only log notice after the grace window has elapsed (allow part payments without throwing blocking exception)
       if (enrollmentAge > graceWindowDays && threshold > 0 && newTotalPaid < (threshold - 1)) {
         const planLabel = plan === "Monthly" ? "Monthly (80-day term window)" : `${plan} (${graceWindowDays}-day window)`;
-        throw new Error(
-          `Policy Violation: This enrollment is ${enrollmentAge} days old. ` +
-          `The cumulative amount collected (₹${Math.round(newTotalPaid).toLocaleString()}) has not yet reached ` +
-          `the required milestone of ₹${Math.round(threshold).toLocaleString()} for the ${planLabel} plan. ` +
-          `Part payments are accepted — please collect the remaining ₹${Math.round(threshold - newTotalPaid).toLocaleString()} to clear this milestone.`
+        console.warn(
+          `[POLICY_MILESTONE_NOTICE] Student ${params.studentId} enrollment is ${enrollmentAge} days old. ` +
+          `Cumulative collected (₹${Math.round(newTotalPaid)}) is below target milestone (₹${Math.round(threshold)}) for ${planLabel}. Allowing partial collection.`
         );
       }
     }
