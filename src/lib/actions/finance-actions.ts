@@ -1048,6 +1048,25 @@ export async function getStudentFeeStatus(studentId: string) {
       paidTerms.push("admissionFee");
     }
 
+    const checkAncillaryPaid = (key: string, label: string, amount: number) => {
+      if (paidTerms.includes(key) || paidTerms.includes(label)) return true;
+      return collections.some((c: any) => {
+        const alloc = c.allocatedTo as any;
+        if (!alloc) return false;
+        if (Array.isArray(alloc.ancillaryPaid)) {
+          return alloc.ancillaryPaid.some((a: any) => 
+            a.key === key || 
+            (a.label && a.label.toLowerCase() === label.toLowerCase()) ||
+            (Number(a.amount) === amount && amount > 0)
+          );
+        }
+        if (Array.isArray(alloc.terms)) {
+          return alloc.terms.includes(key) || alloc.terms.includes(label);
+        }
+        return false;
+      });
+    };
+
     const ancillary: Record<string, any> = {};
     const fin = student.financial;
 
@@ -1076,10 +1095,12 @@ export async function getStudentFeeStatus(studentId: string) {
         else key = `inv_${item.id}`;
 
         if (key && !ancillary[key]) {
+          const amt = Number(item.amount);
+          const lbl = item.componentName;
           ancillary[key] = {
-            amount: Number(item.amount),
-            isPaid: Number(item.balance) <= 0,
-            label: item.componentName,
+            amount: amt,
+            isPaid: Number(item.balance) <= 0 || checkAncillaryPaid(key, lbl, amt),
+            label: lbl,
             dueDate: null
           };
         }
@@ -1087,11 +1108,9 @@ export async function getStudentFeeStatus(studentId: string) {
     }
 
     // Priority 0: AUTHORITATIVE TEMPLATE (Fee Structure)
-    // This ensures boxes show up immediately upon enrollment, even before heavy processing
     if (fin?.feeStructure?.components) {
        fin.feeStructure.components.forEach((comp: any) => {
           const name = comp.masterComponent?.name?.toLowerCase() || "";
-          // Skip tuition as it belongs in the main installments
           if (name.includes("tuition")) return;
 
           let key = "";
@@ -1109,17 +1128,17 @@ export async function getStudentFeeStatus(studentId: string) {
           else key = `tmpl_${comp.id}`;
 
           if (key && !ancillary[key]) {
+             const amt = Number(comp.amount);
+             const lbl = comp.masterComponent.name;
              ancillary[key] = {
-                amount: Number(comp.amount),
-                isPaid: paidTerms.includes(key) || paidTerms.includes(comp.masterComponent.name),
-                label: comp.masterComponent.name,
+                amount: amt,
+                isPaid: checkAncillaryPaid(key, lbl, amt),
+                label: lbl,
                 dueDate: null
              };
           }
        });
     }
-
-
 
     // Priority 2: Granular Components
     if (fin?.components) {
@@ -1138,13 +1157,15 @@ export async function getStudentFeeStatus(studentId: string) {
         else if (name.includes("activity")) key = "activityFee";
         else if (name.includes("book")) key = "booksFee";
         else if (name.includes("uniform")) key = "uniformFee";
-        else key = `comp_${comp.id}`; // CATCH-ALL KEY
+        else key = `comp_${comp.id}`;
 
         if (key && !ancillary[key]) {
+          const amt = Number(comp.baseAmount);
+          const lbl = comp.masterComponent.name;
           ancillary[key] = {
-            amount: Number(comp.baseAmount),
-            isPaid: paidTerms.includes(key),
-            label: comp.masterComponent.name,
+            amount: amt,
+            isPaid: checkAncillaryPaid(key, lbl, amt),
+            label: lbl,
             dueDate: null
           };
         }
@@ -1172,10 +1193,12 @@ export async function getStudentFeeStatus(studentId: string) {
           else key = `misc_${index}`;
 
           if (key && !ancillary[key]) {
+             const amt = Number(entry.amount);
+             const lbl = entry.reason.replace("Accrual: ", "").split(' (')[0];
              ancillary[key] = {
-                amount: Number(entry.amount),
-                isPaid: paidTerms.includes(key) || paidTerms.includes(entry.reason),
-                label: entry.reason.replace("Accrual: ", "").split(' (')[0],
+                amount: amt,
+                isPaid: checkAncillaryPaid(key, lbl, amt),
+                label: lbl,
                 dueDate: null
              };
           }
@@ -1183,7 +1206,6 @@ export async function getStudentFeeStatus(studentId: string) {
     }
 
     // 🚀 POINT-OF-SALE (POS) ENGINE: Registry-Synced Placeholders
-    // Fetches institutional standard prices from the Master Registry.
     const masterRegistry = await prisma.feeComponentMaster.findMany({
       where: { schoolId: context.schoolId, isActive: true }
     });
@@ -1205,13 +1227,14 @@ export async function getStudentFeeStatus(studentId: string) {
           m.name.toLowerCase().includes(cat.label.toLowerCase()) || 
           cat.label.toLowerCase().includes(m.name.toLowerCase())
         );
+        const amt = master ? Number(master.amount) : 0;
 
         ancillary[cat.key] = {
-          amount: master ? Number(master.amount) : 0,
-          isPaid: false,
+          amount: amt,
+          isPaid: checkAncillaryPaid(cat.key, cat.label, amt),
           label: cat.label,
           dueDate: null,
-          isAdHoc: true, // Marker for UI input
+          isAdHoc: true,
           masterId: master?.id
         };
       }

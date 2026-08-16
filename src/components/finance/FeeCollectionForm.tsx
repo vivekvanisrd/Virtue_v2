@@ -166,8 +166,8 @@ export function FeeCollectionForm({ params }: { params?: any }) {
         setSettlements([{
           student: result.data,
           selectedTerms: [],
-          waivedLateFee: false,
-          waiverReason: "",
+          waivedLateFee: true,
+          waiverReason: "Default policy: Late fee inactive",
           adHocAmounts: {}
         }]);
         openTab({
