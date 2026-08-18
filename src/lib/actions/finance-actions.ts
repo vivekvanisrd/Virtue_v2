@@ -375,6 +375,23 @@ export async function recordFeeCollection(params: {
         year: activeFY.name || new Date().getFullYear().toString()
       }, tx);
 
+      // 🛡️ UNICITY CHECK: Physical Receipt Book / Bill No must be unique per Academic Year
+      if (params.bookReceiptNo && params.bookReceiptNo.trim() !== "") {
+        const cleanBookNo = params.bookReceiptNo.trim();
+        const existingBookNo = await tx.collection.findFirst({
+          where: {
+            schoolId: context.schoolId,
+            financialYearId: activeFY.id,
+            bookReceiptNo: cleanBookNo,
+            status: "Success"
+          }
+        });
+
+        if (existingBookNo) {
+          throw new Error(`Duplicate Bill Number: Physical Bill No '${cleanBookNo}' has already been used in Academic Year (${activeFY.name || "current"}). Please enter a unique bill number.`);
+        }
+      }
+
       const gatewayFee = params.convenienceFee || 0;
       const ancillaryTotal = params.ancillaryItems?.reduce((sum, item) => sum + item.amount, 0) || 0;
       const totalBasePaid = params.amountPaid + ancillaryTotal;
