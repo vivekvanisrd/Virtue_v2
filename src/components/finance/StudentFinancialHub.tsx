@@ -366,6 +366,11 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
   // 🛡️ RE-CALIBRATED OUTSTANDING: Sum all warded components (Tuition + Ancillary) minus Collections
   const tuitionNet = Number(studentData.feeBreakdown?.annualNet) || 0;
   const ancillaryTotal = (Object.values(studentData.feeBreakdown?.ancillary || {}) as any[])
+    .filter((comp: any) => 
+      !comp.label?.toLowerCase().includes("policy applied") && 
+      !comp.label?.toLowerCase().includes("discount") && 
+      !comp.label?.toLowerCase().includes("concession")
+    )
     .reduce((sum: number, comp: any) => sum + (Number(comp.amount) || 0), 0);
   const grandTotalFee = tuitionNet + ancillaryTotal;
   const totalCollected = ((studentData.collections as any[]) || [])
@@ -602,7 +607,12 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
 
                   {/* Ancillary Components */}
                   {Object.entries(studentData.feeBreakdown?.ancillary || {})
-                     .filter(([_, comp]: [string, any]) => comp.amount > 0 || comp.isPaid)
+                     .filter(([_, comp]: [string, any]) => 
+                       (comp.amount > 0 || comp.isPaid) && 
+                       !comp.label?.toLowerCase().includes("policy applied") && 
+                       !comp.label?.toLowerCase().includes("discount") && 
+                       !comp.label?.toLowerCase().includes("concession")
+                     )
                      .map(([key, comp]: [string, any]) => (
                      <tr key={key} className="group hover:bg-slate-50/50 transition-colors">
                         <td 

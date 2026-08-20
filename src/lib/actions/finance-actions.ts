@@ -1192,8 +1192,13 @@ export async function getStudentFeeStatus(studentId: string) {
     // Priority 3: Ledger Fallback
     if (student.ledgerEntries && student.ledgerEntries.length > 0) {
        student.ledgerEntries.forEach((entry: any, index: number) => {
+          // 🛑 CRITICAL FIX: Only process CHARGE entries as ancillary fee accruals!
+          // NEVER process DISCOUNT, CREDIT, or PAYMENT entries as ancillary fee items!
+          if (entry.type !== "CHARGE" && entry.type !== "ACCRUAL" && entry.type !== "FEE") return;
+
           const reason = (entry.reason ?? "unknown").toLowerCase();
           if (reason.includes("term 1") || reason.includes("term 2") || reason.includes("term 3") || 
+              reason.includes("policy applied") || reason.includes("discount") || reason.includes("concession") ||
               (reason.includes("tuition") && !reason.includes("admission") && !reason.includes("transport"))) return;
 
           let key = "";
