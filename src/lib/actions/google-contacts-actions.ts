@@ -1,4 +1,4 @@
-"useServer";
+"use server";
 
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
