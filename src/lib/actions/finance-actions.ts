@@ -2380,8 +2380,7 @@ export async function applyDiscountAction(params: {
       await tx.studentFeeComponent.update({
         where: { id: tuitionComp.id },
         data: { 
-          discountAmount: newDiscountAmount,
-          netAmount: Math.max(0, tuitionBase - newDiscountAmount)
+          discountAmount: newDiscountAmount
         }
       });
 
