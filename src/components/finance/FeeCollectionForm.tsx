@@ -525,12 +525,21 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     );
   }
 
-  const annualNet = fb?.annualNet || 0;
-  const totalDiscount = fb?.totalDiscount || 0;
-  const grossFee = annualNet + totalDiscount;
+  const ancillaryTotal = (Object.values(fb?.ancillary || {}) as any[])
+    .filter((comp: any) => 
+      !comp.label?.toLowerCase().includes("policy applied") && 
+      !comp.label?.toLowerCase().includes("discount") && 
+      !comp.label?.toLowerCase().includes("concession")
+    )
+    .reduce((sum: number, comp: any) => sum + (Number(comp.amount) || 0), 0);
+
+  const tuitionNet = Number(fb?.annualNet) || 0;
+  const totalDiscount = Number(fb?.totalDiscount) || 0;
+  const grossFee = tuitionNet + totalDiscount + ancillaryTotal;
+  const netPayableFee = tuitionNet + ancillaryTotal;
   const totalPaid = (student?.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
-  const totalDue = Math.max(0, annualNet - totalPaid);
-  const paidPercent = annualNet > 0 ? Math.min(100, Math.round((totalPaid / annualNet) * 100)) : 0;
+  const totalDue = Math.max(0, netPayableFee - totalPaid);
+  const paidPercent = netPayableFee > 0 ? Math.min(100, Math.round((totalPaid / netPayableFee) * 100)) : 0;
   
   const isTransportActive = student?.transportRequired || (fb?.ancillary?.transportFee?.amount > 0);
   const transportDisplay = isTransportActive 
@@ -592,7 +601,7 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-blue-50 p-2 rounded-xl border border-blue-100 shadow-sm">
                     <p className="text-[7px] font-black uppercase tracking-wider text-blue-600">Net Payable Fee</p>
-                    <p className="text-xs font-black text-blue-900 tracking-tight">₹{annualNet.toLocaleString()}</p>
+                    <p className="text-xs font-black text-blue-900 tracking-tight">₹{netPayableFee.toLocaleString()}</p>
                   </div>
                   <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
                     <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Total Paid</p>
