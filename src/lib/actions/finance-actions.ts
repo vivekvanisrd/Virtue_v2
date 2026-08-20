@@ -974,14 +974,20 @@ export async function getStudentFeeStatus(studentId: string) {
                            !c.masterComponent?.name?.toLowerCase().includes("deposit"))
               .reduce((sum, c) => sum + Number(c.baseAmount || 0), 0)
           : Number(student.financial?.tuitionFee || student.financial?.annualTuition || 0);
-      discount = components.length > 0 
-          ? components
-              .filter(c => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
-                           !c.masterComponent?.name?.toLowerCase().includes("admission") &&
-                           !c.masterComponent?.name?.toLowerCase().includes("caution") &&
-                           !c.masterComponent?.name?.toLowerCase().includes("deposit"))
-              .reduce((sum, c) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
-          : Number(student.financial?.totalDiscount || 0);
+      // 🛑 AUTHORITATIVE SINGLE DISCOUNT RESOLUTION (No double-counting or stacking)
+      const approvedDiscounts = (student.financial?.discounts || [])
+        .filter((d: any) => d.status === "Approved")
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      if (approvedDiscounts.length > 0) {
+        discount = Number(approvedDiscounts[0].amount || 0);
+      } else {
+        discount = Number(student.financial?.totalDiscount || 0);
+      }
+
+      if (student.financial) {
+        student.financial.totalDiscount = discount;
+      }
     }
 
     const paymentType = student.financial?.paymentType || "Term-wise";
@@ -2338,9 +2344,9 @@ export async function applyDiscountAction(params: {
         );
       }
 
-      // 5. Deactivate previous approved discounts for this student so discount NEVER repeats or stacks
+      // 5. Deactivate ALL previous discounts for this student so discount NEVER repeats or stacks
       await tx.discount.updateMany({
-        where: { studentFinancialId: financial.id, status: "Approved" },
+        where: { studentFinancialId: financial.id },
         data: { status: "Replaced" }
       });
 
