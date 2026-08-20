@@ -2322,30 +2322,35 @@ export async function applyDiscountAction(params: {
       );
       if (!tuitionComp) throw new Error("RULE_VIOLATION: Discount can only be applied when a Tuition Fee component exists. No tuition component found for this student.");
 
-      // 3. Calculate Amount (based on tuition base only)
-      const tuitionBase = Number(tuitionComp.baseAmount || 0);
-      let discountAmount = 0;
+      // 3. Calculate Amount (based strictly on tuition base only, never on transport/ancillary/pending totals)
+      const tuitionBase = Number(tuitionComp.baseAmount || financial.annualTuition || 0);
+      let newDiscountAmount = 0;
       if (discountType.percentage) {
-        discountAmount = (tuitionBase * Number(discountType.percentage)) / 100;
+        newDiscountAmount = (tuitionBase * Number(discountType.percentage)) / 100;
       } else {
-        discountAmount = Number(discountType.amount || 0);
+        newDiscountAmount = Number(discountType.amount || 0);
       }
 
-      // 4. Validate: total discounts (existing + new) cannot exceed tuition base
-      const existingDiscount = Number(tuitionComp.discountAmount || 0);
-      if (existingDiscount + discountAmount > tuitionBase) {
+      // 4. Validate: discount cannot exceed tuition base
+      if (newDiscountAmount > tuitionBase) {
         throw new Error(
-          `RULE_VIOLATION: Total discount (₹${(existingDiscount + discountAmount).toLocaleString()}) would exceed tuition base (₹${tuitionBase.toLocaleString()}). Maximum additional discount allowed: ₹${(tuitionBase - existingDiscount).toLocaleString()}.`
+          `RULE_VIOLATION: Discount (₹${newDiscountAmount.toLocaleString()}) cannot exceed tuition base (₹${tuitionBase.toLocaleString()}).`
         );
       }
 
-      // 5. Create Audit Record
-      await tx.discount.create({
+      // 5. Deactivate previous approved discounts for this student so discount NEVER repeats or stacks
+      await tx.discount.updateMany({
+        where: { studentFinancialId: financial.id, status: "Approved" },
+        data: { status: "Replaced" }
+      });
+
+      // 6. Create single current Audit Record
+      const newDiscount = await tx.discount.create({
         data: {
           schoolId: context.schoolId,
           studentFinancialId: financial.id,
           discountTypeId: discountType.id,
-          amount: discountAmount,
+          amount: newDiscountAmount,
           reason: params.reason,
           status: discountStatus,
           branchId: context.branchId
@@ -2354,24 +2359,31 @@ export async function applyDiscountAction(params: {
 
       // Only update balances immediately if approved; pending discounts wait for PRINCIPAL/OWNER approval
       if (discountStatus !== "Approved") {
-        return { pendingApproval: true, amount: discountAmount };
+        return { pendingApproval: true, amount: newDiscountAmount };
       }
 
-      // 6. Update Financial Record
-      const updatedFinancial = await tx.financialRecord.update({
+      // 7. Update Financial Record (SET totalDiscount to newDiscountAmount, DO NOT STACK!)
+      await tx.financialRecord.update({
         where: { studentId: params.studentId },
         data: {
-          totalDiscount: { increment: discountAmount }
+          totalDiscount: newDiscountAmount
         }
       });
 
-      // 7. Sync discount to tuition StudentFeeComponent
+      // 8. Update Tuition StudentFeeComponent (SET discountAmount to newDiscountAmount, DO NOT STACK!)
       await tx.studentFeeComponent.update({
         where: { id: tuitionComp.id },
-        data: { discountAmount: { increment: discountAmount } }
+        data: { 
+          discountAmount: newDiscountAmount,
+          netAmount: Math.max(0, tuitionBase - newDiscountAmount)
+        }
       });
 
-      // 5. Post to Ledger
+      // 9. Sync Ledger Entries: Remove previous DISCOUNT ledger entries and insert single current entry
+      await tx.ledgerEntry.deleteMany({
+        where: { studentId: params.studentId, type: "DISCOUNT" }
+      });
+
       const [activeFY, activeAY] = await Promise.all([
         tx.financialYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } }),
         tx.academicYear.findFirst({ where: { schoolId: context.schoolId, isCurrent: true } })
@@ -2385,7 +2397,7 @@ export async function applyDiscountAction(params: {
           financialYearId: activeFY?.id,
           academicYearId: activeAY?.id,
           type: "DISCOUNT",
-          amount: discountAmount,
+          amount: newDiscountAmount,
           reason: `Policy Applied: ${discountType.name}. Reason: ${params.reason}`,
           createdBy: context.name || context.role
         }
@@ -2411,27 +2423,27 @@ export async function applyDiscountAction(params: {
             branchId: context.branchId,
             financialYearId: activeFY.id,
             entryType: "ADMISSION_DISCOUNT", // Using existing type for discounts
-            totalDebit: discountAmount,
-            totalCredit: discountAmount,
+            totalDebit: newDiscountAmount,
+            totalCredit: newDiscountAmount,
             description: `Discount Applied: ${discountType.name} for Student ${params.studentId}`,
             lines: {
               create: [
-                { accountId: discountAccount.id, debit: discountAmount, credit: 0, description: "Discount/Scholarship Expense" },
-                { accountId: receivableAccount.id, debit: 0, credit: discountAmount, description: "Receivable Offset" }
+                { accountId: discountAccount.id, debit: newDiscountAmount, credit: 0, description: "Discount/Scholarship Expense" },
+                { accountId: receivableAccount.id, debit: 0, credit: newDiscountAmount, description: "Receivable Offset" }
               ]
             }
           }
         });
       }
 
-      return { approved: true, financial: updatedFinancial };
+      return { approved: true, discount: newDiscount };
     }, { maxWait: 5000, timeout: 15000 });
 
     revalidatePath("/dashboard/finance");
     if ((result as any).pendingApproval) {
       return { success: true, pending: true, message: "Discount proposal submitted. Awaiting approval from Principal or Owner." };
     }
-    return { success: true, data: serializeDecimal(serialize((result as any).financial)) };
+    return { success: true, data: serializeDecimal(serialize((result as any).discount)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
