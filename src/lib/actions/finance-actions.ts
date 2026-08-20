@@ -2503,7 +2503,32 @@ export async function updateStudentFeeComponentAction(params: {
         }
       });
 
-      // 4. Hardcoded Field Updates Removed (Sovereign V2 single source of truth)
+      // 4. Synchronize FinancialRecord columns and term breakdown
+      const isCore = existing.masterComponent.type === "CORE" || existing.masterComponent.name.toLowerCase().includes("tuition");
+      if (isCore) {
+        await tx.financialRecord.update({
+          where: { id: existing.studentFinancialId },
+          data: {
+            annualTuition: params.newAmount,
+            term1Amount: Math.round(params.newAmount * 0.5)
+          }
+        });
+      } else {
+        const compName = existing.masterComponent.name.toLowerCase();
+        let fieldToUpdate: string | null = null;
+        if (compName.includes("admission")) fieldToUpdate = "admissionFee";
+        else if (compName.includes("caution")) fieldToUpdate = "cautionDeposit";
+        else if (compName.includes("transport")) fieldToUpdate = "transportFee";
+        else if (compName.includes("library")) fieldToUpdate = "libraryFee";
+        else if (compName.includes("exam")) fieldToUpdate = "examFee";
+
+        if (fieldToUpdate) {
+          await tx.financialRecord.update({
+            where: { id: existing.studentFinancialId },
+            data: { [fieldToUpdate]: params.newAmount }
+          });
+        }
+      }
 
       return updated;
     });
@@ -2554,6 +2579,7 @@ export async function upsertDiscountTypeAction(params: {
   amount?: number;
   percentage?: number;
   description?: string;
+  isActive?: boolean;
 }) {
   try {
     const identity = await getSovereignIdentity();
@@ -2567,7 +2593,7 @@ export async function upsertDiscountTypeAction(params: {
       description: params.description,
       schoolId: context.schoolId,
       branchId: context.branchId,
-      isActive: true
+      isActive: params.isActive !== undefined ? params.isActive : true
     };
 
     const result = params.id 

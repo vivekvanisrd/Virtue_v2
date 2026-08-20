@@ -23,6 +23,7 @@ import {
   upsertFeeStructure 
 } from "@/lib/actions/fee-actions";
 import { motion, AnimatePresence } from "framer-motion";
+import { broadcastRefDataUpdate } from "@/lib/utils/dynamic-sync";
 import { cn } from "@/lib/utils";
 import { useTabs } from "@/context/tab-context";
 
@@ -128,6 +129,7 @@ export function FeeStructureForm({ initialData, onSuccess, onCancel }: FeeStruct
     const res = await upsertFeeStructure(formData);
 
     if (res.success) {
+      broadcastRefDataUpdate("feeStructures");
       onSuccess();
     } else {
       setError(res.error || "Failed to finalize fee architecture.");

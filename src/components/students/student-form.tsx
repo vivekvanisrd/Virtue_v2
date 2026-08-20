@@ -88,7 +88,7 @@ export function StudentForm() {
   const [sections, setSections] = useState<any[]>([]);
   const [isLoadingRef, setIsLoadingRef] = useState(true);
 
-  // Fetch Reference Data
+  // Fetch Reference Data (Dynamic Real-Time Sync)
   useEffect(() => {
     async function fetchRefData() {
         setIsLoadingRef(true);
@@ -99,6 +99,23 @@ export function StudentForm() {
         setIsLoadingRef(false);
     }
     fetchRefData();
+
+    const handleRefDataUpdate = async () => {
+      const res = await getAdmissionReferenceData();
+      if (res.success && res.data) {
+        setRefData(res.data);
+      }
+    };
+
+    window.addEventListener('v2-discount-types-updated', handleRefDataUpdate);
+    window.addEventListener('v2-fee-masters-updated', handleRefDataUpdate);
+    window.addEventListener('v2-ref-data-updated', handleRefDataUpdate);
+
+    return () => {
+      window.removeEventListener('v2-discount-types-updated', handleRefDataUpdate);
+      window.removeEventListener('v2-fee-masters-updated', handleRefDataUpdate);
+      window.removeEventListener('v2-ref-data-updated', handleRefDataUpdate);
+    };
   }, []);
 
   const { register, handleSubmit, formState: { errors, isDirty }, watch, reset, trigger, setValue } = useForm<StudentAdmissionData>({

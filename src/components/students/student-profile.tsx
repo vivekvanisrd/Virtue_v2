@@ -62,12 +62,58 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
     loadProfile();
   }, [studentId]);
 
-  const handleUpdate = async (updatedData: any) => {
+  const handleUpdate = async (overrideData?: any) => {
     setIsUpdating(true);
+    const updatedData = {
+      firstName: student.firstName,
+      middleName: student.middleName || null,
+      lastName: student.lastName,
+      dob: student.dob || null,
+      gender: student.gender || null,
+      phone: student.phone || null,
+      email: student.email || null,
+      bloodGroup: student.bloodGroup || null,
+      category: student.category || null,
+      aadhaarNumber: student.aadhaarNumber || null,
+      family: {
+        id: student.family?.id,
+        fatherName: student.family?.fatherName || null,
+        fatherPhone: student.family?.fatherPhone || null,
+        fatherEmail: student.family?.fatherEmail || null,
+        fatherAadhaar: student.family?.fatherAadhaar || null,
+        fatherOccupation: student.family?.fatherOccupation || null,
+        motherName: student.family?.motherName || null,
+        motherPhone: student.family?.motherPhone || null,
+        motherEmail: student.family?.motherEmail || null,
+        motherAadhaar: student.family?.motherAadhaar || null,
+        motherOccupation: student.family?.motherOccupation || null,
+        emergencyPhone: student.family?.emergencyPhone || null,
+        whatsappNumber: student.family?.whatsappNumber || null,
+      },
+      address: {
+        id: student.address?.id,
+        currentAddress: student.address?.currentAddress || null,
+        city: student.address?.city || null,
+        state: student.address?.state || null,
+        pinCode: student.address?.pinCode ?? student.address?.pincode ?? null,
+      },
+      academic: {
+        sectionId: student.academic?.sectionId || null,
+        rollNumber: student.academic?.rollNumber || null,
+        admissionDate: student.academic?.admissionDate || null,
+        penNumber: student.academic?.penNumber || null,
+        stsId: student.academic?.stsId || null,
+        apaarId: student.academic?.apaarId || null,
+        samagraId: student.academic?.samagraId || null,
+      },
+      ...(overrideData || {})
+    };
     const res = await updateStudentProfile(studentId, updatedData);
     if (res.success) {
       setStudent({ ...student, ...updatedData });
       setIsEditing(false);
+    } else {
+      alert("Profile Save Failed: " + (res.error || "Unknown Error"));
     }
     setIsUpdating(false);
   };
@@ -208,7 +254,24 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             </div>
             <div>
               <h2 className="text-xl font-black text-foreground tracking-tight leading-none mb-1.5 flex items-center gap-2">
-                {student.firstName} {student.lastName}
+                {isEditing ? (
+                  <div className="flex gap-2">
+                    <input 
+                      value={student.firstName || ""}
+                      onChange={(e) => setStudent({...student, firstName: e.target.value})}
+                      className="bg-muted/50 border border-border rounded px-2 py-0.5 text-base font-black w-32"
+                      placeholder="First Name"
+                    />
+                    <input 
+                      value={student.lastName || ""}
+                      onChange={(e) => setStudent({...student, lastName: e.target.value})}
+                      className="bg-muted/50 border border-border rounded px-2 py-0.5 text-base font-black w-32"
+                      placeholder="Last Name"
+                    />
+                  </div>
+                ) : (
+                  <>{student.firstName} {student.lastName}</>
+                )}
                 {status === "CONFIRMED" || status === "ACTIVE" ? (
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest border border-emerald-200">Confirmed</span>
                 ) : isProvisional ? (
@@ -305,34 +368,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
           </button>
           {isEditing && (
             <button 
-              onClick={() => handleUpdate({
-                firstName: student.firstName,
-                lastName: student.lastName,
-                email: student.email,
-                phone: student.phone,
-                family: {
-                  id: student.family?.id,
-                  fatherName: student.family?.fatherName,
-                  fatherPhone: student.family?.fatherPhone,
-                  fatherEmail: student.family?.fatherEmail,
-                  fatherAadhaar: student.family?.fatherAadhaar,
-                  motherName: student.family?.motherName,
-                  motherPhone: student.family?.motherPhone,
-                  motherEmail: student.family?.motherEmail,
-                  motherAadhaar: student.family?.motherAadhaar,
-                },
-                address: {
-                  id: student.address?.id,
-                  currentAddress: student.address?.currentAddress,
-                  city: student.address?.city,
-                  state: student.address?.state,
-                  pinCode: student.address?.pinCode,
-                },
-                academic: {
-                  sectionId: student.academic?.sectionId || null,
-                  rollNumber: student.academic?.rollNumber || null
-                }
-              })}
+              onClick={() => handleUpdate()}
               disabled={isUpdating}
               className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 transition-all shadow-md active:scale-95 disabled:opacity-50"
             >
@@ -347,7 +383,11 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
               isEditing ? "bg-rose-50 border-rose-200 text-rose-600" : "bg-background border-border text-foreground hover:bg-muted/50"
             )}
           >
-            {isEditing ? "Exit Edit Mode" : "Manage Profile"}
+            {isEditing ? (
+              <>Exit Edit Mode</>
+            ) : (
+              <><Edit className="w-3.5 h-3.5 text-primary" /> Edit Profile</>
+            )}
           </button>
         </div>
       </div>
@@ -541,15 +581,36 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Date of Birth</p>
-                    <p className="text-sm font-bold text-foreground flex items-center gap-2">
-                       <Calendar className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.dob ? new Date(student.dob).toLocaleDateString() : "Not Specified"}
-                    </p>
+                    {isEditing ? (
+                      <input 
+                        type="date"
+                        value={student.dob ? new Date(student.dob).toISOString().split('T')[0] : ""}
+                        onChange={(e) => setStudent({...student, dob: e.target.value})}
+                        className="w-full bg-muted/50 border border-border rounded px-2 py-1 text-sm font-bold shadow-inner"
+                      />
+                    ) : (
+                      <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                         <Calendar className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.dob ? new Date(student.dob).toLocaleDateString() : "Not Specified"}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Admission Date</p>
-                    <p className="text-sm font-bold text-foreground flex items-center gap-2">
-                       <Calendar className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.academic?.admissionDate ? new Date(student.academic.admissionDate).toLocaleDateString() : "N/A"}
-                    </p>
+                    {isEditing ? (
+                      <input 
+                        type="date"
+                        value={student.academic?.admissionDate ? new Date(student.academic.admissionDate).toISOString().split('T')[0] : ""}
+                        onChange={(e) => setStudent({
+                          ...student, 
+                          academic: { ...student.academic, admissionDate: e.target.value }
+                        })}
+                        className="w-full bg-muted/50 border border-border rounded px-2 py-1 text-sm font-bold shadow-inner"
+                      />
+                    ) : (
+                      <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                         <Calendar className="w-3.5 h-3.5 text-foreground opacity-30" /> {student.academic?.admissionDate ? new Date(student.academic.admissionDate).toLocaleDateString() : "N/A"}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -564,51 +625,6 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                     <span className="px-2 py-1 bg-background text-orange-600 rounded text-[10px] font-black border border-orange-100 uppercase">Pending Medical Doc</span>
                   </div>
                 </div>
-
-                {isEditing && (
-                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2 duration-300">
-                    <div>
-                      <p className="text-xs font-black text-primary uppercase">Profile Editing Active</p>
-                      <p className="text-[10px] text-foreground opacity-60 font-medium tracking-tight">Changes are logged immediately for accountability.</p>
-                    </div>
-                    <div className="flex gap-2">
-                       <button 
-                        onClick={() => handleUpdate({
-                          firstName: student.firstName,
-                          lastName: student.lastName,
-                          email: student.email,
-                          phone: student.phone,
-                          family: {
-                            id: student.family?.id,
-                            fatherName: student.family?.fatherName,
-                            fatherPhone: student.family?.fatherPhone,
-                            fatherEmail: student.family?.fatherEmail,
-                            fatherAadhaar: student.family?.fatherAadhaar,
-                            motherName: student.family?.motherName,
-                            motherPhone: student.family?.motherPhone,
-                            motherEmail: student.family?.motherEmail,
-                            motherAadhaar: student.family?.motherAadhaar,
-                          },
-                          address: {
-                            id: student.address?.id,
-                            currentAddress: student.address?.currentAddress,
-                            city: student.address?.city,
-                            state: student.address?.state,
-                            pinCode: student.address?.pinCode,
-                          },
-                          academic: {
-                            sectionId: student.academic?.sectionId || null,
-                            rollNumber: student.academic?.rollNumber || null
-                          }
-                        })}
-                        disabled={isUpdating}
-                        className="px-4 py-2 bg-primary text-foreground rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary/90 disabled:opacity-50 shadow-lg shadow-primary/20"
-                       >
-                         {isUpdating ? "Saving..." : "Save Repository"}
-                       </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -673,7 +689,20 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   ].map(item => (
                     <div key={item.label} className="bg-muted/50 p-3 rounded-lg border border-border">
                       <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">{item.label}</p>
-                      {item.label === "Section" && isEditing ? (
+                      {item.label === "Boarding" && isEditing ? (
+                        <select
+                          value={student.academic?.boardingType || "Day Scholar"}
+                          onChange={(e) => setStudent({
+                            ...student,
+                            academic: { ...student.academic, boardingType: e.target.value }
+                          })}
+                          className="w-full bg-background border border-border rounded px-2 py-0.5 mt-1 text-xs font-bold shadow-inner focus:outline-none"
+                        >
+                          <option value="Day Scholar">Day Scholar</option>
+                          <option value="Hosteller">Hosteller</option>
+                          <option value="Residential">Residential</option>
+                        </select>
+                      ) : item.label === "Section" && isEditing ? (
                         <select
                           value={student.academic?.sectionId || ""}
                           onChange={(e) => {
@@ -725,17 +754,33 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   <h4 className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-4">Mandatory Govt Registry (UDISE+ 2024-25)</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                      { label: "PEN (Permanent Education Number)", value: student.academic?.penNumber, status: "Active" },
-                      { label: "STS / SATS ID", value: student.academic?.stsId, status: "Verified" },
-                      { label: "APAAR (One Nation One ID)", value: student.academic?.apaarId, status: "Under Sync" },
-                      { label: "Samagra ID", value: student.academic?.samagraId, status: "Active" }
+                      { key: "penNumber", label: "PEN (Permanent Education Number)", value: student.academic?.penNumber, status: "Active" },
+                      { key: "stsId", label: "STS / SATS ID", value: student.academic?.stsId, status: "Verified" },
+                      { key: "apaarId", label: "APAAR (One Nation One ID)", value: student.academic?.apaarId, status: "Under Sync" },
+                      { key: "samagraId", label: "Samagra ID", value: student.academic?.samagraId, status: "Active" }
                     ].map(item => (
                        <div key={item.label} className="bg-background p-3 rounded-xl border border-indigo-100 shadow-sm">
                         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">{item.label}</p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-base font-black text-indigo-900 tracking-tight">{item.value || "PENDING"}</p>
-                          <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded uppercase">{item.status}</span>
-                        </div>
+                        {isEditing ? (
+                          <input 
+                            type="text"
+                            value={item.value || ""}
+                            onChange={(e) => setStudent({
+                              ...student,
+                              academic: {
+                                ...student.academic,
+                                [item.key]: e.target.value
+                              }
+                            })}
+                            className="w-full bg-muted/50 border border-border rounded px-2 py-1 text-sm font-bold shadow-inner"
+                            placeholder={`Enter ${item.label}`}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <p className="text-base font-black text-indigo-900 tracking-tight">{item.value || "PENDING"}</p>
+                            <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded uppercase">{item.status}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -744,23 +789,49 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-2">
                    <div>
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Aadhaar Number</p>
-                    <p className="text-sm font-black text-foreground tracking-widest">
-                      {student.aadhaarNumber ? `XXXX XXXX ${student.aadhaarNumber.slice(-4)}` : "Not Provided"}
-                    </p>
-                    <span className={cn(
-                      "text-[9px] font-black uppercase mt-1 inline-block px-2 py-0.5 rounded border",
-                      student.aadhaarVerified ? "text-emerald-700 bg-emerald-50 border-emerald-100" : "text-red-700 bg-red-50 border-red-100"
-                    )}>
-                      {student.aadhaarVerified ? "Verified ✅" : "Pending ⚠️"}
-                    </span>
+                    {isEditing ? (
+                      <input 
+                        type="text"
+                        value={student.aadhaarNumber || ""}
+                        onChange={(e) => setStudent({...student, aadhaarNumber: e.target.value})}
+                        className="w-full bg-muted/50 border border-border rounded px-2 py-1 text-sm font-bold shadow-inner mt-1"
+                        placeholder="XXXX XXXX XXXX"
+                      />
+                    ) : (
+                      <>
+                        <p className="text-sm font-black text-foreground tracking-widest">
+                          {student.aadhaarNumber ? `XXXX XXXX ${student.aadhaarNumber.slice(-4)}` : "Not Provided"}
+                        </p>
+                        <span className={cn(
+                          "text-[9px] font-black uppercase mt-1 inline-block px-2 py-0.5 rounded border",
+                          student.aadhaarVerified ? "text-emerald-700 bg-emerald-50 border-emerald-100" : "text-red-700 bg-red-50 border-red-100"
+                        )}>
+                          {student.aadhaarVerified ? "Verified ✅" : "Pending ⚠️"}
+                        </span>
+                      </>
+                    )}
                    </div>
                    <div>
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Social Category</p>
-                    <p className="text-sm font-black text-foreground">{student.category || "General"}</p>
+                    {isEditing ? (
+                      <select 
+                        value={student.category || "General"}
+                        onChange={(e) => setStudent({...student, category: e.target.value})}
+                        className="w-full bg-muted/50 border border-border rounded px-2 py-1 text-xs font-bold mt-1"
+                      >
+                        <option value="General">General</option>
+                        <option value="OBC">OBC</option>
+                        <option value="SC">SC</option>
+                        <option value="ST">ST</option>
+                        <option value="EWS">EWS</option>
+                      </select>
+                    ) : (
+                      <p className="text-sm font-black text-foreground mt-1">{student.category || "General"}</p>
+                    )}
                    </div>
                    <div>
                     <p className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest">Minority Status</p>
-                    <p className="text-sm font-black text-foreground">{student.minorityStatus ? "YES" : "NO"}</p>
+                    <p className="text-sm font-black text-foreground mt-1">{student.minorityStatus ? "YES" : "NO"}</p>
                    </div>
                 </div>
               </div>
@@ -803,7 +874,15 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Occupation</p>
-                        <p className="text-sm font-bold text-foreground underline decoration-slate-200 decoration-1 underline-offset-4">{student.family?.fatherOccupation || "N/A"}</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.fatherOccupation || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, fatherOccupation: e.target.value}})}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <p className="text-sm font-bold text-foreground underline decoration-slate-200 decoration-1 underline-offset-4">{student.family?.fatherOccupation || "N/A"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Aadhaar Number</p>
@@ -890,7 +969,15 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Occupation</p>
-                        <p className="text-sm font-bold text-foreground underline decoration-slate-200 decoration-1 underline-offset-4">{student.family?.motherOccupation || "N/A"}</p>
+                        {isEditing ? (
+                          <input 
+                            value={student.family?.motherOccupation || ""}
+                            onChange={(e) => setStudent({...student, family: {...student.family, motherOccupation: e.target.value}})}
+                            className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                          />
+                        ) : (
+                          <p className="text-sm font-bold text-foreground underline decoration-slate-200 decoration-1 underline-offset-4">{student.family?.motherOccupation || "N/A"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest">Aadhaar Number</p>
@@ -946,9 +1033,18 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
 
                 <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
                   <h4 className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">WhatsApp Communication Sync</h4>
-                  <p className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
-                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span> {student.family?.whatsappNumber || "No Sync Linked"}
-                  </p>
+                  {isEditing ? (
+                    <input 
+                      value={student.family?.whatsappNumber || ""}
+                      onChange={(e) => setStudent({...student, family: {...student.family, whatsappNumber: e.target.value}})}
+                      className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold mb-1"
+                      placeholder="Enter WhatsApp Number"
+                    />
+                  ) : (
+                    <p className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span> {student.family?.whatsappNumber || "No Sync Linked"}
+                    </p>
+                  )}
                   <p className="text-[10px] font-medium text-foreground opacity-60">Broadcast notifications and electronic receipts will be sent here.</p>
                 </div>
               </div>
@@ -1098,17 +1194,48 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         <div>
                           <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Blood Group</p>
-                          <p className="text-base font-black text-rose-700 drop-shadow-sm">{student.bloodGroup || "O+"}</p>
+                          {isEditing ? (
+                            <select
+                              value={student.bloodGroup || "O+"}
+                              onChange={(e) => setStudent({...student, bloodGroup: e.target.value})}
+                              className="w-full bg-background border border-border rounded px-2 py-1 text-xs font-bold"
+                            >
+                              {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(bg => (
+                                <option key={bg} value={bg}>{bg}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <p className="text-base font-black text-rose-700 drop-shadow-sm">{student.bloodGroup || "O+"}</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Known Allergies</p>
-                          <p className="text-sm font-bold text-slate-800">{student.allergies || "None declared"}</p>
+                          {isEditing ? (
+                            <input 
+                              value={student.allergies || ""}
+                              onChange={(e) => setStudent({...student, allergies: e.target.value})}
+                              className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                              placeholder="e.g. Peanuts, Dust"
+                            />
+                          ) : (
+                            <p className="text-sm font-bold text-slate-800">{student.allergies || "None declared"}</p>
+                          )}
                         </div>
                         <div className="sm:col-span-2 pt-2 border-t border-rose-100/50">
                           <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Medical Conditions</p>
-                          <p className="text-sm font-medium text-foreground opacity-70 leading-relaxed">{student.medicalConditions || "No chronic conditions declared during admission. Student is considered fit for physical activities."}</p>
+                          {isEditing ? (
+                            <textarea 
+                              value={student.medicalConditions || ""}
+                              onChange={(e) => setStudent({...student, medicalConditions: e.target.value})}
+                              className="w-full bg-background border border-border rounded p-2 text-xs font-medium"
+                              rows={2}
+                              placeholder="Describe medical conditions..."
+                            />
+                          ) : (
+                            <p className="text-sm font-medium text-foreground opacity-70 leading-relaxed">{student.medicalConditions || "No chronic conditions declared during admission. Student is considered fit for physical activities."}</p>
+                          )}
                         </div>
-                     </div>
+                      </div>
                    </div>
                 </div>
 
@@ -1117,11 +1244,29 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 bg-muted/50 p-3 rounded-lg border border-border">
                        <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Doctor Name</p>
-                       <p className="text-sm font-bold text-foreground">Dr. {student.doctorName || "Not Provided"}</p>
+                       {isEditing ? (
+                         <input 
+                           value={student.doctorName || ""}
+                           onChange={(e) => setStudent({...student, doctorName: e.target.value})}
+                           className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                           placeholder="Dr. Name"
+                         />
+                       ) : (
+                         <p className="text-sm font-bold text-foreground">Dr. {student.doctorName || "Not Provided"}</p>
+                       )}
                     </div>
                     <div className="flex-1 bg-muted/50 p-3 rounded-lg border border-border">
                        <p className="text-[9px] font-black text-foreground opacity-50 uppercase tracking-widest mb-1">Clinic Phone</p>
-                       <p className="text-sm font-bold text-foreground">{student.doctorPhone || "-"}</p>
+                       {isEditing ? (
+                         <input 
+                           value={student.doctorPhone || ""}
+                           onChange={(e) => setStudent({...student, doctorPhone: e.target.value})}
+                           className="w-full bg-background border border-border rounded px-2 py-1 text-sm font-bold"
+                           placeholder="Phone Number"
+                         />
+                       ) : (
+                         <p className="text-sm font-bold text-foreground">{student.doctorPhone || "-"}</p>
+                       )}
                     </div>
                   </div>
                 </div>
@@ -1223,12 +1368,12 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-4">Quick Actions</h4>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "Edit Profile", icon: Edit, color: "text-blue-500" },
-                { label: "Admission TC", icon: ArrowRight, color: "text-orange-500" },
-                { label: "Generate Receipt", icon: CreditCard, color: "text-emerald-500" },
-                { label: "View Reports", icon: ExternalLink, color: "text-indigo-500" }
+                { label: "Edit Profile", icon: Edit, color: "text-blue-500", onClick: () => setIsEditing(true) },
+                { label: "Admission TC", icon: ArrowRight, color: "text-orange-500", onClick: handleGenerateTC },
+                { label: "Generate Receipt", icon: CreditCard, color: "text-emerald-500", onClick: () => openTab({ id: "fee-collection", title: "Fee Collection", icon: Wallet, component: "Finance", params: { studentId: student.id } }) },
+                { label: "View Reports", icon: ExternalLink, color: "text-indigo-500", onClick: () => alert("Viewing Student Progress & Financial Reports...") }
               ].map(action => (
-                <button key={action.label} className="p-3 bg-muted/50 hover:bg-slate-100 rounded-xl border border-border transition-all flex flex-col items-start gap-2 group">
+                <button key={action.label} onClick={action.onClick} className="p-3 bg-muted/50 hover:bg-slate-100 rounded-xl border border-border transition-all flex flex-col items-start gap-2 group">
                   <action.icon className={cn("w-4 h-4 transition-transform group-hover:scale-110", action.color)} />
                   <span className="text-[10px] font-black text-foreground opacity-70 uppercase tracking-tighter text-left leading-none">{action.label}</span>
                 </button>

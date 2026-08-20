@@ -12,7 +12,7 @@ import {
     Key, GitBranch, UserPlus, School, Activity, Eye, EyeOff,
     ArrowRight, Lock, Sparkles, Command, ClipboardCheck, LogOut,
     Terminal, Globe, BookOpen, Database, Cpu, HardDrive, Server,
-    Search, AlertTriangle
+    Search, AlertTriangle, Phone
 } from "lucide-react";
 import {
     getFullRegistryAction,
@@ -31,6 +31,7 @@ import {
     getActivityLogsAction
 } from "@/lib/actions/dev-actions";
 import { SystemErrorLogViewer } from "@/components/dashboard/error-log-viewer";
+import { GoogleContactsManager } from "@/components/dashboard/google-contacts-manager";
 import { signOutAction } from "@/lib/actions/auth-native";
 
 // ─── Utility classes ─────────────────────────────────────────────────────────
@@ -155,7 +156,15 @@ function ResultCard({ result, onClose }: { result: any; onClose: () => void }) {
 // ─── MASTER COMPONENT ────────────────────────────────────────────────────────
 export default function DeveloperCommandCenter() {
     // Tab State
-    const [activeTab, setActiveTab] = useState<"monitoring" | "admin" | "resets" | "audits" | "logs" | "errors" | "specs">("monitoring");
+    const [activeTab, setActiveTab] = useState<"monitoring" | "admin" | "resets" | "audits" | "logs" | "errors" | "specs" | "google-contacts">("monitoring");
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get("tab");
+        if (tab === "google-contacts" || tab === "errors" || tab === "monitoring" || tab === "admin") {
+            setActiveTab(tab as any);
+        }
+    }, []);
 
     // General States
     const [schools, setSchools] = useState<any[]>([]);
@@ -509,6 +518,7 @@ export default function DeveloperCommandCenter() {
                                 { id: "admin", label: "Administration", icon: Globe },
                                 { id: "resets", label: "Resets & Passwords", icon: Key },
                                 { id: "audits", label: "Audits & Tenancy", icon: ShieldCheck },
+                                { id: "google-contacts", label: "Google Contacts", icon: Phone },
                                 { id: "logs", label: "Activity Logs", icon: Terminal },
                                 { id: "errors", label: "System Errors", icon: AlertTriangle },
                                 { id: "specs", label: "Specs", icon: BookOpen },
@@ -1191,6 +1201,13 @@ export default function DeveloperCommandCenter() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* ── GOOGLE CONTACTS TAB ────────────────────────────────────────── */}
+                    {activeTab === "google-contacts" && (
+                        <div className="animate-in fade-in duration-200">
+                            <GoogleContactsManager />
                         </div>
                     )}
                 </div>

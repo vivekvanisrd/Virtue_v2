@@ -14,6 +14,7 @@ import {
   getFinancialYearsAction
 } from "@/lib/actions/academic-actions";
 import { getStaffPulseAction } from "@/lib/actions/attendance-v2-actions";
+import { broadcastRefDataUpdate } from "@/lib/utils/dynamic-sync";
 import { 
   Library, 
   Plus, 
@@ -191,6 +192,7 @@ export default function AcademicArchitectHub() {
             alert("Institutional Expansion: Grade Level Created.");
             setShowGradeModal(false);
             refreshData();
+            broadcastRefDataUpdate("classes");
         } else {
             alert(res.error || "Grade creation failed.");
         }
@@ -208,6 +210,7 @@ export default function AcademicArchitectHub() {
             alert("Section Provisioned Successfully.");
             setShowSectionModal(false);
             refreshData();
+            broadcastRefDataUpdate("sections");
         } else {
             alert(res.error || "Section provisioning failed.");
         }

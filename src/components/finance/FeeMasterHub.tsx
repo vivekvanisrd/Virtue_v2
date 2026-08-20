@@ -8,6 +8,7 @@ import {
   toggleFeeComponentStatusAction
 } from "@/lib/actions/fee-actions";
 import { formatCurrency } from "@/lib/utils/fee-utils";
+import { broadcastRefDataUpdate } from "@/lib/utils/dynamic-sync";
 import { 
   motion, 
   AnimatePresence 
@@ -99,6 +100,7 @@ export function FeeMasterHub() {
     if (res.success) {
       setMessage({ type: "success", text: "Fee category removed successfully." });
       fetchData();
+      broadcastRefDataUpdate("feeMasters");
     } else {
       setMessage({ type: "error", text: res.error });
     }
@@ -108,6 +110,7 @@ export function FeeMasterHub() {
     const res = await toggleFeeComponentStatusAction(id, !currentStatus);
     if (res.success) {
       fetchData();
+      broadcastRefDataUpdate("feeMasters");
     } else {
       setMessage({ type: "error", text: res.error });
     }
@@ -134,6 +137,7 @@ export function FeeMasterHub() {
       setEditingItem(null);
       setFormData({ name: "", type: "ANCILLARY", amount: 0, description: "", isOneTime: false, isRefundable: false, accountCode: "", isActive: true });
       fetchData();
+      broadcastRefDataUpdate("feeMasters");
     } else {
       setMessage({ type: "error", text: res.error });
     }

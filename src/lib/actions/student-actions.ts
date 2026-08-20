@@ -639,7 +639,7 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
               feeStructureId: feeStructure.id,
               paymentType: validatedData.paymentType || "Term-wise",
               annualTuition: annualTotal,
-              term1Amount: Math.floor(annualTotal * 0.35),
+              term1Amount: Math.round(annualTotal * 0.5),
               totalDiscount: (context.role === "PRINCIPAL" || context.role === "OWNER") ? totalDiscountAmount : 0,
 
               // 🏷️ LINK AUTHORIZED DISCOUNT — PRINCIPAL/OWNER approve; ACCOUNTS/ADMIN propose
@@ -666,12 +666,13 @@ export async function submitStandardizedAdmissionAction(formData: any, isProvisi
                 create: resolvedComponents.map(comp => {
                   const isTuition = comp.masterComponent?.name?.toLowerCase().includes("tuition") || 
                                     comp.masterComponent?.type === "CORE";
+                  const isApproved = context.role === "PRINCIPAL" || context.role === "OWNER";
                   return {
                     schoolId: context.schoolId,
                     branchId,
                     componentId: comp.componentId,
                     baseAmount: comp.amount,
-                    discountAmount: isTuition ? totalDiscountAmount : 0,
+                    discountAmount: (isTuition && isApproved) ? totalDiscountAmount : 0,
                     isApplicable: true,
                     lockReason: "ADMISSION_SYNC"
                   };
@@ -1266,15 +1267,16 @@ export async function updateStudentProfile(studentId: string, data: any) {
     // We update across multiple related tables
     const result = await prisma.$transaction(async (tx: any) => {
       // 1. Update Core Student Table
+      const rawDob = data.dob || data.dateOfBirth;
       const student = await tx.student.update({
         where: { id: studentId, schoolId: context.schoolId },
         data: {
           firstName: data.firstName,
           lastName: data.lastName,
           middleName: data.middleName,
-          dob: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          dob: rawDob ? new Date(rawDob) : undefined,
           gender: data.gender,
-          phone: cleanPhone(data.phone),
+          phone: data.phone ? cleanPhone(data.phone) : undefined,
           email: data.email,
           bloodGroup: data.bloodGroup,
           category: data.category,
@@ -1311,10 +1313,13 @@ export async function updateStudentProfile(studentId: string, data: any) {
       }
 
       if (data.academic) {
-        const { id, studentId: acStudentId, schoolId, branchId, ...academicData } = data.academic;
+        const { id, studentId: acStudentId, schoolId, branchId, admissionDate, ...academicData } = data.academic;
         await tx.academicRecord.update({
           where: { studentId },
-          data: academicData
+          data: {
+            ...academicData,
+            admissionDate: admissionDate ? new Date(admissionDate) : undefined,
+          }
         });
         const activeAY = await tx.academicYear.findFirst({
           where: { schoolId: context.schoolId, isCurrent: true }

@@ -99,11 +99,11 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
     loadData();
   }, [studentId, view]);
 
-  // ─── REAL-TIME SYNC (Lightning Speed) ───
+  // ─── REAL-TIME SYNC (Lightning Speed Across All Entities) ───
   useEffect(() => {
     if (!studentId) return;
     
-    // Subscribe to NEW collections for this student
+    // Subscribe to NEW collections, discount updates, & fee master changes
     const channel = supabase
       .channel(`student_fin_${studentId}`)
       .on(
@@ -115,14 +115,53 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
           filter: `studentId=eq.${studentId}` 
         }, 
         () => {
-          // Trigger a silent re-fetch when a remote payment is detected
           loadData(); 
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'DiscountType'
+        },
+        async () => {
+          const res = await getDiscountTypesAction();
+          if (res.success) setDiscountOptions(res.data);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'FeeComponentMaster'
+        },
+        async () => {
+          const res = await getAdHocFeeOptions();
+          if (res.success) setAdHocOptions(res.data);
         }
       )
       .subscribe();
 
+    const handleRefDataUpdate = async () => {
+      const [discRes, adHocRes] = await Promise.all([
+        getDiscountTypesAction(),
+        getAdHocFeeOptions()
+      ]);
+      if (discRes.success) setDiscountOptions(discRes.data);
+      if (adHocRes.success) setAdHocOptions(adHocRes.data);
+    };
+
+    window.addEventListener('v2-discount-types-updated', handleRefDataUpdate);
+    window.addEventListener('v2-ref-data-updated', handleRefDataUpdate);
+    window.addEventListener('v2-fee-masters-updated', handleRefDataUpdate);
+
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('v2-discount-types-updated', handleRefDataUpdate);
+      window.removeEventListener('v2-ref-data-updated', handleRefDataUpdate);
+      window.removeEventListener('v2-fee-masters-updated', handleRefDataUpdate);
     };
   }, [studentId]);
 
@@ -550,9 +589,15 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
                            </span>
                         </div>
                      </td>
-                     <td className="px-10 py-6 text-right">
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Locked</span>
-                     </td>
+                      <td className="px-10 py-6 text-right">
+                         <button 
+                           onClick={handleOpenDiscountModal}
+                           className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 transition-all shadow-sm flex items-center gap-1.5 text-[9px] font-black uppercase ml-auto"
+                           title="Apply or Change Policy Discount via Dropdown"
+                         >
+                           <Zap className="w-3.5 h-3.5 text-emerald-600" /> Apply / Change Discount
+                         </button>
+                      </td>
                   </tr>
 
                   {/* Ancillary Components */}
@@ -1018,15 +1063,17 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Authorized Policy</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Authorized Policy (Discount Vault)</label>
                 <select 
                   value={discountSelection.id} 
                   onChange={e => setDiscountSelection({ ...discountSelection, id: e.target.value })}
                   className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-6 py-4 text-sm font-black outline-none focus:border-emerald-500 transition-all"
                 >
-                  <option value="">Select an active policy...</option>
+                  <option value="">Select an active policy from Discount Vault ({discountOptions.length} available)...</option>
                   {discountOptions.map(dt => (
-                    <option key={dt.id} value={dt.id}>{dt.name} — {dt.percentage ? `${dt.percentage}%` : formatCurrency(dt.amount)}</option>
+                    <option key={dt.id} value={dt.id}>
+                      {dt.name} — {dt.percentage ? `${dt.percentage}% Off` : formatCurrency(dt.amount)} {dt.description ? `(${dt.description})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>

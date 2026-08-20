@@ -25,7 +25,7 @@ const SYSTEM_MODELS = [
  */
 const SCHOOL_LEVEL_MODELS = [
     "Branch", "AcademicYear", "FinancialYear", "SovereignRole", "StaffDepartment", "StaffCategory",
-    "SchoolCalendar" // School-wide calendar; branchId is optional (null = whole school)
+    "SchoolCalendar", "GoogleIntegration", "GoogleContactMapping" // School-wide Google Contacts Integration
 ];
 
 /**

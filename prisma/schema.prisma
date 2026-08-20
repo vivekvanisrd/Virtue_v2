@@ -4027,6 +4027,36 @@ model SystemErrorLog {
   @@index([status])
 }
 
+// 🌐 Google Contacts Integration Ledger
+model GoogleIntegration {
+  id           String   @id @default(uuid())
+  schoolId     String   @unique
+  userEmail    String
+  accessToken  String   @db.Text
+  refreshToken String?  @db.Text
+  tokenExpiry  DateTime
+  scope        String?  @db.Text
+  isActive     Boolean  @default(true)
+  lastSyncedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([schoolId])
+}
+
+model GoogleContactMapping {
+  id                 String   @id @default(uuid())
+  schoolId           String
+  entityType         String   // "PARENT" | "STAFF" | "STUDENT"
+  entityId           String
+  googleResourceName String   // e.g. "people/c123456789"
+  lastSyncedAt       DateTime @default(now())
+
+  @@unique([schoolId, entityType, entityId])
+  @@index([schoolId])
+}
+
+
 
 
 
