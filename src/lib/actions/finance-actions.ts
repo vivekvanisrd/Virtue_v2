@@ -2601,6 +2601,7 @@ export async function upsertDiscountTypeAction(params: {
       : await prisma.discountType.create({ data });
 
     revalidatePath("/dashboard/finance/settings");
+    revalidatePath('/', 'layout');
     return { success: true, data: serializeDecimal(serialize(result)) };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -2623,6 +2624,7 @@ export async function toggleDiscountTypeStatusAction(id: string, status: boolean
     });
 
     revalidatePath("/dashboard/finance/settings");
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

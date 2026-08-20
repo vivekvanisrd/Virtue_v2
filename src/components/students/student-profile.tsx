@@ -415,6 +415,39 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
         })}
       </div>
 
+      {/* ✏️ EDIT MODE ACTIVE PROMINENT BANNER */}
+      {isEditing && (
+        <div className="bg-indigo-600 text-white rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-indigo-600/20 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/30 shrink-0">
+              <Edit className="w-5 h-5 text-white animate-pulse" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide">Edit Mode Active</p>
+              <p className="text-[10px] text-white/80 font-bold mt-0.5">
+                All fields across Overview, Academics, Govt IDs, Family, Address, and Health are now editable. Click "Save Profile" when done.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button 
+              onClick={() => handleUpdate()}
+              disabled={isUpdating}
+              className="px-5 py-2 bg-white text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Profile
+            </button>
+            <button 
+              onClick={() => setIsEditing(false)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/20"
+            >
+              Exit Edit Mode
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Content Area ─── */}
       <div className={cn("grid grid-cols-12 gap-4 relative", activeTab === "financial" ? "" : "h-[650px]")}>
         
@@ -1368,7 +1401,7 @@ export function StudentProfile({ studentId, onBack }: StudentProfileProps) {
             <h4 className="text-[10px] font-black text-foreground opacity-50 uppercase tracking-widest mb-4">Quick Actions</h4>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "Edit Profile", icon: Edit, color: "text-blue-500", onClick: () => setIsEditing(true) },
+                { label: isEditing ? "Exit Edit Mode" : "Edit Profile", icon: Edit, color: isEditing ? "text-rose-500" : "text-blue-500", onClick: () => setIsEditing(prev => !prev) },
                 { label: "Admission TC", icon: ArrowRight, color: "text-orange-500", onClick: handleGenerateTC },
                 { label: "Generate Receipt", icon: CreditCard, color: "text-emerald-500", onClick: () => openTab({ id: "fee-collection", title: "Fee Collection", icon: Wallet, component: "Finance", params: { studentId: student.id } }) },
                 { label: "View Reports", icon: ExternalLink, color: "text-indigo-500", onClick: () => alert("Viewing Student Progress & Financial Reports...") }

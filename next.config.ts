@@ -1,21 +1,39 @@
 import type { NextConfig } from "next";
 
-// Trigger reload: 2026-03-21T20:25:00
+// ⚡ ZERO CACHING ENFORCEMENT: Ensures Next.js never caches pages, API routes, or data
 const nextConfig: NextConfig = {
-  /* config options here */
   output: "standalone",
   typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
     ignoreBuildErrors: true,
   },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
+  },
+  headers: async () => [
+    {
+      source: "/:path*",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        },
+        {
+          key: "Pragma",
+          value: "no-cache",
+        },
+        {
+          key: "Expires",
+          value: "0",
+        },
+      ],
+    },
+  ],
 };
 
 export default nextConfig;

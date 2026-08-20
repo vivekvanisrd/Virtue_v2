@@ -1349,6 +1349,9 @@ export async function updateStudentProfile(studentId: string, data: any) {
     });
 
     revalidatePath(`/admin/students/${studentId}`);
+    revalidatePath(`/admin/students/${studentId}`, 'layout');
+    revalidatePath('/admin/students', 'layout');
+    revalidatePath('/', 'layout');
     return { success: true, data: result };
   } catch (error: any) {
     console.error("Update Student Error:", error);

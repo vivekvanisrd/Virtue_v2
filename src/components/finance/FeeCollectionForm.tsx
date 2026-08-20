@@ -526,9 +526,16 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   }
 
   const annualNet = fb?.annualNet || 0;
+  const totalDiscount = fb?.totalDiscount || 0;
+  const grossFee = annualNet + totalDiscount;
   const totalPaid = (student?.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
   const totalDue = Math.max(0, annualNet - totalPaid);
   const paidPercent = annualNet > 0 ? Math.min(100, Math.round((totalPaid / annualNet) * 100)) : 0;
+  
+  const isTransportActive = student?.transportRequired || (fb?.ancillary?.transportFee?.amount > 0);
+  const transportDisplay = isTransportActive 
+    ? (student?.transportMonthlyFee ? `₹${student.transportMonthlyFee}/mo` : `₹${fb?.ancillary?.transportFee?.amount || 0}`)
+    : "Not Subscribed";
 
   const paymentModes = ["Cash", "Bank QR", "Card Swipe", "Razorpay"];
 
@@ -570,12 +577,22 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                 </button>
               </div>
 
-              {/* 📊 FINANCIAL LEDGER SUMMARY CARDS */}
+              {/* 📊 FINANCIAL LEDGER VITAL SIGNS (CLEAR & NON-REDUNDANT) */}
               <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-3 shadow-inner">
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
-                    <p className="text-[7px] font-black uppercase tracking-wider text-slate-400">Total Net Fee</p>
-                    <p className="text-xs font-black text-slate-900 tracking-tight">₹{annualNet.toLocaleString()}</p>
+                    <p className="text-[7px] font-black uppercase tracking-wider text-slate-400">Actual (Gross) Fee</p>
+                    <p className="text-xs font-black text-slate-900 tracking-tight">₹{grossFee.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-100 shadow-sm">
+                    <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Discount Given</p>
+                    <p className="text-xs font-black text-emerald-700 tracking-tight">-₹{totalDiscount.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-blue-50 p-2 rounded-xl border border-blue-100 shadow-sm">
+                    <p className="text-[7px] font-black uppercase tracking-wider text-blue-600">Net Payable Fee</p>
+                    <p className="text-xs font-black text-blue-900 tracking-tight">₹{annualNet.toLocaleString()}</p>
                   </div>
                   <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
                     <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Total Paid</p>
@@ -598,59 +615,92 @@ export function FeeCollectionForm({ params }: { params?: any }) {
               </div>
             </div>
             <div className="col-span-8">
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-3">Tuition Installments (Sequential)</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                  {fb.paymentType === "Term-wise" ? "Tuition Installments (Sequential)" : "Payment Scheme Breakdown"}
+                </p>
+                <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-[8px] font-black uppercase tracking-widest border border-slate-200">
+                  Scheme: {fb.paymentType || "Term-wise"}
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {(fb.installments || []).map((inst: any, idx: number) => {
                   const key = inst.key;
                   const isSelected = settlements[0].selectedTerms.includes(key);
                   const canSelect = idx === 0 || (fb.installments[idx - 1].isPaid || settlements[0].selectedTerms.includes(fb.installments[idx - 1].key));
-                  const isThirdTermOfTermWise = key === "term3" && fb.totalDiscount > 0;
                   
+                  const targetAmount = inst.amount || 0;
+                  const balanceDue = inst.balance !== undefined ? inst.balance : (inst.isPaid ? 0 : targetAmount);
+                  const amountPaidInTerm = Math.max(0, targetAmount - balanceDue);
+
                   return (
                       <button 
                         key={key} 
                         disabled={inst.isPaid || !canSelect} 
                         onClick={() => toggleTermForStudent(student.id, key)} 
                         className={cn(
-                          "p-3 rounded-2xl border-2 text-left relative h-24 flex flex-col justify-center transition-all", 
+                          "p-3 rounded-2xl border-2 text-left relative min-h-[105px] flex flex-col justify-between transition-all", 
                           inst.isPaid 
-                            ? "bg-white border-slate-50 opacity-40 cursor-not-allowed" 
+                            ? "bg-emerald-50/40 border-emerald-100 cursor-not-allowed" 
                             : isSelected 
                               ? "bg-white border-primary shadow-lg ring-4 ring-primary/5 scale-[1.02]" 
                               : !canSelect 
                                 ? "bg-slate-50 border-slate-50 opacity-40 cursor-not-allowed" 
-                                : "bg-white border-slate-50 hover:border-slate-100 hover:shadow-sm"
+                                : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm"
                         )}
                       >
                         {isSelected && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary animate-in zoom-in" />}
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 leading-none">{inst.label}</p>
+                        {inst.isPaid && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-emerald-500" />}
                         
-                        {inst.balance < inst.amount && inst.balance > 0 ? (
-                           <div className="space-y-0.5">
-                              <p className="text-[9px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{(inst.amount || 0).toLocaleString()}</p>
-                              <p className="text-lg font-black text-amber-600 tracking-tighter leading-none">₹{(inst.balance || 0).toLocaleString()} <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest block mt-0.5 leading-none">Pending</span></p>
-                           </div>
-                        ) : isThirdTermOfTermWise ? (
-                           <div className="space-y-0.5">
-                              <p className="text-[9px] font-black text-slate-300 line-through tracking-tighter italic leading-none">₹{((inst.amount || 0) + (fb.totalDiscount || 0)).toLocaleString()}</p>
-                              <p className="text-lg font-black text-emerald-600 tracking-tighter leading-none">₹{(inst.amount || 0).toLocaleString()}</p>
-                           </div>
-                        ) : (
-                           <p className="text-lg font-black text-slate-900 tracking-tighter">₹{(inst.amount || 0).toLocaleString()}</p>
-                        )}
-                        <p className="text-[7px] font-black uppercase text-slate-300 mt-1 leading-none">
-                          {inst.dueDate ? new Date(inst.dueDate).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "N/A"}
-                        </p>
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 leading-none">{inst.label}</p>
+                          <p className="text-base font-black text-slate-900 tracking-tighter">₹{targetAmount.toLocaleString()}</p>
+                        </div>
+
+                        <div className="space-y-0.5 border-t border-slate-100 pt-1.5 mt-1">
+                          <div className="flex justify-between items-center text-[8px] font-bold">
+                            <span className="text-slate-400 uppercase">Paid:</span>
+                            <span className="text-emerald-600 font-black">₹{amountPaidInTerm.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[8px] font-bold">
+                            <span className="text-slate-400 uppercase">Due:</span>
+                            <span className={cn("font-black", balanceDue > 0 ? "text-amber-600" : "text-emerald-600")}>
+                              ₹{balanceDue.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-1">
+                          {inst.isPaid ? (
+                            <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded">Settled ✓</span>
+                          ) : amountPaidInTerm > 0 ? (
+                            <span className="text-[7px] font-black uppercase tracking-widest text-amber-600 bg-amber-100/60 px-1.5 py-0.5 rounded">Partially Paid</span>
+                          ) : (
+                            <span className="text-[7px] font-black uppercase text-slate-400">
+                              Due: {inst.dueDate ? new Date(inst.dueDate).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' }) : "N/A"}
+                            </span>
+                          )}
+                        </div>
                       </button>
                     );
                 })}
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-5 gap-4 mt-6 pt-4 border-t border-slate-50">
-            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Total Discount</p><p className="text-sm font-black text-slate-900 italic">₹{(fb.totalDiscount || 0).toLocaleString()}</p></div>
-            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Annual Net</p><p className="text-lg font-black text-primary tracking-tight italic">₹{(fb.annualNet || 0).toLocaleString()}</p></div>
-            <div><p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Payment Type</p><p className="text-sm font-black text-slate-900 italic">{fb.paymentType}</p></div>
+
+          {/* 📊 BOTTOM ACTION & METADATA BAR (NON-REDUNDANT) */}
+          <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-100 items-center">
+            <div>
+              <p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Transport Subscription</p>
+              <p className={cn("text-xs font-black tracking-tight", isTransportActive ? "text-amber-700" : "text-slate-400")}>
+                {transportDisplay}
+              </p>
+            </div>
+            <div>
+              <p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Payment Scheme</p>
+              <p className="text-xs font-black text-slate-900 italic">{fb.paymentType || "Term-wise"}</p>
+            </div>
             <div>
               <p className="text-[8px] font-black uppercase text-slate-400 mb-0.5">Late Fee Option</p>
               <button 
@@ -666,7 +716,10 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                 {settlements[0]?.waivedLateFee ? "✓ Waived / Disabled" : "Late Fee Active"}
               </button>
             </div>
-            <div className="text-right"><p className="text-[8px] font-black uppercase text-primary mb-0.5">Selection Total</p><p className="text-2xl font-black text-slate-900 tracking-tighter italic">₹{(grandTotal || 0).toLocaleString()}</p></div>
+            <div className="text-right">
+              <p className="text-[8px] font-black uppercase text-primary mb-0.5">Selection Total</p>
+              <p className="text-2xl font-black text-slate-900 tracking-tighter italic">₹{(grandTotal || 0).toLocaleString()}</p>
+            </div>
           </div>
         </div>
 

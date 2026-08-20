@@ -4,6 +4,9 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const viewport = {
   themeColor: "#0f172a",
   width: "device-width",
