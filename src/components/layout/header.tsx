@@ -38,6 +38,10 @@ interface HeaderProps {
   activeBranchName?: string;
 }
 
+import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { PortalHelpManual } from "@/components/help/PortalHelpManual";
+import { BookOpen } from "lucide-react";
+
 export function Header({ 
   onMenuClick, 
   userEmail, 
@@ -50,6 +54,7 @@ export function Header({
   activeBranchName
 }: HeaderProps) {
   const { openTab } = useTabs();
+  const [isHelpManualOpen, setIsHelpManualOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -178,7 +183,23 @@ export function Header({
 
       {/* Right: Actions & Profile */}
       <div className="flex items-center gap-2 lg:gap-4">
-        <div className="hidden sm:flex items-center gap-1 mr-2 px-3 py-1.5 bg-slate-900 rounded-xl shadow-lg shadow-slate-200 border border-slate-800 hover:scale-105 transition-transform cursor-pointer">
+        {/* 📚 PORTAL HELP & OPERATING MANUAL BUTTON */}
+        <ActionTooltip
+          title="Institutional Operating Manual & System Help"
+          description="Open detailed step-by-step operating procedures, accounting rules, and interactive guides for the entire portal."
+          whatHappensNext="Opens the full-screen interactive Help Manual drawer with searchable operating guides."
+          position="bottom"
+        >
+          <button 
+            onClick={() => setIsHelpManualOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:shadow-indigo-200 transition-all cursor-pointer active:scale-95 border border-indigo-500"
+          >
+            <BookOpen className="w-4 h-4 text-indigo-200" />
+            <span className="hidden sm:inline">Help & Guide</span>
+          </button>
+        </ActionTooltip>
+
+        <div className="hidden sm:flex items-center gap-1 mr-1 px-3 py-1.5 bg-slate-900 rounded-xl shadow-lg shadow-slate-200 border border-slate-800 hover:scale-105 transition-transform cursor-pointer">
            <div className="w-2 h-2 rounded-full bg-emerald-400 mr-2 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
            <p className="text-[9px] font-black text-white uppercase tracking-widest">System Online</p>
         </div>
@@ -372,6 +393,12 @@ export function Header({
         </div>
       </div>
     )}
+
+    {/* Portal Operating Manual & Interactive Help Drawer */}
+    <PortalHelpManual 
+      isOpen={isHelpManualOpen} 
+      onClose={() => setIsHelpManualOpen(false)} 
+    />
     </>
   );
 }

@@ -81,6 +81,9 @@ const ApprovalsHub = dynamic(() => import("../dashboard/ApprovalsHub").then(mod 
 const StaffProfileHub = dynamic(() => import("../staff/StaffProfileHub"), {
   loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
 });
+const GoogleContactsManager = dynamic(() => import("../dashboard/google-contacts-manager").then(mod => mod.GoogleContactsManager), {
+  loading: () => <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
+});
 
 function WorkspaceRenderer() {
   const { tabs, activeTabId } = useTabs();
@@ -161,6 +164,7 @@ function WorkspaceRenderer() {
 
           {/* Communication / Mailbox Hub Module */}
           {tab.id === "communication" && <MailboxHub params={tab.params} />}
+          {tab.id === "google-contacts" && <GoogleContactsManager />}
 
           {/* Approvals Hub Module */}
           {tab.id === "approvals" && <ApprovalsHub />}

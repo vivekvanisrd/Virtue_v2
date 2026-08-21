@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { FeeReceipt } from "./FeeReceipt";
 import { formatCurrency } from "@/lib/utils/fee-utils";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { supabase } from "@/lib/supabase/client";
 import { 
   getAdHocFeeOptions,
@@ -456,78 +457,99 @@ export function StudentFinancialHub({ studentId }: StudentFinancialHubProps) {
         </div>
 
         {/* Card 2: Actual Fee (Gross) & Clickable Bill Breakdown */}
-        <div 
-          onClick={() => setIsBillDetailsOpen(true)}
-          className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex flex-col justify-between"
-          title="Click to view detailed itemized bill breakdown"
+        <ActionTooltip
+          title="Actual Fee (Gross Component Schedule)"
+          description="Total gross fee schedule including Tuition Base and all Ancillary Component Schedules before any concessions."
+          whatHappensNext="Opens the Itemized Bill Breakdown modal showing Tuition, Admission, Caution Deposit, Library, Lab, and Transport schedules."
+          position="bottom"
+          badgeText="Itemized Fee Schedule"
         >
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Actual Fee (Gross)</span>
-              <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                <School className="w-4 h-4" />
+          <div 
+            onClick={() => setIsBillDetailsOpen(true)}
+            className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Actual Fee (Gross)</span>
+                <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  <School className="w-4 h-4" />
+                </div>
               </div>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                {formatCurrency(grandTotalFee + (Number(studentData.financial?.totalDiscount) || 0))}
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Base Component Schedule</p>
             </div>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-              {formatCurrency(grandTotalFee + (Number(studentData.financial?.totalDiscount) || 0))}
-            </h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Base Component Schedule</p>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] font-black text-indigo-600 uppercase tracking-wider group-hover:underline">
+              <span>Bill Breakdown Details</span>
+              <ExternalLink className="w-3 h-3" />
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] font-black text-indigo-600 uppercase tracking-wider group-hover:underline">
-            <span>Bill Breakdown Details</span>
-            <ExternalLink className="w-3 h-3" />
-          </div>
-        </div>
+        </ActionTooltip>
 
         {/* Card 3: Policy Concession & Clickable Discount Vault Selector */}
-        <div 
-          onClick={handleOpenDiscountModal}
-          className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group flex flex-col justify-between"
-          title="Click to apply or change institutional discount policy from Discount Vault"
+        <ActionTooltip
+          title="Policy Concession (Institutional Discount Vault)"
+          description="Approved discount calculated strictly on Gross Tuition Base. Excludes transport, admission, and ancillary fees."
+          whatHappensNext="Opens the Discount Vault selector modal allowing you to apply or switch discount policies. Replaces previous discount without stacking."
+          position="bottom"
+          badgeText="Concession Vault"
         >
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Policy Concession</span>
-              <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                <Zap className="w-4 h-4" />
+          <div 
+            onClick={handleOpenDiscountModal}
+            className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Policy Concession</span>
+                <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                  <Zap className="w-4 h-4" />
+                </div>
               </div>
+              <h3 className="text-3xl font-black text-emerald-600 tracking-tight">
+                -{formatCurrency(Number(studentData.financial?.totalDiscount) || 0)}
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Approved Concession</p>
             </div>
-            <h3 className="text-3xl font-black text-emerald-600 tracking-tight">
-              -{formatCurrency(Number(studentData.financial?.totalDiscount) || 0)}
-            </h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Approved Concession</p>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] font-black text-emerald-600 uppercase tracking-wider group-hover:underline">
+              <span>Change Discount Policy</span>
+              <Zap className="w-3 h-3 text-emerald-500" />
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] font-black text-emerald-600 uppercase tracking-wider group-hover:underline">
-            <span>Change Discount Policy</span>
-            <Zap className="w-3 h-3 text-emerald-500" />
-          </div>
-        </div>
+        </ActionTooltip>
 
         {/* Card 4: Total Collected & Clickable Transaction Log */}
-        <div 
-          onClick={() => setIsTransactionHistoryOpen(true)}
-          className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between"
-          title="Click to view complete transaction log and printable receipts"
+        <ActionTooltip
+          title="Total Collected & Settled Collections"
+          description="Sum of all settled payment receipts collected via Cash, Razorpay, UPI Bank QR, or Card Swipe."
+          whatHappensNext="Opens the Transaction Receipts Log modal displaying all payment receipts with direct print/view receipt options."
+          position="bottom"
+          badgeText="Receipt Log"
         >
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Collected</span>
-              <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                <CreditCard className="w-4 h-4" />
+          <div 
+            onClick={() => setIsTransactionHistoryOpen(true)}
+            className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Collected</span>
+                <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <CreditCard className="w-4 h-4" />
+                </div>
               </div>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                {formatCurrency(totalCollected)}
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                {studentData.collections?.length || 0} Settled Receipts
+              </p>
             </div>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-              {formatCurrency(totalCollected)}
-            </h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              {studentData.collections?.length || 0} Settled Receipts
-            </p>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] font-black text-blue-600 uppercase tracking-wider group-hover:underline">
+              <span>Transaction Receipts Log</span>
+              <ExternalLink className="w-3 h-3" />
+            </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[9px] font-black text-blue-600 uppercase tracking-wider group-hover:underline">
-            <span>Transaction Receipts Log</span>
-            <ExternalLink className="w-3 h-3" />
-          </div>
-        </div>
+        </ActionTooltip>
       </div>
 
 

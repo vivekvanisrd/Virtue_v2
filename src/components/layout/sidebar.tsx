@@ -143,9 +143,12 @@ const menuItems: MenuItem[] = [
   },
   {
     id: "communication",
-    name: "Mailbox Hub",
+    name: "Communications",
     icon: MessageSquare,
-    component: "Communication"
+    subItems: [
+      { id: "communication-mailbox", name: "Mailbox Hub", component: "Communication" },
+      { id: "google-contacts", name: "Google Contacts Sync", component: "Google Contacts Sync" }
+    ]
   },
   {
     id: "approvals",

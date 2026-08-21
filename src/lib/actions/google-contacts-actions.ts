@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { getSovereignIdentity } from "@/lib/auth/backbone";
+import { cookies } from "next/headers";
 import {
   getGoogleOAuthUrl,
   syncToGooglePeopleAPI,
@@ -11,15 +12,43 @@ import {
 } from "@/lib/services/google-contacts-service";
 
 /**
+ * 🏛️ Multi-Tenancy School Context Resolution Helper
+ * Ensures schoolId is resolved across active sessions, tenant cookies, staff lookup, and multi-tenancy fallbacks.
+ */
+async function resolveSchoolIdContext(): Promise<string> {
+  const identity = await getSovereignIdentity();
+  let schoolId = identity?.schoolId;
+
+  if (!schoolId || schoolId === "PLATFORM") {
+    const cookieStore = await cookies();
+    schoolId = cookieStore.get('v-active-school')?.value;
+  }
+
+  if ((!schoolId || schoolId === "PLATFORM") && identity?.staffId) {
+    const staff = await prisma.staff.findUnique({
+      where: { id: identity.staffId },
+      select: { schoolId: true }
+    });
+    if (staff?.schoolId) schoolId = staff.schoolId;
+  }
+
+  if (!schoolId || schoolId === "PLATFORM") {
+    const defaultSchool = await prisma.school.findFirst({ select: { id: true } });
+    if (defaultSchool) schoolId = defaultSchool.id;
+  }
+
+  return schoolId || "";
+}
+
+/**
  * 📊 1. Get Integration Status & Statistics
  */
 export async function getGoogleContactsIntegrationStatusAction() {
   try {
-    const identity = await getSovereignIdentity();
-    const schoolId = identity.schoolId;
+    const schoolId = await resolveSchoolIdContext();
 
     if (!schoolId) {
-      return { success: false, error: "School context missing" };
+      return { success: false, error: "School context missing: No active school found in database." };
     }
 
     const integration = await prisma.googleIntegration.findUnique({
@@ -60,12 +89,12 @@ export async function getGoogleContactsIntegrationStatusAction() {
  */
 export async function getGoogleOAuthUrlAction() {
   try {
-    const identity = await getSovereignIdentity();
-    if (!identity.schoolId) {
-      return { success: false, error: "School context missing" };
+    const schoolId = await resolveSchoolIdContext();
+    if (!schoolId) {
+      return { success: false, error: "School context missing: No active school found in database." };
     }
 
-    const url = getGoogleOAuthUrl(identity.schoolId);
+    const url = getGoogleOAuthUrl(schoolId);
     return { success: true, url };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -77,12 +106,12 @@ export async function getGoogleOAuthUrlAction() {
  */
 export async function triggerGoogleContactsSyncAction(category: "parents" | "staff" | "all") {
   try {
-    const identity = await getSovereignIdentity();
-    if (!identity.schoolId) {
-      return { success: false, error: "School context missing" };
+    const schoolId = await resolveSchoolIdContext();
+    if (!schoolId) {
+      return { success: false, error: "School context missing: No active school found in database." };
     }
 
-    const result = await syncToGooglePeopleAPI(identity.schoolId, category);
+    const result = await syncToGooglePeopleAPI(schoolId, category);
     return { success: result.success, message: result.message, details: result };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -94,13 +123,13 @@ export async function triggerGoogleContactsSyncAction(category: "parents" | "sta
  */
 export async function disconnectGoogleIntegrationAction() {
   try {
-    const identity = await getSovereignIdentity();
-    if (!identity.schoolId) {
-      return { success: false, error: "School context missing" };
+    const schoolId = await resolveSchoolIdContext();
+    if (!schoolId) {
+      return { success: false, error: "School context missing: No active school found in database." };
     }
 
     await prisma.googleIntegration.deleteMany({
-      where: { schoolId: identity.schoolId }
+      where: { schoolId }
     });
 
     return { success: true, message: "Google Integration disconnected successfully." };
@@ -114,12 +143,12 @@ export async function disconnectGoogleIntegrationAction() {
  */
 export async function exportVCardAction(category: "parents" | "staff" | "all") {
   try {
-    const identity = await getSovereignIdentity();
-    if (!identity.schoolId) {
-      return { success: false, error: "School context missing" };
+    const schoolId = await resolveSchoolIdContext();
+    if (!schoolId) {
+      return { success: false, error: "School context missing: No active school found in database." };
     }
 
-    const content = await generateVCardExport(identity.schoolId, category);
+    const content = await generateVCardExport(schoolId, category);
     return { success: true, content, filename: `virtue_contacts_${category}.vcf` };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -131,12 +160,12 @@ export async function exportVCardAction(category: "parents" | "staff" | "all") {
  */
 export async function exportCSVAction(category: "parents" | "staff" | "all") {
   try {
-    const identity = await getSovereignIdentity();
-    if (!identity.schoolId) {
-      return { success: false, error: "School context missing" };
+    const schoolId = await resolveSchoolIdContext();
+    if (!schoolId) {
+      return { success: false, error: "School context missing: No active school found in database." };
     }
 
-    const content = await generateCSVExport(identity.schoolId, category);
+    const content = await generateCSVExport(schoolId, category);
     return { success: true, content, filename: `virtue_contacts_${category}.csv` };
   } catch (err: any) {
     return { success: false, error: err.message };

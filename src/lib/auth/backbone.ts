@@ -78,14 +78,14 @@ export const getSovereignIdentity = cache(async (): Promise<SovereignIdentity | 
         let schoolId = user.schoolId || (user.isPlatformAdmin ? 'PLATFORM' : "");
         let branchId = user.branchId || "";
 
-        if (user.role === 'DEVELOPER') {
+        if (user.role === 'DEVELOPER' || user.role === 'OWNER' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN' || !schoolId || schoolId === 'PLATFORM') {
             const switchedSchool = cookieStore.get('v-active-school')?.value;
             if (switchedSchool) {
                 schoolId = switchedSchool;
             }
         }
 
-        if (user.role === 'OWNER' || user.role === 'DEVELOPER') {
+        if (user.role === 'OWNER' || user.role === 'DEVELOPER' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
             const switchedBranch = cookieStore.get('v-active-branch')?.value;
             if (switchedBranch) {
                 branchId = switchedBranch;
