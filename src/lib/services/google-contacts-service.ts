@@ -37,14 +37,34 @@ const DEFAULT_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const DEFAULT_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || "http://localhost:3010/api/integrations/google/callback";
 
 /**
+ * 🔑 Resolve OAuth Client ID & Secret from process.env OR PostgreSQL Database
+ */
+export async function resolveOAuthCredentials(schoolId: string) {
+  let clientId = process.env.GOOGLE_CLIENT_ID || "";
+  let clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
+  let redirectUri = process.env.GOOGLE_REDIRECT_URI || DEFAULT_REDIRECT_URI;
+
+  if (!clientId || !clientSecret) {
+    const integration = await prisma.googleIntegration.findUnique({
+      where: { schoolId },
+      select: { clientId: true, clientSecret: true }
+    });
+    if (integration?.clientId) clientId = integration.clientId;
+    if (integration?.clientSecret) clientSecret = integration.clientSecret;
+  }
+
+  return { clientId, clientSecret, redirectUri };
+}
+
+/**
  * 🔑 1. Generate Google OAuth Authorization URL
  */
-export function getGoogleOAuthUrl(schoolId: string, redirectUri?: string): string {
-  const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
-  const targetRedirect = redirectUri || DEFAULT_REDIRECT_URI;
+export async function getGoogleOAuthUrl(schoolId: string, customRedirectUri?: string): Promise<string> {
+  const { clientId, redirectUri: envRedirect } = await resolveOAuthCredentials(schoolId);
+  const targetRedirect = customRedirectUri || envRedirect;
 
   if (!clientId) {
-    throw new Error("GOOGLE_CLIENT_ID is not configured in environment variables.");
+    throw new Error("Google OAuth Client ID is missing. Please configure Client ID in Portal Settings below.");
   }
 
   const scopes = [
@@ -71,13 +91,12 @@ export function getGoogleOAuthUrl(schoolId: string, redirectUri?: string): strin
 /**
  * 🔄 2. Exchange OAuth Code for Tokens
  */
-export async function handleGoogleOAuthCallback(code: string, schoolId: string, redirectUri?: string) {
-  const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || DEFAULT_CLIENT_SECRET;
-  const targetRedirect = redirectUri || DEFAULT_REDIRECT_URI;
+export async function handleGoogleOAuthCallback(code: string, schoolId: string, customRedirectUri?: string) {
+  const { clientId, clientSecret, redirectUri: envRedirect } = await resolveOAuthCredentials(schoolId);
+  const targetRedirect = customRedirectUri || envRedirect;
 
   if (!clientId || !clientSecret) {
-    throw new Error("Google OAuth Client ID & Secret are required in environment variables.");
+    throw new Error("Google OAuth Client ID & Secret are missing. Please configure credentials in Portal Settings.");
   }
 
   // 1. Token Exchange

@@ -4029,17 +4029,19 @@ model SystemErrorLog {
 
 // 🌐 Google Contacts Integration Ledger
 model GoogleIntegration {
-  id           String   @id @default(uuid())
-  schoolId     String   @unique
-  userEmail    String
-  accessToken  String   @db.Text
-  refreshToken String?  @db.Text
-  tokenExpiry  DateTime
-  scope        String?  @db.Text
-  isActive     Boolean  @default(true)
+  id           String    @id @default(uuid())
+  schoolId     String    @unique
+  clientId     String?   @db.Text
+  clientSecret String?   @db.Text
+  userEmail    String?
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  tokenExpiry  DateTime?
+  scope        String?   @db.Text
+  isActive     Boolean   @default(true)
   lastSyncedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([schoolId])
 }

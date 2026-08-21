@@ -8,7 +8,8 @@ import {
   syncToGooglePeopleAPI,
   collectSchoolContacts,
   generateVCardExport,
-  generateCSVExport
+  generateCSVExport,
+  resolveOAuthCredentials
 } from "@/lib/services/google-contacts-service";
 
 /**
@@ -67,6 +68,8 @@ export async function getGoogleContactsIntegrationStatusAction() {
       where: { schoolId }
     });
 
+    const { clientId, clientSecret } = await resolveOAuthCredentials(schoolId);
+
     return {
       success: true,
       data: {
@@ -76,7 +79,8 @@ export async function getGoogleContactsIntegrationStatusAction() {
         parentCount,
         staffCount,
         syncedMappingsCount,
-        isOauthConfigured: Boolean(process.env.GOOGLE_CLIENT_ID)
+        isOauthConfigured: Boolean(clientId && clientSecret),
+        savedClientId: integration?.clientId || null
       }
     };
   } catch (err: any) {
@@ -94,10 +98,66 @@ export async function getGoogleOAuthUrlAction() {
       return { success: false, error: "School context missing: No active school found in database." };
     }
 
-    const url = getGoogleOAuthUrl(schoolId);
+    const url = await getGoogleOAuthUrl(schoolId);
     return { success: true, url };
   } catch (err: any) {
     return { success: false, error: err.message };
+  }
+}
+
+/**
+ * ⚙️ Save Google OAuth Client Credentials directly in Portal UI
+ */
+export async function saveGoogleOAuthCredentialsAction(params: {
+  clientId?: string;
+  clientSecret?: string;
+  jsonConfig?: string;
+}) {
+  try {
+    const schoolId = await resolveSchoolIdContext();
+    if (!schoolId) {
+      return { success: false, error: "School context missing: No active school found in database." };
+    }
+
+    let targetClientId = params.clientId?.trim();
+    let targetClientSecret = params.clientSecret?.trim();
+
+    // Parse JSON config if uploaded/pasted directly
+    if (params.jsonConfig && params.jsonConfig.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(params.jsonConfig.trim());
+        const web = parsed.web || parsed.installed || parsed;
+        if (web.client_id) targetClientId = web.client_id;
+        if (web.client_secret) targetClientSecret = web.client_secret;
+      } catch (jsonErr) {
+        return { success: false, error: "Invalid JSON format. Please paste a valid google-credentials.json object." };
+      }
+    }
+
+    if (!targetClientId) {
+      return { success: false, error: "Client ID is required." };
+    }
+
+    await prisma.googleIntegration.upsert({
+      where: { schoolId },
+      update: {
+        clientId: targetClientId,
+        ...(targetClientSecret ? { clientSecret: targetClientSecret } : {})
+      },
+      create: {
+        schoolId,
+        clientId: targetClientId,
+        clientSecret: targetClientSecret || "",
+        isActive: false
+      }
+    });
+
+    return {
+      success: true,
+      message: "Google OAuth Credentials saved successfully in Portal Settings! You can now click Connect Google Account."
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to save OAuth credentials." };
   }
 }
 

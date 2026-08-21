@@ -12,7 +12,8 @@ import {
   triggerGoogleContactsSyncAction,
   disconnectGoogleIntegrationAction,
   exportVCardAction,
-  exportCSVAction
+  exportCSVAction,
+  saveGoogleOAuthCredentialsAction
 } from "@/lib/actions/google-contacts-actions";
 
 export function GoogleContactsManager() {
@@ -22,6 +23,11 @@ export function GoogleContactsManager() {
   const [exporting, setExporting] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [showKeysModal, setShowKeysModal] = useState(false);
+  const [inputClientId, setInputClientId] = useState("");
+  const [inputClientSecret, setInputClientSecret] = useState("");
+  const [inputJsonConfig, setInputJsonConfig] = useState("");
+  const [isSavingKeys, setIsSavingKeys] = useState(false);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -44,11 +50,36 @@ export function GoogleContactsManager() {
     if (res.success && res.url) {
       window.location.href = res.url;
     } else {
+      setShowKeysModal(true);
       setMessage({
         type: "error",
-        text: res.error || "Google Client ID is missing. Set GOOGLE_CLIENT_ID in .env or use instant vCard/CSV export below."
+        text: res.error || "Google Client ID is missing. Please enter your Client ID & Secret in the Portal Settings form below."
       });
     }
+  };
+
+  const handleSaveKeys = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingKeys(true);
+    setMessage(null);
+
+    const res = await saveGoogleOAuthCredentialsAction({
+      clientId: inputClientId,
+      clientSecret: inputClientSecret,
+      jsonConfig: inputJsonConfig
+    });
+
+    if (res.success) {
+      setMessage({ type: "success", text: res.message });
+      setShowKeysModal(false);
+      setInputClientId("");
+      setInputClientSecret("");
+      setInputJsonConfig("");
+      fetchStatus();
+    } else {
+      setMessage({ type: "error", text: res.error || "Failed to save OAuth keys" });
+    }
+    setIsSavingKeys(false);
   };
 
   const handleDisconnect = async () => {
@@ -396,30 +427,122 @@ export function GoogleContactsManager() {
           className="w-full flex items-center justify-between font-bold text-xs text-slate-700 hover:text-slate-900"
         >
           <span className="flex items-center gap-2">
-            <HelpCircle className="w-4 h-4 text-indigo-500" /> How to configure Google Cloud OAuth Credentials for Live Sync
+            <HelpCircle className="w-4 h-4 text-indigo-500" /> How to configure Google Cloud OAuth Credentials in Portal
           </span>
           <span>{showGuide ? "Hide Guide ▲" : "Show Guide ▼"}</span>
         </button>
 
         {showGuide && (
           <div className="text-xs text-slate-600 space-y-2 pt-2 border-t border-slate-200 font-medium leading-relaxed">
-            <p>To enable <strong>Option 1 (One-click Google OAuth live sync)</strong>:</p>
+            <p>To enable <strong>One-Click Google OAuth Live Sync</strong> directly inside the Portal UI:</p>
             <ol className="list-decimal pl-5 space-y-1">
               <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold">Google Cloud Console</a>.</li>
-              <li>Create a project and enable <strong>Google People API</strong>.</li>
+              <li>Enable <strong>Google People API</strong>.</li>
+              <li>Go to <strong>OAuth consent screen</strong> → set app name to <code>Virtue ERP</code>.</li>
               <li>Go to <strong>Credentials &gt; Create Credentials &gt; OAuth client ID</strong> (Web Application).</li>
-              <li>Add Authorized Redirect URI: <code className="bg-white px-1.5 py-0.5 border rounded font-mono text-slate-800">http://localhost:3010/api/integrations/google/callback</code> (or your domain URL).</li>
-              <li>Add environment variables in your <code className="bg-white px-1.5 py-0.5 border rounded font-mono text-slate-800">.env</code> file:
-                <pre className="bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-[11px] mt-1.5">
-                  GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"{"\n"}
-                  GOOGLE_CLIENT_SECRET="your-client-secret"{"\n"}
-                  GOOGLE_REDIRECT_URI="http://localhost:3010/api/integrations/google/callback"
-                </pre>
-              </li>
+              <li>Add Authorized Redirect URI: <code className="bg-white px-1.5 py-0.5 border rounded font-mono text-slate-800">https://virtue-psi.vercel.app/api/integrations/google/callback</code></li>
+              <li>Click <strong>Configure OAuth Keys</strong> above, paste your <strong>Client ID</strong> &amp; <strong>Client Secret</strong> (or paste your downloaded <code>google-credentials.json</code> content), and click <strong>Save Credentials</strong>!</li>
             </ol>
           </div>
         )}
       </div>
+
+      {/* 🔐 In-Portal OAuth Credentials Settings Modal */}
+      {showKeysModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-6 animate-in zoom-in-95 duration-200 text-left">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">Google OAuth Portal Settings</h3>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-0.5">In-App Credential Management</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowKeysModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveKeys} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Option A: Paste Google Credentials JSON Object
+                </label>
+                <textarea
+                  value={inputJsonConfig}
+                  onChange={e => {
+                    setInputJsonConfig(e.target.value);
+                    if (e.target.value.trim()) {
+                      try {
+                        const parsed = JSON.parse(e.target.value.trim());
+                        const web = parsed.web || parsed.installed || parsed;
+                        if (web.client_id) setInputClientId(web.client_id);
+                        if (web.client_secret) setInputClientSecret(web.client_secret);
+                      } catch (_) {}
+                    }
+                  }}
+                  placeholder='Paste {"web":{"client_id":"...","client_secret":"..."}}'
+                  className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="relative flex items-center justify-center my-2">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest absolute">OR ENTER KEYS MANUALLY</span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Google Client ID
+                </label>
+                <input
+                  type="text"
+                  value={inputClientId}
+                  onChange={e => setInputClientId(e.target.value)}
+                  placeholder="e.g. 427441530754-xxx.apps.googleusercontent.com"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Google Client Secret
+                </label>
+                <input
+                  type="password"
+                  value={inputClientSecret}
+                  onChange={e => setInputClientSecret(e.target.value)}
+                  placeholder="e.g. GOCSPX-xxxxxxxxxxxxxxxx"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowKeysModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingKeys || (!inputClientId && !inputJsonConfig)}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50"
+                >
+                  {isSavingKeys ? "Saving..." : "Save Credentials"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
