@@ -45,12 +45,16 @@ export async function resolveOAuthCredentials(schoolId: string) {
   let redirectUri = process.env.GOOGLE_REDIRECT_URI || DEFAULT_REDIRECT_URI;
 
   if (!clientId || !clientSecret) {
-    const integration = await prisma.googleIntegration.findUnique({
-      where: { schoolId },
-      select: { clientId: true, clientSecret: true }
-    });
-    if (integration?.clientId) clientId = integration.clientId;
-    if (integration?.clientSecret) clientSecret = integration.clientSecret;
+    try {
+      const integration = await prisma.googleIntegration.findUnique({
+        where: { schoolId },
+        select: { clientId: true, clientSecret: true }
+      });
+      if (integration?.clientId) clientId = integration.clientId;
+      if (integration?.clientSecret) clientSecret = integration.clientSecret;
+    } catch (err) {
+      console.warn("Could not query GoogleIntegration DB columns:", err);
+    }
   }
 
   return { clientId, clientSecret, redirectUri };
