@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get("state");
 
   const baseUrl = req.nextUrl.origin;
-  const redirectUrl = new URL("/developer?tab=google-contacts", baseUrl);
+  const redirectUrl = new URL("/dashboard?tab=google-contacts", baseUrl);
 
   if (error) {
     redirectUrl.searchParams.set("error", error);
