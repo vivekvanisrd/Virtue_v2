@@ -906,7 +906,7 @@ export async function confirmStudentAdmission(studentId: string) {
 
     const totalDiscount = Number(student.financial?.totalDiscount || 0);
     const netTuition = Number(student.financial?.netTuition || (totalAnnual - totalDiscount));
-    const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0) || 0;
+    const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.totalPaid || c.amountPaid || 0), 0) || 0;
     
     // Check for absolute 100% institutional discount
     const isFullyDiscounted = netTuition <= 0 || totalDiscount >= totalAnnual;
@@ -1738,7 +1738,7 @@ export async function promoteStudentAction(studentId: string, tx?: any) {
     const totalAnnual = Number(student.financial?.annualTuition || 0);
     const totalDiscount = Number(student.financial?.totalDiscount || 0);
     const netTuition = Number(student.financial?.netTuition || (totalAnnual - totalDiscount));
-    const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.amountPaid || 0), 0) || 0;
+    const totalPaid = student.collections?.reduce((acc: number, c: any) => acc + Number(c.totalPaid || c.amountPaid || 0), 0) || 0;
     
     // Check for absolute 100% institutional discount
     const isFullyDiscounted = netTuition <= 0 || totalDiscount >= totalAnnual;

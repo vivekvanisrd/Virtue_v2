@@ -1016,7 +1016,7 @@ export async function getStudentFeeStatus(studentId: string) {
         });
       } else {
         // Fallback for legacy collections without allocations
-        const totalColPaid = Number(col.amountPaid || 0);
+        const totalColPaid = Number(col.totalPaid || col.amountPaid || 0);
         const mode = (col.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
         if (mode.includes("transport")) transportPaid += totalColPaid;
         else if (mode.includes("admission")) admissionPaid += totalColPaid;
@@ -1271,7 +1271,7 @@ export async function getStudentFeeStatus(studentId: string) {
     breakdown.ancillary = ancillary;
 
     // Calculate total paid and total due dynamically
-    const totalCollected = collections.reduce((sum, c) => sum + Number(c.amountPaid || 0), 0);
+    const totalCollected = collections.reduce((sum, c) => sum + Number(c.totalPaid || c.amountPaid || 0), 0);
     const tuitionNet = Number(breakdown.annualNet) || 0;
     const ancillaryTotal = Object.values(ancillary).reduce((sum, comp: any) => sum + Number(comp.amount || 0), 0);
     const grandTotalFee = tuitionNet + ancillaryTotal;
@@ -2875,7 +2875,7 @@ export async function getParentStudentFeeStatus(studentId: string) {
           else if (type === "ADMISSION") admissionPaid += amt;
         });
       } else {
-        const totalColPaid = Number(col.amountPaid || 0);
+        const totalColPaid = Number(col.totalPaid || col.amountPaid || 0);
         const mode = (col.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
         if (mode.includes("transport")) transportPaid += totalColPaid;
         else if (mode.includes("admission")) admissionPaid += totalColPaid;
@@ -3027,7 +3027,7 @@ export async function getParentStudentFeeStatus(studentId: string) {
     breakdown.ancillary = ancillary;
 
     // Calculate total paid and total due dynamically
-    const totalCollected = collections.reduce((sum, c) => sum + Number(c.amountPaid || 0), 0);
+    const totalCollected = collections.reduce((sum, c) => sum + Number(c.totalPaid || c.amountPaid || 0), 0);
     const tuitionNet = Number(breakdown.annualNet) || 0;
     const ancillaryTotal = Object.values(ancillary).reduce((sum, comp: any) => sum + Number(comp.amount || 0), 0);
     const grandTotalFee = tuitionNet + ancillaryTotal;
@@ -3053,7 +3053,7 @@ export async function getParentStudentFeeStatus(studentId: string) {
         collections: collections.map(c => ({
           id: c.id,
           receiptNumber: c.receiptNumber,
-          amountPaid: Number(c.amountPaid || 0),
+          amountPaid: Number(c.totalPaid || c.amountPaid || 0),
           lateFeePaid: Number(c.lateFeePaid || 0),
           convenienceFee: Number(c.convenienceFee || 0),
           totalPaid: Number(c.totalPaid || 0),
