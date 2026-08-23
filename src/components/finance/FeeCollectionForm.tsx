@@ -610,75 +610,88 @@ export function FeeCollectionForm({ params }: { params?: any }) {
               </div>
 
               {/* 📊 SEPARATED TUITION & ANCILLARY LEDGER CARDS */}
-              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-3 shadow-inner">
+              <div className="bg-slate-50/90 rounded-[2rem] p-5 border border-slate-200/80 space-y-4 shadow-sm">
                 {/* 📚 TUITION FEE SECTION */}
-                <div className="space-y-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-700">📚 Tuition Fee Breakdown</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                      Tuition Fee Breakdown
+                    </span>
                     <span className="text-[8px] font-bold text-slate-400">Gross: ₹{grossTuition.toLocaleString()} | Disc: -₹{totalDiscount.toLocaleString()}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-blue-50 p-2 rounded-xl border border-blue-100 shadow-sm">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-blue-600">Net Tuition</p>
-                      <p className="text-xs font-black text-blue-900 tracking-tight">₹{tuitionNet.toLocaleString()}</p>
+                    <div className="bg-blue-50/80 p-2.5 rounded-xl border border-blue-100/80">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-blue-600 mb-0.5">Net Tuition</p>
+                      <p className="text-xs font-black text-blue-950 tracking-tight">₹{tuitionNet.toLocaleString()}</p>
                     </div>
-                    <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Tuition Paid</p>
-                      <p className="text-xs font-black text-emerald-700 tracking-tight">₹{tuitionPaid.toLocaleString()}</p>
+                    <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-100/80">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600 mb-0.5">Tuition Paid</p>
+                      <p className="text-xs font-black text-emerald-800 tracking-tight">₹{tuitionPaid.toLocaleString()}</p>
                     </div>
-                    <div className="bg-rose-50 p-2 rounded-xl border border-rose-100 shadow-sm">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-rose-600">Tuition Due</p>
-                      <p className="text-xs font-black text-rose-700 tracking-tight">₹{tuitionDue.toLocaleString()}</p>
+                    <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-100/80">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-rose-600 mb-0.5">Tuition Due</p>
+                      <p className="text-xs font-black text-rose-800 tracking-tight">₹{tuitionDue.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* 🚌 TRANSPORT / ANCILLARY FEE SECTION */}
                 {isTransportActive && (
-                  <div className="space-y-1 pt-1 border-t border-slate-200/60">
+                  <div className="bg-white rounded-2xl p-3.5 border border-purple-100 shadow-sm space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-purple-700">🚌 Transport Fee Breakdown</span>
-                      <span className="text-[8px] font-bold text-purple-500">{transportDue === 0 ? "Cleared" : "Pending"}</span>
+                      <span className="text-[9px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                        Transport Fee Breakdown
+                      </span>
+                      <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        {transportDue === 0 ? "Cleared" : "Pending"}
+                      </span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-purple-50 p-2 rounded-xl border border-purple-100 shadow-sm">
-                        <p className="text-[7px] font-black uppercase tracking-wider text-purple-600">Transport Fee</p>
-                        <p className="text-xs font-black text-purple-900 tracking-tight">₹{transportFeeVal.toLocaleString()}</p>
+                      <div className="bg-purple-50/80 p-2.5 rounded-xl border border-purple-100/80">
+                        <p className="text-[7px] font-black uppercase tracking-wider text-purple-600 mb-0.5">Transport Fee</p>
+                        <p className="text-xs font-black text-purple-950 tracking-tight">₹{transportFeeVal.toLocaleString()}</p>
                       </div>
-                      <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
-                        <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Transport Paid</p>
-                        <p className="text-xs font-black text-emerald-700 tracking-tight">₹{transportPaid.toLocaleString()}</p>
+                      <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-100/80">
+                        <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600 mb-0.5">Transport Paid</p>
+                        <p className="text-xs font-black text-emerald-800 tracking-tight">₹{transportPaid.toLocaleString()}</p>
                       </div>
-                      <div className="bg-rose-50 p-2 rounded-xl border border-rose-100 shadow-sm">
-                        <p className="text-[7px] font-black uppercase tracking-wider text-rose-600">Transport Due</p>
-                        <p className="text-xs font-black text-rose-700 tracking-tight">₹{transportDue.toLocaleString()}</p>
+                      <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-100/80">
+                        <p className="text-[7px] font-black uppercase tracking-wider text-rose-600 mb-0.5">Transport Due</p>
+                        <p className="text-xs font-black text-rose-800 tracking-tight">₹{transportDue.toLocaleString()}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {/* 🏷️ GRAND TOTAL SUMMARY (DISPLAY ONLY) */}
-                <div className="pt-2 border-t border-slate-200 space-y-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Grand Total Summary (Display Only)</span>
-                    <span className="text-[9px] font-black text-emerald-600">{grandPaidPercent}% Settled</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-slate-900 inline-block"></span>
+                      Grand Total Summary (Display Only)
+                    </span>
+                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                      {grandPaidPercent}% Settled
+                    </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-slate-100 p-1.5 rounded-lg border border-slate-200">
-                      <p className="text-[6px] font-black uppercase text-slate-500">Total Net Fee</p>
-                      <p className="text-[11px] font-black text-slate-900">₹{grandNetFee.toLocaleString()}</p>
+                    <div className="bg-slate-100/80 p-2 rounded-xl border border-slate-200/80">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Total Net Fee</p>
+                      <p className="text-xs font-black text-slate-900 tracking-tight">₹{grandNetFee.toLocaleString()}</p>
                     </div>
-                    <div className="bg-emerald-100/60 p-1.5 rounded-lg border border-emerald-200">
-                      <p className="text-[6px] font-black uppercase text-emerald-700">Total Paid</p>
-                      <p className="text-[11px] font-black text-emerald-800">₹{grandTotalPaid.toLocaleString()}</p>
+                    <div className="bg-emerald-100/80 p-2 rounded-xl border border-emerald-200/80">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-emerald-700 mb-0.5">Total Paid</p>
+                      <p className="text-xs font-black text-emerald-900 tracking-tight">₹{grandTotalPaid.toLocaleString()}</p>
                     </div>
-                    <div className="bg-rose-100/60 p-1.5 rounded-lg border border-rose-200">
-                      <p className="text-[6px] font-black uppercase text-rose-700">Total Remaining</p>
-                      <p className="text-[11px] font-black text-rose-800">₹{grandTotalDue.toLocaleString()}</p>
+                    <div className="bg-rose-100/80 p-2 rounded-xl border border-rose-200/80">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-rose-700 mb-0.5">Total Remaining</p>
+                      <p className="text-xs font-black text-rose-900 tracking-tight">₹{grandTotalDue.toLocaleString()}</p>
                     </div>
                   </div>
-                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${grandPaidPercent}%` }} />
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200/60 p-0.5">
+                    <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500 shadow-sm" style={{ width: `${grandPaidPercent}%` }} />
                   </div>
                 </div>
               </div>
