@@ -581,195 +581,240 @@ export function FeeCollectionForm({ params }: { params?: any }) {
           </div>
         )}
         
-        {/* 🏆 COMPACT TOP SECTION */}
-        <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-white">
-          <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-4 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white rounded-2xl shadow-md border border-slate-100 flex items-center justify-center text-slate-900 shrink-0"><User className="w-7 h-7" /></div>
-                <div>
-                  <h2 className="text-lg font-black tracking-tight text-slate-900 leading-none mb-1">{student.firstName} {student.lastName}</h2>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2 py-0.5 rounded-full">{student.academic?.class?.name || "Grade"}</span>
+        {/* 🏆 FULL-WIDTH STUDENT PAGE TITLE BANNER */}
+        <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl shadow-md flex items-center justify-center shrink-0 font-black text-xl">
+                {student.firstName?.[0] || "S"}
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-black tracking-tight text-slate-900 leading-none">
+                    {student.firstName} {student.lastName}
+                  </h1>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    {student.academic?.class?.name || "Grade"}
+                  </span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+                    #{student.admissionNumber || "REG-ID"}
+                  </span>
                 </div>
-                <button 
-                  onClick={() => {
-                    setSettlements([]);
-                    loadedStudentIdRef.current = null;
-                    openTab({
-                      id: "fee-collection",
-                      title: "Fee Collection",
-                      icon: Wallet,
-                      component: "Finance",
-                      params: {}
-                    });
-                  }} 
-                  className="ml-auto w-8 h-8 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-100 transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-2">
+                  <span>Parent: {student.parentName || student.family?.fatherName || "N/A"}</span>
+                  <span>•</span>
+                  <span>Contact: {student.parentPhone || student.family?.fatherPhone || "N/A"}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Overall Fee Status Pill Badge */}
+              <div className={cn(
+                "px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center gap-2 border shadow-sm",
+                grandTotalDue === 0 
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                  : "bg-rose-50 text-rose-700 border-rose-200"
+              )}>
+                <span className={cn("w-2 h-2 rounded-full", grandTotalDue === 0 ? "bg-emerald-500" : "bg-rose-500")} />
+                <span>{grandTotalDue === 0 ? "Fully Settled" : `Pending Dues: ₹${grandTotalDue.toLocaleString()}`}</span>
               </div>
 
-              {/* 📊 SEPARATED TUITION & ANCILLARY LEDGER CARDS */}
-              <div className="bg-slate-50/90 rounded-[2rem] p-5 border border-slate-200/80 space-y-4 shadow-sm">
-                {/* 📚 TUITION FEE SECTION */}
-                <div className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm space-y-2">
+              <button 
+                onClick={() => {
+                  setSettlements([]);
+                  loadedStudentIdRef.current = null;
+                  openTab({
+                    id: "fee-collection",
+                    title: "Fee Collection",
+                    icon: Wallet,
+                    component: "Finance",
+                    params: {}
+                  });
+                }} 
+                className="w-10 h-10 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl flex items-center justify-center hover:bg-slate-100 transition-all border border-slate-200/60"
+                title="Close Student Profile"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* ⚖️ BALANCED 2-COLUMN GRID LAYOUT (NO WASTED EMPTY SPACE) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            {/* 📊 LEFT COLUMN: COMPONENT BREAKDOWN CARDS */}
+            <div className="space-y-3 flex flex-col justify-between">
+              {/* 📚 TUITION FEE SECTION */}
+              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                    Tuition Fee Breakdown
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400">Gross: ₹{grossTuition.toLocaleString()} | Disc: -₹{totalDiscount.toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Net Tuition</p>
+                    <p className="text-xs font-black text-slate-900 tracking-tight">₹{tuitionNet.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-emerald-700 mb-0.5">Tuition Paid</p>
+                    <p className="text-xs font-black text-emerald-800 tracking-tight">₹{tuitionPaid.toLocaleString()}</p>
+                  </div>
+                  <div className={cn("p-2.5 rounded-xl border border-slate-200 shadow-sm", tuitionDue > 0 ? "bg-rose-50/80 border-rose-200" : "bg-emerald-50/80 border-emerald-200")}>
+                    <p className={cn("text-[8px] font-black uppercase tracking-wider mb-0.5", tuitionDue > 0 ? "text-rose-700" : "text-emerald-700")}>Tuition Due</p>
+                    <p className={cn("text-xs font-black tracking-tight", tuitionDue > 0 ? "text-rose-800" : "text-emerald-800")}>₹{tuitionDue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🚌 TRANSPORT / ANCILLARY FEE SECTION */}
+              {isTransportActive && (
+                <div className="bg-slate-50/80 rounded-2xl p-4 border border-purple-100 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                      Tuition Fee Breakdown
+                    <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span>
+                      Transport Fee Breakdown
                     </span>
-                    <span className="text-[8px] font-bold text-slate-400">Gross: ₹{grossTuition.toLocaleString()} | Disc: -₹{totalDiscount.toLocaleString()}</span>
+                    <span className={cn("text-[9px] font-black px-2.5 py-0.5 rounded-full border", transportDue === 0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200")}>
+                      {transportDue === 0 ? "Cleared" : "Pending"}
+                    </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-blue-50/80 p-2.5 rounded-xl border border-blue-100/80">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-blue-600 mb-0.5">Net Tuition</p>
-                      <p className="text-xs font-black text-blue-950 tracking-tight">₹{tuitionNet.toLocaleString()}</p>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm">
+                      <p className="text-[8px] font-black uppercase tracking-wider text-purple-600 mb-0.5">Transport Fee</p>
+                      <p className="text-xs font-black text-purple-950 tracking-tight">₹{transportFeeVal.toLocaleString()}</p>
                     </div>
-                    <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-100/80">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600 mb-0.5">Tuition Paid</p>
-                      <p className="text-xs font-black text-emerald-800 tracking-tight">₹{tuitionPaid.toLocaleString()}</p>
+                    <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200">
+                      <p className="text-[8px] font-black uppercase tracking-wider text-emerald-700 mb-0.5">Transport Paid</p>
+                      <p className="text-xs font-black text-emerald-800 tracking-tight">₹{transportPaid.toLocaleString()}</p>
                     </div>
-                    <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-100/80">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-rose-600 mb-0.5">Tuition Due</p>
-                      <p className="text-xs font-black text-rose-800 tracking-tight">₹{tuitionDue.toLocaleString()}</p>
+                    <div className={cn("p-2.5 rounded-xl border shadow-sm", transportDue > 0 ? "bg-rose-50/80 border-rose-200" : "bg-emerald-50/80 border-emerald-200")}>
+                      <p className={cn("text-[8px] font-black uppercase tracking-wider mb-0.5", transportDue > 0 ? "text-rose-700" : "text-emerald-700")}>Transport Due</p>
+                      <p className={cn("text-xs font-black tracking-tight", transportDue > 0 ? "text-rose-800" : "text-emerald-800")}>₹{transportDue.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* 🚌 TRANSPORT / ANCILLARY FEE SECTION */}
-                {isTransportActive && (
-                  <div className="bg-white rounded-2xl p-3.5 border border-purple-100 shadow-sm space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
-                        Transport Fee Breakdown
-                      </span>
-                      <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        {transportDue === 0 ? "Cleared" : "Pending"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-purple-50/80 p-2.5 rounded-xl border border-purple-100/80">
-                        <p className="text-[7px] font-black uppercase tracking-wider text-purple-600 mb-0.5">Transport Fee</p>
-                        <p className="text-xs font-black text-purple-950 tracking-tight">₹{transportFeeVal.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-100/80">
-                        <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600 mb-0.5">Transport Paid</p>
-                        <p className="text-xs font-black text-emerald-800 tracking-tight">₹{transportPaid.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-rose-50/80 p-2.5 rounded-xl border border-rose-100/80">
-                        <p className="text-[7px] font-black uppercase tracking-wider text-rose-600 mb-0.5">Transport Due</p>
-                        <p className="text-xs font-black text-rose-800 tracking-tight">₹{transportDue.toLocaleString()}</p>
-                      </div>
-                    </div>
+              {/* 🏷️ GRAND TOTAL SUMMARY (DISPLAY ONLY) */}
+              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-900 inline-block"></span>
+                    Grand Total Summary (Display Only)
+                  </span>
+                  <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    {grandPaidPercent}% Settled
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-sm">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Total Net Fee</p>
+                    <p className="text-xs font-black text-slate-900 tracking-tight">₹{grandNetFee.toLocaleString()}</p>
                   </div>
-                )}
-
-                {/* 🏷️ GRAND TOTAL SUMMARY (DISPLAY ONLY) */}
-                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-slate-900 inline-block"></span>
-                      Grand Total Summary (Display Only)
-                    </span>
-                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                      {grandPaidPercent}% Settled
-                    </span>
+                  <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200">
+                    <p className="text-[8px] font-black uppercase tracking-wider text-emerald-700 mb-0.5">Total Paid</p>
+                    <p className="text-xs font-black text-emerald-900 tracking-tight">₹{grandTotalPaid.toLocaleString()}</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-slate-100/80 p-2 rounded-xl border border-slate-200/80">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-slate-500 mb-0.5">Total Net Fee</p>
-                      <p className="text-xs font-black text-slate-900 tracking-tight">₹{grandNetFee.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-emerald-100/80 p-2 rounded-xl border border-emerald-200/80">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-emerald-700 mb-0.5">Total Paid</p>
-                      <p className="text-xs font-black text-emerald-900 tracking-tight">₹{grandTotalPaid.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-rose-100/80 p-2 rounded-xl border border-rose-200/80">
-                      <p className="text-[7px] font-black uppercase tracking-wider text-rose-700 mb-0.5">Total Remaining</p>
-                      <p className="text-xs font-black text-rose-900 tracking-tight">₹{grandTotalDue.toLocaleString()}</p>
-                    </div>
+                  <div className={cn("p-2.5 rounded-xl border shadow-sm", grandTotalDue > 0 ? "bg-rose-50/80 border-rose-200" : "bg-emerald-50/80 border-emerald-200")}>
+                    <p className={cn("text-[8px] font-black uppercase tracking-wider mb-0.5", grandTotalDue > 0 ? "text-rose-700" : "text-emerald-700")}>Total Remaining</p>
+                    <p className={cn("text-xs font-black tracking-tight", grandTotalDue > 0 ? "text-rose-800" : "text-emerald-800")}>₹{grandTotalDue.toLocaleString()}</p>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200/60 p-0.5">
-                    <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500 shadow-sm" style={{ width: `${grandPaidPercent}%` }} />
-                  </div>
+                </div>
+                <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden mt-1 border border-slate-300/40 p-0.5">
+                  <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500 shadow-sm" style={{ width: `${grandPaidPercent}%` }} />
                 </div>
               </div>
             </div>
-            <div className="col-span-8">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                  {fb.paymentType === "Term-wise" ? "Tuition Installments (Sequential)" : "Payment Scheme Breakdown"}
-                </p>
-                <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-[8px] font-black uppercase tracking-widest border border-slate-200">
-                  Scheme: {fb.paymentType || "Term-wise"}
-                </span>
-              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {(fb.installments || []).map((inst: any, idx: number) => {
-                  const key = inst.key;
-                  const isSelected = settlements[0].selectedTerms.includes(key);
-                  const canSelect = idx === 0 || (fb.installments[idx - 1].isPaid || settlements[0].selectedTerms.includes(fb.installments[idx - 1].key));
-                  
-                  const targetAmount = inst.amount || 0;
-                  const balanceDue = inst.balance !== undefined ? inst.balance : (inst.isPaid ? 0 : targetAmount);
-                  const amountPaidInTerm = Math.max(0, targetAmount - balanceDue);
+            {/* 💳 RIGHT COLUMN: TUITION INSTALLMENTS SCHEDULE & SELECTION */}
+            <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                      {fb.paymentType === "Term-wise" ? "Tuition Installments Schedule" : "Payment Scheme Breakdown"}
+                    </h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                      Select installment term to collect payment
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-white text-slate-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-200 shadow-sm">
+                    Scheme: {fb.paymentType || "Term-wise"}
+                  </span>
+                </div>
 
-                  return (
-                      <button 
-                        key={key} 
-                        disabled={inst.isPaid || !canSelect} 
-                        onClick={() => toggleTermForStudent(student.id, key)} 
-                        className={cn(
-                          "p-3 rounded-2xl border-2 text-left relative min-h-[105px] flex flex-col justify-between transition-all", 
-                          inst.isPaid 
-                            ? "bg-emerald-50/40 border-emerald-100 cursor-not-allowed" 
-                            : isSelected 
-                              ? "bg-white border-primary shadow-lg ring-4 ring-primary/5 scale-[1.02]" 
-                              : !canSelect 
-                                ? "bg-slate-50 border-slate-50 opacity-40 cursor-not-allowed" 
-                                : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-sm"
-                        )}
-                      >
-                        {isSelected && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-primary animate-in zoom-in" />}
-                        {inst.isPaid && <CheckCircle2 className="absolute top-2 right-2 w-4 h-4 text-emerald-500" />}
-                        
-                        <div>
-                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1 leading-none">{inst.label}</p>
-                          <p className="text-base font-black text-slate-900 tracking-tighter">₹{targetAmount.toLocaleString()}</p>
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(fb.installments || []).map((inst: any, idx: number) => {
+                    const key = inst.key;
+                    const isSelected = settlements[0]?.selectedTerms.includes(key);
+                    const canSelect = idx === 0 || (fb.installments[idx - 1].isPaid || settlements[0]?.selectedTerms.includes(fb.installments[idx - 1].key));
+                    
+                    const targetAmount = inst.amount || 0;
+                    const balanceDue = inst.balance !== undefined ? inst.balance : (inst.isPaid ? 0 : targetAmount);
+                    const amountPaidInTerm = Math.max(0, targetAmount - balanceDue);
 
-                        <div className="space-y-0.5 border-t border-slate-100 pt-1.5 mt-1">
-                          <div className="flex justify-between items-center text-[8px] font-bold">
-                            <span className="text-slate-400 uppercase">Paid:</span>
-                            <span className="text-emerald-600 font-black">₹{amountPaidInTerm.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between items-center text-[8px] font-bold">
-                            <span className="text-slate-400 uppercase">Due:</span>
-                            <span className={cn("font-black", balanceDue > 0 ? "text-amber-600" : "text-emerald-600")}>
-                              ₹{balanceDue.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="mt-1">
-                          {inst.isPaid ? (
-                            <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded">Settled ✓</span>
-                          ) : amountPaidInTerm > 0 ? (
-                            <span className="text-[7px] font-black uppercase tracking-widest text-amber-600 bg-amber-100/60 px-1.5 py-0.5 rounded">Partially Paid</span>
-                          ) : (
-                            <span className="text-[7px] font-black uppercase text-slate-400">
-                              Due: {inst.dueDate ? new Date(inst.dueDate).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' }) : "N/A"}
-                            </span>
+                    return (
+                        <button 
+                          key={key} 
+                          disabled={inst.isPaid || !canSelect} 
+                          onClick={() => toggleTermForStudent(student.id, key)} 
+                          className={cn(
+                            "p-4 rounded-2xl border-2 text-left relative min-h-[120px] flex flex-col justify-between transition-all shadow-sm", 
+                            inst.isPaid 
+                              ? "bg-emerald-50/60 border-emerald-200 cursor-not-allowed" 
+                              : balanceDue < targetAmount
+                                ? "bg-amber-50/60 border-amber-300"
+                                : isSelected 
+                                  ? "bg-white border-primary shadow-lg ring-4 ring-primary/10 scale-[1.02]" 
+                                  : !canSelect 
+                                    ? "bg-slate-100/50 border-slate-200/50 opacity-40 cursor-not-allowed" 
+                                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-md"
                           )}
-                        </div>
-                      </button>
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              {inst.label}
+                            </span>
+                            <div className={cn(
+                              "w-5 h-5 rounded-full flex items-center justify-center text-[10px]",
+                              inst.isPaid ? "bg-emerald-500 text-white" : isSelected ? "bg-primary text-white" : "border-2 border-slate-300"
+                            )}>
+                              {inst.isPaid ? "✓" : isSelected ? "✓" : ""}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-lg font-black text-slate-900 tracking-tight">₹{targetAmount.toLocaleString()}</p>
+                            <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider mt-1">
+                              <span className="text-emerald-700">Paid: ₹{amountPaidInTerm.toLocaleString()}</span>
+                              <span className={cn(balanceDue > 0 ? "text-rose-700" : "text-emerald-700")}>
+                                Due: ₹{balanceDue.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-2">
+                            <span className={cn(
+                              "text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border inline-block",
+                              inst.isPaid 
+                                ? "bg-emerald-100/80 text-emerald-700 border-emerald-300" 
+                                : balanceDue < targetAmount
+                                  ? "bg-amber-100/80 text-amber-700 border-amber-300"
+                                  : "bg-rose-100/80 text-rose-700 border-rose-300"
+                            )}>
+                              {inst.isPaid ? "Settled ✓" : balanceDue < targetAmount ? "Partially Paid" : "Pending Due"}
+                            </span>
+                          </div>
+                        </button>
                     );
-                })}
+                  })}
               </div>
             </div>
           </div>
+        </div>
 
           {/* 📊 BOTTOM ACTION & METADATA BAR (NON-REDUNDANT) */}
           <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-100 items-center">
