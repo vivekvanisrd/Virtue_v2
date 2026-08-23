@@ -543,18 +543,27 @@ export function FeeCollectionForm({ params }: { params?: any }) {
   const grossTuition = tuitionNet + totalDiscount;
   const tuitionDue = Math.max(0, tuitionNet - tuitionPaid);
 
-  const isTransportActive = student?.transportRequired || (fb?.ancillary?.transportFee?.amount > 0);
-  const transportFeeVal = Number(fb?.ancillary?.transportFee?.amount || (student?.transportRequired ? student?.transportMonthlyFee || 0 : 0));
+  const isTransportActive = Boolean(
+    student?.transportRequired || 
+    student?.transportDetail?.transportRequired || 
+    transportPaid > 0 || 
+    (fb?.ancillary?.transportFee?.amount > 0)
+  );
+  
+  const transportFeeVal = isTransportActive 
+    ? Number(fb?.ancillary?.transportFee?.amount || student?.transportMonthlyFee || transportPaid || 0)
+    : 0;
+
   const transportDue = Math.max(0, transportFeeVal - transportPaid);
 
   const transportDisplay = isTransportActive 
-    ? (student?.transportMonthlyFee ? `₹${student.transportMonthlyFee}/mo` : `₹${transportFeeVal.toLocaleString()}`)
+    ? (transportFeeVal > 0 ? `₹${transportFeeVal.toLocaleString()}` : "Opted-In")
     : "Not Subscribed";
 
   const admissionFeeVal = Number(fb?.ancillary?.admissionFee?.amount || 0);
   const admissionDue = Math.max(0, admissionFeeVal - admissionPaid);
 
-  // Grand Totals (Display Only)
+  // Grand Totals (Sum of active components: Net Tuition + Transport + Admission)
   const grandNetFee = tuitionNet + transportFeeVal + admissionFeeVal;
   const grandTotalPaid = tuitionPaid + transportPaid + admissionPaid;
   const grandTotalDue = tuitionDue + transportDue + admissionDue;
