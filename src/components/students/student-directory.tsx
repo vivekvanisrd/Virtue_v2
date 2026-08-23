@@ -222,9 +222,12 @@ export function StudentDirectory() {
             onChange={(e) => setFilters(prev => ({ ...prev, feeStatus: e.target.value }))}
             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
          >
-            <option value="all">Fees: All</option>
+            <option value="all">Fees: All Statuses</option>
             <option value="fully_paid">Fees: Fully Paid</option>
+            <option value="term1_paid">Fees: Term 1 Paid</option>
+            <option value="partially_paid">Fees: Partially Paid</option>
             <option value="dues_pending">Fees: Dues Pending</option>
+            <option value="advance_surplus">Fees: Advance / Surplus</option>
          </select>
       </div>
 

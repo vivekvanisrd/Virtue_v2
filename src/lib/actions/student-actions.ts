@@ -1025,6 +1025,10 @@ export async function getStudentListAction(filters?: {
               { studentCode: { contains: filters.search, mode: 'insensitive' } },
               { legacyId: { contains: filters.search, mode: 'insensitive' } },
               { bookId: { contains: filters.search, mode: 'insensitive' } },
+              { family: { fatherName: { contains: filters.search, mode: 'insensitive' } } },
+              { family: { motherName: { contains: filters.search, mode: 'insensitive' } } },
+              { family: { fatherPhone: { contains: filters.search, mode: 'insensitive' } } },
+              { family: { motherPhone: { contains: filters.search, mode: 'insensitive' } } },
             ]
           } : {},
           filters?.classId ? { academic: { classId: filters.classId } } : {},
@@ -1058,7 +1062,7 @@ export async function getStudentListAction(filters?: {
         attendance: {
           where: {
             date: today,
-            session: "Morning" // Can be made dynamic later
+            session: "Morning"
           },
           take: 1
         }
@@ -1148,25 +1152,36 @@ export async function getStudentListAction(filters?: {
           const tuition = components.length > 0 
               ? components
                   .filter((c: any) => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
-                               !c.masterComponent?.name?.toLowerCase().includes("admission") &&
-                               !c.masterComponent?.name?.toLowerCase().includes("caution") &&
-                               !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+                                !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                                !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                                !c.masterComponent?.name?.toLowerCase().includes("deposit"))
                   .reduce((sum: number, c: any) => sum + Number(c.baseAmount || 0), 0)
               : Number(s.financial?.tuitionFee || s.financial?.annualTuition || 0);
           const discount = components.length > 0 
               ? components
                   .filter((c: any) => (c.masterComponent?.type === "CORE" || c.masterComponent?.name?.toLowerCase().includes("tuition")) &&
-                               !c.masterComponent?.name?.toLowerCase().includes("admission") &&
-                               !c.masterComponent?.name?.toLowerCase().includes("caution") &&
-                               !c.masterComponent?.name?.toLowerCase().includes("deposit"))
+                                !c.masterComponent?.name?.toLowerCase().includes("admission") &&
+                                !c.masterComponent?.name?.toLowerCase().includes("caution") &&
+                                !c.masterComponent?.name?.toLowerCase().includes("deposit"))
                   .reduce((sum: number, c: any) => sum + Number(c.waiverAmount || 0) + Number(c.discountAmount || 0), 0)
               : Number(s.financial?.totalDiscount || 0);
           
           const expectedTuition = tuition - discount;
-          const totalPaid = (s.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
+          const term1Target = Number(s.financial?.term1Amount || (expectedTuition > 0 ? expectedTuition / 2 : 0));
+          const totalPaid = (s.collections || []).reduce((sum: number, c: any) => sum + Number(c.totalPaid || c.amountPaid || 0), 0);
           
-          const isFullyPaid = totalPaid >= expectedTuition;
-          return filters.feeStatus === "fully_paid" ? isFullyPaid : !isFullyPaid;
+          if (filters.feeStatus === "fully_paid") {
+            return totalPaid >= expectedTuition && expectedTuition > 0;
+          } else if (filters.feeStatus === "term1_paid") {
+            return totalPaid >= term1Target && totalPaid < expectedTuition;
+          } else if (filters.feeStatus === "partially_paid") {
+            return totalPaid > 0 && totalPaid < expectedTuition;
+          } else if (filters.feeStatus === "dues_pending") {
+            return totalPaid === 0;
+          } else if (filters.feeStatus === "advance_surplus") {
+            return totalPaid > expectedTuition && expectedTuition > 0;
+          }
+          return true;
         });
       }
     }

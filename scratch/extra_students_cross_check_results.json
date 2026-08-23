@@ -1,0 +1,732 @@
+[
+  {
+    "extraStudent": {
+      "id": "d9347548-e7ae-47de-afa3-f8ce53c27886",
+      "admissionNumber": "VIVES-RCB-2627-STU-00059",
+      "studentName": "S.VENKATA ESHWAR",
+      "parentName": "S.SANJEEV KUMAR",
+      "phone": "0000000000",
+      "className": "LKG",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-07-08T13:28:26.956Z"
+    },
+    "matchedCount": 1,
+    "matches": [
+      {
+        "matchedPastedStudentId": "std_b38dad7f725f",
+        "matchedPastedAdmissionNo": "TEMP016",
+        "matchedPastedName": "S.VENKATA ESHWAR",
+        "matchedPastedParent": "S.SANJEEV KUMAR",
+        "matchedPastedPhone": null,
+        "matchedPastedClass": "LKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "3a68fd37-ad1c-43eb-9917-7af1f45438e1",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Mangolu Dakshika",
+      "parentName": "Mangolu Mahender",
+      "phone": "9885779323",
+      "className": "LKG",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-07-14T05:01:14.743Z"
+    },
+    "matchedCount": 1,
+    "matches": [
+      {
+        "matchedPastedStudentId": "92d9157f-19c6-41d9-9d69-9e9f138357a0",
+        "matchedPastedAdmissionNo": "VRO1258",
+        "matchedPastedName": "M.DAKSHIKA",
+        "matchedPastedParent": "M.MAHENDER",
+        "matchedPastedPhone": "9885779323",
+        "matchedPastedClass": "LKG",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "ffa3823b-4a36-4087-a0b8-ae308092f8b9",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Kavelly Goud",
+      "parentName": "Kavelly Mahesh Kiran Goud",
+      "phone": "9703097309",
+      "className": "8th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-07-17T09:54:01.828Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "4f8655aa-cc7d-4064-bb9e-b9111faa4b3d",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Kandi Teja",
+      "parentName": "Father",
+      "phone": "9876545678",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-03T09:47:10.042Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "2a631d8f-dbac-4e1f-b1b7-5bd629087c9a",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Erigipally Sahasra",
+      "parentName": "E.mahender",
+      "phone": "9912292580",
+      "className": "7th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-03T10:07:06.323Z"
+    },
+    "matchedCount": 2,
+    "matches": [
+      {
+        "matchedPastedStudentId": "88989433-af3c-45f8-8b0a-3f166bd9b079",
+        "matchedPastedAdmissionNo": "VRO1225",
+        "matchedPastedName": "E.SAI KOWSHIK",
+        "matchedPastedParent": "E.MAHENDAR",
+        "matchedPastedPhone": "9912292580",
+        "matchedPastedClass": "2nd Grade",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "0a8bbd7d-639c-4ed0-a44c-e2d901074ffe",
+        "matchedPastedAdmissionNo": "VR01124",
+        "matchedPastedName": "E.SAHASRA",
+        "matchedPastedParent": "MAHENDER",
+        "matchedPastedPhone": "9912292580",
+        "matchedPastedClass": "7th Grade",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "742719ee-1473-4dab-88c1-9e46ed7b1904",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Student Student",
+      "parentName": "Pintraj Kandi",
+      "phone": "9676088734",
+      "className": "UKG",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-03T10:27:40.991Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "std_7f5d63a7108e",
+      "admissionNumber": "TEMP041",
+      "studentName": "CH.CHINMAIKRUTHI",
+      "parentName": "CH.NARESH KUMAR",
+      "phone": "9182632245.0",
+      "className": "UKG",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-17T07:13:39.853Z"
+    },
+    "matchedCount": 3,
+    "matches": [
+      {
+        "matchedPastedStudentId": "249d1cb6-f95f-469e-b9a3-d7caa6f659f4",
+        "matchedPastedAdmissionNo": "VIVES-RCB-2627-STU-00010",
+        "matchedPastedName": "CH.CHINMAIKRUTHI",
+        "matchedPastedParent": "CH.NARESH KUMAR",
+        "matchedPastedPhone": "8328011073",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_1380f8744d26",
+        "matchedPastedAdmissionNo": "TEMP012",
+        "matchedPastedName": "CH.CHINMAIKRUTHI",
+        "matchedPastedParent": "CH.NARESH KUMAR",
+        "matchedPastedPhone": "8328011073.0",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "1112a34e-76cf-4e8f-865c-0a4790ded70a",
+        "matchedPastedAdmissionNo": "VR0108-26",
+        "matchedPastedName": "CH.CHINMAIKRUTHI",
+        "matchedPastedParent": "CH.NARESH KUMAR",
+        "matchedPastedPhone": "9182632245",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "std_4f0595b1793c",
+      "admissionNumber": "TEMP042",
+      "studentName": "R. MAHA",
+      "parentName": "R. MANOHAR",
+      "phone": "9030171002.0",
+      "className": "Nursery",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-17T07:13:39.853Z"
+    },
+    "matchedCount": 2,
+    "matches": [
+      {
+        "matchedPastedStudentId": "73f96926-7323-448f-bcba-b4e50e25c7e9",
+        "matchedPastedAdmissionNo": "VR0020-26",
+        "matchedPastedName": "R. MAHA",
+        "matchedPastedParent": "R. MANOHAR",
+        "matchedPastedPhone": "9030171002",
+        "matchedPastedClass": "Nursery",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "6d3ec840-8087-40a4-8a54-52ab5831c080",
+        "matchedPastedAdmissionNo": "VR0020",
+        "matchedPastedName": "R.MAHA",
+        "matchedPastedParent": "R.MANOHAR CHARY",
+        "matchedPastedPhone": "9866041002",
+        "matchedPastedClass": "Nursery",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "2336df84-a4de-4698-b0c9-7daa76a86183",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Shreyanvi Boini",
+      "parentName": "Boini Naveen Kumar",
+      "phone": "8309746604",
+      "className": "Nursery",
+      "branch": "Shanthinagar",
+      "createdAt": "2026-08-20T07:12:45.984Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "7a8c08c9-36fe-420c-bb47-32eb18483e43",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Begari Airasri",
+      "parentName": "Begari Srinivas",
+      "phone": "9440085945",
+      "className": "Nursery",
+      "branch": "Shanthinagar",
+      "createdAt": "2026-08-20T07:39:29.679Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "ce89bbf8-ce77-4c8e-93cb-3dcc95db1c08",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Kavelli Ananya",
+      "parentName": "Kavelli Balraj Goud",
+      "phone": "9000245865",
+      "className": "Nursery",
+      "branch": "Shanthinagar",
+      "createdAt": "2026-08-20T07:57:43.066Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "3257ea85-e690-428d-9200-8eece3458455",
+      "admissionNumber": "NO_ADM_NO",
+      "studentName": "Godugu Varun",
+      "parentName": "Godugu Pratap",
+      "phone": "9441512557",
+      "className": "2nd Grade",
+      "branch": "Shanthinagar",
+      "createdAt": "2026-08-20T08:14:15.485Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "c17caf7a-da8a-4566-a6ac-a468b3f650b6",
+      "admissionNumber": "ADM-1787365471483-310",
+      "studentName": "G.SAANVIKA",
+      "parentName": "G.SUBHASH",
+      "phone": "9491466013",
+      "className": "Nursery",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:24:31.484Z"
+    },
+    "matchedCount": 3,
+    "matches": [
+      {
+        "matchedPastedStudentId": "6d9ba514-133e-487d-8bf8-011d6cdad616",
+        "matchedPastedAdmissionNo": "VIVES-RCB-2627-STU-00034",
+        "matchedPastedName": "G.SAANVIKA",
+        "matchedPastedParent": "G.MADHUSUDHAN REDDY",
+        "matchedPastedPhone": "9848707192",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_0f73bf9de412",
+        "matchedPastedAdmissionNo": "VR01136",
+        "matchedPastedName": "G.SAANVIKA",
+        "matchedPastedParent": "G.MADHUSUDHAN REDDY",
+        "matchedPastedPhone": "9848707192.0",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_471b9e4d859a",
+        "matchedPastedAdmissionNo": "TEMP065",
+        "matchedPastedName": "G.SAANVIKA",
+        "matchedPastedParent": "G.SUBHASH",
+        "matchedPastedPhone": "9441079849.0",
+        "matchedPastedClass": "Nursery",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "bb1aba4f-ed05-4e88-a304-c57537bea53c",
+      "admissionNumber": "ADM-1787366137883-455",
+      "studentName": "B.HARSHAVARDHAN",
+      "parentName": "B.RAVI",
+      "phone": "9000559134",
+      "className": "1st Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:35:37.884Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "1d60e10a-4ea2-4116-8173-7aca195beaea",
+      "admissionNumber": "ADM-1787366146791-457",
+      "studentName": "CH.MOKSHITHA",
+      "parentName": "CH.SRIKANTH",
+      "phone": "9705761357",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:35:46.792Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "e700fec8-cde5-4dec-9483-3c22ecd1f175",
+      "admissionNumber": "ADM-1787366216390-473",
+      "studentName": "N.HARI CHANDANA",
+      "parentName": "N.SRISHAILAM",
+      "phone": "9705151164",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:36:56.391Z"
+    },
+    "matchedCount": 1,
+    "matches": [
+      {
+        "matchedPastedStudentId": "c2f5e782-281e-43f5-a65c-dcc6a0f3fc0a",
+        "matchedPastedAdmissionNo": "VR0075-26",
+        "matchedPastedName": "N.RISHWIK",
+        "matchedPastedParent": "N.SRISHAILAM",
+        "matchedPastedPhone": "9705151164",
+        "matchedPastedClass": "LKG",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "2a35577d-d8dd-41f1-9da1-f6b3586b8234",
+      "admissionNumber": "ADM-1787366221054-474",
+      "studentName": "C.SAHASRA",
+      "parentName": "C.MADHU SUDHAN",
+      "phone": "9912174413",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:37:01.055Z"
+    },
+    "matchedCount": 3,
+    "matches": [
+      {
+        "matchedPastedStudentId": "e700c674-2aec-4898-b75c-b0ea543e6eda",
+        "matchedPastedAdmissionNo": "VIVES-RCB-2627-STU-00028",
+        "matchedPastedName": "CH.SAHASRA",
+        "matchedPastedParent": "CH.MADHUSUDHAN",
+        "matchedPastedPhone": "9912174413",
+        "matchedPastedClass": "2nd Grade",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_f82239a8dc68",
+        "matchedPastedAdmissionNo": "TEMP053",
+        "matchedPastedName": "C.SAHASRA",
+        "matchedPastedParent": "C.SHIVAKUMAR",
+        "matchedPastedPhone": "9642803773.0",
+        "matchedPastedClass": "5th Grade",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "fec0783f-6709-4e17-b1f7-0f9f3c34d26d",
+        "matchedPastedAdmissionNo": "VS0876",
+        "matchedPastedName": "N.SOUJANYA",
+        "matchedPastedParent": "N.RAJU",
+        "matchedPastedPhone": "9912174413",
+        "matchedPastedClass": "2nd Grade",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "f2694495-c5a3-41fd-8e47-55ae97c34efc",
+      "admissionNumber": "ADM-1787366602753-558",
+      "studentName": "M.HARSHAVARDHAN REDDY",
+      "parentName": "M.SHIVAHANKAR REDDY",
+      "phone": "9999999999",
+      "className": "4th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:43:22.758Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "d0cd29db-1f18-40e5-9d5f-fbaa32dfed2e",
+      "admissionNumber": "ADM-1787367000585-643",
+      "studentName": "M.PREKSHA",
+      "parentName": "M.VIJAY BHASKAR",
+      "phone": "9398023070",
+      "className": "6th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:50:00.586Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "3c27ce0f-6f7a-48a8-a5e0-319bc0cc131f",
+      "admissionNumber": "ADM-1787367095574-661",
+      "studentName": "K.VAIBHAV GOUD",
+      "parentName": "RAVINDER GOUD",
+      "phone": "9999999999",
+      "className": "7th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T02:51:35.575Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "89125c2b-bdd9-43b2-a15e-3122c9cda2ee",
+      "admissionNumber": "ADM-EDGE-567",
+      "studentName": "M.HARSHAVARDHAN REDDY",
+      "parentName": "M.SHIVAHANKAR REDDY",
+      "phone": "9993686420",
+      "className": "4th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T17:01:09.676Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "51f17e0f-1afd-40a3-b84b-1eccb920adc8",
+      "admissionNumber": "ADM-EDGE-670",
+      "studentName": "K.VAIBHAV GOUD",
+      "parentName": "RAVINDER GOUD",
+      "phone": "9999999999",
+      "className": "7th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-22T17:01:13.825Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "cdd8e592-d426-4624-8aa1-dc88ca3dda70",
+      "admissionNumber": "ADM-PASTED-1787452908095-134",
+      "studentName": "G.SAANVIKA",
+      "parentName": "G.SUBHASH",
+      "phone": "9491466013",
+      "className": "Nursery",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:41:48.096Z"
+    },
+    "matchedCount": 3,
+    "matches": [
+      {
+        "matchedPastedStudentId": "6d9ba514-133e-487d-8bf8-011d6cdad616",
+        "matchedPastedAdmissionNo": "VIVES-RCB-2627-STU-00034",
+        "matchedPastedName": "G.SAANVIKA",
+        "matchedPastedParent": "G.MADHUSUDHAN REDDY",
+        "matchedPastedPhone": "9848707192",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_0f73bf9de412",
+        "matchedPastedAdmissionNo": "VR01136",
+        "matchedPastedName": "G.SAANVIKA",
+        "matchedPastedParent": "G.MADHUSUDHAN REDDY",
+        "matchedPastedPhone": "9848707192.0",
+        "matchedPastedClass": "UKG",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_471b9e4d859a",
+        "matchedPastedAdmissionNo": "TEMP065",
+        "matchedPastedName": "G.SAANVIKA",
+        "matchedPastedParent": "G.SUBHASH",
+        "matchedPastedPhone": "9441079849.0",
+        "matchedPastedClass": "Nursery",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "a3f9e9bb-22a8-4782-867f-0b2afb22524c",
+      "admissionNumber": "ADM-PASTED-1787452913229-460",
+      "studentName": "B.HARSHAVARDHAN",
+      "parentName": "B.RAVI",
+      "phone": "9000559134",
+      "className": "1st Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:41:53.229Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "5314534c-748b-4426-8806-b57ab36d5f46",
+      "admissionNumber": "ADM-PASTED-1787452918639-422",
+      "studentName": "CH.MOKSHITHA",
+      "parentName": "CH.SRIKANTH",
+      "phone": "9705761357",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:41:58.640Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "8ef8c878-553d-4fd5-b2ff-8696449e7fec",
+      "admissionNumber": "ADM-PASTED-1787452924172-384",
+      "studentName": "N.HARI CHANDANA",
+      "parentName": "N.SRISHAILAM",
+      "phone": "9705151164",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:42:04.173Z"
+    },
+    "matchedCount": 1,
+    "matches": [
+      {
+        "matchedPastedStudentId": "c2f5e782-281e-43f5-a65c-dcc6a0f3fc0a",
+        "matchedPastedAdmissionNo": "VR0075-26",
+        "matchedPastedName": "N.RISHWIK",
+        "matchedPastedParent": "N.SRISHAILAM",
+        "matchedPastedPhone": "9705151164",
+        "matchedPastedClass": "LKG",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "954dd383-5fb7-4566-911b-315a7cc0d99a",
+      "admissionNumber": "ADM-PASTED-1787452929251-757",
+      "studentName": "C.SAHASRA",
+      "parentName": "C.MADHU SUDHAN",
+      "phone": "9912174413",
+      "className": "2nd Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:42:09.252Z"
+    },
+    "matchedCount": 3,
+    "matches": [
+      {
+        "matchedPastedStudentId": "e700c674-2aec-4898-b75c-b0ea543e6eda",
+        "matchedPastedAdmissionNo": "VIVES-RCB-2627-STU-00028",
+        "matchedPastedName": "CH.SAHASRA",
+        "matchedPastedParent": "CH.MADHUSUDHAN",
+        "matchedPastedPhone": "9912174413",
+        "matchedPastedClass": "2nd Grade",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "std_f82239a8dc68",
+        "matchedPastedAdmissionNo": "TEMP053",
+        "matchedPastedName": "C.SAHASRA",
+        "matchedPastedParent": "C.SHIVAKUMAR",
+        "matchedPastedPhone": "9642803773.0",
+        "matchedPastedClass": "5th Grade",
+        "matchReasons": {
+          "isPhoneMatch": false,
+          "isNameMatch": true,
+          "isPartialNameMatch": false
+        }
+      },
+      {
+        "matchedPastedStudentId": "fec0783f-6709-4e17-b1f7-0f9f3c34d26d",
+        "matchedPastedAdmissionNo": "VS0876",
+        "matchedPastedName": "N.SOUJANYA",
+        "matchedPastedParent": "N.RAJU",
+        "matchedPastedPhone": "9912174413",
+        "matchedPastedClass": "2nd Grade",
+        "matchReasons": {
+          "isPhoneMatch": true,
+          "isNameMatch": false,
+          "isPartialNameMatch": false
+        }
+      }
+    ]
+  },
+  {
+    "extraStudent": {
+      "id": "9ee082ab-c042-4d8b-9b26-a0ca6b7d1341",
+      "admissionNumber": "ADM-PASTED-1787452934551-692",
+      "studentName": "M.HARSHAVARDHAN REDDY",
+      "parentName": "M.SHIVAHANKAR REDDY",
+      "phone": "9993686420",
+      "className": "4th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:42:14.552Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "9243599e-f9a4-44bf-b95d-0f92fbdd640a",
+      "admissionNumber": "ADM-PASTED-1787452945859-118",
+      "studentName": "M.PREKSHA",
+      "parentName": "M.VIJAY BHASKAR",
+      "phone": "9398023070",
+      "className": "6th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:42:25.862Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  },
+  {
+    "extraStudent": {
+      "id": "939580c1-4dea-4a71-8054-9229c933188f",
+      "admissionNumber": "ADM-PASTED-1787452951256-139",
+      "studentName": "K.VAIBHAV GOUD",
+      "parentName": "RAVINDER GOUD",
+      "phone": "9999999999",
+      "className": "7th Grade",
+      "branch": "Reddy Colony Branch",
+      "createdAt": "2026-08-23T02:42:31.257Z"
+    },
+    "matchedCount": 0,
+    "matches": []
+  }
+]

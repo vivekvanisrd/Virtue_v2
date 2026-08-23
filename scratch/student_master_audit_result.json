@@ -1,0 +1,9 @@
+{
+  "totalTabLines": 1000,
+  "validRecordsInStudentMaster": 382,
+  "uniqueAdmissionNumbersInStudentMaster": 299,
+  "uniqueStudentNamesInStudentMaster": 284,
+  "totalStudentsInDatabase": 816,
+  "unmatchedFromMasterCount": 0,
+  "sampleUnmatched": []
+}

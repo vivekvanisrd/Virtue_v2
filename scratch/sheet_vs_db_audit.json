@@ -1,0 +1,105 @@
+{
+  "fileTotalLines": 984,
+  "validSheetStudentRows": 700,
+  "headerMetadataSummaryLines": 284,
+  "duplicateAdmissionCodesInSheet": 13,
+  "duplicateStudentEntriesInSheet": 69,
+  "sheetRowsPresentInDB": 698,
+  "sheetRowsMissingFromDBCount": 2,
+  "totalStudentsInDB": 816,
+  "dbStudentsNotInSheetCount": 130,
+  "sampleMissingRowsFromDB": [
+    {
+      "lineNo": 567,
+      "admNo": "",
+      "studentName": "M.HARSHAVARDHAN REDDY",
+      "parentName": "M.SHIVAHANKAR REDDY",
+      "phone": null,
+      "branch": "RCB",
+      "className": "4TH",
+      "rawLine": ",M.HARSHAVARDHAN REDDY,M.SHIVAHANKAR REDDY,999368642,RCB,4TH,,,0,35500,,,35500,,,Active,"
+    },
+    {
+      "lineNo": 670,
+      "admNo": "",
+      "studentName": "K.VAIBHAV GOUD",
+      "parentName": "RAVINDER GOUD",
+      "phone": null,
+      "branch": "",
+      "className": "7TH",
+      "rawLine": ",K.VAIBHAV GOUD,RAVINDER GOUD,,,7TH,,,0,38500,,,38500,,,Active,"
+    }
+  ],
+  "sampleDBStudentsNotInSheet": [
+    {
+      "id": "bb14503c-b7a8-4429-95da-26b77cbe9f6c",
+      "admNo": "VIVES-RCB-2627-STU-00001",
+      "name": "K.HARI CHANDANA",
+      "phone": "8121276776",
+      "createdAt": "2026-07-08T13:24:18.914Z"
+    },
+    {
+      "id": "af9ef76f-d12b-4e32-bce5-1df5817121f6",
+      "admNo": "VIVES-RCB-2627-STU-00002",
+      "name": "V.SAI KUMAR",
+      "phone": "93943861922",
+      "createdAt": "2026-07-08T13:24:23.325Z"
+    },
+    {
+      "id": "70cb0623-a244-4e23-8640-d644b545d4a5",
+      "admNo": "VIVES-RCB-2627-STU-00003",
+      "name": "P.VEDASHRI",
+      "phone": "9705996381",
+      "createdAt": "2026-07-08T13:24:27.689Z"
+    },
+    {
+      "id": "758bee1d-ed2a-44e3-be17-7f7637dafeb4",
+      "admNo": "VIVES-RCB-2627-STU-00004",
+      "name": "R.VEDANSHI",
+      "phone": "9494825145",
+      "createdAt": "2026-07-08T13:24:32.137Z"
+    },
+    {
+      "id": "a7dceca7-780e-4c8c-b1d7-26dfae467aa9",
+      "admNo": "VIVES-RCB-2627-STU-00005",
+      "name": "R.SHIVA",
+      "phone": "9494825145",
+      "createdAt": "2026-07-08T13:24:36.465Z"
+    },
+    {
+      "id": "1f9d6e67-949d-4bd8-a99e-4a18406ecadf",
+      "admNo": "VIVES-RCB-2627-STU-00006",
+      "name": "R.ANVITHA",
+      "phone": "8331989332",
+      "createdAt": "2026-07-08T13:24:40.596Z"
+    },
+    {
+      "id": "5ffabacf-72de-4da8-a25b-3c740a82c16a",
+      "admNo": "VIVES-RCB-2627-STU-00007",
+      "name": "M.HARSHA",
+      "phone": "9959819698",
+      "createdAt": "2026-07-08T13:24:44.658Z"
+    },
+    {
+      "id": "8536d78a-c1fb-4a5b-8015-127eec2ef8f4",
+      "admNo": "VIVES-RCB-2627-STU-00008",
+      "name": "M.JESHWANTH SAI",
+      "phone": "9502757100",
+      "createdAt": "2026-07-08T13:24:48.853Z"
+    },
+    {
+      "id": "4f572faa-aade-4f78-8335-1fff3e9045e8",
+      "admNo": "VIVES-RCB-2627-STU-00009",
+      "name": "CH.MOKSHAGNADHITH",
+      "phone": "8328011073",
+      "createdAt": "2026-07-08T13:24:52.984Z"
+    },
+    {
+      "id": "249d1cb6-f95f-469e-b9a3-d7caa6f659f4",
+      "admNo": "VIVES-RCB-2627-STU-00010",
+      "name": "CH.CHINMAIKRUTHI",
+      "phone": "8328011073",
+      "createdAt": "2026-07-08T13:24:57.285Z"
+    }
+  ]
+}

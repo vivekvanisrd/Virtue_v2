@@ -1,0 +1,115 @@
+{
+  "institutionName": "VIVES EDUX INSTITUTION",
+  "institutionId": "VIVES",
+  "totalStudents": 814,
+  "branchBreakdown": [
+    {
+      "name": "Reddy Colony Branch",
+      "count": 810
+    },
+    {
+      "name": "Shanthinagar",
+      "count": 4
+    }
+  ],
+  "classBreakdown": [
+    {
+      "name": "Play Group",
+      "count": 41,
+      "totalTuition": 1587500,
+      "totalConcession": 4500,
+      "netPayable": 1772500
+    },
+    {
+      "name": "Nursery",
+      "count": 69,
+      "totalTuition": 1759500,
+      "totalConcession": 21000,
+      "netPayable": 1774500
+    },
+    {
+      "name": "LKG",
+      "count": 109,
+      "totalTuition": 2779500,
+      "totalConcession": 30000,
+      "netPayable": 2886500
+    },
+    {
+      "name": "UKG",
+      "count": 88,
+      "totalTuition": 2420000,
+      "totalConcession": 37500,
+      "netPayable": 2431500
+    },
+    {
+      "name": "1st Grade",
+      "count": 93,
+      "totalTuition": 3069000,
+      "totalConcession": 0,
+      "netPayable": 3114000
+    },
+    {
+      "name": "2nd Grade",
+      "count": 68,
+      "totalTuition": 2246500,
+      "totalConcession": 12000,
+      "netPayable": 2246000
+    },
+    {
+      "name": "3rd Grade",
+      "count": 82,
+      "totalTuition": 2911000,
+      "totalConcession": 22000,
+      "netPayable": 2961000
+    },
+    {
+      "name": "4th Grade",
+      "count": 98,
+      "totalTuition": 3479000,
+      "totalConcession": 7000,
+      "netPayable": 3598000
+    },
+    {
+      "name": "5th Grade",
+      "count": 83,
+      "totalTuition": 3112500,
+      "totalConcession": 75000,
+      "netPayable": 3189500
+    },
+    {
+      "name": "6th Grade",
+      "count": 26,
+      "totalTuition": 975000,
+      "totalConcession": 0,
+      "netPayable": 987000
+    },
+    {
+      "name": "7th Grade",
+      "count": 17,
+      "totalTuition": 654500,
+      "totalConcession": 0,
+      "netPayable": 677000
+    },
+    {
+      "name": "8th Grade",
+      "count": 22,
+      "totalTuition": 847000,
+      "totalConcession": 500,
+      "netPayable": 859500
+    },
+    {
+      "name": "9th Grade",
+      "count": 18,
+      "totalTuition": 756000,
+      "totalConcession": 4000,
+      "netPayable": 772000
+    }
+  ],
+  "financialSummary": {
+    "totalGrossTuition": 26597000,
+    "totalAdmissionFees": 63500,
+    "totalTransportFees": 822000,
+    "totalConcessions": 213500,
+    "totalNetPayable": 27269000
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "totalPastedLines": 703,
+  "validPastedRows": 702,
+  "uniqueStudentsInPastedData": 688,
+  "duplicateRowsInPastedData": 14,
+  "matchedInDB": 678,
+  "missingFromDBCount": 10,
+  "missingStudents": [
+    {
+      "lineNo": 311,
+      "admNo": "G.SAANVIKA",
+      "studentName": "G.SUBHASH",
+      "parentName": "9491466013",
+      "phone": null,
+      "branch": "NUR",
+      "className": "SELF",
+      "raw": "G.SAANVIKA\tG.SUBHASH\t9491466013\tRCB\tNUR\tSELF\t\t0\t25500\t0\t\t25500\t\t\tActive"
+    },
+    {
+      "lineNo": 456,
+      "admNo": "B.HARSHAVARDHAN",
+      "studentName": "B.RAVI",
+      "parentName": "9000559134",
+      "phone": null,
+      "branch": "1ST",
+      "className": "SELF",
+      "raw": "B.HARSHAVARDHAN\tB.RAVI\t9000559134\tRCB\t1ST\tSELF\t\t0\t33000\t0\t\t33000\t\t\tActive"
+    },
+    {
+      "lineNo": 458,
+      "admNo": "CH.MOKSHITHA",
+      "studentName": "CH.SRIKANTH",
+      "parentName": "9705761357",
+      "phone": null,
+      "branch": "2ND",
+      "className": "SELF",
+      "raw": "CH.MOKSHITHA\tCH.SRIKANTH\t9705761357\tRCB\t2ND\tSELF\t\t0\t33000\t0\t\t33000\t\t\tActive"
+    },
+    {
+      "lineNo": 474,
+      "admNo": "N.HARI CHANDANA",
+      "studentName": "N.SRISHAILAM",
+      "parentName": "9705151164",
+      "phone": null,
+      "branch": "2ND",
+      "className": "SELF",
+      "raw": "N.HARI CHANDANA\tN.SRISHAILAM\t9705151164\tRCB\t2ND\tSELF\t\t0\t33000\t0\t\t33000\t\t\tActive"
+    },
+    {
+      "lineNo": 475,
+      "admNo": "C.SAHASRA",
+      "studentName": "C.MADHU SUDHAN",
+      "parentName": "9912174413",
+      "phone": null,
+      "branch": "2ND",
+      "className": "SELF",
+      "raw": "C.SAHASRA\tC.MADHU SUDHAN\t9912174413\tRCB\t2ND\tSELF\t\t0\t33000\t0\t\t33000\t\t\tActive"
+    },
+    {
+      "lineNo": 490,
+      "admNo": "RCB",
+      "studentName": "4TH",
+      "parentName": "SELF",
+      "phone": null,
+      "branch": "0",
+      "className": "35500",
+      "raw": "RCB\t4TH\tSELF\t\t0\t35500\t0\t\t35500\t\t\tActive"
+    },
+    {
+      "lineNo": 559,
+      "admNo": "M.HARSHAVARDHAN REDDY",
+      "studentName": "M.SHIVAHANKAR REDDY",
+      "parentName": "999368642",
+      "phone": null,
+      "branch": "4TH",
+      "className": "",
+      "raw": "M.HARSHAVARDHAN REDDY\tM.SHIVAHANKAR REDDY\t999368642\tRCB\t4TH\t\t\t0\t35500\t\t\t35500\t\t\tActive"
+    },
+    {
+      "lineNo": 562,
+      "admNo": "M.VEDANSH",
+      "studentName": "M.LINGAM",
+      "parentName": "9948128928",
+      "phone": null,
+      "branch": "4TH",
+      "className": "",
+      "raw": "M.VEDANSH\tM.LINGAM\t9948128928\tRCB\t4TH\t\t\t0\t35500\t\t\t35500\t\t\tActive"
+    },
+    {
+      "lineNo": 644,
+      "admNo": "M.PREKSHA",
+      "studentName": "M.VIJAY BHASKAR",
+      "parentName": "9398023070",
+      "phone": null,
+      "branch": "6TH",
+      "className": "",
+      "raw": "M.PREKSHA\tM.VIJAY BHASKAR\t9398023070\tRCB\t6TH\t\t\t0\t37500\t\t\t37500\t\t\tActive"
+    },
+    {
+      "lineNo": 662,
+      "admNo": "K.VAIBHAV GOUD",
+      "studentName": "RAVINDER GOUD",
+      "parentName": "",
+      "phone": null,
+      "branch": "7TH",
+      "className": "",
+      "raw": "K.VAIBHAV GOUD\tRAVINDER GOUD\t\t\t7TH\t\t\t0\t38500\t\t\t38500\t\t\tActive"
+    }
+  ]
+}
