@@ -48,7 +48,12 @@ export function StudentDirectory() {
     aadhaarStatus: "all",
     apaarStatus: "all",
     siblingStatus: "all",
-    feeStatus: "all"
+    feeStatus: "all",
+    concessionStatus: "all",
+    routeStatus: "all",
+    paymentChannel: "all",
+    riskStatus: "all",
+    quotaStatus: "all"
   });
   const [viewMode, setViewMode] = useState<"grid" | "list" | "detailed">("grid");
   const [refData, setRefData] = useState<{
@@ -217,18 +222,98 @@ export function StudentDirectory() {
             <option value="single_child">Single Child</option>
          </select>
 
-         <select 
-            value={filters.feeStatus}
-            onChange={(e) => setFilters(prev => ({ ...prev, feeStatus: e.target.value }))}
-            className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
-         >
-            <option value="all">Fees: All Statuses</option>
-            <option value="fully_paid">Fees: Fully Paid</option>
-            <option value="term1_paid">Fees: Term 1 Paid</option>
-            <option value="partially_paid">Fees: Partially Paid</option>
-            <option value="dues_pending">Fees: Dues Pending</option>
-            <option value="advance_surplus">Fees: Advance / Surplus</option>
-         </select>
+          <select 
+             value={filters.feeStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, feeStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">Fees: All Statuses</option>
+             
+             <optgroup label="📚 Tuition Fee Filters">
+               <option value="tuition_fully_paid">Tuition: Fully Paid (100%)</option>
+               <option value="term1_paid">Tuition: Term 1 Paid</option>
+               <option value="term2_paid">Tuition: Term 2 Paid</option>
+               <option value="term3_paid">Tuition: Term 3 Paid / Cleared</option>
+               <option value="tuition_partially_paid">Tuition: Partially Paid</option>
+               <option value="tuition_dues_pending">Tuition: Dues Pending</option>
+             </optgroup>
+
+             <optgroup label="🚌 Transport Fee Filters">
+               <option value="transport_opted">Transport: Opted-In / Subscribed</option>
+               <option value="transport_not_opted">Transport: Not Subscribed</option>
+               <option value="transport_fully_paid">Transport: Fully Paid (100%)</option>
+               <option value="transport_partially_paid">Transport: Partially Paid</option>
+               <option value="transport_dues_pending">Transport: Dues Pending</option>
+             </optgroup>
+
+             <optgroup label="🎟️ Admission & Ancillary Filters">
+               <option value="admission_paid">Admission Fee: Paid</option>
+               <option value="admission_pending">Admission Fee: Dues Pending</option>
+               <option value="all_fees_cleared">🌟 All Fees Cleared (Zero Dues)</option>
+               <option value="advance_surplus">💰 Advance / Credit Surplus</option>
+             </optgroup>
+          </select>
+
+          {/* 🎁 Concession Filter */}
+          <select 
+             value={filters.concessionStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, concessionStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">Concession: All</option>
+             <option value="has_concession">Concession: Applied</option>
+             <option value="full_waiver">Concession: 100% Full Waiver</option>
+             <option value="zero_discount">Concession: Zero Discount</option>
+          </select>
+
+          {/* 🚌 Transport Logistics Filter */}
+          <select 
+             value={filters.routeStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, routeStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">Bus Logistics: All</option>
+             <option value="opted_unassigned">Bus: Opted (Route Unassigned)</option>
+             <option value="opted_assigned">Bus: Opted (Route Assigned)</option>
+             <option value="not_opted">Bus: Not Subscribed</option>
+          </select>
+
+          {/* 💳 Payment Channel Filter */}
+          <select 
+             value={filters.paymentChannel}
+             onChange={(e) => setFilters(prev => ({ ...prev, paymentChannel: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">Payment Channel: All</option>
+             <option value="cash">Paid via Cash</option>
+             <option value="razorpay">Paid via Razorpay / Online ERP</option>
+             <option value="bank_qr">Paid via Bank QR / UPI</option>
+             <option value="cheque">Paid via Cheque / DD</option>
+          </select>
+
+          {/* ⚠️ Financial Risk & Overdue Filter */}
+          <select 
+             value={filters.riskStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, riskStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">Financial Risk: All</option>
+             <option value="defaulter_overdue">⚠️ Fee Defaulters (Overdue Term 1)</option>
+             <option value="high_dues">🔴 High Dues (&gt; ₹20,000 Due)</option>
+             <option value="zero_dues">🟢 Zero Dues Cleared</option>
+          </select>
+
+          {/* 📑 Compliance & Quota Filter */}
+          <select 
+             value={filters.quotaStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, quotaStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">Quota & Compliance: All</option>
+             <option value="rte">RTE Quota Enrolled</option>
+             <option value="staff_ward">Staff Ward Concession</option>
+             <option value="missing_docs">📄 Missing Required Documents</option>
+          </select>
       </div>
 
       {/* ─── Main Content ─── */}
@@ -249,7 +334,7 @@ export function StudentDirectory() {
            <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Results Found</h3>
            <p className="text-sm text-slate-400 mt-2 max-w-xs font-medium">Refine your search parameters or initiate a new admission request from the hub.</p>
            <button 
-              onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "", aadhaarStatus: "all", apaarStatus: "all", siblingStatus: "all", feeStatus: "all" }); setSearchTerm(""); }}
+              onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "", aadhaarStatus: "all", apaarStatus: "all", siblingStatus: "all", feeStatus: "all", concessionStatus: "all", routeStatus: "all", paymentChannel: "all", riskStatus: "all", quotaStatus: "all" }); setSearchTerm(""); }}
               className="mt-8 px-8 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all"
             >
               Reset Registry Filters

@@ -1003,6 +1003,11 @@ export async function getStudentListAction(filters?: {
   apaarStatus?: string;
   siblingStatus?: string;
   feeStatus?: string;
+  concessionStatus?: string;
+  routeStatus?: string;
+  paymentChannel?: string;
+  riskStatus?: string;
+  quotaStatus?: string;
 }) {
   try {
     const identity = await getSovereignIdentity();
@@ -1167,20 +1172,142 @@ export async function getStudentListAction(filters?: {
               : Number(s.financial?.totalDiscount || 0);
           
           const expectedTuition = tuition - discount;
-          const term1Target = Number(s.financial?.term1Amount || (expectedTuition > 0 ? expectedTuition / 2 : 0));
-          const totalPaid = (s.collections || []).reduce((sum: number, c: any) => sum + Number(c.totalPaid || c.amountPaid || 0), 0);
+          const term1Target = Number(s.financial?.term1Amount || (expectedTuition > 0 ? Math.round(expectedTuition * 0.5) : 0));
+          const term2Target = Number(s.financial?.term2Amount || (expectedTuition > 0 ? Math.round(expectedTuition * 0.25) : 0));
+
+          let tuitionPaid = 0;
+          let transportPaid = 0;
+          let admissionPaid = 0;
+
+          (s.collections || []).forEach((c: any) => {
+            const paid = Number(c.totalPaid || c.amountPaid || 0);
+            const mode = (c.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
+            if (mode.includes("transport")) transportPaid += paid;
+            else if (mode.includes("admission")) admissionPaid += paid;
+            else tuitionPaid += paid;
+          });
+
+          const totalPaid = tuitionPaid + transportPaid + admissionPaid;
+          const isTransportOptedIn = Boolean(
+            (s as any).transportRequired || 
+            (s as any).transportDetail?.transportRequired || 
+            transportPaid > 0
+          );
+          const expectedTransport = isTransportOptedIn 
+            ? Number((s as any).transportMonthlyFee || transportPaid || 10000) 
+            : 0;
+
+          const fs = filters.feeStatus;
+
+          // 📚 Tuition Fee Filters
+          if (fs === "fully_paid" || fs === "tuition_fully_paid") {
+            return tuitionPaid >= expectedTuition && expectedTuition > 0;
+          } else if (fs === "term1_paid") {
+            return tuitionPaid >= term1Target && tuitionPaid < (term1Target + term2Target);
+          } else if (fs === "term2_paid") {
+            return tuitionPaid >= (term1Target + term2Target) && tuitionPaid < expectedTuition;
+          } else if (fs === "term3_paid") {
+            return tuitionPaid >= expectedTuition && expectedTuition > 0;
+          } else if (fs === "partially_paid" || fs === "tuition_partially_paid") {
+            return tuitionPaid > 0 && tuitionPaid < expectedTuition;
+          } else if (fs === "dues_pending" || fs === "tuition_dues_pending") {
+            return tuitionPaid === 0;
           
-          if (filters.feeStatus === "fully_paid") {
-            return totalPaid >= expectedTuition && expectedTuition > 0;
-          } else if (filters.feeStatus === "term1_paid") {
-            return totalPaid >= term1Target && totalPaid < expectedTuition;
-          } else if (filters.feeStatus === "partially_paid") {
-            return totalPaid > 0 && totalPaid < expectedTuition;
-          } else if (filters.feeStatus === "dues_pending") {
-            return totalPaid === 0;
-          } else if (filters.feeStatus === "advance_surplus") {
-            return totalPaid > expectedTuition && expectedTuition > 0;
+          // 🚌 Transport Fee Filters
+          } else if (fs === "transport_opted") {
+            return isTransportOptedIn;
+          } else if (fs === "transport_not_opted") {
+            return !isTransportOptedIn;
+          } else if (fs === "transport_fully_paid") {
+            return isTransportOptedIn && transportPaid >= expectedTransport && expectedTransport > 0;
+          } else if (fs === "transport_partially_paid") {
+            return isTransportOptedIn && transportPaid > 0 && transportPaid < expectedTransport;
+          } else if (fs === "transport_dues_pending") {
+            return isTransportOptedIn && transportPaid === 0;
+
+          // 🎟️ Admission & Ancillary Filters
+          } else if (fs === "admission_paid") {
+            return admissionPaid > 0;
+          } else if (fs === "admission_pending") {
+            return admissionPaid === 0;
+          } else if (fs === "all_fees_cleared") {
+            return tuitionPaid >= expectedTuition && (!isTransportOptedIn || transportPaid >= expectedTransport);
+          } else if (fs === "advance_surplus") {
+            return totalPaid > (expectedTuition + expectedTransport) && expectedTuition > 0;
           }
+          return true;
+        });
+      }
+
+      // 🎁 Concession / Discount Filter
+      if (filters.concessionStatus && filters.concessionStatus !== "all") {
+        students = students.filter(s => {
+          const discount = Number(s.financial?.totalDiscount || 0);
+          const hasDiscount = discount > 0 || (s.financial?.discounts && s.financial.discounts.length > 0);
+          if (filters.concessionStatus === "has_concession") return hasDiscount;
+          if (filters.concessionStatus === "full_waiver") return discount >= Number(s.financial?.annualTuition || 35000);
+          if (filters.concessionStatus === "zero_discount") return !hasDiscount;
+          return true;
+        });
+      }
+
+      // 🚌 Bus Route / Logistics Filter
+      if (filters.routeStatus && filters.routeStatus !== "all") {
+        students = students.filter(s => {
+          const transportPaid = (s.collections || []).reduce((sum: number, c: any) => {
+            const mode = (c.allocatedTo as any)?.feeHead?.toLowerCase() || "";
+            return mode.includes("transport") ? sum + Number(c.totalPaid || c.amountPaid || 0) : sum;
+          }, 0);
+          const isTransportOptedIn = Boolean((s as any).transportRequired || (s as any).transportDetail?.transportRequired || transportPaid > 0);
+          const hasRoute = Boolean((s as any).transportAssign?.routeId);
+
+          if (filters.routeStatus === "opted_unassigned") return isTransportOptedIn && !hasRoute;
+          if (filters.routeStatus === "opted_assigned") return isTransportOptedIn && hasRoute;
+          if (filters.routeStatus === "not_opted") return !isTransportOptedIn;
+          return true;
+        });
+      }
+
+      // 💳 Payment Channel / Collection Method Filter
+      if (filters.paymentChannel && filters.paymentChannel !== "all") {
+        students = students.filter(s => {
+          const modes = (s.collections || []).map((c: any) => String(c.paymentMode || "").toLowerCase());
+          if (filters.paymentChannel === "cash") return modes.some(m => m.includes("cash"));
+          if (filters.paymentChannel === "razorpay") return modes.some(m => m.includes("razorpay") || m.includes("online"));
+          if (filters.paymentChannel === "bank_qr") return modes.some(m => m.includes("qr") || m.includes("upi") || m.includes("bank"));
+          if (filters.paymentChannel === "cheque") return modes.some(m => m.includes("cheque") || m.includes("dd"));
+          return true;
+        });
+      }
+
+      // ⚠️ Financial Risk & Overdue Filter
+      if (filters.riskStatus && filters.riskStatus !== "all") {
+        students = students.filter(s => {
+          const tuition = Number(s.financial?.tuitionFee || s.financial?.annualTuition || 35500);
+          const discount = Number(s.financial?.totalDiscount || 0);
+          const netTuition = tuition - discount;
+          const term1Target = Number(s.financial?.term1Amount || Math.round(netTuition * 0.5));
+          const tuitionPaid = (s.collections || []).reduce((sum: number, c: any) => {
+            const mode = (c.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
+            return !mode.includes("transport") && !mode.includes("admission") ? sum + Number(c.totalPaid || c.amountPaid || 0) : sum;
+          }, 0);
+          const remainingDue = Math.max(0, netTuition - tuitionPaid);
+
+          if (filters.riskStatus === "defaulter_overdue") return tuitionPaid < term1Target && netTuition > 0;
+          if (filters.riskStatus === "high_dues") return remainingDue >= 20000;
+          if (filters.riskStatus === "zero_dues") return remainingDue === 0;
+          return true;
+        });
+      }
+
+      // 📑 Compliance & Quota Filter
+      if (filters.quotaStatus && filters.quotaStatus !== "all") {
+        students = students.filter(s => {
+          const cat = String((s as any).category || (s as any).admissionQuota || "").toLowerCase();
+          const docsCount = Array.isArray((s as any).documents) ? (s as any).documents.length : 0;
+          if (filters.quotaStatus === "rte") return cat.includes("rte");
+          if (filters.quotaStatus === "staff_ward") return cat.includes("staff");
+          if (filters.quotaStatus === "missing_docs") return docsCount === 0;
           return true;
         });
       }
