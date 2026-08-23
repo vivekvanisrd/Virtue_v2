@@ -525,26 +525,40 @@ export function FeeCollectionForm({ params }: { params?: any }) {
     );
   }
 
-  const ancillaryTotal = (Object.values(fb?.ancillary || {}) as any[])
-    .filter((comp: any) => 
-      !comp.label?.toLowerCase().includes("policy applied") && 
-      !comp.label?.toLowerCase().includes("discount") && 
-      !comp.label?.toLowerCase().includes("concession")
-    )
-    .reduce((sum: number, comp: any) => sum + (Number(comp.amount) || 0), 0);
+  // Component-wise collection isolation (Tuition vs Transport vs Admission)
+  let tuitionPaid = 0;
+  let transportPaid = 0;
+  let admissionPaid = 0;
+
+  (student?.collections || []).forEach((c: any) => {
+    const paid = Number(c.totalPaid || c.amountPaid || 0);
+    const mode = (c.allocatedTo as any)?.feeHead?.toLowerCase() || "tuition";
+    if (mode.includes("transport")) transportPaid += paid;
+    else if (mode.includes("admission")) admissionPaid += paid;
+    else tuitionPaid += paid;
+  });
 
   const tuitionNet = Number(fb?.annualNet) || 0;
   const totalDiscount = Number(fb?.totalDiscount) || 0;
-  const grossFee = tuitionNet + totalDiscount + ancillaryTotal;
-  const netPayableFee = tuitionNet + ancillaryTotal;
-  const totalPaid = (student?.collections || []).reduce((sum: number, c: any) => sum + Number(c.amountPaid || 0), 0);
-  const totalDue = Math.max(0, netPayableFee - totalPaid);
-  const paidPercent = netPayableFee > 0 ? Math.min(100, Math.round((totalPaid / netPayableFee) * 100)) : 0;
-  
+  const grossTuition = tuitionNet + totalDiscount;
+  const tuitionDue = Math.max(0, tuitionNet - tuitionPaid);
+
   const isTransportActive = student?.transportRequired || (fb?.ancillary?.transportFee?.amount > 0);
+  const transportFeeVal = Number(fb?.ancillary?.transportFee?.amount || (student?.transportRequired ? student?.transportMonthlyFee || 0 : 0));
+  const transportDue = Math.max(0, transportFeeVal - transportPaid);
+
   const transportDisplay = isTransportActive 
-    ? (student?.transportMonthlyFee ? `₹${student.transportMonthlyFee}/mo` : `₹${fb?.ancillary?.transportFee?.amount || 0}`)
+    ? (student?.transportMonthlyFee ? `₹${student.transportMonthlyFee}/mo` : `₹${transportFeeVal.toLocaleString()}`)
     : "Not Subscribed";
+
+  const admissionFeeVal = Number(fb?.ancillary?.admissionFee?.amount || 0);
+  const admissionDue = Math.max(0, admissionFeeVal - admissionPaid);
+
+  // Grand Totals (Display Only)
+  const grandNetFee = tuitionNet + transportFeeVal + admissionFeeVal;
+  const grandTotalPaid = tuitionPaid + transportPaid + admissionPaid;
+  const grandTotalDue = tuitionDue + transportDue + admissionDue;
+  const grandPaidPercent = grandNetFee > 0 ? Math.min(100, Math.round((grandTotalPaid / grandNetFee) * 100)) : 0;
 
   const paymentModes = ["Cash", "Bank QR", "Card Swipe", "Razorpay"];
 
@@ -586,39 +600,76 @@ export function FeeCollectionForm({ params }: { params?: any }) {
                 </button>
               </div>
 
-              {/* 📊 FINANCIAL LEDGER VITAL SIGNS (CLEAR & NON-REDUNDANT) */}
+              {/* 📊 SEPARATED TUITION & ANCILLARY LEDGER CARDS */}
               <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-3 shadow-inner">
-                <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
-                    <p className="text-[7px] font-black uppercase tracking-wider text-slate-400">Actual (Gross) Fee</p>
-                    <p className="text-xs font-black text-slate-900 tracking-tight">₹{grossFee.toLocaleString()}</p>
+                {/* 📚 TUITION FEE SECTION */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-700">📚 Tuition Fee Breakdown</span>
+                    <span className="text-[8px] font-bold text-slate-400">Gross: ₹{grossTuition.toLocaleString()} | Disc: -₹{totalDiscount.toLocaleString()}</span>
                   </div>
-                  <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Discount Given</p>
-                    <p className="text-xs font-black text-emerald-700 tracking-tight">-₹{totalDiscount.toLocaleString()}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-blue-50 p-2 rounded-xl border border-blue-100 shadow-sm">
-                    <p className="text-[7px] font-black uppercase tracking-wider text-blue-600">Net Payable Fee</p>
-                    <p className="text-xs font-black text-blue-900 tracking-tight">₹{netPayableFee.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
-                    <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Total Paid</p>
-                    <p className="text-xs font-black text-emerald-700 tracking-tight">₹{totalPaid.toLocaleString()}</p>
-                  </div>
-                  <div className="bg-rose-50 p-2 rounded-xl border border-rose-100 shadow-sm">
-                    <p className="text-[7px] font-black uppercase tracking-wider text-rose-600">Remaining Due</p>
-                    <p className="text-xs font-black text-rose-700 tracking-tight">₹{totalDue.toLocaleString()}</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-blue-50 p-2 rounded-xl border border-blue-100 shadow-sm">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-blue-600">Net Tuition</p>
+                      <p className="text-xs font-black text-blue-900 tracking-tight">₹{tuitionNet.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Tuition Paid</p>
+                      <p className="text-xs font-black text-emerald-700 tracking-tight">₹{tuitionPaid.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-rose-50 p-2 rounded-xl border border-rose-100 shadow-sm">
+                      <p className="text-[7px] font-black uppercase tracking-wider text-rose-600">Tuition Due</p>
+                      <p className="text-xs font-black text-rose-700 tracking-tight">₹{tuitionDue.toLocaleString()}</p>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Settlement Progress</span>
-                    <span className="text-[9px] font-black text-emerald-600">{paidPercent}% Paid</span>
+
+                {/* 🚌 TRANSPORT / ANCILLARY FEE SECTION */}
+                {isTransportActive && (
+                  <div className="space-y-1 pt-1 border-t border-slate-200/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-purple-700">🚌 Transport Fee Breakdown</span>
+                      <span className="text-[8px] font-bold text-purple-500">{transportDue === 0 ? "Cleared" : "Pending"}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-purple-50 p-2 rounded-xl border border-purple-100 shadow-sm">
+                        <p className="text-[7px] font-black uppercase tracking-wider text-purple-600">Transport Fee</p>
+                        <p className="text-xs font-black text-purple-900 tracking-tight">₹{transportFeeVal.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100 shadow-sm">
+                        <p className="text-[7px] font-black uppercase tracking-wider text-emerald-600">Transport Paid</p>
+                        <p className="text-xs font-black text-emerald-700 tracking-tight">₹{transportPaid.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-rose-50 p-2 rounded-xl border border-rose-100 shadow-sm">
+                        <p className="text-[7px] font-black uppercase tracking-wider text-rose-600">Transport Due</p>
+                        <p className="text-xs font-black text-rose-700 tracking-tight">₹{transportDue.toLocaleString()}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${paidPercent}%` }} />
+                )}
+
+                {/* 🏷️ GRAND TOTAL SUMMARY (DISPLAY ONLY) */}
+                <div className="pt-2 border-t border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Grand Total Summary (Display Only)</span>
+                    <span className="text-[9px] font-black text-emerald-600">{grandPaidPercent}% Settled</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+                      <p className="text-[6px] font-black uppercase text-slate-500">Total Net Fee</p>
+                      <p className="text-[11px] font-black text-slate-900">₹{grandNetFee.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-emerald-100/60 p-1.5 rounded-lg border border-emerald-200">
+                      <p className="text-[6px] font-black uppercase text-emerald-700">Total Paid</p>
+                      <p className="text-[11px] font-black text-emerald-800">₹{grandTotalPaid.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-rose-100/60 p-1.5 rounded-lg border border-rose-200">
+                      <p className="text-[6px] font-black uppercase text-rose-700">Total Remaining</p>
+                      <p className="text-[11px] font-black text-rose-800">₹{grandTotalDue.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${grandPaidPercent}%` }} />
                   </div>
                 </div>
               </div>
