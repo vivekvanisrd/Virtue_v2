@@ -49,6 +49,9 @@ export function StudentDirectory() {
     apaarStatus: "all",
     siblingStatus: "all",
     feeStatus: "all",
+    tuitionStatus: "all",
+    transportFeeStatus: "all",
+    ancillaryStatus: "all",
     concessionStatus: "all",
     routeStatus: "all",
     paymentChannel: "all",
@@ -222,36 +225,48 @@ export function StudentDirectory() {
             <option value="single_child">Single Child</option>
          </select>
 
+          {/* 📚 Dedicated Tuition Fee Filter */}
           <select 
-             value={filters.feeStatus}
-             onChange={(e) => setFilters(prev => ({ ...prev, feeStatus: e.target.value }))}
+             value={filters.tuitionStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, tuitionStatus: e.target.value }))}
              className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-             <option value="all">Fees: All Statuses</option>
-             
-             <optgroup label="📚 Tuition Fee Filters">
-               <option value="tuition_fully_paid">Tuition: Fully Paid (100%)</option>
-               <option value="term1_paid">Tuition: Term 1 Paid</option>
-               <option value="term2_paid">Tuition: Term 2 Paid</option>
-               <option value="term3_paid">Tuition: Term 3 Paid / Cleared</option>
-               <option value="tuition_partially_paid">Tuition: Partially Paid</option>
-               <option value="tuition_dues_pending">Tuition: Dues Pending</option>
-             </optgroup>
+             <option value="all">📚 Tuition Fee: All</option>
+             <option value="tuition_fully_paid">Tuition: Fully Paid (100%)</option>
+             <option value="term1_paid">Tuition: Term 1 Paid</option>
+             <option value="term2_paid">Tuition: Term 2 Paid</option>
+             <option value="term3_paid">Tuition: Term 3 Paid / Cleared</option>
+             <option value="tuition_partially_paid">Tuition: Partially Paid</option>
+             <option value="tuition_dues_pending">Tuition: Dues Pending</option>
+          </select>
 
-             <optgroup label="🚌 Transport Fee Filters">
-               <option value="transport_opted">Transport: Opted-In / Subscribed</option>
-               <option value="transport_not_opted">Transport: Not Subscribed</option>
-               <option value="transport_fully_paid">Transport: Fully Paid (100%)</option>
-               <option value="transport_partially_paid">Transport: Partially Paid</option>
-               <option value="transport_dues_pending">Transport: Dues Pending</option>
-             </optgroup>
+          {/* 🚌 Dedicated Transport Fee Filter */}
+          <select 
+             value={filters.transportFeeStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, transportFeeStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">🚌 Transport Fee: All</option>
+             <option value="transport_opted">Transport: Opted-In / Subscribed</option>
+             <option value="transport_not_opted">Transport: Not Subscribed</option>
+             <option value="transport_fully_paid">Transport: Fully Paid (100%)</option>
+             <option value="transport_partially_paid">Transport: Partially Paid</option>
+             <option value="transport_dues_pending">Transport: Dues Pending</option>
+             <option value="opted_unassigned">Bus: Opted (Route Unassigned)</option>
+             <option value="opted_assigned">Bus: Opted (Route Assigned)</option>
+          </select>
 
-             <optgroup label="🎟️ Admission & Ancillary Filters">
-               <option value="admission_paid">Admission Fee: Paid</option>
-               <option value="admission_pending">Admission Fee: Dues Pending</option>
-               <option value="all_fees_cleared">🌟 All Fees Cleared (Zero Dues)</option>
-               <option value="advance_surplus">💰 Advance / Credit Surplus</option>
-             </optgroup>
+          {/* 🎟️ Dedicated Admission & Ancillary Filter */}
+          <select 
+             value={filters.ancillaryStatus}
+             onChange={(e) => setFilters(prev => ({ ...prev, ancillaryStatus: e.target.value }))}
+             className="bg-white border border-border px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+             <option value="all">🎟️ Admission & Ancillaries: All</option>
+             <option value="admission_paid">Admission Fee: Paid</option>
+             <option value="admission_pending">Admission Fee: Dues Pending</option>
+             <option value="all_fees_cleared">🌟 All Fees Cleared (Zero Dues)</option>
+             <option value="advance_surplus">💰 Advance / Credit Surplus</option>
           </select>
 
           {/* 🎁 Concession Filter */}
@@ -334,7 +349,7 @@ export function StudentDirectory() {
            <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Results Found</h3>
            <p className="text-sm text-slate-400 mt-2 max-w-xs font-medium">Refine your search parameters or initiate a new admission request from the hub.</p>
            <button 
-              onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "", aadhaarStatus: "all", apaarStatus: "all", siblingStatus: "all", feeStatus: "all", concessionStatus: "all", routeStatus: "all", paymentChannel: "all", riskStatus: "all", quotaStatus: "all" }); setSearchTerm(""); }}
+              onClick={() => { setFilters({ classId: "", sectionId: "", branchId: "", aadhaarStatus: "all", apaarStatus: "all", siblingStatus: "all", feeStatus: "all", tuitionStatus: "all", transportFeeStatus: "all", ancillaryStatus: "all", concessionStatus: "all", routeStatus: "all", paymentChannel: "all", riskStatus: "all", quotaStatus: "all" }); setSearchTerm(""); }}
               className="mt-8 px-8 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all"
             >
               Reset Registry Filters
