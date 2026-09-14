@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Routing Protection
-  const protectedRoutes = ['/dashboard', '/developer', '/registry', '/admin', '/super-admin', '/mobile'];
+  const protectedRoutes = ['/dashboard', '/developer', '/registry', '/admin', '/super-admin', '/mobile', '/simple'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
   // Redirect to login if accessing protected route without session

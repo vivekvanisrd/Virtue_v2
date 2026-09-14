@@ -1,0 +1,1629 @@
+[
+  {
+    "primary": {
+      "id": "std_97b0cf0b9360",
+      "name": "M.HAYYAGREVA",
+      "admissionNumber": "VM0581"
+    },
+    "merged": [
+      {
+        "id": "172fc5e2-b248-4acd-a404-79c03e607018",
+        "name": "M.HAYYA GREEVA",
+        "admissionNumber": "VMO581",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_29e4ea08d872",
+      "name": "G.HARSHAVARDHAN",
+      "admissionNumber": "VR0044-26"
+    },
+    "merged": [
+      {
+        "id": "std_ae9311bcaccd",
+        "name": "G.HARSHA VARDHAN",
+        "admissionNumber": "TEMP029",
+        "movedCollectionIds": [
+          "0899b99d-1149-474c-9014-c20f2be3165b"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_0f73bf9de412",
+      "name": "G.SAANVIKA",
+      "admissionNumber": "VR01136"
+    },
+    "merged": [
+      {
+        "id": "d2504597-088a-47b3-932a-9a547e59b6f6",
+        "name": "G.SAANWIKA",
+        "admissionNumber": "VRO1136",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_83b430c9817e",
+      "name": "A.VARNIKA",
+      "admissionNumber": "VS0534"
+    },
+    "merged": [
+      {
+        "id": "8c873bfb-8d87-4e85-b0b5-ad3e554a34fe",
+        "name": "A.VARNIKA",
+        "admissionNumber": "VSO534",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_80ba783b721a",
+      "name": "P.VEDASHRI",
+      "admissionNumber": "TEMP004"
+    },
+    "merged": [
+      {
+        "id": "std_c7803b96ccfe",
+        "name": "P.VEDASRI",
+        "admissionNumber": "TEMP030",
+        "movedCollectionIds": [
+          "3cf63d0f-7580-423a-80a3-45c2151df3d2"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_7ee5beef0a48",
+      "name": "M.NEEHANCY",
+      "admissionNumber": "VR1307"
+    },
+    "merged": [
+      {
+        "id": "9cdd5958-db1a-401e-a5e5-73f4c6ec408d",
+        "name": "M.NEEHANCY",
+        "admissionNumber": "VRO1307",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "4cfe3acb-7250-45f1-9566-294cea78a3ed",
+      "name": "C.RITHWIK",
+      "admissionNumber": "VR0084-26"
+    },
+    "merged": [
+      {
+        "id": "bd9af3ba-0af7-4289-a7ae-d4645d70a624",
+        "name": "CH.RITHWIKI",
+        "admissionNumber": "VROO84-26",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_712c9cb4eca9",
+      "name": "R.MANASWI",
+      "admissionNumber": "VR01295"
+    },
+    "merged": [
+      {
+        "id": "adc3836b-5120-431a-adee-fb48d9a6d7f7",
+        "name": "R.NAMASVI",
+        "admissionNumber": "VRO1295",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_fc6f748369d4",
+      "name": "C.ADVIK REDDY",
+      "admissionNumber": "VR01082"
+    },
+    "merged": [
+      {
+        "id": "18e6b378-a2bf-45a3-9194-d03be91cdc4f",
+        "name": "C.ADVIK REDDY",
+        "admissionNumber": "VRO1082",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_6df9dbfefd78",
+      "name": "M.BHAVAGNYA",
+      "admissionNumber": "VR01091"
+    },
+    "merged": [
+      {
+        "id": "aa154970-8b70-4617-8d0d-404c3157968d",
+        "name": "M.BAVAGNA",
+        "admissionNumber": "VRO1091",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5b4e22462031",
+      "name": "B.VIGNYAN",
+      "admissionNumber": "VR01216"
+    },
+    "merged": [
+      {
+        "id": "db5c6a29-2865-4515-b413-1837bc26f27b",
+        "name": "B.VIGYAN",
+        "admissionNumber": "VRO1216",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_7b1e019c79db",
+      "name": "AARON PRALOK",
+      "admissionNumber": "VR01273"
+    },
+    "merged": [
+      {
+        "id": "b9bcc657-eac1-4aaa-9dda-500930c318de",
+        "name": "B.AARON PRALOK",
+        "admissionNumber": "VRO1273",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_1573eff19d73",
+      "name": "M.SRIJAN",
+      "admissionNumber": "VR01290"
+    },
+    "merged": [
+      {
+        "id": "60a8b409-164e-4f43-95ba-4b7513606ead",
+        "name": "M.SRIJAN",
+        "admissionNumber": "VRO1290",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_676d77e3b128",
+      "name": "R.MAYANSHI",
+      "admissionNumber": "VR01296"
+    },
+    "merged": [
+      {
+        "id": "5f53f6b9-5acd-46d7-8479-c95cbdb4cbd0",
+        "name": "R.MAYANSHI",
+        "admissionNumber": "VRO1296",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_7a09f6a9f98f",
+      "name": "P.THANVISHA",
+      "admissionNumber": "VR0470"
+    },
+    "merged": [
+      {
+        "id": "52d34d84-746b-4413-ae72-d72d77c6ffae",
+        "name": "P.THANVISHA",
+        "admissionNumber": "VRO470",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5e9ba5e81ac0",
+      "name": "R.AADHYA",
+      "admissionNumber": "TEMP019"
+    },
+    "merged": [
+      {
+        "id": "std_66b2c7b79b00",
+        "name": "R.AADHYA",
+        "admissionNumber": "TEMP036",
+        "movedCollectionIds": [
+          "425c9789-5b61-41a5-a067-7967371410d2"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_da18f6d37e95",
+      "name": "G.PREKSHITHA",
+      "admissionNumber": "VR01232"
+    },
+    "merged": [
+      {
+        "id": "24ff21f6-f02b-42ff-90cb-4fd278d06e3b",
+        "name": "G.PRIKSHITHA",
+        "admissionNumber": "VRO1232",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_30f8c815cb10",
+      "name": "M.TEJASWI",
+      "admissionNumber": "VR01193"
+    },
+    "merged": [
+      {
+        "id": "59c12b23-6684-4f59-b307-10763234c7d4",
+        "name": "M.TEJASWI GOUD",
+        "admissionNumber": "VRO1193",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5ff5366c8402",
+      "name": "CH.ARADHYA",
+      "admissionNumber": "VR0941"
+    },
+    "merged": [
+      {
+        "id": "c09defbf-a8e9-488e-94f6-38b176ec603e",
+        "name": "C.AARADHYA",
+        "admissionNumber": "VRO941",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_57dc30c600d5",
+      "name": "T.VANSHIKA",
+      "admissionNumber": "VR1071"
+    },
+    "merged": [
+      {
+        "id": "9cd45e9c-94ae-4eef-9126-b41757e9cddd",
+        "name": "T.VANSHIKA",
+        "admissionNumber": "VRO1071",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_e4ecb9980cc7",
+      "name": "B.RAKSHITHA",
+      "admissionNumber": "VR01106"
+    },
+    "merged": [
+      {
+        "id": "22e719d8-f99a-4433-9cad-f0029c746488",
+        "name": "B. RAKSHITHA",
+        "admissionNumber": "VR1106",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_fa400f26e40c",
+      "name": "P.DEVANSH",
+      "admissionNumber": "VR0940"
+    },
+    "merged": [
+      {
+        "id": "93d74a94-af4b-4566-b426-64a7b82d4469",
+        "name": "P.DEVANSH",
+        "admissionNumber": "VRO940",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_95c52f38c58e",
+      "name": "N.TARAK REDDY",
+      "admissionNumber": "VR01079"
+    },
+    "merged": [
+      {
+        "id": "9b857402-85bd-4f56-8677-e9b4a6addeca",
+        "name": "N.THARAKA RAM REDDY",
+        "admissionNumber": "VRO1079",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_f278473eaafe",
+      "name": "G.HANISH",
+      "admissionNumber": "VS0478"
+    },
+    "merged": [
+      {
+        "id": "std_3d763817c86b",
+        "name": "G.HANEESH",
+        "admissionNumber": "VS478",
+        "movedCollectionIds": [
+          "a121a10b-e0ee-4b85-84d3-c12c89684311",
+          "efa0c9bf-86e2-456c-9e64-b8969b0b5e7f"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_0cc1686f3a95",
+      "name": "B.SAHITHI",
+      "admissionNumber": "VR01105"
+    },
+    "merged": [
+      {
+        "id": "73514581-786a-42c3-8253-9767d1ffcd09",
+        "name": "B.SAHITHI",
+        "admissionNumber": "VRO1105",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_b34b8d11382c",
+      "name": "G.SAMANVITHA",
+      "admissionNumber": "VS0455"
+    },
+    "merged": [
+      {
+        "id": "7600dbbd-09c0-45a9-a631-c0b62036ce0d",
+        "name": "G.SAMANVITHA",
+        "admissionNumber": "VSO455",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_42e2c6013f25",
+      "name": "CH.ARYAN THANISHQ",
+      "admissionNumber": "VR0676"
+    },
+    "merged": [
+      {
+        "id": "e284d63f-e08f-42cf-97c7-43f3df684bd1",
+        "name": "C.ARYAN TANISHQ",
+        "admissionNumber": "VRO676",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5f9ce7cfdb34",
+      "name": "D.AVANI",
+      "admissionNumber": "VS0451"
+    },
+    "merged": [
+      {
+        "id": "8a1f3fea-f197-40f0-a6e0-95b2e71028c3",
+        "name": "D.AVANI",
+        "admissionNumber": "VSO451",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_a69fb5568443",
+      "name": "K.MADHUPUNARVI",
+      "admissionNumber": "TEMP027"
+    },
+    "merged": [
+      {
+        "id": "std_fc7a202a69b3",
+        "name": "K.MADHUPUNARVI",
+        "admissionNumber": "TEMP037",
+        "movedCollectionIds": [
+          "c2632d40-3ff5-4125-8929-3a13b21c3415"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5f4a1c6e901f",
+      "name": "D.AADYA SREE",
+      "admissionNumber": "TEMP028"
+    },
+    "merged": [
+      {
+        "id": "std_e976b7c28e09",
+        "name": "D.AADYA SREE",
+        "admissionNumber": "TEMP057",
+        "movedCollectionIds": [
+          "766f384d-567c-476b-b3fa-ac090e302216"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_76a31f8694ff",
+      "name": "M.HASYA GOURI",
+      "admissionNumber": "VR0897"
+    },
+    "merged": [
+      {
+        "id": "51db640c-17a0-403f-826b-0f80cbf53aec",
+        "name": "M.HAASYA GOURY",
+        "admissionNumber": "VRO897",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_2e4dbef076d5",
+      "name": "G.SRIVALLI",
+      "admissionNumber": "VS409"
+    },
+    "merged": [
+      {
+        "id": "0db0980e-cfe8-4e42-a3ff-edd9a0b63852",
+        "name": "G.SREEVALLI",
+        "admissionNumber": "VSO409",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_611632bc24f5",
+      "name": "V.RUTHWIK CHARY",
+      "admissionNumber": "VR0726"
+    },
+    "merged": [
+      {
+        "id": "7fb6205e-a3e6-4009-8614-2f63d8e95b80",
+        "name": "V.RUTVIK CHARY",
+        "admissionNumber": "VRO726",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_064dee904834",
+      "name": "CH.SOUKYA",
+      "admissionNumber": "VR0525"
+    },
+    "merged": [
+      {
+        "id": "ef636e6c-c889-45d1-ba00-73ae15a43c6d",
+        "name": "C.SOUKYA",
+        "admissionNumber": "VRO525",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_622b2c2f6ffe",
+      "name": "N.SHREYANVI",
+      "admissionNumber": "VR01022"
+    },
+    "merged": [
+      {
+        "id": "3df95792-adab-4b1a-9de7-3a5afd8f4bb4",
+        "name": "N.SHREYANVI",
+        "admissionNumber": "VRO1022",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_d6dcd184cbdc",
+      "name": "P.ADVIKA",
+      "admissionNumber": "TEMP032"
+    },
+    "merged": [
+      {
+        "id": "62af397e-2101-4252-971d-6242594bfb72",
+        "name": "P.AADVIKA",
+        "admissionNumber": "VR0103-26",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_e235eb0196d2",
+      "name": "G.SRIVARDHAN",
+      "admissionNumber": "VM0584"
+    },
+    "merged": [
+      {
+        "id": "std_49dc2396bed4",
+        "name": "G.SHRIVARDHAN",
+        "admissionNumber": "VR584",
+        "movedCollectionIds": [
+          "a8e96d4d-fe84-46f2-aa31-9ff8f85393d5"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_d76458bca144",
+      "name": "CH.ADVAITH REDDY",
+      "admissionNumber": "VR1196"
+    },
+    "merged": [
+      {
+        "id": "d31b1673-75a6-4f18-81fd-3987f47717fe",
+        "name": "C.ADVAITH REDDY",
+        "admissionNumber": "VR01196",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5a33c495b5f2",
+      "name": "M.DAKSHITHA",
+      "admissionNumber": "VR01258"
+    },
+    "merged": [
+      {
+        "id": "92d9157f-19c6-41d9-9d69-9e9f138357a0",
+        "name": "M.DAKSHIKA",
+        "admissionNumber": "VRO1258",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_84196bcc0de8",
+      "name": "T.MANASVI",
+      "admissionNumber": "VR01334"
+    },
+    "merged": [
+      {
+        "id": "std_fe22a8adf440",
+        "name": "T.MANASWI",
+        "admissionNumber": "VR1334",
+        "movedCollectionIds": [
+          "81d2883d-d2ea-486c-8476-b91fe67cb1d9"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_8f18aeacd8b3",
+      "name": "A.ANANYA",
+      "admissionNumber": "VM307"
+    },
+    "merged": [
+      {
+        "id": "35cfe159-ac87-4de4-ae8e-35e850670377",
+        "name": "A.ANANYA",
+        "admissionNumber": "VMO307",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_6166f64cdfcd",
+      "name": "K.SAI PRANEETH",
+      "admissionNumber": "VR0724"
+    },
+    "merged": [
+      {
+        "id": "75fc2bf5-4b07-4e9e-abfa-f729562f9ec6",
+        "name": "K.SAI PRANEETH",
+        "admissionNumber": "VRO724",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_2e242d61bb0b",
+      "name": "T.NIHAN",
+      "admissionNumber": "VR0658"
+    },
+    "merged": [
+      {
+        "id": "bb4f672a-1a86-423f-8925-8fc9b091aae0",
+        "name": "T.NIHAN",
+        "admissionNumber": "VRO658",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_90b6ef21da01",
+      "name": "G.ASHOK",
+      "admissionNumber": "TEMP034"
+    },
+    "merged": [
+      {
+        "id": "std_73f22e7af482",
+        "name": "G.ASHOK",
+        "admissionNumber": "VR0082",
+        "movedCollectionIds": [
+          "d59c78ae-39c2-41f8-bfc0-8e2f910082ed"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_2be1b42e7328",
+      "name": "CH.SAHARSH REDDY",
+      "admissionNumber": "VM0278"
+    },
+    "merged": [
+      {
+        "id": "94f2c293-f7de-4250-b2e1-70a72253395a",
+        "name": "CH.SAHARSH REDDY",
+        "admissionNumber": "VMO278",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_25dfc316c666",
+      "name": "A.AMULYA",
+      "admissionNumber": "VM171"
+    },
+    "merged": [
+      {
+        "id": "eb18cca1-041c-4011-a955-c0b5b68e846f",
+        "name": "A.AMULYA",
+        "admissionNumber": "VM0171",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_c3316550261a",
+      "name": "CH.VARSHITHA",
+      "admissionNumber": "VM173"
+    },
+    "merged": [
+      {
+        "id": "4b958734-5034-43ae-91c6-874a35825eab",
+        "name": "C.VARSHITHA",
+        "admissionNumber": "VM0173",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_fd07845491bb",
+      "name": "CH.JESHWITHA",
+      "admissionNumber": "VM524"
+    },
+    "merged": [
+      {
+        "id": "29fab474-19c6-457c-80e9-a22602403d3e",
+        "name": "C.JESHWITHA",
+        "admissionNumber": "VMOO524",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_a95199074a75",
+      "name": "P.SAANVI",
+      "admissionNumber": "VM0483"
+    },
+    "merged": [
+      {
+        "id": "ce25fbf2-575b-4ae4-a9cc-8d2e3118e2b6",
+        "name": "P.SANVI",
+        "admissionNumber": "VMOO483",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_517f6c7afbc8",
+      "name": "T.VISHWAKSEN",
+      "admissionNumber": "VR1015"
+    },
+    "merged": [
+      {
+        "id": "std_f6d6350fc9ff",
+        "name": "T.VISHWAK SEN",
+        "admissionNumber": "VR01015",
+        "movedCollectionIds": [
+          "e47cab2c-50d8-44c4-af4c-e14d877588ec"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_a6661b4219ed",
+      "name": "E.YASHWANTH",
+      "admissionNumber": "VR0747"
+    },
+    "merged": [
+      {
+        "id": "d8f5092f-a706-4c53-b180-897db6cfa206",
+        "name": "E.YASHWANTH",
+        "admissionNumber": "VRO747",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_ecda7bbbdd99",
+      "name": "G.LASYA PRIYA",
+      "admissionNumber": "VR1190"
+    },
+    "merged": [
+      {
+        "id": "0db3fafa-68c8-44e8-80f1-080ffd58d117",
+        "name": "G.LASYAPRIYA",
+        "admissionNumber": "VR01190-",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_92fa9c4420df",
+      "name": "K.SAANVIKA",
+      "admissionNumber": "VR949"
+    },
+    "merged": [
+      {
+        "id": "c16bc79a-2f52-4b62-9c78-de15e0e456f6",
+        "name": "K.SAANVIKA",
+        "admissionNumber": "VR0949",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_a036ff7e7a33",
+      "name": "K.NITHYA SRI",
+      "admissionNumber": "VR916"
+    },
+    "merged": [
+      {
+        "id": "c3bac4fb-cb0b-4a74-b67d-e71a7a1155d4",
+        "name": "K.NITHYA SREE",
+        "admissionNumber": "VR0916",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_f401c0cd636e",
+      "name": "G.DHRUVAN SAI",
+      "admissionNumber": "VR1113"
+    },
+    "merged": [
+      {
+        "id": "57b05fd6-478d-4fb2-9d4b-bc88c614acbb",
+        "name": "GANGANA DHRUVAN SAI",
+        "admissionNumber": "VR01113",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_640aeaaba874",
+      "name": "MADHUMITHA",
+      "admissionNumber": "VM320"
+    },
+    "merged": [
+      {
+        "id": "4bb01f2b-2d98-480c-80bf-7bff391012ee",
+        "name": "P.MADHUMITHA",
+        "admissionNumber": "VMO320",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_45a972da5fa5",
+      "name": "T.SIDHIKSHA",
+      "admissionNumber": "TEMP038"
+    },
+    "merged": [
+      {
+        "id": "std_3dc1fc0b48c9",
+        "name": "T.SIDHIKSHA",
+        "admissionNumber": "TEMP062",
+        "movedCollectionIds": [
+          "43e2a1e0-5945-4fee-8253-30c0941cda2b"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5dc3803463eb",
+      "name": "D.ANUHYA",
+      "admissionNumber": "VR0629"
+    },
+    "merged": [
+      {
+        "id": "e86d2b13-7b32-4d1f-b3fe-42c8e0b5b5ee",
+        "name": "D.ANUHYA",
+        "admissionNumber": "VRO629",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_b8cc21a1e42d",
+      "name": "P.HARSHITHA",
+      "admissionNumber": "VM837"
+    },
+    "merged": [
+      {
+        "id": "7f903d54-b52f-4d2d-8262-1843cd061765",
+        "name": "P.HARSHITHA",
+        "admissionNumber": "VMO837",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_af112534c43b",
+      "name": "B.VISHRUDH",
+      "admissionNumber": "VR695"
+    },
+    "merged": [
+      {
+        "id": "48a72f7a-3578-4d2a-9367-c6afe259e3d2",
+        "name": "B.VISHRUDH",
+        "admissionNumber": "VRO695",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_5e865cede97d",
+      "name": "D. PRAVARTHIKA",
+      "admissionNumber": "VS0587"
+    },
+    "merged": [
+      {
+        "id": "091aadeb-948e-4cae-8326-3e843dc3df58",
+        "name": "D.PRAVARTHIKA",
+        "admissionNumber": "VSO587",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_67332260ab75",
+      "name": "K.ABHIJIT",
+      "admissionNumber": "VS0764"
+    },
+    "merged": [
+      {
+        "id": "73e49ff9-bc00-4360-b39c-50c2f38918c6",
+        "name": "K.ABHIJITH GOUD",
+        "admissionNumber": "VSO764",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_b631b980b706",
+      "name": "E. SREE GANESH",
+      "admissionNumber": "VR903"
+    },
+    "merged": [
+      {
+        "id": "c8432719-3eef-4dc9-93f0-069db10dd94b",
+        "name": "E.SRI GANESH",
+        "admissionNumber": "VR00903",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_1873ff3ee82b",
+      "name": "M.HANVIKA",
+      "admissionNumber": "VR01276"
+    },
+    "merged": [
+      {
+        "id": "std_92e9535bb1ec",
+        "name": "M.HARSHIKA",
+        "admissionNumber": "VR1276",
+        "movedCollectionIds": [
+          "4a89375a-cd4c-4857-9396-9c958b21a90d"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_dc3563e8de23",
+      "name": "B.RITHEEKSHA",
+      "admissionNumber": "VS070"
+    },
+    "merged": [
+      {
+        "id": "385a7998-a8e0-45f0-9a7d-6d636d9cc0c6",
+        "name": "B.RITEEKSHA",
+        "admissionNumber": "VS0070",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_b229bf1fe618",
+      "name": "V YUVAN",
+      "admissionNumber": "TEMP050"
+    },
+    "merged": [
+      {
+        "id": "f8cce896-8133-4290-b3ee-e8f78877256b",
+        "name": "V.YUVAAN",
+        "admissionNumber": "VMO841",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_2f8b018b9d3a",
+      "name": "K.RUGVIJA SREE",
+      "admissionNumber": "VM0596"
+    },
+    "merged": [
+      {
+        "id": "std_c56cb89b4d9c",
+        "name": "K.RUGVIJA SREE",
+        "admissionNumber": "VM0766",
+        "movedCollectionIds": [
+          "85d22320-d40a-421a-a587-737954a16c77"
+        ]
+      },
+      {
+        "id": "c17a7671-ad0f-4d05-9642-0153e72f97e2",
+        "name": "K.RUGVIJA SREE",
+        "admissionNumber": "VMO766",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_85c3d4fcdc47",
+      "name": "M.HARSHIKA",
+      "admissionNumber": "VR01275"
+    },
+    "merged": [
+      {
+        "id": "std_ee16a527b32a",
+        "name": "M.HANVIKA",
+        "admissionNumber": "VR1275",
+        "movedCollectionIds": [
+          "12a606c6-e88a-4bfc-8225-498a293dde18"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_f16920e54d55",
+      "name": "K.RISHAL",
+      "admissionNumber": "VR1231"
+    },
+    "merged": [
+      {
+        "id": "7af67aeb-4809-4807-8229-1983635d25d7",
+        "name": "K.RISHAL",
+        "admissionNumber": "VR01231",
+        "movedCollectionIds": [
+          "666d3e3d-1146-4083-b4e0-c0b5b60329ee"
+        ]
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_27383d0598ec",
+      "name": "E.SAI KOUSHIK",
+      "admissionNumber": "VR01225"
+    },
+    "merged": [
+      {
+        "id": "88989433-af3c-45f8-8b0a-3f166bd9b079",
+        "name": "E.SAI KOWSHIK",
+        "admissionNumber": "VRO1225",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_750c16652857",
+      "name": "M.JAAGVI SAI",
+      "admissionNumber": "VR0856"
+    },
+    "merged": [
+      {
+        "id": "2c295671-ad66-4c99-bc08-a5abaa188b00",
+        "name": "M.JAGVISAI",
+        "admissionNumber": "VRO856",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_f82239a8dc68",
+      "name": "C.SAHASRA",
+      "admissionNumber": "TEMP053"
+    },
+    "merged": [
+      {
+        "id": "8840f415-6101-4012-9271-64f99aa4d5f6",
+        "name": "CH.SAHASRA",
+        "admissionNumber": "VR0745",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_2b738e7b1da1",
+      "name": "E.SRINIDHI",
+      "admissionNumber": "VS422"
+    },
+    "merged": [
+      {
+        "id": "8e528a28-5e55-4cee-a70a-e3727af229c2",
+        "name": "E.SRINIDHI",
+        "admissionNumber": "VSO422",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_569207629c1c",
+      "name": "G.DHANASREE",
+      "admissionNumber": "VS0335"
+    },
+    "merged": [
+      {
+        "id": "2c9bf354-5ea6-47dd-b44b-f29bb772ef7c",
+        "name": "G.DHANA SRI",
+        "admissionNumber": "VSO335",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_1bb0b1eacb76",
+      "name": "B.DAKSHITHA",
+      "admissionNumber": "VR0335"
+    },
+    "merged": [
+      {
+        "id": "61865a17-50fb-42eb-b5d4-b7eefc52d561",
+        "name": "B.DHAKSHITHA",
+        "admissionNumber": "VRO1058",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_47496626b3ef",
+      "name": "M.YAHWITHA",
+      "admissionNumber": "VR1155"
+    },
+    "merged": [
+      {
+        "id": "7da94af3-5894-427e-8172-b91a84849df6",
+        "name": "M.YASHWITHA",
+        "admissionNumber": "VR01155",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_499d1b9dad91",
+      "name": "V.ASHWANTH NAYAK",
+      "admissionNumber": "TEMP058"
+    },
+    "merged": [
+      {
+        "id": "std_265099ce5abe",
+        "name": "V.ANVITH NAYAK",
+        "admissionNumber": "TEMP059",
+        "movedCollectionIds": [
+          "9e6e3dae-45ec-45ab-b7b8-492add9a80d3"
+        ]
+      },
+      {
+        "id": "4be4d937-b26e-4e0b-8ac1-cda0ca20f0db",
+        "name": "V.ASHWITH NAYAK",
+        "admissionNumber": "VRO13233",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_00185e7b496b",
+      "name": "B.ADVAITHA",
+      "admissionNumber": "VR1234"
+    },
+    "merged": [
+      {
+        "id": "82b051dd-63da-41e2-a904-162e32adab38",
+        "name": "B.ADVAITHA",
+        "admissionNumber": "VRO1234",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_2daadd66f8b9",
+      "name": "S.AKRITHI",
+      "admissionNumber": "VS0893"
+    },
+    "merged": [
+      {
+        "id": "1ae5bec9-da0a-45b3-aab1-807fcf7f9fae",
+        "name": "S.AAKRITHI",
+        "admissionNumber": "VSO893",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_95f12cd0dfeb",
+      "name": "R.SHRIYANSH",
+      "admissionNumber": "VM439"
+    },
+    "merged": [
+      {
+        "id": "833d964e-2547-4e9e-9808-674a759a6fcb",
+        "name": "R.SRIYANSH",
+        "admissionNumber": "VMO439",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_bc056b76229b",
+      "name": "K.HARSHITH",
+      "admissionNumber": "VR697"
+    },
+    "merged": [
+      {
+        "id": "96e2bad9-3d02-41a2-9b7d-25c6cff82b7e",
+        "name": "M.HARSHITH",
+        "admissionNumber": "VR01314",
+        "movedCollectionIds": [
+          "d5f1e0d4-cf32-4b79-ae67-b3fbad557d9c"
+        ]
+      },
+      {
+        "id": "772dfa0e-99fe-458a-99ea-007d3004ab65",
+        "name": "K.HARSHITH",
+        "admissionNumber": "VR0697",
+        "movedCollectionIds": []
+      },
+      {
+        "id": "76b8c932-ce51-45cd-973e-ac6dc7c99d99",
+        "name": "M.HARSHITH",
+        "admissionNumber": "VRO1314",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_08fbd18839b4",
+      "name": "V.BHAVYA SRI",
+      "admissionNumber": "VR01251"
+    },
+    "merged": [
+      {
+        "id": "6bfce888-efd9-4b3f-a7e3-eda7041d89e3",
+        "name": "V.BHAVYA SRI",
+        "admissionNumber": "VRO1251",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_42dc5d13285a",
+      "name": "G.MANASWINI",
+      "admissionNumber": "VR1342"
+    },
+    "merged": [
+      {
+        "id": "fcdf5f15-b70f-4e9e-8942-035323dd3f2d",
+        "name": "G.MANASVI",
+        "admissionNumber": "VRO1342",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_48822c7af656",
+      "name": "D.GEETHIK",
+      "admissionNumber": "VM168"
+    },
+    "merged": [
+      {
+        "id": "1c809eea-3d34-40b7-8f52-de6dccf803fb",
+        "name": "D.GEETHIK",
+        "admissionNumber": "VM0168",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_bd9315551c94",
+      "name": "D.THANMAYI",
+      "admissionNumber": "VM578"
+    },
+    "merged": [
+      {
+        "id": "61b96e88-1e98-4777-b13a-30de7ed8978f",
+        "name": "D.TANMAY SRI",
+        "admissionNumber": "VM0578",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_d0ceab84b7de",
+      "name": "A.ARUSH",
+      "admissionNumber": "VS489"
+    },
+    "merged": [
+      {
+        "id": "a4160df8-a316-43ae-af4a-0c5be88f0ab4",
+        "name": "A.AARUSH",
+        "admissionNumber": "VSO489",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_3be2a87e71ee",
+      "name": "R.VIVAAN",
+      "admissionNumber": "VR1292"
+    },
+    "merged": [
+      {
+        "id": "7b7d80d6-d4c0-4bf2-9fc5-29f633a02e3b",
+        "name": "R.VIVAN",
+        "admissionNumber": "VRO1292",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_752b55ba4a21",
+      "name": "N.SRUJAN",
+      "admissionNumber": "VR1107"
+    },
+    "merged": [
+      {
+        "id": "f630e47a-373c-44ca-8552-eab59633de43",
+        "name": "N.SRUJAN",
+        "admissionNumber": "VRO1107",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_3509902e414e",
+      "name": "B.HARINI",
+      "admissionNumber": "VS0379"
+    },
+    "merged": [
+      {
+        "id": "6fed9a17-17d1-4bde-8f75-9309e76311c1",
+        "name": "B.HARINI",
+        "admissionNumber": "VSO379",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_a244873ebf51",
+      "name": "M.HANANYA",
+      "admissionNumber": "VR589"
+    },
+    "merged": [
+      {
+        "id": "b71a2634-1a4f-47f8-823b-7cde3fa9595f",
+        "name": "M.HANANYA VARMA",
+        "admissionNumber": "VR0589",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_7795ebdd0409",
+      "name": "CH.VARNIKA PRIYA",
+      "admissionNumber": "VR1282"
+    },
+    "merged": [
+      {
+        "id": "321474ef-db57-48b2-9fa1-78467b811d73",
+        "name": "C.VARNIKA PRIYA",
+        "admissionNumber": "VRO1282",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_7e4793d65051",
+      "name": "CH.ADITHRI REDDY",
+      "admissionNumber": "VR1101"
+    },
+    "merged": [
+      {
+        "id": "0912e984-bde3-4732-946c-4f3707aa9659",
+        "name": "C.ADITHRI",
+        "admissionNumber": "VR01101",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_62ae7f89717b",
+      "name": "B.MOKSHITH",
+      "admissionNumber": "VR01291"
+    },
+    "merged": [
+      {
+        "id": "cb06b760-35a0-4af9-9d6c-78a1335456c6",
+        "name": "B.MOKSHITH",
+        "admissionNumber": "VRO1291",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_be4faa2442b8",
+      "name": "CH.AARUSH",
+      "admissionNumber": "VR0885"
+    },
+    "merged": [
+      {
+        "id": "std_7f9b5d7baabe",
+        "name": "CH.ARUSH",
+        "admissionNumber": "VR0889",
+        "movedCollectionIds": [
+          "03b9194d-fb46-40e9-b257-31cdc45dcfba"
+        ]
+      },
+      {
+        "id": "9b449e95-a37c-497d-aab1-598ea0d2586b",
+        "name": "CH.AARUSH",
+        "admissionNumber": "VRO885",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_34e6c5125cfb",
+      "name": "N.BHANU CHRAAN",
+      "admissionNumber": "VR01112"
+    },
+    "merged": [
+      {
+        "id": "a2bb9c28-9200-4fdb-9538-3544700a304b",
+        "name": "N.BHANUCHARAN",
+        "admissionNumber": "VR0112",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_3e8274686ff7",
+      "name": "M.HRITHIKA",
+      "admissionNumber": "VM401"
+    },
+    "merged": [
+      {
+        "id": "d2dff417-fd89-48ae-841c-2e641f8c2757",
+        "name": "M.HRITHIKA VARMA",
+        "admissionNumber": "VMO401",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "c6a4f7b5-7e9d-4eb3-9983-876b71ed05c4",
+      "name": "S.MOKSH ABHIRAM",
+      "admissionNumber": "VR028-26"
+    },
+    "merged": [
+      {
+        "id": "c9bc7f65-300a-4b2c-94ab-2eaff5db6b41",
+        "name": "S.MOKSHA ABHIRAM",
+        "admissionNumber": "VR0028",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "bfe925d3-e210-4302-9c9c-d7a4cf4c9151",
+      "name": "T.MANJVITH GOUD",
+      "admissionNumber": "VR1318"
+    },
+    "merged": [
+      {
+        "id": "26c72d1f-ea8a-4184-b85b-7f6da530bdbd",
+        "name": "T.MANJWITH GOUD",
+        "admissionNumber": "VRO1318",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "099377bc-ef09-4ecf-8f68-2b31b5ac4e33",
+      "name": "G.HANVITH",
+      "admissionNumber": "VR01321"
+    },
+    "merged": [
+      {
+        "id": "f781c8a5-a82e-4036-9d2f-ac0caaeb4a2f",
+        "name": "G.HASWITH",
+        "admissionNumber": "VRO1322",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "c3f26dcf-8820-473b-ba99-5dcf140b3111",
+      "name": "M.SAKETH",
+      "admissionNumber": "VR1160"
+    },
+    "merged": [
+      {
+        "id": "81788668-6d32-433e-a3c2-d9fdbdf55e98",
+        "name": "M.SAKETH",
+        "admissionNumber": "VRO1160",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "std_aa65f00f3ec3",
+      "name": "B.SWARAJ",
+      "admissionNumber": "VR01270"
+    },
+    "merged": [
+      {
+        "id": "40547028-ab31-4d35-a518-2f35a234e8fe",
+        "name": "B.SWARAJ",
+        "admissionNumber": "VRO1270",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "52d93549-57b5-45e7-8dcc-4af893616562",
+      "name": "V.MANIDEEP CHARY",
+      "admissionNumber": "VR0860"
+    },
+    "merged": [
+      {
+        "id": "dff73849-c560-4954-a3ab-bbb0222654b3",
+        "name": "V.MANIDEEP CHARY",
+        "admissionNumber": "VRO860",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "a7c4f0d8-8e4a-4540-af23-8f4c58658e30",
+      "name": "B.ANVIKA",
+      "admissionNumber": "VR01312"
+    },
+    "merged": [
+      {
+        "id": "232de9a9-3f37-450f-aeb9-599fb4107f6f",
+        "name": "B.ADVIKA",
+        "admissionNumber": "VR01311",
+        "movedCollectionIds": []
+      }
+    ]
+  },
+  {
+    "primary": {
+      "id": "67b56eaf-2bbd-4cae-86bc-98737c1a52c4",
+      "name": "D.RITHURAJ",
+      "admissionNumber": "VM394"
+    },
+    "merged": [
+      {
+        "id": "fcb7a5e9-88ad-420e-b001-80c78b877e63",
+        "name": "D.RITHU RAJ",
+        "admissionNumber": "VMO390",
+        "movedCollectionIds": []
+      }
+    ]
+  }
+]

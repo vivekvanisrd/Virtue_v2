@@ -1,0 +1,158 @@
+[
+  {
+    "primary": {
+      "id": "std_d41002846106",
+      "name": "S.BHAVANI",
+      "admissionNumber": "VR0024-25"
+    },
+    "merged": {
+      "id": "c0088953-0b98-4c87-9fc5-0b5546e42764",
+      "name": "S.BHAVANI",
+      "admissionNumber": "VR004",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_8b8b62db7f4a",
+      "name": "V.BHARGAV REDDY",
+      "admissionNumber": "VS01611"
+    },
+    "merged": {
+      "id": "c59f921a-84e5-4f14-bb7b-8f9b48d61133",
+      "name": "V.BHARGAV REDDY",
+      "admissionNumber": "VS0161",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_dee0919755fd",
+      "name": "V.SHREYANSHI",
+      "admissionNumber": "VR1256"
+    },
+    "merged": {
+      "id": "ff9f26a9-d501-4b1b-ab93-42fdb4199082",
+      "name": "V.SHREYANSHI",
+      "admissionNumber": "VR01756",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_e5992157bbf9",
+      "name": "K.CHAVITHA RATHOD",
+      "admissionNumber": "VR0046-26"
+    },
+    "merged": {
+      "id": "70fa06f1-f8eb-4aba-9765-8f8b98b3981e",
+      "name": "K.CHARVITHA RATHOD",
+      "admissionNumber": "VR0047-26",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_84788f6c72f8",
+      "name": "R.VEDANSHI",
+      "admissionNumber": "TEMP005"
+    },
+    "merged": {
+      "id": "67703a32-9a7e-46ef-85fc-3b0cfe32a717",
+      "name": "R.VEDHANSHI",
+      "admissionNumber": "VRO1129",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_1c84aa7d0a95",
+      "name": "B.AADYA SRI",
+      "admissionNumber": "TEMP026"
+    },
+    "merged": {
+      "id": "97df734e-e286-44e9-974b-3b413a5e72c6",
+      "name": "B.AADHYA SRI",
+      "admissionNumber": "VRO021-25",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_172c389dd32a",
+      "name": "MOHD ABDUL MATEEN",
+      "admissionNumber": "TEMP015"
+    },
+    "merged": {
+      "id": "469712b1-b2c9-4abe-ad6b-a15f0b730dd9",
+      "name": "M.ABDUL MATEEN",
+      "admissionNumber": "VR0073-26",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_bcd9982f4ac9",
+      "name": "D.SHRADHHAA",
+      "admissionNumber": "VR012-25"
+    },
+    "merged": {
+      "id": "7aa81603-48af-495a-9ffb-72c0a8760aea",
+      "name": "D.SHRADHA",
+      "admissionNumber": "VR0012",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_3614d97bb35c",
+      "name": "HARI RUDRANSH",
+      "admissionNumber": "TEMP024"
+    },
+    "merged": {
+      "id": "771a1d69-76ba-4b1e-8649-b3ca4433284b",
+      "name": "HARIRUDRANSH REDDY",
+      "admissionNumber": "VR0030-26",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_4476cae42e09",
+      "name": "M.JESHWANTH SAI",
+      "admissionNumber": "TEMP009"
+    },
+    "merged": {
+      "id": "337ee96f-f2c7-4e64-8398-e27057ddb930",
+      "name": "M.JESHVANTH",
+      "admissionNumber": "VR0062-26",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_e7e7fe93d9d5",
+      "name": "P.SHREYANSH REDDY",
+      "admissionNumber": "TEMP018"
+    },
+    "merged": {
+      "id": "348e5566-bdb4-4316-85d9-baae769f6819",
+      "name": "P.SHREYANSH",
+      "admissionNumber": "VRO078-26",
+      "movedCollectionIds": []
+    }
+  },
+  {
+    "primary": {
+      "id": "std_cc50fe2950fb",
+      "name": "M.PREETHAM KUMAR",
+      "admissionNumber": "VR0042-26"
+    },
+    "merged": {
+      "id": "8a62d5b5-adee-4f0e-beb2-11f6a22940bd",
+      "name": "M.PREETHAM",
+      "admissionNumber": "VRO040-26",
+      "movedCollectionIds": []
+    }
+  }
+]
