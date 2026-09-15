@@ -30,7 +30,8 @@ import prisma from "../../prisma";
 import { CounterService } from "../../services/counter-service";
 import { serializeDecimal } from "../../utils/serialization";
 import { revalidatePath } from "next/cache";
-import { requireIdentity, toNumber, computeTuitionAndAncillary } from "./shared";
+import { requireIdentity, toNumber, computeTuitionAndAncillary, computeTermBreakdown } from "./shared";
+import type { PaymentMode } from "./payment-modes";
 
 /**
  * Returns a full, correct balance breakdown for one student.
@@ -39,12 +40,66 @@ import { requireIdentity, toNumber, computeTuitionAndAncillary } from "./shared"
  * gets null back, because the tenancy extension injects branchId into the
  * where clause before this ever reaches the database.
  */
+/**
+ * Slim summary for the hover-card popup — name/class/branch/parent contact
+ * plus total/paid/balance, nothing else. Deliberately not the full
+ * getStudentBalance() payload (no payment history, no term breakdown): this
+ * runs on every hover, so it stays cheap.
+ */
+export async function getStudentQuickInfo(studentId: string) {
+  try {
+    const identity = await requireIdentity();
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, schoolId: identity.schoolId },
+      include: {
+        financial: { include: { components: true } },
+        academic: { include: { class: true, section: true } },
+        branch: { select: { name: true } },
+        family: { select: { fatherName: true, fatherPhone: true } },
+        collections: { where: { status: "Success", isDeleted: false }, select: { amountPaid: true } },
+      },
+    });
+    if (!student) return { success: false as const, error: "Student not found." };
+
+    const { tuition, ancillary } = computeTuitionAndAncillary(student.financial as any);
+    const extra = (student.financial?.components ?? [])
+      .filter((c) => c.isApplicable)
+      .reduce((sum, c) => sum + toNumber(c.baseAmount) - toNumber(c.waiverAmount) - toNumber(c.discountAmount), 0);
+    const totalCharges = tuition + ancillary.reduce((sum, r) => sum + r.amount, 0) + extra;
+    const paid = student.collections.reduce((sum, c) => sum + toNumber(c.amountPaid), 0);
+
+    return {
+      success: true as const,
+      data: {
+        id: student.id,
+        name: [student.firstName, student.lastName].filter(Boolean).join(" "),
+        admissionNumber: student.admissionNumber,
+        gender: student.gender ?? null,
+        className: student.academic?.class?.name ?? null,
+        sectionName: student.academic?.section?.name ?? null,
+        branchName: student.branch?.name ?? null,
+        parentName: student.family?.fatherName ?? null,
+        parentPhone: (student.family?.fatherPhone ?? "").replace(/\.0$/, "") || null,
+        totalCharges,
+        paid,
+        balance: totalCharges - paid,
+      },
+    };
+  } catch (error: any) {
+    return { success: false as const, error: error.message ?? "Could not load student details." };
+  }
+}
+
 export async function getStudentBalance(studentId: string) {
   try {
-    await requireIdentity();
+    const identity = await requireIdentity();
 
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
+    // Explicit schoolId: DEVELOPER/PLATFORM_ADMIN bypass the tenancy
+    // extension's auto-scoping (see dashboard-actions.ts), so this tool
+    // (scoped to one school by design, unlike the platform-wide admin
+    // panels) must filter by school itself rather than rely on that.
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, schoolId: identity.schoolId },
       include: {
         financial: {
           include: {
@@ -53,7 +108,7 @@ export async function getStudentBalance(studentId: string) {
         },
         academic: { include: { class: true, section: true } },
         family: true,
-        branch: { select: { name: true, code: true } },
+        branch: { select: { id: true, name: true, code: true } },
       },
     });
 
@@ -61,9 +116,9 @@ export async function getStudentBalance(studentId: string) {
       return { success: false as const, error: "Student not found (or not in your branch)." };
     }
 
-    const { tuition, ancillary } = computeTuitionAndAncillary(
-      student.financial as unknown as FinancialRecordLike
-    );
+    const { tuition, ancillary } = computeTuitionAndAncillary(student.financial as any);
+    const grossTuition = toNumber(student.financial?.tuitionFee) || tuition;
+    const discount = toNumber(student.financial?.totalDiscount);
 
     const extraComponents = (student.financial?.components ?? [])
       .filter((c) => c.isApplicable)
@@ -79,11 +134,12 @@ export async function getStudentBalance(studentId: string) {
       extraComponents.reduce((sum, row) => sum + row.amount, 0);
 
     const collections = await prisma.collection.findMany({
-      where: { studentId, status: "Success", isDeleted: false },
+      where: { studentId, schoolId: identity.schoolId, status: "Success", isDeleted: false },
       orderBy: { paymentDate: "desc" },
       select: {
         id: true,
         receiptNumber: true,
+        bookReceiptNo: true,
         amountPaid: true,
         paymentMode: true,
         paymentReference: true,
@@ -95,10 +151,12 @@ export async function getStudentBalance(studentId: string) {
 
     const totalPaid = collections.reduce((sum, c) => sum + toNumber(c.amountPaid), 0);
     const balance = totalCharges - totalPaid;
+    const termBreakdown = computeTermBreakdown(student.financial as any, collections);
 
     return {
       success: true as const,
       data: serializeDecimal({
+        termBreakdown,
         student: {
           id: student.id,
           name: [student.firstName, student.middleName, student.lastName].filter(Boolean).join(" "),
@@ -106,11 +164,14 @@ export async function getStudentBalance(studentId: string) {
           studentCode: student.studentCode,
           className: student.academic?.class?.name ?? null,
           sectionName: student.academic?.section?.name ?? null,
+          branchId: student.branch?.id ?? null,
           branchName: student.branch?.name ?? null,
           parentName: student.family?.fatherName || student.family?.motherName || null,
           parentPhone: student.family?.fatherPhone || student.family?.motherPhone || null,
         },
         charges: {
+          grossTuition,
+          discount,
           tuition,
           ancillary,
           extraComponents,
@@ -129,12 +190,13 @@ export async function getStudentBalance(studentId: string) {
 /** Branch-safe (auto-scoped) search — used by the student picker. */
 export async function searchStudents(query: string) {
   try {
-    await requireIdentity();
+    const identity = await requireIdentity();
     const q = query.trim();
     if (q.length < 2) return { success: true as const, data: [] };
 
     const students = await prisma.student.findMany({
       where: {
+        schoolId: identity.schoolId,
         isDeleted: false,
         OR: [
           { firstName: { contains: q, mode: "insensitive" } },
@@ -166,9 +228,10 @@ export async function searchStudents(query: string) {
 export async function recordPayment(input: {
   studentId: string;
   amount: number;
-  mode: "Cash" | "Online";
+  mode: PaymentMode;
   reference?: string;
   feeHead?: string;
+  manualReceiptNumber?: string;
 }) {
   try {
     const identity = await requireIdentity();
@@ -177,13 +240,20 @@ export async function recordPayment(input: {
       return { success: false as const, error: "Enter an amount greater than zero." };
     }
 
+    // Matches the legacy system's rule: every non-cash mode (Online/UPI/Card/
+    // Cheque/Bank Transfer) needs a reference/transaction ID for
+    // reconciliation — Cash is the only mode that doesn't need one.
+    if (input.mode !== "Cash" && !input.reference?.trim()) {
+      return { success: false as const, error: `Enter a transaction reference / ID for a ${input.mode} payment.` };
+    }
+
     // NOTE: the shared tenancy extension (src/lib/prisma-tenancy.ts) strips the
     // scalar `schoolId`/`branchId` fields off every returned row as a PII/leak
     // guard — that's intentional shared behavior, not a bug. Read the ids off
     // the nested school/branch relations instead (their own `id` field is not
     // on the strip list).
-    const student = await prisma.student.findUnique({
-      where: { id: input.studentId },
+    const student = await prisma.student.findFirst({
+      where: { id: input.studentId, schoolId: identity.schoolId },
       select: {
         id: true,
         school: { select: { id: true, code: true } },
@@ -215,7 +285,10 @@ export async function recordPayment(input: {
     await prisma.collection.create({
       data: {
         receiptNumber,
+        bookReceiptNo: input.manualReceiptNumber?.trim() || null,
         studentId: student.id,
+        schoolId: student.school.id,
+        branchId: student.branch.id,
         financialYearId: financialYear.id,
         amountPaid: input.amount,
         totalPaid: input.amount,
@@ -229,7 +302,7 @@ export async function recordPayment(input: {
           feeHead,
           auditMeta: {
             cash: input.mode === "Cash" ? input.amount : 0,
-            online: input.mode === "Online" ? input.amount : 0,
+            online: input.mode !== "Cash" ? input.amount : 0,
           },
         },
       } as any,

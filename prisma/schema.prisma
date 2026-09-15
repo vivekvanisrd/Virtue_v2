@@ -329,6 +329,7 @@ model Section {
   school          School              @relation(fields: [schoolId], references: [id])
   attendance      StudentAttendance[]
   homeworks       Homework[]
+  feeStructures   FeeStructure[]
 
   @@index([branchId])
   @@index([classId])
@@ -739,6 +740,7 @@ model FeeStructure {
   structureCode  String?
   branchId       String
   classId        String?
+  sectionId      String?
   academicYearId String
   name           String
   schoolId       String
@@ -753,6 +755,7 @@ model FeeStructure {
   academicYear   AcademicYear           @relation(fields: [academicYearId], references: [id])
   branch         Branch                 @relation(fields: [branchId], references: [id])
   class          Class?                 @relation(fields: [classId], references: [id])
+  section        Section?               @relation(fields: [sectionId], references: [id])
   school         School                 @relation(fields: [schoolId], references: [id])
   components     FeeTemplateComponent[]
   students       FinancialRecord[]
@@ -764,6 +767,7 @@ model FeeStructure {
   @@index([academicYearId])
   @@index([branchId])
   @@index([classId])
+  @@index([sectionId])
 }
 
 model FeeTemplateComponent {

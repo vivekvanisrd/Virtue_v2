@@ -19,14 +19,29 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
     label: "Fees",
     links: [
       { href: "/simple/receipts", label: "Find a receipt" },
-      { href: "/simple/reports/collection", label: "Collection report" },
-      { href: "/simple/reports/dues", label: "Pending dues report" },
+      { href: "/simple/reports", label: "Reports" },
+    ],
+  },
+  {
+    label: "Setup",
+    links: [
+      { href: "/simple/fee-master", label: "Fee Master" },
+      { href: "/simple/discounts", label: "Discounts" },
     ],
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+
+  // Pick the single best-matching link (longest href that prefixes the
+  // current path), so e.g. /simple/students/abc123 highlights "All students"
+  // without also lighting up "Dashboard" (which would match "/simple" as a
+  // naive prefix) or double-highlighting "Add student" on unrelated pages.
+  const allLinks = NAV_GROUPS.flatMap((g) => g.links);
+  const activeHref = allLinks
+    .filter((link) => (link.href === "/simple" ? pathname === "/simple" : pathname.startsWith(link.href)))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
     <nav
@@ -58,7 +73,7 @@ export function Sidebar() {
           )}
           <div style={{ display: "grid", gap: 2 }}>
             {group.links.map((link) => {
-              const active = pathname === link.href;
+              const active = link.href === activeHref;
               return (
                 <Link
                   key={link.href}

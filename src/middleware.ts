@@ -60,7 +60,10 @@ export async function middleware(request: NextRequest) {
 
   // 3. Routing Protection
   const protectedRoutes = ['/dashboard', '/developer', '/registry', '/admin', '/super-admin', '/mobile', '/simple'];
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  // /simple/login is the Fees & Students module's own sign-in page — it has
+  // to be reachable without a session, even though everything else under
+  // /simple is gated.
+  const isProtectedRoute = pathname !== '/simple/login' && protectedRoutes.some(route => pathname.startsWith(route));
 
   // Redirect to login if accessing protected route without session
   if (isProtectedRoute && !user) {
@@ -146,6 +149,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard/setup', request.url));
     }
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // Redirect to the Fees & Students module if logged in and trying to access its login page
+  if (pathname === '/simple/login' && user) {
+    return NextResponse.redirect(new URL('/simple', request.url));
   }
 
   // 🏛️ SOVEREIGN BACKBONE INJECTION
