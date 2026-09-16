@@ -100,5 +100,18 @@ To ensure data integrity and a premium user experience, all input surfaces must 
 
 ---
 
+## 📖 8. Living Documentation Standard: "The Help & Tour Rule"
+
+A feature is not finished when the code ships — it is finished when a first-time user can understand it without asking someone else. Documentation and onboarding are treated as part of the feature, not an optional follow-up.
+
+- **Rule**: Any change that adds, removes, or meaningfully alters a page, report, workflow, or field in a user-facing module **must update, in the same change**:
+  1. The written Help & Guide page for that module (e.g. `/simple/help`) — new sections for new features, corrected wording for changed behavior, removed sections for removed features.
+  2. Any Guided Tour (`GuidedTour` steps) that references the affected page — new steps for new elements, updated wording for changed meaning, removed steps for removed elements.
+  3. Inline `HelpTip` tooltips on any term or number whose meaning changed.
+- **Consequence**: A pull request or change that alters user-facing behavior without a matching Help/Tour update is incomplete, not merely "missing docs" — treat it the same as a change that ships without its migration.
+- **Why**: this system exists specifically to win over users who default to Excel out of habit. A tour or help page that describes an old version of the screen actively damages that trust — worse than having no guide at all.
+
+---
+
 **Authored By**: Antigravity AI & Management
 **Project Version**: PaVa-EDUX Enterprise (2026-27 Generation)

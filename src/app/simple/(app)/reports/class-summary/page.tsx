@@ -20,7 +20,9 @@ export default async function ClassSummaryReportPage({ searchParams }: { searchP
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: "#111827" }}>Class summary report</h1>
-          <p style={{ color: "#4b5563", margin: "4px 0 0" }}>Committed fee, collected, and dues per class — cash/online split included.</p>
+          <p style={{ color: "#4b5563", margin: "4px 0 0" }}>
+            Committed fee, collected, and dues per class/section — the same layout as the "COLLECTION DETAILS" sheet in Excel.
+          </p>
         </div>
         <a
           href={`/simple/reports/class-summary/export${sp.branchId ? `?branchId=${sp.branchId}` : ""}`}
@@ -50,46 +52,65 @@ export default async function ClassSummaryReportPage({ searchParams }: { searchP
       {!result.success ? (
         <p style={{ color: "#b91c1c" }}>{result.error}</p>
       ) : (
-        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left" }}>
-                <th style={thStyle}>Class</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Students</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Committed</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Collected</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Dues</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Cash</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Online</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.data.rows.map((r) => (
-                <tr key={r.className} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={tdStyle}>{r.className}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{r.studentCount}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.committed)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.collected)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right", color: r.dues > 0 ? "#b91c1c" : "#111827" }}>{money(r.dues)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.cash)}</td>
-                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.online)}</td>
+        <>
+          <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left" }}>
+                  <th style={thStyle}>Class</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Students</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>T1 Collection</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Commitment</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Collection</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Dues</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Online</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Cash</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{ fontWeight: 700, borderTop: "2px solid #e5e7eb" }}>
-                <td style={tdStyle}>GRAND TOTAL</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{result.data.grandTotal.studentCount}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.committed)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.collected)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.dues)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.cash)}</td>
-                <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.online)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {result.data.rows.map((r) => (
+                  <tr key={r.className} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={tdStyle}>{r.className}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{r.studentCount}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.term1Collection)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.committed)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.collected)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right", color: r.dues > 0 ? "#b91c1c" : "#111827" }}>{money(r.dues)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.online)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{money(r.cash)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 700, borderTop: "2px solid #e5e7eb" }}>
+                  <td style={tdStyle}>GRAND TOTAL</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{result.data.grandTotal.studentCount}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.term1Collection)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.committed)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.collected)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.dues)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.online)}</td>
+                  <td style={{ ...tdStyle, textAlign: "right" }}>{money(result.data.grandTotal.cash)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <Stat label="% of collection vs. commitment" value={`${result.data.percentCollected.toFixed(2)}%`} />
+            <Stat label="Average collected per student" value={money(Math.round(result.data.averagePerStudent))} />
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 16px" }}>
+      <div style={{ fontSize: 12, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{value}</div>
     </div>
   );
 }

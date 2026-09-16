@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recordPayment } from "@/lib/actions/simple/fee-actions";
 import { PAYMENT_MODES, type PaymentMode } from "@/lib/actions/simple/payment-modes";
+import { HelpTip } from "@/components/simple/HelpTip";
 
 const FEE_HEADS = ["Term 1", "Term 2", "Term 3", "Admission Fee", "Transport Fee", "General"];
 
@@ -112,7 +113,10 @@ export function CollectPaymentForm({ studentId, balance }: { studentId: string; 
         </label>
 
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 14, color: "#374151" }}>For</span>
+          <span style={{ fontSize: 14, color: "#374151" }}>
+            For
+            <HelpTip text="What this payment is for. Pick a specific term/fee if you know it — use 'General' only for a lump-sum payment that isn't clearly one thing yet." />
+          </span>
           <select value={feeHead} onChange={(e) => setFeeHead(e.target.value)} style={inputStyle}>
             {FEE_HEADS.map((h) => (
               <option key={h} value={h}>

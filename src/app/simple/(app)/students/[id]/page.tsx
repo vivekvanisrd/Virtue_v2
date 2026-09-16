@@ -4,6 +4,16 @@ import { listStudentDiscounts } from "@/lib/actions/simple/fee-master-actions";
 import { CollectPaymentForm } from "@/components/simple/CollectPaymentForm";
 import { StudentDiscountPanel } from "@/components/simple/StudentDiscountPanel";
 import { RealtimeRefresher } from "@/components/simple/RealtimeRefresher";
+import { HelpTip } from "@/components/simple/HelpTip";
+import { GuidedTour, type TourStep } from "@/components/simple/GuidedTour";
+
+const PROFILE_TOUR: TourStep[] = [
+  { target: '[data-tour="profile-summary"]', title: "Total fee, paid, balance", body: "The big picture: everything this student owes in total, what's been paid, and what's left. This includes tuition, admission, transport — everything." },
+  { target: '[data-tour="profile-breakdown"]', title: "Actual, discount, net tuition", body: "Actual tuition fee is the class's standard rate. Discount is any concession applied. Net tuition fee is what this student actually owes after that discount — this is the number that matters for their real balance." },
+  { target: '[data-tour="profile-collect"]', title: "Collect a payment", body: "Pick an amount, how it was paid, and what it's for. Online/UPI/Card/Cheque all ask for a reference number so it can be traced later — Cash doesn't need one." },
+  { target: '[data-tour="profile-terms"]', title: "Term-wise status", body: "Shows Term 1/2/3 due vs. paid separately, so you can see exactly which term still needs collecting." },
+  { target: '[data-tour="profile-history"]', title: "Payment history", body: "Every payment ever recorded for this student — what it was for, how it was paid, who collected it, and the receipt number. Nothing here can be edited or deleted, only reversed by an admin if it was a mistake." },
+];
 
 function money(n: number) {
   return `₹${n.toLocaleString("en-IN")}`;
@@ -75,25 +85,27 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       </div>
 
       <div
+        data-tour="profile-summary"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 12,
         }}
       >
-        <StatCard label="Total fee" value={money(charges.totalCharges)} tone="neutral" />
+        <StatCard label="Total fee" value={money(charges.totalCharges)} tone="neutral" help="Everything this student owes in total — tuition plus admission fee, transport fee, and any other charges." />
         <StatCard label="Paid so far" value={money(totalPaid)} tone="good" />
         <StatCard
           label={balance > 0 ? "Balance due" : balance < 0 ? "Overpaid / advance" : "Balance"}
           value={money(Math.abs(balance))}
           tone={balance > 0 ? "due" : "good"}
+          help="Total fee minus everything paid so far. If this is negative, the student has paid more than they owe (an advance)."
         />
       </div>
 
-      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, display: "flex", gap: 24, flexWrap: "wrap" }}>
-        <MiniStat label="Actual tuition fee" value={money(charges.grossTuition)} />
-        <MiniStat label="Discount" value={charges.discount > 0 ? `− ${money(charges.discount)}` : money(0)} tone={charges.discount > 0 ? "due" : undefined} />
-        <MiniStat label="Net tuition fee" value={money(charges.tuition)} tone="good" />
+      <div data-tour="profile-breakdown" style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, display: "flex", gap: 24, flexWrap: "wrap" }}>
+        <MiniStat label="Actual tuition fee" value={money(charges.grossTuition)} help="The class's standard tuition rate, before any discount." />
+        <MiniStat label="Discount" value={charges.discount > 0 ? `− ${money(charges.discount)}` : money(0)} tone={charges.discount > 0 ? "due" : undefined} help="Any concession or scholarship applied to this student's tuition." />
+        <MiniStat label="Net tuition fee" value={money(charges.tuition)} tone="good" help="Actual tuition fee minus the discount — what this student really owes for tuition." />
       </div>
 
       {student.family && (
@@ -114,9 +126,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      <CollectPaymentForm studentId={student.id} balance={Math.max(balance, 0)} />
+      <div data-tour="profile-collect">
+        <CollectPaymentForm studentId={student.id} balance={Math.max(balance, 0)} />
+      </div>
 
-      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
+      <div data-tour="profile-terms" style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px", color: "#111827" }}>Term-wise status</h2>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
@@ -173,7 +187,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
+      <div data-tour="profile-history" style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px", color: "#111827" }}>Payment history</h2>
         {payments.length === 0 ? (
           <p style={{ color: "#6b7280" }}>No payments recorded yet.</p>
@@ -215,11 +229,13 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
       </div>
+
+      <GuidedTour tourId="student-profile" steps={PROFILE_TOUR} />
     </div>
   );
 }
 
-function StatCard({ label, value, tone }: { label: string; value: string; tone: "neutral" | "good" | "due" }) {
+function StatCard({ label, value, tone, help }: { label: string; value: string; tone: "neutral" | "good" | "due"; help?: string }) {
   const colors = {
     neutral: { bg: "#ffffff", fg: "#111827", border: "#e5e7eb" },
     good: { bg: "#f0fdf4", fg: "#15803d", border: "#bbf7d0" },
@@ -228,17 +244,23 @@ function StatCard({ label, value, tone }: { label: string; value: string; tone: 
 
   return (
     <div style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16 }}>
-      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>
+        {label}
+        {help && <HelpTip text={help} />}
+      </div>
       <div style={{ fontSize: 24, fontWeight: 700, color: colors.fg }}>{value}</div>
     </div>
   );
 }
 
-function MiniStat({ label, value, tone }: { label: string; value: string; tone?: "good" | "due" }) {
+function MiniStat({ label, value, tone, help }: { label: string; value: string; tone?: "good" | "due"; help?: string }) {
   const fg = tone === "good" ? "#15803d" : tone === "due" ? "#b91c1c" : "#111827";
   return (
     <div>
-      <div style={{ fontSize: 12, color: "#6b7280" }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#6b7280" }}>
+        {label}
+        {help && <HelpTip text={help} />}
+      </div>
       <div style={{ fontSize: 16, fontWeight: 700, color: fg }}>{value}</div>
     </div>
   );

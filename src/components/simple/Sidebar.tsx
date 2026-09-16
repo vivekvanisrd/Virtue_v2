@@ -6,7 +6,10 @@ import { usePathname } from "next/navigation";
 const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] = [
   {
     label: "",
-    links: [{ href: "/simple", label: "Dashboard" }],
+    links: [
+      { href: "/simple", label: "Dashboard" },
+      { href: "/simple/help", label: "❓ Help & guide" },
+    ],
   },
   {
     label: "Students",
@@ -28,6 +31,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
     links: [
       { href: "/simple/fee-master", label: "Fee Master" },
       { href: "/simple/discounts", label: "Discounts" },
+      { href: "/simple/sheet-sync", label: "Sheet sync" },
     ],
   },
 ];

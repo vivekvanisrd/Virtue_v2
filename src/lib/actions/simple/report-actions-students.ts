@@ -105,6 +105,14 @@ export async function getBranchSummaryReport() {
   try {
     const identity = await requireIdentity();
 
+    // 🔒 This report deliberately spans every branch in the school (that's the
+    // point — a side-by-side comparison), so unlike every other report here it
+    // can't rely on effectiveBranchId to stay safe. It must refuse anyone who
+    // isn't actually allowed to see cross-branch data.
+    if (!MANAGER_ROLES.has(identity.role)) {
+      return { success: false as const, error: "Not authorized to view the branch summary report." };
+    }
+
     const students = await prisma.student.findMany({
       where: { schoolId: identity.schoolId, isDeleted: false },
       include: {

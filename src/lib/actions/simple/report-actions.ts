@@ -706,8 +706,14 @@ export async function getTermWiseCollectionReport(params: { branchId?: string } 
   }
 }
 
-/** Per-class rollup: committed fee, collected, dues, and cash/online split — the
- *  same shape as the school's own hand-kept "COLLECTION DETAILS" summary sheet. */
+/**
+ * Per class+section rollup: committed fee, collected, dues, Term-1 collection,
+ * and cash/online split — deliberately matches the exact column layout of the
+ * school's own hand-kept Excel "Sheet1" (COLLECTION DETAILS) summary,
+ * including its class+section granularity (e.g. "1ST A" and "1ST B" as
+ * separate rows, not merged), so staff can visually check it against the
+ * sheet they already trust instead of learning a new shape from scratch.
+ */
 export async function getClassSummaryReport(params: { branchId?: string } = {}) {
   try {
     const identity = await requireIdentity();
@@ -722,15 +728,17 @@ export async function getClassSummaryReport(params: { branchId?: string } = {}) 
       },
       include: {
         financial: { include: { components: true } },
-        academic: { include: { class: true } },
-        collections: { where: { status: "Success", isDeleted: false }, select: { amountPaid: true, paymentMode: true } },
+        academic: { include: { class: true, section: true } },
+        collections: { where: { status: "Success", isDeleted: false }, select: { amountPaid: true, paymentMode: true, allocatedTo: true } },
       },
     });
 
-    const byClass = new Map<string, { className: string; studentCount: number; committed: number; collected: number; cash: number; online: number }>();
+    type Row = { className: string; studentCount: number; committed: number; collected: number; term1Collection: number; cash: number; online: number };
+    const byClass = new Map<string, Row>();
     for (const s of students) {
-      const className = s.academic?.class?.name ?? "(No class)";
-      if (!byClass.has(className)) byClass.set(className, { className, studentCount: 0, committed: 0, collected: 0, cash: 0, online: 0 });
+      const base = s.academic?.class?.name ?? "(No class)";
+      const className = s.academic?.section?.name ? `${base} ${s.academic.section.name}` : base;
+      if (!byClass.has(className)) byClass.set(className, { className, studentCount: 0, committed: 0, collected: 0, term1Collection: 0, cash: 0, online: 0 });
       const row = byClass.get(className)!;
 
       const { tuition, ancillary } = computeTuitionAndAncillary(s.financial as any);
@@ -744,6 +752,7 @@ export async function getClassSummaryReport(params: { branchId?: string } = {}) 
       for (const c of s.collections) {
         const amt = toNumber(c.amountPaid);
         row.collected += amt;
+        if ((c.allocatedTo as any)?.feeHead === "Term 1") row.term1Collection += amt;
         if (c.paymentMode === "Cash") row.cash += amt;
         else row.online += amt;
       }
@@ -758,14 +767,18 @@ export async function getClassSummaryReport(params: { branchId?: string } = {}) 
         studentCount: acc.studentCount + r.studentCount,
         committed: acc.committed + r.committed,
         collected: acc.collected + r.collected,
+        term1Collection: acc.term1Collection + r.term1Collection,
         dues: acc.dues + r.dues,
         cash: acc.cash + r.cash,
         online: acc.online + r.online,
       }),
-      { studentCount: 0, committed: 0, collected: 0, dues: 0, cash: 0, online: 0 }
+      { studentCount: 0, committed: 0, collected: 0, term1Collection: 0, dues: 0, cash: 0, online: 0 }
     );
 
-    return { success: true as const, data: { rows, grandTotal } };
+    const percentCollected = grandTotal.committed > 0 ? (grandTotal.collected / grandTotal.committed) * 100 : 0;
+    const averagePerStudent = grandTotal.studentCount > 0 ? grandTotal.collected / grandTotal.studentCount : 0;
+
+    return { success: true as const, data: { rows, grandTotal, percentCollected, averagePerStudent } };
   } catch (error: any) {
     return { success: false as const, error: error.message ?? "Could not load the class summary." };
   }

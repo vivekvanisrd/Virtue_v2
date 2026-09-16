@@ -247,6 +247,11 @@ export async function recordPayment(input: {
   reference?: string;
   feeHead?: string;
   manualReceiptNumber?: string;
+  /** Sheet-sync only: preserves the real collecting staff's name from the
+   * imported source instead of attributing the payment to whoever runs the
+   * sync. Omitted (default) for the normal live Collect-a-fee flow, where
+   * `identity.name` is correct because the logged-in user IS the collector. */
+  collectedByOverride?: string;
 }) {
   try {
     const identity = await requireIdentity();
@@ -310,7 +315,7 @@ export async function recordPayment(input: {
         paymentMode: input.mode,
         paymentReference: input.reference?.trim() || null,
         paymentDate: new Date(),
-        collectedBy: identity.name || identity.role,
+        collectedBy: input.collectedByOverride?.trim() || identity.name || identity.role,
         status: "Success",
         allocatedTo: {
           terms: [feeHead],

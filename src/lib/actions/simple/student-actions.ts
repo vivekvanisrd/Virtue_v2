@@ -141,8 +141,18 @@ export async function listStudents(params: StudentListParams = {}) {
       ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
       ...(params.className ? { academic: { class: { name: params.className } } } : {}),
       ...(params.gender ? { gender: params.gender } : {}),
+      // "Active" means "not marked Inactive" (exclusion), not "status literally
+      // equals ACTIVE" (inclusion) — the real data uses several in-use status
+      // values across different admission workflows (ACTIVE, CONFIRMED,
+      // PROVISIONAL), not just the one this module's own create-student flow
+      // happens to write. An inclusion match against "ACTIVE" silently hid an
+      // entire branch's real students whose status was CONFIRMED/PROVISIONAL
+      // instead — matches the exclusion pattern already used for Branch.status
+      // above and in dashboard-actions.ts.
       ...(params.status && params.status !== "all"
-        ? { status: { equals: params.status === "active" ? "ACTIVE" : "INACTIVE", mode: "insensitive" } }
+        ? params.status === "active"
+          ? { NOT: { status: { equals: "INACTIVE", mode: "insensitive" } } }
+          : { status: { equals: "INACTIVE", mode: "insensitive" } }
         : {}),
       ...(params.q
         ? {

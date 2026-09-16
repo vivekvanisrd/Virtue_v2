@@ -117,7 +117,19 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
 
                     // Bypass if global dev
                     const isGlobalAdmin = tenant?.role === 'PLATFORM_ADMIN' || tenant?.role === 'DEVELOPER';
-                    
+
+                    // 🏛️ BRANCH ISOLATION: only OWNER has cross-branch oversight once we're
+                    // past the global-admin bypass below. Every other role — STAFF, DRIVER,
+                    // PRINCIPAL, VICE_PRINCIPAL, FEE_COLLECTOR, or any future role — is
+                    // jailed to their own branch by default. This used to be an allow-list of
+                    // exactly which roles get jailed (STAFF/DRIVER only for reads; STAFF/
+                    // PRINCIPAL only for writes), which meant any role not on the list
+                    // silently inherited unrestricted, all-branch access instead of failing
+                    // closed — that's what let a Principal see every branch's students,
+                    // dashboard numbers, and receipts, and collect payments against students
+                    // outside their own branch.
+                    const isBranchExempt = tenant?.role === 'OWNER';
+
                     // 🛡️ LOCK: Platform Master Gating
                     if (model.startsWith('Platform') && !isGlobalAdmin) {
                         throw new Error(`SECURITY_VIOLATION: Restricted Access. Universal Platform Templates are manageable by Platform Administrators only.`);
@@ -178,7 +190,7 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                             throw new Error(`SECURITY_VIOLATION: Institutional conflict. (Request: ${incomingSchoolId}, Active: ${tenant.schoolId})`);
                         }
 
-                        if (incomingBranchId && (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL') && incomingBranchId !== tenant.branchId) {
+                        if (incomingBranchId && !isBranchExempt && incomingBranchId !== tenant.branchId) {
                             throw new Error(`SECURITY_VIOLATION: Branch conflict. (Request: ${incomingBranchId}, Active: ${tenant.branchId})`);
                         }
 
@@ -191,10 +203,8 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                             delete a.where.school_id;
                             delete a.where.branch_id;
                         }
-                        
-                        // 🏛️ UNIVERSAL OVERSIGHT: Principals and Owners see all branches. 
-                        // Only STAFF and DRIVER are jailed to their specific branch.
-                        if (tenant.role === 'STAFF' || tenant.role === 'DRIVER') {
+
+                        if (!isBranchExempt) {
                              if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
                                   a.where[branchIdField] = tenant.branchId;
                              }
@@ -208,8 +218,10 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                             delete (a.data as any).schoolId;
                             delete (a.data as any).school_id;
                             
-                            // 🔒 Strict Jail for Standard Staff and Principals. 
-                            if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL') {
+                            // 🔒 Strict Jail: any non-branch-exempt role (everyone except
+                            // OWNER) cannot set their own branchId on write — same
+                            // deny-list as the read-side isBranchExempt above.
+                            if (!isBranchExempt) {
                                 delete (a.data as any).branchId;
                                 delete (a.data as any).branch_id;
                             }
@@ -241,7 +253,7 @@ export const tenancyExtension = Prisma.defineExtension((client) => {
                                 a.data.forEach((item: any) => {
                                     item[schoolIdField] = tenant.schoolId;
                                     if (!SCHOOL_LEVEL_MODELS.includes(model as string)) {
-                                        if (tenant.role === 'STAFF' || tenant.role === 'PRINCIPAL' || !item[branchIdField]) {
+                                        if (!isBranchExempt || !item[branchIdField]) {
                                             item[branchIdField] = tenant.branchId;
                                         }
                                     }
