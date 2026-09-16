@@ -18,6 +18,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
   {
     label: "Fees",
     links: [
+      { href: "/simple/collect", label: "Collect a fee" },
       { href: "/simple/receipts", label: "Find a receipt" },
       { href: "/simple/reports", label: "Reports" },
     ],

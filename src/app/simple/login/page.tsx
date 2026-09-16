@@ -29,11 +29,10 @@ export default function SimpleLoginPage() {
       return;
     }
 
-    if ((res as any).mustChangePassword) {
-      router.push("/change-password");
-    } else {
-      router.push("/simple");
-    }
+    // Unlike the main portal, the Fees & Students module never forces a
+    // password change on first login — it's optional here, so always land on
+    // the dashboard regardless of onboardingStatus.
+    router.push("/simple");
     setIsLoading(false);
   }
 

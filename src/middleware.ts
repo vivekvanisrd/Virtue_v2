@@ -86,8 +86,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // 🛡️ LOCK: PASSWORD CHANGE FORCE FOR ONBOARDING
+  // The Fees & Students module (/simple) is exempt — password change is
+  // optional there, unlike the main portal, which still forces it.
   if (user && user.onboardingStatus === 'PASSWORD_CHANGE_REQUIRED') {
-    if (pathname !== '/change-password') {
+    if (pathname !== '/change-password' && !pathname.startsWith('/simple')) {
       return NextResponse.redirect(new URL('/change-password', request.url));
     }
   }

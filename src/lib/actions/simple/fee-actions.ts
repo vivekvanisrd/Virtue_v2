@@ -32,6 +32,7 @@ import { serializeDecimal } from "../../utils/serialization";
 import { revalidatePath } from "next/cache";
 import { requireIdentity, toNumber, computeTuitionAndAncillary, computeTermBreakdown } from "./shared";
 import type { PaymentMode } from "./payment-modes";
+import { broadcastBranchUpdate } from "./realtime";
 
 /**
  * Returns a full, correct balance breakdown for one student.
@@ -168,6 +169,20 @@ export async function getStudentBalance(studentId: string) {
           branchName: student.branch?.name ?? null,
           parentName: student.family?.fatherName || student.family?.motherName || null,
           parentPhone: student.family?.fatherPhone || student.family?.motherPhone || null,
+          family: student.family
+            ? {
+                fatherName: student.family.fatherName,
+                fatherPhone: student.family.fatherPhone,
+                fatherOccupation: student.family.fatherOccupation,
+                motherName: student.family.motherName,
+                motherPhone: student.family.motherPhone,
+                motherOccupation: student.family.motherOccupation,
+                whatsappNumber: student.family.whatsappNumber,
+                emergencyName: student.family.emergencyName,
+                emergencyPhone: student.family.emergencyPhone,
+                emergencyRelation: student.family.emergencyRelation,
+              }
+            : null,
         },
         charges: {
           grossTuition,
@@ -309,6 +324,7 @@ export async function recordPayment(input: {
     });
 
     revalidatePath(`/simple/students/${student.id}`);
+    broadcastBranchUpdate(student.branch.id).catch(() => {});
 
     const refreshed = await getStudentBalance(student.id);
     return { success: true as const, receiptNumber, balance: refreshed.success ? refreshed.data.balance : null };

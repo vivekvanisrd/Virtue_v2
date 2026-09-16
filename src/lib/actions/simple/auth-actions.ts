@@ -7,5 +7,5 @@ import { signOutAction } from "../auth-native";
  * doesn't match the <form action> signature, and doesn't redirect on its own. */
 export async function signOutAndRedirect() {
   await signOutAction();
-  redirect("/login");
+  redirect("/simple/login");
 }

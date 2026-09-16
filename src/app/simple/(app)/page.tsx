@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDashboardSummary } from "@/lib/actions/simple/dashboard-actions";
 import { StudentSearch } from "@/components/simple/StudentSearch";
+import { RealtimeRefresher } from "@/components/simple/RealtimeRefresher";
 
 function money(n: number) {
   return `₹${n.toLocaleString("en-IN")}`;
@@ -29,6 +30,7 @@ export default async function DashboardPage() {
         <p style={{ color: "#b91c1c" }}>{result.error}</p>
       ) : (
         <>
+          <RealtimeRefresher branchIds={[result.data.viewerBranchId, ...(result.data.branchStats?.map((b) => b.id) ?? [])]} />
           <StatRow
             heading="All branches"
             headingHref={undefined}

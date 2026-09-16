@@ -3,6 +3,7 @@ import { getStudentBalance } from "@/lib/actions/simple/fee-actions";
 import { listStudentDiscounts } from "@/lib/actions/simple/fee-master-actions";
 import { CollectPaymentForm } from "@/components/simple/CollectPaymentForm";
 import { StudentDiscountPanel } from "@/components/simple/StudentDiscountPanel";
+import { RealtimeRefresher } from "@/components/simple/RealtimeRefresher";
 
 function money(n: number) {
   return `₹${n.toLocaleString("en-IN")}`;
@@ -45,6 +46,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
+      <RealtimeRefresher branchIds={[student.branchId]} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
           <Link href="/simple/students" style={{ color: "#2563eb", fontSize: 14 }}>
@@ -88,11 +90,27 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         />
       </div>
 
-      {charges.discount > 0 && (
-        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, display: "flex", gap: 24, flexWrap: "wrap" }}>
-          <MiniStat label="Class tuition fee" value={money(charges.grossTuition)} />
-          <MiniStat label="Discount" value={`− ${money(charges.discount)}`} tone="due" />
-          <MiniStat label="Committed (payable) fee" value={money(charges.tuition)} tone="good" />
+      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, display: "flex", gap: 24, flexWrap: "wrap" }}>
+        <MiniStat label="Actual tuition fee" value={money(charges.grossTuition)} />
+        <MiniStat label="Discount" value={charges.discount > 0 ? `− ${money(charges.discount)}` : money(0)} tone={charges.discount > 0 ? "due" : undefined} />
+        <MiniStat label="Net tuition fee" value={money(charges.tuition)} tone="good" />
+      </div>
+
+      {student.family && (
+        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px", color: "#111827" }}>Parent / family details</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            {student.family.fatherName && (
+              <FamilyField label="Father" name={student.family.fatherName} phone={student.family.fatherPhone} sub={student.family.fatherOccupation} />
+            )}
+            {student.family.motherName && (
+              <FamilyField label="Mother" name={student.family.motherName} phone={student.family.motherPhone} sub={student.family.motherOccupation} />
+            )}
+            {student.family.whatsappNumber && <FamilyField label="WhatsApp" name={formatPhone(student.family.whatsappNumber)} />}
+            {student.family.emergencyName && (
+              <FamilyField label="Emergency contact" name={student.family.emergencyName} phone={student.family.emergencyPhone} sub={student.family.emergencyRelation} />
+            )}
+          </div>
         </div>
       )}
 
@@ -160,31 +178,40 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         {payments.length === 0 ? (
           <p style={{ color: "#6b7280" }}>No payments recorded yet.</p>
         ) : (
-          <div style={{ display: "grid", gap: 8 }}>
-            {payments.map((p: any, i: number) => (
-              <div
-                key={p.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 0",
-                  borderBottom: "1px solid #f3f4f6",
-                  fontSize: 14,
-                }}
-              >
-                <span>
-                  <span style={{ color: "#9ca3af", marginRight: 6 }}>{i + 1}.</span>
-                  <strong style={{ color: "#111827" }}>{money(p.amountPaid)}</strong>{" "}
-                  <span style={{ color: "#6b7280" }}>
-                    · {p.paymentMode} · {new Date(p.paymentDate).toLocaleDateString("en-IN")}
-                  </span>
-                </span>
-                <span style={{ color: "#6b7280" }}>
-                  {p.receiptNumber}
-                  {p.bookReceiptNo && <span> · book #{p.bookReceiptNo}</span>}
-                </span>
-              </div>
-            ))}
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: "#f9fafb", textAlign: "left" }}>
+                  <th style={thStyle}>#</th>
+                  <th style={thStyle}>Date</th>
+                  <th style={thStyle}>Receipt #</th>
+                  <th style={thStyle}>For</th>
+                  <th style={thStyle}>Mode</th>
+                  <th style={thStyle}>Reference</th>
+                  <th style={thStyle}>Collected by</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p: any, i: number) => (
+                  <tr key={p.id} style={{ borderTop: "1px solid #f3f4f6" }}>
+                    <td style={tdStyle}>{i + 1}</td>
+                    <td style={tdStyle}>{new Date(p.paymentDate).toLocaleDateString("en-IN")}</td>
+                    <td style={tdStyle}>
+                      {p.receiptNumber}
+                      {p.bookReceiptNo && <div style={{ color: "#9ca3af", fontSize: 12 }}>book #{p.bookReceiptNo}</div>}
+                    </td>
+                    <td style={tdStyle}>{p.allocatedTo?.feeHead || "—"}</td>
+                    <td style={tdStyle}>{p.paymentMode}</td>
+                    <td style={tdStyle}>{p.paymentReference || "—"}</td>
+                    <td style={tdStyle}>{p.collectedBy || "—"}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      <strong>{money(p.amountPaid)}</strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -213,6 +240,17 @@ function MiniStat({ label, value, tone }: { label: string; value: string; tone?:
     <div>
       <div style={{ fontSize: 12, color: "#6b7280" }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 700, color: fg }}>{value}</div>
+    </div>
+  );
+}
+
+function FamilyField({ label, name, phone, sub }: { label: string; name: string; phone?: string | null; sub?: string | null }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: "#6b7280", textTransform: "uppercase", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", marginTop: 2 }}>{name}</div>
+      {phone && <div style={{ fontSize: 13, color: "#374151" }}>{formatPhone(phone)}</div>}
+      {sub && <div style={{ fontSize: 12, color: "#9ca3af" }}>{sub}</div>}
     </div>
   );
 }

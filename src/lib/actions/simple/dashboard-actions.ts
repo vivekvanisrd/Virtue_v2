@@ -107,6 +107,7 @@ export async function getDashboardSummary() {
         pendingDuesTotal: duesReport.success ? duesReport.data.totalDue : 0,
         pendingDuesCount: duesReport.success ? duesReport.data.count : 0,
         branchStats,
+        viewerBranchId: identity.branchId ?? null,
       },
     };
   } catch (error: any) {
