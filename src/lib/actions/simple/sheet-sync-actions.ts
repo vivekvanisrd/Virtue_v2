@@ -29,6 +29,29 @@ const BRANCH_CODE_TO_ID: Record<string, string> = {
   SNB: "VIVES-SNB",
   MNB: "VIVES-MNB",
 };
+const BRANCH_ID_TO_CODE: Record<string, string> = Object.fromEntries(Object.entries(BRANCH_CODE_TO_ID).map(([code, id]) => [id, code]));
+
+// The Date column in FEE_COLLECTION mixes two formats in the same column —
+// some rows are real Excel date-serial numbers, others are plain "D/M/YYYY"
+// text (seen directly in this sheet: 46335 next to "15/9/2026" a few rows
+// down) — so both must be handled to sort or filter by date at all.
+function parseSheetDate(raw: any): string | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (raw instanceof Date) return raw.toISOString();
+  if (typeof raw === "number") {
+    const d = XLSX.SSF.parse_date_code(raw);
+    if (!d) return null;
+    return new Date(Date.UTC(d.y, d.m - 1, d.d)).toISOString();
+  }
+  const s = String(raw).trim();
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    const [, dd, mm, yy] = m;
+    const year = yy.length === 2 ? 2000 + Number(yy) : Number(yy);
+    return new Date(Date.UTC(year, Number(mm) - 1, Number(dd))).toISOString();
+  }
+  return null;
+}
 
 // ---- Admission-number normalization (same rules the original RCB source-of-
 // truth reconciliation used) — a leading zero, a "-26" year suffix, and the
@@ -169,6 +192,7 @@ type SheetPaymentRow = {
   paymentFor: string;
   collectedBy: string;
   reference: string;
+  paymentDate: string | null;
 };
 
 // FEE_COLLECTION: header row 1, data from row 2.
@@ -193,6 +217,7 @@ function parseFeeCollection(wb: XLSX.WorkBook): SheetPaymentRow[] {
       paymentFor: String(r[8] || "").trim(),
       collectedBy: String(r[10] || "").trim(),
       reference: String(r[11] || "").trim(),
+      paymentDate: parseSheetDate(r[1]),
     });
   }
   return out;
@@ -293,12 +318,14 @@ export async function checkSheetForUpdates() {
           parentName: row.parentName,
           phone: row.phone,
           branchCode: row.branchCode,
+          branchId: exact.branchId,
           className: row.className,
           status: "imported" as const,
-          matchedStudent: { id: exact.id, name: displayName(exact), admissionNumber: exact.admissionNumber },
+          matchedStudent: { id: exact.id, name: displayName(exact), admissionNumber: exact.admissionNumber, branchId: exact.branchId },
           canonicalMatch: null,
           phoneMatch: null,
           looksLikeDuplicate: false,
+          hasMissingData: false,
           resolvedBranchId: null,
           resolvedClassName: null,
           tuitionFee: row.tuitionFee,
@@ -312,6 +339,8 @@ export async function checkSheetForUpdates() {
       const canonicalCandidates = byCanonicalAdmNo.get(admNoCanonicalKey(row.cleanedAdmNo)) || [];
       const canonicalMatch = canonicalCandidates.find((c) => namesLookSimilar(displayName(c), row.name)) || null;
       const phoneMatch = row.phone ? byPhone.get(row.phone) || null : null;
+      const resolvedBranchId = BRANCH_CODE_TO_ID[row.branchCode] || null;
+      const resolvedClassName = normalizeClassName(row.className);
 
       students.push({
         sheetId: row.sheetId,
@@ -319,9 +348,10 @@ export async function checkSheetForUpdates() {
         parentName: row.parentName,
         phone: row.phone,
         branchCode: row.branchCode,
-        resolvedBranchId: BRANCH_CODE_TO_ID[row.branchCode] || null,
+        branchId: resolvedBranchId,
+        resolvedBranchId,
         className: row.className,
-        resolvedClassName: normalizeClassName(row.className),
+        resolvedClassName,
         tuitionFee: row.tuitionFee,
         admissionFee: row.admissionFee,
         concession: row.concession,
@@ -329,10 +359,18 @@ export async function checkSheetForUpdates() {
         status: "new" as const,
         matchedStudent: null,
         canonicalMatch: canonicalMatch
-          ? { id: canonicalMatch.id, name: displayName(canonicalMatch), admissionNumber: canonicalMatch.admissionNumber }
+          ? { id: canonicalMatch.id, name: displayName(canonicalMatch), admissionNumber: canonicalMatch.admissionNumber, branchId: canonicalMatch.branchId }
           : null,
-        phoneMatch: phoneMatch ? { id: phoneMatch.id, name: displayName(phoneMatch), admissionNumber: phoneMatch.admissionNumber } : null,
+        phoneMatch: phoneMatch
+          ? { id: phoneMatch.id, name: displayName(phoneMatch), admissionNumber: phoneMatch.admissionNumber, branchId: phoneMatch.branchId }
+          : null,
         looksLikeDuplicate: !!(canonicalMatch || phoneMatch),
+        // Tuition fee is deliberately excluded here — it's blank in the sheet
+        // for every new admission (the sync's class-standard fallback already
+        // handles that), so including it would flag literally every row and
+        // make this filter useless. An unrecognized branch/class or a missing
+        // phone number are the actual, selective gaps worth a second look.
+        hasMissingData: !resolvedBranchId || !resolvedClassName || !row.phone,
       });
     }
 
@@ -348,6 +386,8 @@ export async function checkSheetForUpdates() {
 
       const matchedByReceipt = importedReceiptSet.has(row.receipt);
       const matchedByAmount = matched ? importedByAmountKey.has(`${matched.id}|${row.amount}|${feeHead}`) : false;
+      const mode = row.cash > 0 ? "Cash" : "Online";
+      const branchId = matched?.branchId || null;
 
       if (matchedByReceipt || matchedByAmount) {
         payments.push({
@@ -355,33 +395,45 @@ export async function checkSheetForUpdates() {
           admNo: row.admNo,
           name: row.name,
           amount: row.amount,
-          mode: row.cash > 0 ? "Cash" : "Online",
+          mode,
           reference: row.reference || null,
           feeHead,
           rawPaymentFor: row.paymentFor,
           collectedBy: row.collectedBy || null,
+          paymentDate: row.paymentDate,
+          branchId,
+          branchCode: branchId ? BRANCH_ID_TO_CODE[branchId] || null : null,
           status: "imported" as const,
-          matchedStudent: matched ? { id: matched.id, name: displayName(matched), admissionNumber: matched.admissionNumber } : null,
+          matchedStudent: matched ? { id: matched.id, name: displayName(matched), admissionNumber: matched.admissionNumber, branchId: matched.branchId } : null,
           matchIsExact: !!exact,
           matchMethod: matchedByReceipt ? ("receipt" as const) : ("amount" as const),
+          looksUncertain: false,
+          hasMissingData: false,
         });
         continue;
       }
+
+      const looksUncertain = !exact;
 
       payments.push({
         receipt: row.receipt,
         admNo: row.admNo,
         name: row.name,
         amount: row.amount,
-        mode: row.cash > 0 ? "Cash" : "Online",
+        mode,
         reference: row.reference || null,
         feeHead,
         rawPaymentFor: row.paymentFor,
         collectedBy: row.collectedBy || null,
+        paymentDate: row.paymentDate,
+        branchId,
+        branchCode: branchId ? BRANCH_ID_TO_CODE[branchId] || null : null,
         status: "new" as const,
-        matchedStudent: matched ? { id: matched.id, name: displayName(matched), admissionNumber: matched.admissionNumber } : null,
+        matchedStudent: matched ? { id: matched.id, name: displayName(matched), admissionNumber: matched.admissionNumber, branchId: matched.branchId } : null,
         matchIsExact: !!exact,
         matchMethod: null,
+        looksUncertain,
+        hasMissingData: !row.collectedBy || !row.amount || (mode !== "Cash" && !row.reference),
       });
     }
 

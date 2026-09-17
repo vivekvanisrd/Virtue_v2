@@ -10,7 +10,16 @@ type PaymentRow = CheckData["payments"][number];
 type SyncResult = Awaited<ReturnType<typeof syncSelectedSheetRows>>;
 
 type StatusFilter = "new" | "imported" | "all";
+type FlagFilter = "all" | "hide" | "only";
 type SortDir = "asc" | "desc";
+const UNKNOWN_BRANCH = "__unknown__";
+
+function dateValue(iso: string | null): number {
+  return iso ? new Date(iso).getTime() : 0;
+}
+function formatDate(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString("en-IN") : "—";
+}
 
 function useSort<T>(rows: T[], getValue: (row: T, key: string) => string | number, defaultKey: string) {
   const [sortKey, setSortKey] = useState(defaultKey);
@@ -76,6 +85,10 @@ export function SheetSyncClient() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
   const [showStudents, setShowStudents] = useState(true);
   const [showPayments, setShowPayments] = useState(true);
+  const [search, setSearch] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [flagFilter, setFlagFilter] = useState<FlagFilter>("all");
+  const [missingOnly, setMissingOnly] = useState(false);
 
   function runCheck() {
     setError(null);
@@ -123,17 +136,47 @@ export function SheetSyncClient() {
 
   const totalSelected = selectedStudents.size + selectedPayments.size;
 
+  const branchOptions = useMemo(() => {
+    if (!data) return [];
+    const codes = new Set<string>();
+    for (const s of data.students) codes.add(s.branchCode || UNKNOWN_BRANCH);
+    for (const p of data.payments) codes.add(p.branchCode || UNKNOWN_BRANCH);
+    return [...codes].sort();
+  }, [data]);
+
+  const searchLower = search.trim().toLowerCase();
+
   const filteredStudents = useMemo(() => {
     if (!data) return [];
-    if (statusFilter === "all") return data.students;
-    return data.students.filter((s) => s.status === statusFilter);
-  }, [data, statusFilter]);
+    return data.students.filter((s) => {
+      if (statusFilter !== "all" && s.status !== statusFilter) return false;
+      if (branchFilter !== "all" && (s.branchCode || UNKNOWN_BRANCH) !== branchFilter) return false;
+      if (flagFilter === "hide" && s.looksLikeDuplicate) return false;
+      if (flagFilter === "only" && !s.looksLikeDuplicate) return false;
+      if (missingOnly && !s.hasMissingData) return false;
+      if (searchLower) {
+        const haystack = `${s.sheetId} ${s.name} ${s.parentName} ${s.phone || ""}`.toLowerCase();
+        if (!haystack.includes(searchLower)) return false;
+      }
+      return true;
+    });
+  }, [data, statusFilter, branchFilter, flagFilter, missingOnly, searchLower]);
 
   const filteredPayments = useMemo(() => {
     if (!data) return [];
-    if (statusFilter === "all") return data.payments;
-    return data.payments.filter((p) => p.status === statusFilter);
-  }, [data, statusFilter]);
+    return data.payments.filter((p) => {
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (branchFilter !== "all" && (p.branchCode || UNKNOWN_BRANCH) !== branchFilter) return false;
+      if (flagFilter === "hide" && p.looksUncertain) return false;
+      if (flagFilter === "only" && !p.looksUncertain) return false;
+      if (missingOnly && !p.hasMissingData) return false;
+      if (searchLower) {
+        const haystack = `${p.receipt} ${p.admNo} ${p.name} ${p.collectedBy || ""}`.toLowerCase();
+        if (!haystack.includes(searchLower)) return false;
+      }
+      return true;
+    });
+  }, [data, statusFilter, branchFilter, flagFilter, missingOnly, searchLower]);
 
   const studentSort = useSort<StudentRow>(
     filteredStudents,
@@ -172,6 +215,10 @@ export function SheetSyncClient() {
           return row.mode;
         case "collectedBy":
           return row.collectedBy || "";
+        case "date":
+          return dateValue(row.paymentDate);
+        case "branch":
+          return row.branchCode || "";
         case "status":
           return row.status;
         default:
@@ -245,46 +292,105 @@ export function SheetSyncClient() {
           <div
             style={{
               display: "flex",
-              gap: 20,
-              alignItems: "center",
-              flexWrap: "wrap",
+              flexDirection: "column",
+              gap: 12,
               background: "#ffffff",
               border: "1px solid #e5e7eb",
               borderRadius: 10,
               padding: 14,
             }}
           >
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Show:</span>
-              {(["new", "imported", "all"] as StatusFilter[]).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setStatusFilter(f)}
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    padding: "6px 12px",
-                    borderRadius: 999,
-                    border: statusFilter === f ? "1px solid #2563eb" : "1px solid #d1d5db",
-                    background: statusFilter === f ? "#eff6ff" : "#ffffff",
-                    color: statusFilter === f ? "#1d4ed8" : "#374151",
-                    cursor: "pointer",
-                  }}
-                >
-                  {f === "new" ? "New only" : f === "imported" ? "Already imported" : "All"}
-                </button>
-              ))}
+            <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Show:</span>
+                {(["new", "imported", "all"] as StatusFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setStatusFilter(f)}
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      padding: "6px 12px",
+                      borderRadius: 999,
+                      border: statusFilter === f ? "1px solid #2563eb" : "1px solid #d1d5db",
+                      background: statusFilter === f ? "#eff6ff" : "#ffffff",
+                      color: statusFilter === f ? "#1d4ed8" : "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {f === "new" ? "New only" : f === "imported" ? "Already imported" : "All"}
+                  </button>
+                ))}
+              </div>
+              <div style={{ width: 1, alignSelf: "stretch", background: "#e5e7eb" }} />
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: "#374151", cursor: "pointer" }}>
+                <input type="checkbox" checked={showStudents} onChange={(e) => setShowStudents(e.target.checked)} />
+                Students
+              </label>
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: "#374151", cursor: "pointer" }}>
+                <input type="checkbox" checked={showPayments} onChange={(e) => setShowPayments(e.target.checked)} />
+                Payments
+              </label>
             </div>
-            <div style={{ width: 1, alignSelf: "stretch", background: "#e5e7eb" }} />
-            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: "#374151", cursor: "pointer" }}>
-              <input type="checkbox" checked={showStudents} onChange={(e) => setShowStudents(e.target.checked)} />
-              Students
-            </label>
-            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: "#374151", cursor: "pointer" }}>
-              <input type="checkbox" checked={showPayments} onChange={(e) => setShowPayments(e.target.checked)} />
-              Payments
-            </label>
+
+            <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, admission no, receipt, phone…"
+                style={{ fontSize: 13, padding: "7px 12px", borderRadius: 8, border: "1px solid #d1d5db", minWidth: 240 }}
+              />
+
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Branch:</span>
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid #d1d5db", color: "#374151" }}
+                >
+                  <option value="all">All branches</option>
+                  {branchOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b === UNKNOWN_BRANCH ? "Unrecognized / unknown" : b}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Duplicates / uncertain:</span>
+                {([
+                  ["all", "All"],
+                  ["hide", "Ignore"],
+                  ["only", "Only these"],
+                ] as [FlagFilter, string][]).map(([f, label]) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFlagFilter(f)}
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      padding: "6px 12px",
+                      borderRadius: 999,
+                      border: flagFilter === f ? "1px solid #b45309" : "1px solid #d1d5db",
+                      background: flagFilter === f ? "#fffbeb" : "#ffffff",
+                      color: flagFilter === f ? "#92400e" : "#374151",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, color: "#374151", cursor: "pointer" }}>
+                <input type="checkbox" checked={missingOnly} onChange={(e) => setMissingOnly(e.target.checked)} />
+                Missing a field (unrecognized branch/class, no phone, or no collector/reference)
+              </label>
+            </div>
           </div>
 
           {showStudents && (
@@ -390,8 +496,10 @@ export function SheetSyncClient() {
                       <tr style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left" }}>
                         <th style={thStyle}></th>
                         <th style={thStyle}>#</th>
+                        <SortHeader label="Date" sortKey="date" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
                         <SortHeader label="Receipt" sortKey="receipt" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
                         <SortHeader label="Student" sortKey="name" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
+                        <SortHeader label="Branch" sortKey="branch" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
                         <SortHeader label="Amount" sortKey="amount" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
                         <SortHeader label="Mode / For" sortKey="mode" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
                         <SortHeader label="Collected by" sortKey="collectedBy" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
@@ -419,17 +527,22 @@ export function SheetSyncClient() {
                               )}
                             </td>
                             <td style={tdStyle}>{i + 1}</td>
+                            <td style={tdStyle}>{formatDate(row.paymentDate)}</td>
                             <td style={tdStyle}>{row.receipt}</td>
                             <td style={tdStyle}>
                               {row.name}
                               <div style={{ color: "#6b7280" }}>{row.admNo}</div>
                             </td>
+                            <td style={tdStyle}>{row.branchCode || <span style={{ color: "#b91c1c" }}>unknown</span>}</td>
                             <td style={tdStyle}>₹{row.amount.toLocaleString("en-IN")}</td>
                             <td style={tdStyle}>
                               {row.mode}
                               <div style={{ color: "#6b7280" }}>{row.feeHead}</div>
                             </td>
-                            <td style={tdStyle}>{row.collectedBy || "—"}</td>
+                            <td style={tdStyle}>
+                              {row.collectedBy || <span style={{ color: "#b91c1c" }}>missing</span>}
+                              {row.mode !== "Cash" && !row.reference && <div style={{ color: "#b91c1c" }}>no reference</div>}
+                            </td>
                             <td style={tdStyle}>
                               {row.status === "imported" ? (
                                 <span style={{ color: "#6b7280" }}>

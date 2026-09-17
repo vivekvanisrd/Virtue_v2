@@ -205,6 +205,14 @@ export default function HelpPage() {
             import didn't keep receipt numbers, so this is the only way to recognize those as already done). Click any
             column header to sort by it; click again to reverse the order.
           </P>
+          <P>
+            Beyond the Show filter, there's a search box (name, admission number, receipt, or phone), a{" "}
+            <strong>Branch</strong> filter, a <strong>Duplicates / uncertain</strong> filter — "Only these" isolates rows
+            flagged as a possible duplicate student (student list) or an unconfirmed/guessed match (payment list), and
+            "Ignore" hides them so you can focus on the clean ones — and a <strong>Missing a field</strong> checkbox for
+            rows with an unrecognized branch or class, no phone number, or (for payments) no collector name or no
+            transaction reference. All of these combine with each other and with the Show filter at the same time.
+          </P>
         </Section>
 
         <Section id="faq" title="Frequently asked questions">
