@@ -211,7 +211,16 @@ export default function HelpPage() {
             flagged as a possible duplicate student (student list) or an unconfirmed/guessed match (payment list), and
             "Ignore" hides them so you can focus on the clean ones — and a <strong>Missing a field</strong> checkbox for
             rows with an unrecognized branch or class, no phone number, or (for payments) no collector name or no
-            transaction reference. All of these combine with each other and with the Show filter at the same time.
+            transaction reference. Students also get a <strong>Class</strong> filter, and payments get a{" "}
+            <strong>Mode</strong> filter (Cash/Online) and a min–max <strong>Amount</strong> range. All of these combine
+            with each other and with the Show filter at the same time.
+          </P>
+          <P>
+            The checkbox in each table's header row selects (or clears) every row currently visible and eligible under
+            whatever filters are active — handy for ticking a whole class or branch at once instead of one row at a time.
+            A row can't be ticked at all if its sheet Status/Entry Status is anything other than blank or "Active" — shown
+            as a red ⛔ warning — since that's the sheet's own signal that the row shouldn't be treated as a normal active
+            record.
           </P>
         </Section>
 

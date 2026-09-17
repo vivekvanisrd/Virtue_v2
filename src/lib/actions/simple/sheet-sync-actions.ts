@@ -153,10 +153,21 @@ type SheetStudentRow = {
   concession: number;
   tuitionFee: number;
   transportFee: number;
+  sheetStatus: string;
 };
 
+// A blank Status cell is treated as fine (most rows in this sheet leave it
+// blank and are genuinely active) — only an EXPLICIT non-"Active" value (e.g.
+// a future "Left"/"Inactive"/"Cancelled") blocks import. Verified against the
+// live sheet on 2026-09-17: every populated value today is "Active", so this
+// is a safety net for data that doesn't exist yet, not a fix for a live bug.
+function isSheetStatusOk(raw: string): boolean {
+  const s = raw.trim().toLowerCase();
+  return s === "" || s === "active";
+}
+
 // STUDENT_MASTER: header row 0, data from row 1.
-// ID | Student Name | Parent Name | Contact | Branch | Class | Stop Name | Admission Fee | Concession | Tuition Fee | Transport Fee | ...
+// ID | Student Name | Parent Name | Contact | Branch | Class | Stop Name | Admission Fee | Concession | Tuition Fee | Transport Fee | Admission Fee | Total Due | Joining Date | Leaving Date | Status | Pending Dues
 function parseStudentMaster(wb: XLSX.WorkBook): SheetStudentRow[] {
   const rows = loadRaw(wb, "STUDENT_MASTER");
   const out: SheetStudentRow[] = [];
@@ -176,6 +187,7 @@ function parseStudentMaster(wb: XLSX.WorkBook): SheetStudentRow[] {
       concession: Number(r[8]) || 0,
       tuitionFee: Number(r[9]) || 0,
       transportFee: Number(r[10]) || 0,
+      sheetStatus: String(r[15] || "").trim(),
     });
   }
   return out;
@@ -193,10 +205,11 @@ type SheetPaymentRow = {
   collectedBy: string;
   reference: string;
   paymentDate: string | null;
+  entryStatus: string;
 };
 
 // FEE_COLLECTION: header row 1, data from row 2.
-// SlNo | Date | Receipt No | Admi No | Student Name | Cash | Online | Total | Payment For | Fee Head | Collected By | Transaction Ref | ...
+// SlNo | Date | Receipt No | Admi No | Student Name | Cash | Online | Total | Payment For | Fee Head | Collected By | Transaction Ref | Entry Status | Pending Amount | Remarks
 function parseFeeCollection(wb: XLSX.WorkBook): SheetPaymentRow[] {
   const rows = loadRaw(wb, "FEE_COLLECTION");
   const out: SheetPaymentRow[] = [];
@@ -211,6 +224,7 @@ function parseFeeCollection(wb: XLSX.WorkBook): SheetPaymentRow[] {
       admNo,
       cleanedAdmNo: cleanAdmNo(admNo),
       name,
+      entryStatus: String(r[12] || "").trim(),
       cash: Number(r[5]) || 0,
       online: Number(r[6]) || 0,
       amount: Number(r[7]) || 0,
@@ -326,6 +340,8 @@ export async function checkSheetForUpdates() {
           phoneMatch: null,
           looksLikeDuplicate: false,
           hasMissingData: false,
+          sheetStatus: row.sheetStatus,
+          sheetStatusOk: true,
           resolvedBranchId: null,
           resolvedClassName: null,
           tuitionFee: row.tuitionFee,
@@ -371,6 +387,8 @@ export async function checkSheetForUpdates() {
         // make this filter useless. An unrecognized branch/class or a missing
         // phone number are the actual, selective gaps worth a second look.
         hasMissingData: !resolvedBranchId || !resolvedClassName || !row.phone,
+        sheetStatus: row.sheetStatus,
+        sheetStatusOk: isSheetStatusOk(row.sheetStatus),
       });
     }
 
@@ -409,6 +427,8 @@ export async function checkSheetForUpdates() {
           matchMethod: matchedByReceipt ? ("receipt" as const) : ("amount" as const),
           looksUncertain: false,
           hasMissingData: false,
+          entryStatus: row.entryStatus,
+          entryStatusOk: true,
         });
         continue;
       }
@@ -434,6 +454,8 @@ export async function checkSheetForUpdates() {
         matchMethod: null,
         looksUncertain,
         hasMissingData: !row.collectedBy || !row.amount || (mode !== "Cash" && !row.reference),
+        entryStatus: row.entryStatus,
+        entryStatusOk: isSheetStatusOk(row.entryStatus),
       });
     }
 
@@ -500,6 +522,10 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
       const row = sheetStudents.find((r) => r.sheetId === sheetId);
       if (!row) {
         results.push({ label: sheetId, success: false, message: "Row no longer found in the sheet." });
+        continue;
+      }
+      if (!isSheetStatusOk(row.sheetStatus)) {
+        results.push({ label: `${row.name} (${sheetId})`, success: false, message: `Sheet status is "${row.sheetStatus}" — not imported.` });
         continue;
       }
 
@@ -618,6 +644,10 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
       const row = sheetPayments.find((r) => r.receipt === receipt);
       if (!row) {
         results.push({ label: `Receipt ${receipt}`, success: false, message: "Row no longer found in the sheet." });
+        continue;
+      }
+      if (!isSheetStatusOk(row.entryStatus)) {
+        results.push({ label: `${row.name} — receipt ${receipt}`, success: false, message: `Entry Status is "${row.entryStatus}" — not imported.` });
         continue;
       }
 

@@ -87,6 +87,10 @@ export function SheetSyncClient() {
   const [showPayments, setShowPayments] = useState(true);
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [classFilter, setClassFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
   const [flagFilter, setFlagFilter] = useState<FlagFilter>("all");
   const [missingOnly, setMissingOnly] = useState(false);
 
@@ -134,6 +138,14 @@ export function SheetSyncClient() {
     setSet(next);
   }
 
+  function toggleAll(ids: string[], set: Set<string>, setSet: (s: Set<string>) => void) {
+    const allSelected = ids.length > 0 && ids.every((id) => set.has(id));
+    const next = new Set(set);
+    if (allSelected) ids.forEach((id) => next.delete(id));
+    else ids.forEach((id) => next.add(id));
+    setSet(next);
+  }
+
   const totalSelected = selectedStudents.size + selectedPayments.size;
 
   const branchOptions = useMemo(() => {
@@ -144,13 +156,24 @@ export function SheetSyncClient() {
     return [...codes].sort();
   }, [data]);
 
+  const classOptions = useMemo(() => {
+    if (!data) return [];
+    const names = new Set<string>();
+    for (const s of data.students) names.add(s.resolvedClassName || s.className || UNKNOWN_BRANCH);
+    return [...names].sort();
+  }, [data]);
+
   const searchLower = search.trim().toLowerCase();
+
+  const minAmountNum = minAmount.trim() ? Number(minAmount) : null;
+  const maxAmountNum = maxAmount.trim() ? Number(maxAmount) : null;
 
   const filteredStudents = useMemo(() => {
     if (!data) return [];
     return data.students.filter((s) => {
       if (statusFilter !== "all" && s.status !== statusFilter) return false;
       if (branchFilter !== "all" && (s.branchCode || UNKNOWN_BRANCH) !== branchFilter) return false;
+      if (classFilter !== "all" && (s.resolvedClassName || s.className || UNKNOWN_BRANCH) !== classFilter) return false;
       if (flagFilter === "hide" && s.looksLikeDuplicate) return false;
       if (flagFilter === "only" && !s.looksLikeDuplicate) return false;
       if (missingOnly && !s.hasMissingData) return false;
@@ -160,13 +183,16 @@ export function SheetSyncClient() {
       }
       return true;
     });
-  }, [data, statusFilter, branchFilter, flagFilter, missingOnly, searchLower]);
+  }, [data, statusFilter, branchFilter, classFilter, flagFilter, missingOnly, searchLower]);
 
   const filteredPayments = useMemo(() => {
     if (!data) return [];
     return data.payments.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (branchFilter !== "all" && (p.branchCode || UNKNOWN_BRANCH) !== branchFilter) return false;
+      if (modeFilter !== "all" && p.mode !== modeFilter) return false;
+      if (minAmountNum !== null && p.amount < minAmountNum) return false;
+      if (maxAmountNum !== null && p.amount > maxAmountNum) return false;
       if (flagFilter === "hide" && p.looksUncertain) return false;
       if (flagFilter === "only" && !p.looksUncertain) return false;
       if (missingOnly && !p.hasMissingData) return false;
@@ -176,7 +202,7 @@ export function SheetSyncClient() {
       }
       return true;
     });
-  }, [data, statusFilter, branchFilter, flagFilter, missingOnly, searchLower]);
+  }, [data, statusFilter, branchFilter, modeFilter, minAmountNum, maxAmountNum, flagFilter, missingOnly, searchLower]);
 
   const studentSort = useSort<StudentRow>(
     filteredStudents,
@@ -230,6 +256,14 @@ export function SheetSyncClient() {
 
   const newStudentCount = data ? data.students.filter((s) => s.status === "new").length : 0;
   const newPaymentCount = data ? data.payments.filter((p) => p.status === "new").length : 0;
+
+  const eligibleStudentIds = filteredStudents.filter((s) => s.status === "new" && s.sheetStatusOk).map((s) => s.sheetId);
+  const allStudentsSelected = eligibleStudentIds.length > 0 && eligibleStudentIds.every((id) => selectedStudents.has(id));
+
+  const eligiblePaymentIds = filteredPayments
+    .filter((p) => p.status === "new" && p.entryStatusOk && (!!p.matchedStudent || selectedStudents.has(p.admNo)))
+    .map((p) => p.receipt);
+  const allPaymentsSelected = eligiblePaymentIds.length > 0 && eligiblePaymentIds.every((id) => selectedPayments.has(id));
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
@@ -359,6 +393,60 @@ export function SheetSyncClient() {
                 </select>
               </div>
 
+              {showStudents && (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Class:</span>
+                  <select
+                    value={classFilter}
+                    onChange={(e) => setClassFilter(e.target.value)}
+                    style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid #d1d5db", color: "#374151" }}
+                  >
+                    <option value="all">All classes</option>
+                    {classOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {c === UNKNOWN_BRANCH ? "Unrecognized / unknown" : c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {showPayments && (
+                <>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Mode:</span>
+                    <select
+                      value={modeFilter}
+                      onChange={(e) => setModeFilter(e.target.value)}
+                      style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid #d1d5db", color: "#374151" }}
+                    >
+                      <option value="all">Cash + Online</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Online">Online</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Amount ₹:</span>
+                    <input
+                      type="number"
+                      value={minAmount}
+                      onChange={(e) => setMinAmount(e.target.value)}
+                      placeholder="min"
+                      style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid #d1d5db", width: 80 }}
+                    />
+                    <span style={{ color: "#9ca3af" }}>–</span>
+                    <input
+                      type="number"
+                      value={maxAmount}
+                      onChange={(e) => setMaxAmount(e.target.value)}
+                      placeholder="max"
+                      style={{ fontSize: 13, padding: "6px 10px", borderRadius: 8, border: "1px solid #d1d5db", width: 80 }}
+                    />
+                  </div>
+                </>
+              )}
+
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Duplicates / uncertain:</span>
                 {([
@@ -405,7 +493,15 @@ export function SheetSyncClient() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left" }}>
-                        <th style={thStyle}></th>
+                        <th style={thStyle}>
+                          <input
+                            type="checkbox"
+                            title="Select all visible, eligible rows"
+                            checked={allStudentsSelected}
+                            disabled={eligibleStudentIds.length === 0}
+                            onChange={() => toggleAll(eligibleStudentIds, selectedStudents, setSelectedStudents)}
+                          />
+                        </th>
                         <th style={thStyle}>#</th>
                         <SortHeader label="Adm No" sortKey="sheetId" activeKey={studentSort.sortKey} dir={studentSort.sortDir} onSort={studentSort.onSort} />
                         <SortHeader label="Name" sortKey="name" activeKey={studentSort.sortKey} dir={studentSort.sortDir} onSort={studentSort.onSort} />
@@ -422,6 +518,10 @@ export function SheetSyncClient() {
                           <td style={tdStyle}>
                             {row.status === "imported" ? (
                               <span title="Already in the ERP" style={{ color: "#9ca3af" }}>
+                                —
+                              </span>
+                            ) : !row.sheetStatusOk ? (
+                              <span title={`Sheet status: ${row.sheetStatus}`} style={{ color: "#9ca3af" }}>
                                 —
                               </span>
                             ) : (
@@ -455,6 +555,8 @@ export function SheetSyncClient() {
                               <span style={{ color: "#6b7280" }}>
                                 ✓ Imported {row.matchedStudent ? `— ${row.matchedStudent.name} (${row.matchedStudent.admissionNumber})` : ""}
                               </span>
+                            ) : !row.sheetStatusOk ? (
+                              <span style={{ color: "#b91c1c", fontWeight: 600 }}>⛔ Sheet status "{row.sheetStatus}" — not imported</span>
                             ) : row.looksLikeDuplicate ? (
                               <div style={{ color: "#b45309", fontWeight: 600 }}>
                                 ⚠️ Possible duplicate
@@ -494,7 +596,15 @@ export function SheetSyncClient() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #e5e7eb", textAlign: "left" }}>
-                        <th style={thStyle}></th>
+                        <th style={thStyle}>
+                          <input
+                            type="checkbox"
+                            title="Select all visible, eligible rows"
+                            checked={allPaymentsSelected}
+                            disabled={eligiblePaymentIds.length === 0}
+                            onChange={() => toggleAll(eligiblePaymentIds, selectedPayments, setSelectedPayments)}
+                          />
+                        </th>
                         <th style={thStyle}>#</th>
                         <SortHeader label="Date" sortKey="date" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
                         <SortHeader label="Receipt" sortKey="receipt" activeKey={paymentSort.sortKey} dir={paymentSort.sortDir} onSort={paymentSort.onSort} />
@@ -509,12 +619,16 @@ export function SheetSyncClient() {
                     <tbody>
                       {paymentSort.sorted.map((row, i) => {
                         const isNewStudentInThisBatch = filteredStudents.some((s) => s.sheetId === row.admNo && selectedStudents.has(s.sheetId));
-                        const canImport = row.status === "new" && (!!row.matchedStudent || isNewStudentInThisBatch);
+                        const canImport = row.status === "new" && row.entryStatusOk && (!!row.matchedStudent || isNewStudentInThisBatch);
                         return (
                           <tr key={`${row.receipt}-${i}`} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 1 ? "#f8fafc" : undefined }}>
                             <td style={tdStyle}>
                               {row.status === "imported" ? (
                                 <span title="Already recorded" style={{ color: "#9ca3af" }}>
+                                  —
+                                </span>
+                              ) : !row.entryStatusOk ? (
+                                <span title={`Entry Status: ${row.entryStatus}`} style={{ color: "#9ca3af" }}>
                                   —
                                 </span>
                               ) : (
@@ -554,6 +668,8 @@ export function SheetSyncClient() {
                                     </div>
                                   )}
                                 </span>
+                              ) : !row.entryStatusOk ? (
+                                <span style={{ color: "#b91c1c", fontWeight: 600 }}>⛔ Entry Status "{row.entryStatus}" — not imported</span>
                               ) : row.matchedStudent ? (
                                 <span style={{ color: row.matchIsExact ? "#15803d" : "#b45309" }}>
                                   {row.matchIsExact ? "✅" : "⚠️ guess —"} {row.matchedStudent.name} ({row.matchedStudent.admissionNumber})
