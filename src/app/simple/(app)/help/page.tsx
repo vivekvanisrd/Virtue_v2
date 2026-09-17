@@ -222,6 +222,14 @@ export default function HelpPage() {
             as a red ⛔ warning — since that's the sheet's own signal that the row shouldn't be treated as a normal active
             record.
           </P>
+          <P>
+            Each table shows 50 rows per page — use the Prev/Next controls under a table to page through the rest.
+            Selecting "all visible" still selects every matching row across every page, not just the one you're looking
+            at. <strong>View sync log</strong> at the bottom of the page shows the last few hundred sync actions —
+            who did what, when, and whether it succeeded — so there's a record beyond the one-time result banner. If two
+            people try to sync at the same moment, the second one is told to wait a moment rather than risking a
+            double-import.
+          </P>
         </Section>
 
         <Section id="faq" title="Frequently asked questions">

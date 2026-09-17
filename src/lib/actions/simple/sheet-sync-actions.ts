@@ -498,6 +498,77 @@ export async function getLastSheetCheckSummary() {
   }
 }
 
+const SYNC_LOCK_KEY = "simple_sheet_sync_lock";
+const SYNC_LOCK_STALE_MS = 2 * 60 * 1000; // a crashed/aborted sync shouldn't jam this forever
+const AUDIT_LOG_KEY = "simple_sheet_sync_audit_log";
+const AUDIT_LOG_MAX_ENTRIES = 300;
+
+type AuditLogEntry = {
+  at: string;
+  actor: string;
+  role: string;
+  type: "student" | "payment";
+  label: string;
+  success: boolean;
+  message: string;
+};
+
+/**
+ * Two admins syncing at the same moment could both pass the "already
+ * exists?" check before either one writes, since there's no DB-level unique
+ * constraint on admissionNumber or bookReceiptNo backing this up. This is a
+ * lightweight advisory lock (not a DB transaction) — good enough for a
+ * manual, occasional admin action, not meant to hold up under real
+ * concurrent load.
+ */
+async function acquireSyncLock(schoolId: string, actor: string): Promise<{ ok: true } | { ok: false; heldBy: string; since: string }> {
+  const existing = await prisma.globalSetting.findUnique({ where: { schoolId_key: { schoolId, key: SYNC_LOCK_KEY } } });
+  if (existing) {
+    const parsed = JSON.parse(existing.value) as { actor: string; at: string };
+    const age = Date.now() - new Date(parsed.at).getTime();
+    if (age < SYNC_LOCK_STALE_MS) {
+      return { ok: false, heldBy: parsed.actor, since: parsed.at };
+    }
+  }
+  await prisma.globalSetting.upsert({
+    where: { schoolId_key: { schoolId, key: SYNC_LOCK_KEY } },
+    update: { value: JSON.stringify({ actor, at: new Date().toISOString() }) },
+    create: { schoolId, key: SYNC_LOCK_KEY, value: JSON.stringify({ actor, at: new Date().toISOString() }) },
+  });
+  return { ok: true };
+}
+
+async function releaseSyncLock(schoolId: string) {
+  await prisma.globalSetting.deleteMany({ where: { schoolId, key: SYNC_LOCK_KEY } });
+}
+
+async function appendAuditLog(schoolId: string, entries: AuditLogEntry[]) {
+  if (entries.length === 0) return;
+  const existing = await prisma.globalSetting.findUnique({ where: { schoolId_key: { schoolId, key: AUDIT_LOG_KEY } } });
+  const prior: AuditLogEntry[] = existing ? JSON.parse(existing.value) : [];
+  const combined = [...prior, ...entries].slice(-AUDIT_LOG_MAX_ENTRIES);
+  await prisma.globalSetting.upsert({
+    where: { schoolId_key: { schoolId, key: AUDIT_LOG_KEY } },
+    update: { value: JSON.stringify(combined) },
+    create: { schoolId, key: AUDIT_LOG_KEY, value: JSON.stringify(combined) },
+  });
+}
+
+/** Most recent sync activity, newest first — who synced what, and when. */
+export async function getSheetSyncAuditLog() {
+  try {
+    const identity = await requireIdentity();
+    if (!MANAGER_ROLES.has(identity.role)) {
+      return { success: false as const, error: "Only Owner, Developer, or Platform Admin can view the sync log." };
+    }
+    const setting = await prisma.globalSetting.findUnique({ where: { schoolId_key: { schoolId: identity.schoolId, key: AUDIT_LOG_KEY } } });
+    const entries: AuditLogEntry[] = setting ? JSON.parse(setting.value) : [];
+    return { success: true as const, data: [...entries].reverse() };
+  } catch (error: any) {
+    return { success: false as const, error: error.message ?? "Could not load the sync log." };
+  }
+}
+
 /**
  * Writes exactly the rows the human ticked — re-fetches and re-resolves the
  * sheet fresh rather than trusting the client's cached review screen, so a
@@ -511,6 +582,32 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
       return { success: false as const, error: "Only Owner, Developer, or Platform Admin can sync sheet data." };
     }
 
+    const actorLabel = identity.name || identity.role;
+    const lock = await acquireSyncLock(identity.schoolId, actorLabel);
+    if (lock.ok === false) {
+      const secondsAgo = Math.round((Date.now() - new Date(lock.since).getTime()) / 1000);
+      return {
+        success: false as const,
+        error: `${lock.heldBy} started a sync ${secondsAgo}s ago and it's still running — try again in a moment.`,
+      };
+    }
+
+    try {
+      return await runSync(identity, input, actorLabel);
+    } finally {
+      await releaseSyncLock(identity.schoolId);
+    }
+  } catch (error: any) {
+    return { success: false as const, error: error.message ?? "Sync failed." };
+  }
+}
+
+async function runSync(
+  identity: Awaited<ReturnType<typeof requireIdentity>>,
+  input: { newStudentSheetIds: string[]; newPaymentReceipts: string[] },
+  actorLabel: string
+) {
+  try {
     const wb = await fetchSheetWorkbook();
     const sheetStudents = parseStudentMaster(wb);
     const sheetPayments = parseFeeCollection(wb);
@@ -639,6 +736,8 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
       results.push({ label: `${row.name} (${sheetId})`, success: true, message: `Created${classNote}${tuitionNote}.` });
     }
 
+    const studentResultsCount = results.length;
+
     const { recordPayment } = await import("./fee-actions");
     for (const receipt of input.newPaymentReceipts || []) {
       const row = sheetPayments.find((r) => r.receipt === receipt);
@@ -711,6 +810,19 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
 
     revalidatePath("/simple");
     revalidatePath("/simple/students");
+
+    const now = new Date().toISOString();
+    const auditEntries: AuditLogEntry[] = results.map((r, i) => ({
+      at: now,
+      actor: actorLabel,
+      role: identity.role,
+      type: i < studentResultsCount ? "student" : "payment",
+      label: r.label,
+      success: r.success,
+      message: r.message,
+    }));
+    await appendAuditLog(identity.schoolId, auditEntries);
+
     return { success: true as const, results };
   } catch (error: any) {
     return { success: false as const, error: error.message ?? "Sync failed." };

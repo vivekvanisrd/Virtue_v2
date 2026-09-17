@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { checkSheetForUpdates, syncSelectedSheetRows } from "@/lib/actions/simple/sheet-sync-actions";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { checkSheetForUpdates, syncSelectedSheetRows, getSheetSyncAuditLog } from "@/lib/actions/simple/sheet-sync-actions";
 
 type CheckResult = Awaited<ReturnType<typeof checkSheetForUpdates>>;
 type CheckData = Extract<CheckResult, { success: true }>["data"];
 type StudentRow = CheckData["students"][number];
 type PaymentRow = CheckData["payments"][number];
 type SyncResult = Awaited<ReturnType<typeof syncSelectedSheetRows>>;
+type AuditLogResult = Awaited<ReturnType<typeof getSheetSyncAuditLog>>;
+type AuditLogEntry = Extract<AuditLogResult, { success: true }>["data"][number];
 
 type StatusFilter = "new" | "imported" | "all";
 type FlagFilter = "all" | "hide" | "only";
 type SortDir = "asc" | "desc";
 const UNKNOWN_BRANCH = "__unknown__";
+const PAGE_SIZE = 50;
 
 function dateValue(iso: string | null): number {
   return iso ? new Date(iso).getTime() : 0;
@@ -47,6 +50,33 @@ function useSort<T>(rows: T[], getValue: (row: T, key: string) => string | numbe
   }, [rows, sortKey, sortDir]);
 
   return { sorted, sortKey, sortDir, onSort };
+}
+
+function Pager({ page, totalPages, onChange, totalRows }: { page: number; totalPages: number; onChange: (p: number) => void; totalRows: number }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end", padding: "10px 4px", fontSize: 13, color: "#374151" }}>
+      <span>
+        Page {page} of {totalPages} ({totalRows} rows)
+      </span>
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+        style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid #d1d5db", background: "#ffffff", cursor: page <= 1 ? "default" : "pointer", opacity: page <= 1 ? 0.5 : 1 }}
+      >
+        ← Prev
+      </button>
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={() => onChange(page + 1)}
+        style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid #d1d5db", background: "#ffffff", cursor: page >= totalPages ? "default" : "pointer", opacity: page >= totalPages ? 0.5 : 1 }}
+      >
+        Next →
+      </button>
+    </div>
+  );
 }
 
 function SortHeader({ label, sortKey, activeKey, dir, onSort }: { label: string; sortKey: string; activeKey: string; dir: SortDir; onSort: (k: string) => void }) {
@@ -93,6 +123,10 @@ export function SheetSyncClient() {
   const [maxAmount, setMaxAmount] = useState("");
   const [flagFilter, setFlagFilter] = useState<FlagFilter>("all");
   const [missingOnly, setMissingOnly] = useState(false);
+  const [studentPage, setStudentPage] = useState(1);
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   function runCheck() {
     setError(null);
@@ -125,9 +159,18 @@ export function SheetSyncClient() {
           setSelectedStudents(new Set());
           setSelectedPayments(new Set());
         }
+        const log = await getSheetSyncAuditLog();
+        if (log.success) setAuditLog(log.data);
       } else {
         setError(res.error);
       }
+    });
+  }
+
+  function loadAuditLog() {
+    startTransition(async () => {
+      const res = await getSheetSyncAuditLog();
+      if (res.success) setAuditLog(res.data);
     });
   }
 
@@ -264,6 +307,22 @@ export function SheetSyncClient() {
     .filter((p) => p.status === "new" && p.entryStatusOk && (!!p.matchedStudent || selectedStudents.has(p.admNo)))
     .map((p) => p.receipt);
   const allPaymentsSelected = eligiblePaymentIds.length > 0 && eligiblePaymentIds.every((id) => selectedPayments.has(id));
+
+  // Keeps the current page from pointing past the end (or lingering on a
+  // stale page) whenever a filter narrows or widens the result set.
+  useEffect(() => {
+    setStudentPage(1);
+  }, [statusFilter, branchFilter, classFilter, flagFilter, missingOnly, searchLower]);
+  useEffect(() => {
+    setPaymentPage(1);
+  }, [statusFilter, branchFilter, modeFilter, minAmountNum, maxAmountNum, flagFilter, missingOnly, searchLower]);
+
+  const studentTotalPages = Math.max(1, Math.ceil(studentSort.sorted.length / PAGE_SIZE));
+  const paymentTotalPages = Math.max(1, Math.ceil(paymentSort.sorted.length / PAGE_SIZE));
+  const studentPageClamped = Math.min(studentPage, studentTotalPages);
+  const paymentPageClamped = Math.min(paymentPage, paymentTotalPages);
+  const studentPageRows = studentSort.sorted.slice((studentPageClamped - 1) * PAGE_SIZE, studentPageClamped * PAGE_SIZE);
+  const paymentPageRows = paymentSort.sorted.slice((paymentPageClamped - 1) * PAGE_SIZE, paymentPageClamped * PAGE_SIZE);
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
@@ -513,7 +572,7 @@ export function SheetSyncClient() {
                       </tr>
                     </thead>
                     <tbody>
-                      {studentSort.sorted.map((row, i) => (
+                      {studentPageRows.map((row, i) => (
                         <tr key={`${row.sheetId}-${i}`} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 1 ? "#f8fafc" : undefined }}>
                           <td style={tdStyle}>
                             {row.status === "imported" ? (
@@ -532,7 +591,7 @@ export function SheetSyncClient() {
                               />
                             )}
                           </td>
-                          <td style={tdStyle}>{i + 1}</td>
+                          <td style={tdStyle}>{(studentPageClamped - 1) * PAGE_SIZE + i + 1}</td>
                           <td style={tdStyle}>{row.sheetId}</td>
                           <td style={tdStyle}>{row.name}</td>
                           <td style={tdStyle}>
@@ -579,6 +638,7 @@ export function SheetSyncClient() {
                       ))}
                     </tbody>
                   </table>
+                  <Pager page={studentPageClamped} totalPages={studentTotalPages} totalRows={studentSort.sorted.length} onChange={setStudentPage} />
                 </div>
               )}
             </section>
@@ -617,7 +677,7 @@ export function SheetSyncClient() {
                       </tr>
                     </thead>
                     <tbody>
-                      {paymentSort.sorted.map((row, i) => {
+                      {paymentPageRows.map((row, i) => {
                         const isNewStudentInThisBatch = filteredStudents.some((s) => s.sheetId === row.admNo && selectedStudents.has(s.sheetId));
                         const canImport = row.status === "new" && row.entryStatusOk && (!!row.matchedStudent || isNewStudentInThisBatch);
                         return (
@@ -640,7 +700,7 @@ export function SheetSyncClient() {
                                 />
                               )}
                             </td>
-                            <td style={tdStyle}>{i + 1}</td>
+                            <td style={tdStyle}>{(paymentPageClamped - 1) * PAGE_SIZE + i + 1}</td>
                             <td style={tdStyle}>{formatDate(row.paymentDate)}</td>
                             <td style={tdStyle}>{row.receipt}</td>
                             <td style={tdStyle}>
@@ -685,12 +745,13 @@ export function SheetSyncClient() {
                       })}
                     </tbody>
                   </table>
+                  <Pager page={paymentPageClamped} totalPages={paymentTotalPages} totalRows={paymentSort.sorted.length} onChange={setPaymentPage} />
                 </div>
               )}
             </section>
           )}
 
-          <div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <button
               type="button"
               disabled={isPending || totalSelected === 0}
@@ -708,7 +769,45 @@ export function SheetSyncClient() {
             >
               {isPending ? "Syncing…" : `Sync ${totalSelected} selected row(s)`}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showAuditLog;
+                setShowAuditLog(next);
+                if (next && auditLog.length === 0) loadAuditLog();
+              }}
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "1px solid #d1d5db",
+                background: "#ffffff",
+                color: "#374151",
+                cursor: "pointer",
+              }}
+            >
+              {showAuditLog ? "Hide sync log" : "View sync log"}
+            </button>
           </div>
+
+          {showAuditLog && (
+            <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 16, display: "grid", gap: 8 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#111827" }}>Recent sync activity</h2>
+              {auditLog.length === 0 ? (
+                <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>Nothing synced yet.</p>
+              ) : (
+                <div style={{ maxHeight: 320, overflowY: "auto", display: "grid", gap: 4 }}>
+                  {auditLog.map((entry, i) => (
+                    <div key={i} style={{ fontSize: 13, padding: "6px 0", borderBottom: "1px solid #f3f4f6", color: entry.success ? "#166534" : "#b91c1c" }}>
+                      <strong>{new Date(entry.at).toLocaleString("en-IN")}</strong> — {entry.actor} ({entry.role}) {entry.success ? "✅" : "⚠️"}{" "}
+                      <span style={{ textTransform: "capitalize" }}>{entry.type}</span>: {entry.label} — {entry.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
