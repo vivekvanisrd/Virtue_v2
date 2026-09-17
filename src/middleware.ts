@@ -63,7 +63,13 @@ export async function middleware(request: NextRequest) {
   // /simple/login is the Fees & Students module's own sign-in page — it has
   // to be reachable without a session, even though everything else under
   // /simple is gated.
-  const isProtectedRoute = pathname !== '/simple/login' && protectedRoutes.some(route => pathname.startsWith(route));
+  // A plain `pathname.startsWith(route)` would also match a same-prefixed
+  // sibling like `/simple-manifest.json` (the module's own PWA manifest,
+  // served from /public) and incorrectly redirect it to /login — a real bug
+  // this route-boundary check exists to prevent.
+  const isProtectedRoute =
+    pathname !== '/simple/login' &&
+    protectedRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
 
   // Redirect to login if accessing protected route without session
   if (isProtectedRoute && !user) {

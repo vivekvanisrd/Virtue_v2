@@ -1,9 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Smartphone, Download, Share2, PlusSquare } from "lucide-react";
 
 export function PWAInstallBlocker() {
+  const pathname = usePathname();
+  // The Fees & Students module (/simple) installs as its own separate PWA
+  // (see src/app/simple/layout.tsx + public/simple-manifest.json) — this
+  // blocker's install instructions are for the main "Virtue Dashboard" app
+  // and would send /simple's users to install the wrong one.
+  const isSimpleModule = pathname?.startsWith("/simple") ?? false;
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -68,7 +75,7 @@ export function PWAInstallBlocker() {
   };
 
   // If not on mobile, or already running in PWA standalone, or bypassed by developer, do not block
-  if (!isMobileDevice || isStandalone || bypassed) {
+  if (!isMobileDevice || isStandalone || bypassed || isSimpleModule) {
     return null;
   }
 
