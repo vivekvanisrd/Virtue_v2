@@ -262,15 +262,58 @@ export async function checkSheetForUpdates() {
     });
     const importedReceiptSet = new Set(existingReceipts.map((c) => c.bookReceiptNo).filter(Boolean) as string[]);
 
-    const newStudents = [];
+    // The ORIGINAL one-time bulk import (before this Sheet Sync tool existed)
+    // wrote 342 of the school's 615 real collections with no bookReceiptNo at
+    // all — tagged `allocatedTo.auditMeta.source === "legacy-import"` instead,
+    // carrying a synthetic receiptNumber like "LEGACY-VR1254-Term1-C". Receipt-
+    // number matching alone is blind to every one of those, which would make
+    // "New only" show over half the sheet's real history as still-pending.
+    // Close that gap with a second, amount-based check: same student + same
+    // amount + same fee head as an existing collection is treated as already
+    // covered, even with no receipt number on file.
+    const allCollections = await prisma.collection.findMany({
+      where: { schoolId: identity.schoolId, status: "Success", isDeleted: false },
+      select: { studentId: true, amountPaid: true, allocatedTo: true },
+    });
+    const importedByAmountKey = new Set<string>();
+    for (const c of allCollections) {
+      const feeHead = (c.allocatedTo as any)?.feeHead || "";
+      importedByAmountKey.add(`${c.studentId}|${Number(c.amountPaid)}|${feeHead}`);
+    }
+
+    // Every sheet row is returned — new AND already-imported — so the review
+    // screen can filter between them instead of only ever seeing "new" rows.
+    const students = [];
     for (const row of sheetStudents) {
-      if (byExactAdmNo.has(row.cleanedAdmNo)) continue;
+      const exact = byExactAdmNo.get(row.cleanedAdmNo);
+      if (exact) {
+        students.push({
+          sheetId: row.sheetId,
+          name: row.name,
+          parentName: row.parentName,
+          phone: row.phone,
+          branchCode: row.branchCode,
+          className: row.className,
+          status: "imported" as const,
+          matchedStudent: { id: exact.id, name: displayName(exact), admissionNumber: exact.admissionNumber },
+          canonicalMatch: null,
+          phoneMatch: null,
+          looksLikeDuplicate: false,
+          resolvedBranchId: null,
+          resolvedClassName: null,
+          tuitionFee: row.tuitionFee,
+          admissionFee: row.admissionFee,
+          concession: row.concession,
+          transportFee: row.transportFee,
+        });
+        continue;
+      }
 
       const canonicalCandidates = byCanonicalAdmNo.get(admNoCanonicalKey(row.cleanedAdmNo)) || [];
       const canonicalMatch = canonicalCandidates.find((c) => namesLookSimilar(displayName(c), row.name)) || null;
       const phoneMatch = row.phone ? byPhone.get(row.phone) || null : null;
 
-      newStudents.push({
+      students.push({
         sheetId: row.sheetId,
         name: row.name,
         parentName: row.parentName,
@@ -283,6 +326,8 @@ export async function checkSheetForUpdates() {
         admissionFee: row.admissionFee,
         concession: row.concession,
         transportFee: row.transportFee,
+        status: "new" as const,
+        matchedStudent: null,
         canonicalMatch: canonicalMatch
           ? { id: canonicalMatch.id, name: displayName(canonicalMatch), admissionNumber: canonicalMatch.admissionNumber }
           : null,
@@ -291,46 +336,73 @@ export async function checkSheetForUpdates() {
       });
     }
 
-    const newPayments = [];
+    const payments = [];
     for (const row of sheetPayments) {
       if (!row.receipt) continue; // no receipt number — can't safely dedupe against future checks, so left out of v1
-      if (importedReceiptSet.has(row.receipt)) continue;
 
       const exact = byExactAdmNo.get(row.cleanedAdmNo) || null;
       const canonicalCandidates = !exact ? byCanonicalAdmNo.get(admNoCanonicalKey(row.cleanedAdmNo)) || [] : [];
       const canonicalMatch = !exact ? canonicalCandidates.find((c) => namesLookSimilar(displayName(c), row.name)) || null : null;
       const matched = exact || canonicalMatch;
+      const feeHead = resolveFeeHead(row.paymentFor);
 
-      newPayments.push({
+      const matchedByReceipt = importedReceiptSet.has(row.receipt);
+      const matchedByAmount = matched ? importedByAmountKey.has(`${matched.id}|${row.amount}|${feeHead}`) : false;
+
+      if (matchedByReceipt || matchedByAmount) {
+        payments.push({
+          receipt: row.receipt,
+          admNo: row.admNo,
+          name: row.name,
+          amount: row.amount,
+          mode: row.cash > 0 ? "Cash" : "Online",
+          reference: row.reference || null,
+          feeHead,
+          rawPaymentFor: row.paymentFor,
+          collectedBy: row.collectedBy || null,
+          status: "imported" as const,
+          matchedStudent: matched ? { id: matched.id, name: displayName(matched), admissionNumber: matched.admissionNumber } : null,
+          matchIsExact: !!exact,
+          matchMethod: matchedByReceipt ? ("receipt" as const) : ("amount" as const),
+        });
+        continue;
+      }
+
+      payments.push({
         receipt: row.receipt,
         admNo: row.admNo,
         name: row.name,
         amount: row.amount,
         mode: row.cash > 0 ? "Cash" : "Online",
         reference: row.reference || null,
-        feeHead: resolveFeeHead(row.paymentFor),
+        feeHead,
         rawPaymentFor: row.paymentFor,
         collectedBy: row.collectedBy || null,
+        status: "new" as const,
         matchedStudent: matched ? { id: matched.id, name: displayName(matched), admissionNumber: matched.admissionNumber } : null,
         matchIsExact: !!exact,
+        matchMethod: null,
       });
     }
+
+    const newStudentsCount = students.filter((s) => s.status === "new").length;
+    const newPaymentsCount = payments.filter((p) => p.status === "new").length;
 
     await prisma.globalSetting.upsert({
       where: { schoolId_key: { schoolId: identity.schoolId, key: "simple_sheet_sync_last_check" } },
       update: {
-        value: JSON.stringify({ checkedAt: new Date().toISOString(), newStudents: newStudents.length, newPayments: newPayments.length }),
+        value: JSON.stringify({ checkedAt: new Date().toISOString(), newStudents: newStudentsCount, newPayments: newPaymentsCount }),
       },
       create: {
         schoolId: identity.schoolId,
         key: "simple_sheet_sync_last_check",
-        value: JSON.stringify({ checkedAt: new Date().toISOString(), newStudents: newStudents.length, newPayments: newPayments.length }),
+        value: JSON.stringify({ checkedAt: new Date().toISOString(), newStudents: newStudentsCount, newPayments: newPaymentsCount }),
       },
     });
 
     return {
       success: true as const,
-      data: { checkedAt: new Date().toISOString(), newStudents, newPayments },
+      data: { checkedAt: new Date().toISOString(), students, payments },
     };
   } catch (error: any) {
     return { success: false as const, error: error.message ?? "Could not check the sheet for updates." };
@@ -497,11 +569,11 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
         continue;
       }
 
-      const already = await prisma.collection.findFirst({
+      const alreadyByReceipt = await prisma.collection.findFirst({
         where: { schoolId: identity.schoolId, bookReceiptNo: receipt },
         select: { id: true },
       });
-      if (already) {
+      if (alreadyByReceipt) {
         results.push({ label: `${row.name} — receipt ${receipt}`, success: false, message: "Already recorded — skipped to avoid double-counting." });
         continue;
       }
@@ -519,12 +591,32 @@ export async function syncSelectedSheetRows(input: { newStudentSheetIds: string[
         continue;
       }
 
+      // Second, receipt-independent safety net: the original one-time bulk
+      // import wrote many real collections with no bookReceiptNo at all (see
+      // checkSheetForUpdates), so the check above alone can't see them. Catch
+      // those here too, right before writing, in case the review screen was
+      // stale (opened before someone else synced, or before that legacy row
+      // was known).
+      const feeHead = resolveFeeHead(row.paymentFor);
+      const alreadyByAmount = await prisma.collection.findFirst({
+        where: { schoolId: identity.schoolId, studentId, status: "Success", isDeleted: false, amountPaid: row.amount },
+        select: { id: true, allocatedTo: true },
+      });
+      if (alreadyByAmount && (alreadyByAmount.allocatedTo as any)?.feeHead === feeHead) {
+        results.push({
+          label: `${row.name} — receipt ${receipt}`,
+          success: false,
+          message: "Already recorded (matched by amount — this student already has a same-amount, same-term payment on file) — skipped to avoid double-counting.",
+        });
+        continue;
+      }
+
       const result = await recordPayment({
         studentId,
         amount: row.amount,
         mode: row.cash > 0 ? "Cash" : "Online",
         reference: row.reference || undefined,
-        feeHead: resolveFeeHead(row.paymentFor),
+        feeHead,
         manualReceiptNumber: row.receipt,
         collectedByOverride: row.collectedBy || undefined,
       });

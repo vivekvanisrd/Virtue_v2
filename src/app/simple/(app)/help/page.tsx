@@ -197,6 +197,14 @@ export default function HelpPage() {
             The dashboard shows a small banner with when the sheet was last checked and how much is waiting for review, so
             nothing new gets missed.
           </P>
+          <P>
+            Use the <strong>Show</strong> filter to switch between <strong>New only</strong> (the default — never imported or
+            synced), <strong>Already imported</strong>, or <strong>All</strong>. Already-imported rows can't be ticked again.
+            A row shows as imported either because its receipt number is already on file, or — for payments from before this
+            tool existed — because the same student already has a same-amount, same-term payment recorded (that original
+            import didn't keep receipt numbers, so this is the only way to recognize those as already done). Click any
+            column header to sort by it; click again to reverse the order.
+          </P>
         </Section>
 
         <Section id="faq" title="Frequently asked questions">
