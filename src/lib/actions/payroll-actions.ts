@@ -80,8 +80,16 @@ export async function generatePayrollDraftAction(
     }
 
     // 1. Check for Existing Run
+    // The unique constraint on PayrollRun is actually (schoolId, branchId,
+    // month, year) — this used to look up (schoolId, month, year) only,
+    // which isn't a real compound key on this model at all, so this call
+    // threw "Invalid `prisma.payrollRun.findUnique()` invocation" on every
+    // single call, for every month that didn't already have a run. That
+    // made this the actual entry point of both the legacy Salary Command
+    // Center and /simple's new payroll page fail 100% of the time.
+    const targetBranch = branchId && branchId !== "GLOBAL" ? branchId : context.branchId;
     const existingRun = await prisma.payrollRun.findUnique({
-      where: { schoolId_month_year: { schoolId, month, year } }
+      where: { schoolId_branchId_month_year: { schoolId, branchId: targetBranch, month, year } }
     });
     if (existingRun) {
       const slips = await prisma.salarySlip.findMany({
@@ -116,7 +124,6 @@ export async function generatePayrollDraftAction(
     }
 
     const tenancy = getTenancyFilters(context);
-    const targetBranch = branchId && branchId !== "GLOBAL" ? branchId : context.branchId;
 
     // 2. Fetch Attendance Summary for current branch
     const attendanceResult = await getMonthlyStaffAttendanceSummary(month, year, targetBranch);
@@ -129,10 +136,14 @@ export async function generatePayrollDraftAction(
         branchId: targetBranch,
         status: "ACTIVE" 
       },
-      include: { 
+      include: {
         professional: true,
         advances: {
-          where: { status: "ACTIVE", balance: { gt: 0 } }
+          // Case-insensitive: the schema's own default for this field is
+          // mixed-case "Active" while every write path uses uppercase
+          // "ACTIVE" — matching the Branch.status precedent elsewhere in
+          // this codebase rather than trusting every writer to agree.
+          where: { status: { equals: "ACTIVE", mode: "insensitive" }, balance: { gt: 0 } }
         }
       }
     });
@@ -289,10 +300,14 @@ export async function syncPayrollStaffAction(runId: string) {
         status: "ACTIVE",
         id: { notIn: Array.from(existingStaffIds) } 
       },
-      include: { 
+      include: {
         professional: true,
         advances: {
-          where: { status: "ACTIVE", balance: { gt: 0 } }
+          // Case-insensitive: the schema's own default for this field is
+          // mixed-case "Active" while every write path uses uppercase
+          // "ACTIVE" — matching the Branch.status precedent elsewhere in
+          // this codebase rather than trusting every writer to agree.
+          where: { status: { equals: "ACTIVE", mode: "insensitive" }, balance: { gt: 0 } }
         }
       }
     });
@@ -431,7 +446,7 @@ export async function finalizePayrollAction(payrollRunId: string) {
         
         if (advanceRecovery > 0) {
            const activeAdv = await tx.staffAdvance.findFirst({
-              where: { staffId: slip.staffId, status: "ACTIVE" },
+              where: { staffId: slip.staffId, status: { equals: "ACTIVE", mode: "insensitive" } },
               orderBy: { disbursedDate: 'asc' }
            });
            
@@ -716,9 +731,14 @@ export async function getHistoricalPayrollRunsAction() {
     if (!identity) throw new Error("SECURE_AUTH_REQUIRED.");
     
     const runs = await prisma.payrollRun.findMany({
-      where: { 
+      where: {
         schoolId: identity.schoolId,
-        status: { in: ["Approved", "Paid"] }
+        // finalizePayrollAction writes uppercase "APPROVED" (see below), but
+        // 4 existing runs in production were finalized before that casing
+        // was introduced and are still stored as mixed-case "Approved" —
+        // checking both means old and future runs both show up in history,
+        // with no data backfill required.
+        status: { in: ["Approved", "APPROVED", "Paid", "PAID"] }
       },
       include: {
         _count: {

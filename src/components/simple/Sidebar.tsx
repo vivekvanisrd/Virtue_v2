@@ -27,6 +27,13 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
     ],
   },
   {
+    label: "Staff",
+    links: [
+      { href: "/simple/staff-attendance", label: "Staff attendance" },
+      { href: "/simple/payroll", label: "Payroll" },
+    ],
+  },
+  {
     label: "Setup",
     links: [
       { href: "/simple/fee-master", label: "Fee Master" },

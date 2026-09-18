@@ -7,6 +7,8 @@ const SECTIONS = [
   { id: "receipts", title: "Receipts" },
   { id: "reports", title: "Reports, one by one" },
   { id: "sheet-sync", title: "Sheet sync" },
+  { id: "staff-attendance", title: "Staff attendance" },
+  { id: "payroll", title: "Payroll" },
   { id: "faq", title: "Frequently asked questions" },
 ];
 
@@ -229,6 +231,38 @@ export default function HelpPage() {
             who did what, when, and whether it succeeded — so there's a record beyond the one-time result banner. If two
             people try to sync at the same moment, the second one is told to wait a moment rather than risking a
             double-import.
+          </P>
+        </Section>
+
+        <Section id="staff-attendance" title="Staff attendance">
+          <P>
+            <strong>Staff attendance</strong> (Owner/Developer/Platform Admin/Principal) shows a monthly, per-staff view of
+            present/absent/LWP (loss-of-pay) days and how many times someone was late — sourced from the same attendance
+            data the school's fingerprint/biometric device already records. A Principal sees their own branch only; Owner/
+            Developer/Platform Admin can pick any branch.
+          </P>
+          <P>
+            Click <strong>View / correct</strong> next to anyone to see their day-by-day record and, if a day is missing or
+            wrong (the device was offline, someone forgot to punch), mark or correct it by hand — pick the date, the
+            correct status, and optionally a check-in/check-out time. Corrected days are tracked as an override, separate
+            from a real device punch.
+          </P>
+        </Section>
+
+        <Section id="payroll" title="Payroll">
+          <P>
+            <strong>Payroll</strong> (Owner/Developer/Platform Admin only) runs the school's real payroll — the same
+            engine that already calculates salary from attendance (present days, LWP, lateness), just with a simpler
+            screen. Pick a month, year, and branch, then <strong>Generate draft</strong>. If a draft already exists for
+            that month it resumes it instead of starting over.
+          </P>
+          <P>
+            Review the draft's numbers per staff member — gross and net are editable while it's still a draft.{" "}
+            <strong>Sync new/changed staff</strong> picks up anyone hired or updated since the draft was made.{" "}
+            <strong>Finalize payroll</strong> posts real ledger entries and seals each slip — it asks for confirmation
+            first, since it can't be undone from this screen. After finalizing, export a bank file for the actual
+            transfer, and mark each slip paid once the transfer is done. <strong>View history</strong> shows every
+            finalized run.
           </P>
         </Section>
 

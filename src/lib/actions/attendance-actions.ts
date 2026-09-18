@@ -335,7 +335,10 @@ export async function getMonthlyStaffAttendanceSummary(month: number, year: numb
       } else if (status === "absent" || status === "lop" || status === "lp") {
         summary[staffId].absent++;
         summary[staffId].lwp++;
-      } else if (status === "half-day") {
+      } else if (status === "half-day" || status === "half_day") {
+        // Live data has 4 real rows stored as "HALF_DAY" (underscore) — only
+        // "half-day" (hyphen) was recognized before, so these were silently
+        // dropped from every staff member's present/lwp counts.
         summary[staffId].present += 0.5;
         summary[staffId].lwp += 0.5;
       }
